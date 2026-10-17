@@ -174,10 +174,10 @@ export const DocumentUploadVault: React.FC<DocumentUploadVaultProps> = ({
             <span>MiCA Compliance Vault · Tier 1 Audit Trail</span>
           </div>
           <h2 className="text-2xl font-black text-[#18211F] tracking-tight">
-            Document Upload & Compliance Verification
+            Profile Settings & Compliance
           </h2>
           <p className="text-xs text-[#69736F]">
-            Upload bank wire deposit receipts, crypto payment confirmations, and AML/KYC identity documents for administrator confirmation and approval.
+            Manage your investor profile settings, upload bank wire deposit receipts, crypto confirmations, and AML/KYC identity documents for administrator confirmation.
           </p>
         </div>
 

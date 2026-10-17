@@ -91,7 +91,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { id: 'transactions', label: 'Transactions', icon: History, count: transactions.length },
     { id: 'distributions', label: 'Distributions', icon: Coins },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
-    { id: 'verification', label: 'Upload & Compliance', icon: UploadCloud, count: pendingDocsCount || undefined },
+    { id: 'verification', label: 'Profile Settings', icon: UploadCloud, count: pendingDocsCount || undefined },
     { id: 'documents', label: 'Documents', icon: FileText, count: investments.length },
     { id: 'referrals', label: 'Referrals', icon: Share2 },
     { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.length },

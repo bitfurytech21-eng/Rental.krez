@@ -175,9 +175,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
       <div 
-        className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-[#E3E8E3] relative my-8"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-[#E3E8E3] relative my-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -277,63 +277,63 @@ export const DepositModal: React.FC<DepositModalProps> = ({
             </div>
 
             {/* Method Tabs */}
-            <div className="grid grid-cols-3 gap-2 p-1 bg-[#EEF1EC] rounded-2xl">
+            <div className="grid grid-cols-3 gap-1 p-1 bg-[#EEF1EC] rounded-xl">
               <button
                 type="button"
                 onClick={() => setMethod('sepa')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   method === 'sepa'
                     ? 'bg-white text-[#18211F] shadow-xs'
                     : 'text-[#69736F] hover:text-[#18211F]'
                 }`}
               >
-                <Building2 className="w-4 h-4 text-emerald-700" />
-                <span>Bank Wire (SEPA)</span>
+                <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Bank Wire</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setMethod('crypto')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   method === 'crypto'
                     ? 'bg-white text-[#18211F] shadow-xs'
                     : 'text-[#69736F] hover:text-[#18211F]'
                 }`}
               >
-                <Coins className="w-4 h-4 text-amber-600" />
-                <span>Crypto Treasury</span>
+                <Coins className="w-3.5 h-3.5 text-amber-600" />
+                <span>Crypto</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setMethod('instant')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   method === 'instant'
                     ? 'bg-white text-[#18211F] shadow-xs'
                     : 'text-[#69736F] hover:text-[#18211F]'
                 }`}
               >
-                <CreditCard className="w-4 h-4 text-blue-600" />
-                <span>Instant Card</span>
+                <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                <span>Card</span>
               </button>
             </div>
 
             {/* Error Banner */}
             {error && (
-              <div className="p-3.5 rounded-2xl bg-red-50 text-red-800 text-xs font-bold border border-red-200 flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-red-50 text-red-800 text-xs font-bold border border-red-200 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleDepositSubmit} className="space-y-5 text-left">
+            <form onSubmit={handleDepositSubmit} className="space-y-4 text-left">
               {/* Amount Selection */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-[#18211F]">
                   Deposit Amount (€ EUR)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#69736F]">€</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[#69736F]">€</span>
                   <input
                     type="number"
                     min="100"
@@ -341,19 +341,19 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     value={amount || ''}
                     onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
                     placeholder="Enter amount..."
-                    className="w-full pl-8 pr-4 py-3 rounded-2xl border border-[#E3E8E3] focus:border-[#182D2A] focus:outline-none text-base font-bold text-[#18211F]"
+                    className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-[#E3E8E3] focus:border-[#182D2A] focus:outline-none text-sm font-bold text-[#18211F]"
                     required
                   />
                 </div>
 
                 {/* Quick Amount Buttons */}
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   {[1000, 2500, 5000, 10000, 25000].map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setAmount(preset)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
                         amount === preset
                           ? 'bg-[#182D2A] text-white border-[#182D2A]'
                           : 'bg-[#F6F7F4] text-[#69736F] border-[#E3E8E3] hover:text-[#18211F]'
@@ -367,8 +367,8 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
               {/* METHOD 1: SEPA BANK WIRE */}
               {method === 'sepa' && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-3 text-xs">
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-2.5 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-[#18211F]">CaixaBank Institutional Account</span>
                       <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-full">
@@ -376,28 +376,28 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                       </span>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 text-[11px]">
                       <div className="flex justify-between items-center">
                         <span className="text-[#69736F]">Beneficiary:</span>
-                        <span className="font-bold text-[#18211F]">{paymentConfig.traditional.beneficiary}</span>
+                        <span className="font-bold text-[#18211F] truncate max-w-[200px]">{paymentConfig.traditional.beneficiary}</span>
                       </div>
 
                       <div className="flex justify-between items-center">
                         <span className="text-[#69736F]">Bank Name:</span>
-                        <span className="font-bold text-[#18211F]">{paymentConfig.traditional.bankName}</span>
+                        <span className="font-bold text-[#18211F] truncate max-w-[200px]">{paymentConfig.traditional.bankName}</span>
                       </div>
 
                       <div className="flex justify-between items-center">
                         <span className="text-[#69736F]">IBAN:</span>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-[#18211F]">{paymentConfig.traditional.iban}</span>
+                          <span className="font-mono font-bold text-[#18211F] text-[10px]">{paymentConfig.traditional.iban}</span>
                           <button
                             type="button"
                             onClick={() => copyToClipboard(paymentConfig.traditional.iban, setCopiedIban)}
                             className="p-1 rounded text-gray-500 hover:text-black cursor-pointer"
                             title="Copy IBAN"
                           >
-                            {copiedIban ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedIban ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                           </button>
                         </div>
                       </div>
@@ -412,30 +412,30 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                             className="p-1 rounded text-gray-500 hover:text-black cursor-pointer"
                             title="Copy BIC"
                           >
-                            {copiedSwift ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copiedSwift ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                           </button>
                         </div>
                       </div>
 
-                      <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 mt-2">
+                      <div className="p-2.5 bg-amber-50/90 rounded-xl border border-amber-200 mt-1.5">
                         <div className="flex justify-between items-center">
                           <div>
                             <span className="block text-[10px] uppercase font-bold text-amber-900 tracking-wider">
-                              Payment Transfer Reference (Mandatory)
+                              Payment Reference (Mandatory)
                             </span>
-                            <span className="font-mono font-black text-amber-950 text-sm">{uniqueDepositRef}</span>
+                            <span className="font-mono font-black text-amber-950 text-xs">{uniqueDepositRef}</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => copyToClipboard(uniqueDepositRef, setCopiedRef)}
-                            className="btn btn-secondary btn-sm py-1 px-2.5 text-[11px] bg-white border-amber-300 text-amber-950 font-bold flex items-center gap-1 cursor-pointer"
+                            className="btn btn-secondary btn-sm py-1 px-2 text-[10px] bg-white border-amber-300 text-amber-950 font-bold flex items-center gap-1 cursor-pointer"
                           >
                             {copiedRef ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                             {copiedRef ? 'Copied' : 'Copy'}
                           </button>
                         </div>
-                        <p className="text-[10px] text-amber-800 mt-1">
-                          You must include this reference in your banking transfer note to ensure direct automated crediting.
+                        <p className="text-[10px] text-amber-800 mt-0.5">
+                          Include this reference in your bank transfer note.
                         </p>
                       </div>
                     </div>

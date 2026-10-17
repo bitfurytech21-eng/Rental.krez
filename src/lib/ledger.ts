@@ -7,6 +7,7 @@ import { MembershipTier, UserMembership, MembershipApplication, MembershipTierId
 import { formatCurrency } from './utils';
 import { CompanyNewsItem } from '../types/news';
 import { INITIAL_COMPANY_NEWS } from '../data/companyNews';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface AuditLog {
   id: string;
@@ -1417,6 +1418,28 @@ class LedgerService {
       };
 
       this.investments.unshift(investment);
+
+      // Trigger Supabase Edge Function to send automated confirmation email once recorded in ledger
+      if (isSupabaseConfigured()) {
+        try {
+          await supabase.functions.invoke('send-investment-confirmation', {
+            body: {
+              userId: user.id,
+              email: user.email,
+              fullName: user.fullName,
+              propertyTitle: property.title,
+              propertyLocation: property.location,
+              tokensPurchased: tokenCount,
+              totalAmountInvested: totalCost,
+              certificateId: certificateId,
+              transactionHash: txHash,
+              purchasedAt: timestamp,
+            },
+          });
+        } catch (emailErr) {
+          console.log('Supabase Edge Function email notification notice:', emailErr);
+        }
+      }
 
       // Create Ledger Transaction
       const tx: Transaction = {
