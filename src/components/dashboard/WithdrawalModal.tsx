@@ -98,27 +98,30 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/30 backdrop-blur-[0.5px] z-50 flex items-center sm:items-end justify-center p-3 sm:p-6 sm:pb-8 overflow-y-auto"
+      className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="dash-card rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl border relative animate-in slide-in-from-bottom-4 duration-200 my-2">
-        
+      <div 
+        className="dash-card rounded-2xl w-[92vw] sm:w-full max-w-[440px] max-h-[82vh] sm:max-h-[85vh] p-3.5 sm:p-4 shadow-2xl border relative animate-in zoom-in-95 duration-150 my-auto overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-red-500/15 text-red-400 border border-red-500/30 flex items-center justify-center">
-              <ArrowUpRight className="w-5 h-5" />
+        <div className="flex justify-between items-center pb-2.5 mb-2.5 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-red-500/15 text-red-400 border border-red-500/30 flex items-center justify-center shrink-0">
+              <ArrowUpRight className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-xl font-bold dash-text">Withdraw Funds</h3>
-              <p className="text-xs dash-muted">Transfer capital to your bank account or crypto wallet</p>
+              <h3 className="text-base font-bold dash-text">Withdraw Funds</h3>
+              <p className="text-[11px] dash-muted">Transfer capital to your bank account or crypto wallet</p>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="dash-muted hover:opacity-80 text-xl font-bold p-1 cursor-pointer"
+            className="dash-muted hover:opacity-80 text-lg font-bold p-1 cursor-pointer"
+            aria-label="Close"
           >
             ✕
           </button>
@@ -156,44 +159,44 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
             </div>
           </div>
         ) : !success ? (
-          <form onSubmit={handleWithdrawalSubmit} className="space-y-5">
+          <form onSubmit={handleWithdrawalSubmit} className="space-y-3">
             {/* Method Toggle: SEPA vs Crypto */}
-            <div className="flex dash-inner p-1 rounded-2xl border">
+            <div className="flex dash-inner p-0.5 rounded-xl border">
               <button
                 type="button"
                 onClick={() => setMethod('sepa')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   method === 'sepa'
-                    ? 'bg-gradient-to-r from-[#059669] to-[#10B981] text-white shadow-sm'
+                    ? 'bg-gradient-to-r from-[#059669] to-[#10B981] text-white shadow-xs'
                     : 'dash-muted hover:opacity-90'
                 }`}
               >
-                <Building2 className="w-3.5 h-3.5" />
+                <Building2 className="w-3 h-3" />
                 SEPA Bank Wire
               </button>
               <button
                 type="button"
                 onClick={() => setMethod('crypto')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   method === 'crypto'
-                    ? 'bg-gradient-to-r from-[#059669] to-[#10B981] text-white shadow-sm'
+                    ? 'bg-gradient-to-r from-[#059669] to-[#10B981] text-white shadow-xs'
                     : 'dash-muted hover:opacity-90'
                 }`}
               >
-                <Coins className="w-3.5 h-3.5" />
+                <Coins className="w-3 h-3" />
                 Crypto Wallet
               </button>
             </div>
 
             {/* Available Balance Box */}
-            <div className="dash-inner p-4 rounded-2xl border flex justify-between items-center text-xs">
-              <span className="dash-muted">Available for Withdrawal:</span>
-              <span className="text-base font-extrabold text-emerald-400">{formatCurrency(user.walletBalance)}</span>
+            <div className="dash-inner p-2.5 rounded-xl border flex justify-between items-center text-xs">
+              <span className="dash-muted text-[11px]">Available for Withdrawal:</span>
+              <span className="text-sm font-extrabold text-emerald-400">{formatCurrency(user.walletBalance)}</span>
             </div>
 
             {/* Withdrawal Amount */}
-            <div className="form-field">
-              <label>Withdrawal Amount (EUR)</label>
+            <div className="form-field space-y-1">
+              <label className="text-[11px]">Withdrawal Amount (EUR)</label>
               <div className="relative">
                 <input
                   type="number"
@@ -203,12 +206,12 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
                   required
-                  className="font-bold text-base w-full pr-16"
+                  className="font-bold text-sm w-full pr-14 py-1.5"
                 />
                 <button
                   type="button"
                   onClick={() => setAmount(user.walletBalance)}
-                  className="absolute right-3 top-3 text-[11px] font-bold text-[#27845D] hover:underline cursor-pointer"
+                  className="absolute right-2.5 top-2 text-[10px] font-bold text-[#27845D] hover:underline cursor-pointer"
                 >
                   MAX
                 </button>
@@ -217,25 +220,25 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 
             {/* Method-specific fields */}
             {method === 'sepa' ? (
-              <div className="form-field">
-                <label>Destination European Bank IBAN</label>
+              <div className="form-field space-y-1">
+                <label className="text-[11px]">Destination European Bank IBAN</label>
                 <input
                   type="text"
                   value={iban}
                   onChange={(e) => setIban(e.target.value)}
                   placeholder="ES91 2100 0418 ..."
                   required
-                  className="font-mono text-xs uppercase"
+                  className="font-mono text-xs uppercase py-1.5"
                 />
-                <span className="text-[11px] text-[#69736F] mt-1 block">
+                <span className="text-[10px] text-[#69736F] mt-0.5 block leading-tight">
                   Beneficiary name must match verified account: <strong>{user.fullName}</strong>
                 </span>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold dash-text mb-1">Asset / Token</label>
+                    <label className="block text-[10px] font-bold dash-text mb-0.5">Asset / Token</label>
                     <select
                       value={cryptoToken}
                       onChange={(e) => {
@@ -244,7 +247,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                         const nets = networkChoices[token] || ['Ethereum (ERC20)'];
                         setCryptoNetwork(nets[0]);
                       }}
-                      className="w-full text-xs font-bold p-2.5 rounded-xl border dash-inner dash-text focus:outline-none focus:border-emerald-500"
+                      className="w-full text-xs font-bold p-1.5 rounded-lg border dash-inner dash-text focus:outline-none focus:border-emerald-500"
                     >
                       <option value="USDT">USDT (Tether)</option>
                       <option value="USDC">USDC (USD Coin)</option>
@@ -254,11 +257,11 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold dash-text mb-1">Network</label>
+                    <label className="block text-[10px] font-bold dash-text mb-0.5">Network</label>
                     <select
                       value={cryptoNetwork}
                       onChange={(e) => setCryptoNetwork(e.target.value)}
-                      className="w-full text-xs font-bold p-2.5 rounded-xl border dash-inner dash-text focus:outline-none focus:border-emerald-500"
+                      className="w-full text-xs font-bold p-1.5 rounded-lg border dash-inner dash-text focus:outline-none focus:border-emerald-500"
                     >
                       {(networkChoices[cryptoToken] || ['Ethereum (ERC20)']).map(net => (
                         <option key={net} value={net}>{net}</option>
@@ -267,17 +270,17 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                   </div>
                 </div>
 
-                <div className="form-field">
-                  <label className="dash-text">Destination {cryptoToken} Wallet Address ({cryptoNetwork})</label>
+                <div className="form-field space-y-1">
+                  <label className="dash-text text-[11px]">Destination {cryptoToken} Wallet Address ({cryptoNetwork})</label>
                   <input
                     type="text"
                     value={cryptoAddress}
                     onChange={(e) => setCryptoAddress(e.target.value)}
-                    placeholder="0x... or Tron / Solana / Bitcoin address"
+                    placeholder="0x... or wallet address"
                     required
-                    className="font-mono text-xs dash-inner dash-text"
+                    className="font-mono text-xs dash-inner dash-text py-1.5"
                   />
-                  <span className="text-[10px] dash-muted mt-1 block">
+                  <span className="text-[9px] dash-muted mt-0.5 block leading-tight">
                     Verify the network carefully. Transfers sent to incompatible networks cannot be reversed.
                   </span>
                 </div>
@@ -285,30 +288,29 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
             )}
 
             {error && (
-              <div className="p-3 rounded-xl bg-red-500/15 text-red-400 text-xs font-medium border border-red-500/30 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-red-500/15 text-red-400 text-[11px] font-medium border border-red-500/30 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="p-3.5 rounded-2xl dash-inner border text-[11px] dash-muted leading-relaxed space-y-1">
-              <p>• <strong>Processing time:</strong> {method === 'sepa' ? '1–2 European banking business days' : '15–30 minutes blockchain confirmation'}.</p>
-              <p>• <strong>Fee:</strong> €0.00 (Zero withdrawal fee charged by RealtyFund).</p>
-              <p>• <strong>Escrow protection:</strong> Funds are locked on the ledger immediately to prevent duplicate withdrawal attempts.</p>
+            <div className="p-2.5 rounded-xl dash-inner border text-[10px] dash-muted leading-tight space-y-1">
+              <p>• <strong>Processing:</strong> {method === 'sepa' ? '1–2 European banking business days' : '15–30 minutes blockchain confirmation'}.</p>
+              <p>• <strong>Fee:</strong> €0.00 (Zero withdrawal fee charged).</p>
             </div>
 
-            <div className="pt-2 flex flex-col gap-2">
+            <div className="pt-1 flex flex-col gap-1.5">
               <button
                 type="submit"
                 disabled={isSubmitting || user.walletBalance <= 0 || amount <= 0 || amount > user.walletBalance}
-                className="btn btn-primary text-xs font-bold w-full py-3 cursor-pointer disabled:opacity-50"
+                className="btn btn-primary text-xs font-bold w-full py-2.5 cursor-pointer disabled:opacity-50"
               >
-                {isSubmitting ? 'Submitting to Financial Ledger...' : `Confirm Withdrawal of ${formatCurrency(amount)}`}
+                {isSubmitting ? 'Submitting...' : `Confirm Withdrawal of ${formatCurrency(amount)}`}
               </button>
               <button 
                 type="button" 
                 onClick={onClose} 
-                className="btn btn-secondary text-xs font-medium w-full cursor-pointer"
+                className="btn btn-secondary text-xs font-medium w-full py-2 cursor-pointer"
               >
                 Cancel
               </button>

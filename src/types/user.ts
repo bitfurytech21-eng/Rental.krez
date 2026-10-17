@@ -135,6 +135,11 @@ export interface User {
   institutionName?: string;
   taxId?: string;
   registrationNumber?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  twoFactorEnabled?: boolean;
 }
 
 export interface AuthState {

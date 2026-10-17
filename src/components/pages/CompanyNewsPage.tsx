@@ -190,7 +190,7 @@ export const CompanyNewsPage: React.FC<CompanyNewsPageProps> = ({
                 {playingFeatured ? (
                   <iframe
                     className="w-full h-full border-0"
-                    src={`https://www.youtube-nocookie.com/embed/${featuredVideo.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
+                    src={`https://www.youtube.com/embed/${featuredVideo.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
                     title={featuredVideo.title}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
@@ -491,7 +491,7 @@ export const CompanyNewsPage: React.FC<CompanyNewsPageProps> = ({
             <div className="relative aspect-video w-full bg-black">
               <iframe
                 className="w-full h-full border-0"
-                src={`https://www.youtube-nocookie.com/embed/${activeVideoModal.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
+                src={`https://www.youtube.com/embed/${activeVideoModal.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
                 title={activeVideoModal.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen

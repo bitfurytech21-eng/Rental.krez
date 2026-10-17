@@ -1,26 +1,29 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../../lib/auth';
-import { ledger, VerificationDocument, DocumentCategory } from '../../lib/ledger';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { ledger } from '../../lib/ledger';
+import { getAccountTypeLabel, getAccountTypeBadge } from '../../types/user';
 import {
-  UploadCloud,
-  FileText,
+  User as UserIcon,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Lock,
+  Shield,
+  ShieldCheck,
   CheckCircle2,
-  Clock,
-  XCircle,
   AlertCircle,
   Eye,
+  EyeOff,
+  Camera,
   Trash2,
-  ShieldCheck,
-  Building2,
-  CreditCard,
-  UserCheck,
-  ArrowRight,
-  ExternalLink,
-  Plus,
-  X,
-  FileCheck,
-  Sparkles
+  Smartphone,
+  Globe,
+  FileCheck2,
+  Bell,
+  LogOut,
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 interface DocumentUploadVaultProps {
@@ -28,684 +31,759 @@ interface DocumentUploadVaultProps {
   onNavigateWallet?: () => void;
 }
 
-export const DocumentUploadVault: React.FC<DocumentUploadVaultProps> = ({
-  onNavigateAdmin,
-  onNavigateWallet
-}) => {
-  const { user, refreshUser, isAdmin } = useAuth();
+export const DocumentUploadVault: React.FC<DocumentUploadVaultProps> = () => {
+  const { user, refreshUser, updatePassword } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form State
-  const [category, setCategory] = useState<DocumentCategory>('deposit_proof');
-  const [docType, setDocType] = useState('Bank Wire Transfer Receipt');
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState<number | ''>(5000);
-  const [currency, setCurrency] = useState('EUR');
-  const [depositRef, setDepositRef] = useState('');
-  const [notes, setNotes] = useState('');
+  // Form states initialized with existing user profile data
+  const [fullName, setFullName] = useState(user?.fullName || '');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '+34 612 345 678');
+  const [country, setCountry] = useState(user?.country || 'Spain');
+  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth || '1988-06-15');
+  const [taxId, setTaxId] = useState(user?.taxId || 'ES-Y7894561-X');
+  const [address, setAddress] = useState(user?.address || 'Paseo de Gràcia 48, 4º 2ª');
+  const [city, setCity] = useState(user?.city || 'Barcelona');
+  const [postalCode, setPostalCode] = useState(user?.postalCode || '08007');
 
-  // File Upload State
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [fileBase64, setFileBase64] = useState<string>('');
-  const [fileName, setFileName] = useState<string>('');
-  const [fileSize, setFileSize] = useState<number>(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Password fields
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [isUpdatingPass, setIsUpdatingPass] = useState(false);
 
-  // Document Preview Modal State
-  const [previewDoc, setPreviewDoc] = useState<VerificationDocument | null>(null);
+  // Security preferences
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.twoFactorEnabled ?? true);
+  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [tradeConfirmations, setTradeConfirmations] = useState(true);
 
-  if (!user) return null;
+  // Feedback states
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isSavingPersonal, setIsSavingPersonal] = useState(false);
+  const [isSavingContact, setIsSavingContact] = useState(false);
 
-  const uploadedDocs = ledger.getVerificationDocuments(user.id);
-  const pendingDeposits = ledger.getTransactions(user.id).filter(t => t.type === 'deposit' && t.status === 'pending');
+  if (!user) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center p-6 bg-white rounded-2xl border border-[#E3E8E3]">
+        <div className="w-7 h-7 border-2 border-[#182D2A] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-  const handleFile = (file: File) => {
-    setError(null);
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!validTypes.includes(file.type)) {
-      setError('Please upload a valid image file (JPEG, PNG, WebP) or PDF document.');
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => {
+      setFeedback((prev) => (prev?.message === message ? null : prev));
+    }, 4500);
+  };
+
+  // Avatar Photo Handler
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('error', 'Please upload a valid image file (PNG, JPG, WebP).');
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      setError('File size exceeds the 15MB limit. Please upload a smaller file.');
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('error', 'Profile photo size must be less than 5MB.');
       return;
     }
-
-    setSelectedFile(file);
-    setFileName(file.name);
-    setFileSize(file.size);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setFileBase64(result);
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      ledger.updateUserProfile(user.id, { avatarUrl: base64 });
+      refreshUser();
+      showToast('success', 'Profile photo updated successfully!');
     };
     reader.onerror = () => {
-      setError('Failed to read file. Please try selecting again.');
+      showToast('error', 'Failed to read image file. Please try another.');
     };
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
+  const handleRemovePhoto = () => {
+    ledger.updateUserProfile(user.id, { avatarUrl: '' });
+    refreshUser();
+    showToast('success', 'Profile photo removed.');
   };
 
-  const handleSelectDepositRef = (ref: string, depAmount: number) => {
-    setDepositRef(ref);
-    setAmount(depAmount);
-    setTitle(`Proof of Transfer: CaixaBank Wire (${ref})`);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // Personal Details Save
+  const handleSavePersonal = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (!fileBase64 && !selectedFile) {
-      setError('Please select or drop a document/receipt file to upload.');
+    if (!fullName.trim()) {
+      showToast('error', 'Full name cannot be empty.');
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const generatedTitle = title.trim() || (
-        category === 'deposit_proof' 
-          ? `Deposit Proof: ${depositRef || 'Bank Wire'} (${amount ? formatCurrency(Number(amount)) : 'Transfer'})`
-          : `${docType} Verification`
-      );
-
-      ledger.uploadVerificationDocument({
-        userId: user.id,
-        userName: user.fullName,
-        userEmail: user.email,
-        category,
-        title: generatedTitle,
-        documentType: docType,
-        fileUrl: fileBase64 || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1200&auto=format&fit=crop&q=80',
-        fileName: fileName || `${category}_${Date.now()}.pdf`,
-        fileSize: fileSize || 180000,
-        transactionReference: depositRef.trim() || undefined,
-        amount: typeof amount === 'number' ? amount : undefined,
-        currency: currency,
-        notes: notes.trim() || undefined
+    setIsSavingPersonal(true);
+    setTimeout(() => {
+      ledger.updateUserProfile(user.id, {
+        fullName: fullName.trim(),
+        dateOfBirth,
+        country,
+        taxId: taxId.trim(),
       });
-
       refreshUser();
-      setSuccessMsg('Document successfully uploaded to Compliance Vault! It is now pending administrative confirmation and approval.');
-      // Reset form
-      setSelectedFile(null);
-      setFileBase64('');
-      setFileName('');
-      setFileSize(0);
-      setDepositRef('');
-      setNotes('');
-      setTitle('');
+      setIsSavingPersonal(false);
+      showToast('success', 'Personal information saved successfully.');
+    }, 400);
+  };
 
-      setTimeout(() => setSuccessMsg(null), 6000);
+  // Contact Details Save
+  const handleSaveContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingContact(true);
+    setTimeout(() => {
+      ledger.updateUserProfile(user.id, {
+        phoneNumber: phoneNumber.trim(),
+        address: address.trim(),
+        city: city.trim(),
+        postalCode: postalCode.trim(),
+      });
+      refreshUser();
+      setIsSavingContact(false);
+      showToast('success', 'Contact and residential details saved successfully.');
+    }, 400);
+  };
+
+  // Password Update
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      showToast('error', 'Please enter your current password.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      showToast('error', 'New password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('error', 'New password and confirm password do not match.');
+      return;
+    }
+
+    setIsUpdatingPass(true);
+    try {
+      await updatePassword(newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      showToast('success', 'Your password has been updated successfully!');
     } catch (err: any) {
-      setError(err?.message || 'Failed to submit document.');
+      showToast('error', err?.message || 'Failed to update password. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setIsUpdatingPass(false);
     }
   };
 
-  const handleDeleteDoc = (id: string, docTitle: string) => {
-    if (confirm(`Remove document "${docTitle}" from compliance vault?`)) {
-      ledger.deleteVerificationDocument(id);
-      refreshUser();
-      setSuccessMsg(`Document "${docTitle}" removed.`);
-      setTimeout(() => setSuccessMsg(null), 3000);
-    }
+  // Two-Factor Toggle
+  const handleToggle2FA = () => {
+    const nextVal = !twoFactorEnabled;
+    setTwoFactorEnabled(nextVal);
+    ledger.updateUserProfile(user.id, { twoFactorEnabled: nextVal });
+    refreshUser();
+    showToast(
+      'success',
+      nextVal
+        ? 'Two-Factor Authentication (2FA) is now enabled for your account.'
+        : 'Two-Factor Authentication (2FA) has been turned off.'
+    );
   };
+
+  const initials = user.fullName
+    ? user.fullName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : 'KZ';
 
   return (
-    <div className="space-y-6 text-left">
-      {/* 1. Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-[#27845D] text-[10px] font-bold uppercase tracking-wider border border-emerald-200/60">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>MiCA Compliance Vault · Tier 1 Audit Trail</span>
+    <div className="space-y-4 max-w-5xl mx-auto pb-8">
+      {/* 1. Header: Standard Client Profile Settings */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E5EDEB] text-[#182D2A] text-[10px] font-bold tracking-wide uppercase mb-1.5">
+              <UserIcon className="w-3 h-3 text-[#27845D]" />
+              <span>Investor Portal · Client Account</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-[#18211F] tracking-tight">
+              Profile Settings
+            </h1>
+            <p className="text-xs text-[#69736F] mt-0.5">
+              View and update your personal information, contact details, profile photo, password, and security preferences.
+            </p>
           </div>
-          <h2 className="text-2xl font-black text-[#18211F] tracking-tight">
-            Profile Settings & Compliance
-          </h2>
-          <p className="text-xs text-[#69736F]">
-            Manage your investor profile settings, upload bank wire deposit receipts, crypto confirmations, and AML/KYC identity documents for administrator confirmation.
-          </p>
-        </div>
 
-        {/* Quick jump for admin or testing */}
-        <div className="flex items-center gap-2">
-          {isAdmin ? (
-            <button
-              onClick={onNavigateAdmin}
-              className="px-4 py-2.5 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm shrink-0"
-            >
-              <ShieldCheck className="w-4 h-4 text-[#B7E36A]" />
-              <span>Admin: Review & Approve Uploads</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <a
-              href="/admin#deposits"
-              className="px-4 py-2.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border border-[#DCE4DA] shrink-0"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-[#27845D]" />
-              <span>Open Admin Approval Portal</span>
-            </a>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#27845D] bg-[#27845D]/10 px-2.5 py-1 rounded-full border border-[#27845D]/20">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Account Active</span>
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 2. Success and Error Feedbacks */}
-      {successMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-start justify-between gap-3 animate-in fade-in">
-          <div className="flex items-start gap-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-            <span>{successMsg}</span>
+      {/* Global Feedback Banner */}
+      {feedback && (
+        <div
+          className={`p-3 sm:p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between gap-3 animate-in fade-in ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+              : 'bg-red-50 border border-red-200 text-red-900'
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            {feedback.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+            )}
+            <span className="truncate">{feedback.message}</span>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900 cursor-pointer">
-            <X className="w-4 h-4" />
+          <button
+            onClick={() => setFeedback(null)}
+            className="text-xs opacity-60 hover:opacity-100 font-bold cursor-pointer"
+          >
+            ✕
           </button>
         </div>
       )}
 
-      {error && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 text-xs font-semibold flex items-start gap-2.5 animate-in fade-in">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* 3. Main Upload Form Card */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
-        <div className="border-b border-[#E3E8E3] pb-4">
-          <h3 className="text-base font-bold text-[#18211F]">Upload New Document or Proof</h3>
-          <p className="text-xs text-[#69736F]">Choose document category and attach file. Submissions are reviewed by our compliance desk.</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Category Switcher */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-[#18211F]">
-              Select Document Category
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setCategory('deposit_proof');
-                  setDocType('Bank Wire Transfer Receipt');
-                }}
-                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  category === 'deposit_proof'
-                    ? 'border-[#182D2A] bg-[#EEF2EC] text-[#182D2A] shadow-xs ring-1 ring-[#182D2A]'
-                    : 'border-[#E3E8E3] hover:border-slate-400 bg-white text-[#4A5551]'
-                }`}
-              >
-                <CreditCard className={`w-5 h-5 shrink-0 mt-0.5 ${category === 'deposit_proof' ? 'text-[#27845D]' : 'text-slate-400'}`} />
-                <div>
-                  <h4 className="text-xs font-bold">Deposit / Transfer Proof</h4>
-                  <p className="text-[11px] text-[#69736F] mt-0.5">SEPA wire slips & crypto receipts</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCategory('kyc_identity');
-                  setDocType('International Passport');
-                }}
-                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  category === 'kyc_identity'
-                    ? 'border-[#182D2A] bg-[#EEF2EC] text-[#182D2A] shadow-xs ring-1 ring-[#182D2A]'
-                    : 'border-[#E3E8E3] hover:border-slate-400 bg-white text-[#4A5551]'
-                }`}
-              >
-                <UserCheck className={`w-5 h-5 shrink-0 mt-0.5 ${category === 'kyc_identity' ? 'text-[#27845D]' : 'text-slate-400'}`} />
-                <div>
-                  <h4 className="text-xs font-bold">Identity Verification (KYC)</h4>
-                  <p className="text-[11px] text-[#69736F] mt-0.5">Passport, National ID or Driver's License</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCategory('proof_of_address');
-                  setDocType('Utility Bill / Bank Statement');
-                }}
-                className={`p-3.5 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer ${
-                  category === 'proof_of_address'
-                    ? 'border-[#182D2A] bg-[#EEF2EC] text-[#182D2A] shadow-xs ring-1 ring-[#182D2A]'
-                    : 'border-[#E3E8E3] hover:border-slate-400 bg-white text-[#4A5551]'
-                }`}
-              >
-                <Building2 className={`w-5 h-5 shrink-0 mt-0.5 ${category === 'proof_of_address' ? 'text-[#27845D]' : 'text-slate-400'}`} />
-                <div>
-                  <h4 className="text-xs font-bold">Proof of Address / SPV</h4>
-                  <p className="text-[11px] text-[#69736F] mt-0.5">Utility bill, bank statement, articles</p>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick link to Pending Deposits if Category is deposit_proof */}
-          {category === 'deposit_proof' && pendingDeposits.length > 0 && (
-            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
-              <span className="text-[11px] font-bold text-amber-950 uppercase tracking-wider block">
-                Link to Your Pending Deposit Request:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {pendingDeposits.map(tx => (
-                  <button
-                    key={tx.id}
-                    type="button"
-                    onClick={() => handleSelectDepositRef(tx.reference, tx.amount)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer flex items-center gap-1.5 ${
-                      depositRef === tx.reference
-                        ? 'bg-amber-900 text-white border-amber-900'
-                        : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-100'
-                    }`}
-                  >
-                    <span>{tx.reference} ({formatCurrency(tx.amount)})</span>
-                    {depositRef === tx.reference && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Document Details Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-[#18211F] mb-1">
-                Document Type
-              </label>
-              {category === 'deposit_proof' ? (
-                <select
-                  value={docType}
-                  onChange={(e) => setDocType(e.target.value)}
-                  className="w-full text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
-                >
-                  <option value="Bank Wire Transfer Receipt">Bank Wire Transfer Receipt (SEPA / CaixaBank)</option>
-                  <option value="SWIFT MT103 Confirmation Slip">SWIFT MT103 Confirmation Slip</option>
-                  <option value="Crypto Blockchain Tx Screenshot">Crypto Blockchain Tx Screenshot (Etherscan/Polygon)</option>
-                  <option value="Certified Bank Deposit Stamped Copy">Certified Bank Deposit Stamped Copy</option>
-                </select>
-              ) : category === 'kyc_identity' ? (
-                <select
-                  value={docType}
-                  onChange={(e) => setDocType(e.target.value)}
-                  className="w-full text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
-                >
-                  <option value="International Passport">International Passport (Biometric Page)</option>
-                  <option value="National Identity Card">European National Identity Card (DNI / NIE)</option>
-                  <option value="Driver's License">Driver's License (Front & Back)</option>
-                  <option value="Permanent Residence Permit">Permanent Residence Permit</option>
-                </select>
-              ) : (
-                <select
-                  value={docType}
-                  onChange={(e) => setDocType(e.target.value)}
-                  className="w-full text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
-                >
-                  <option value="Utility Bill">Utility Bill (Electricity, Water, Gas &lt; 90 Days)</option>
-                  <option value="Bank Statement">Official Bank Statement with Residence Address</option>
-                  <option value="Tax Residency Certificate">Tax Residency Certificate (Agencia Tributaria)</option>
-                  <option value="Corporate Articles of Association">Corporate Articles of Association / Deeds</option>
-                </select>
-              )}
-            </div>
-
-            {category === 'deposit_proof' ? (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#18211F] mb-1">Deposit Amount (€)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={amount}
-                    onChange={(e) => setAmount(Number(e.target.value))}
-                    placeholder="5000"
-                    className="w-full text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-[#18211F] mb-1">Transfer Reference</label>
-                  <input
-                    type="text"
-                    value={depositRef}
-                    onChange={(e) => setDepositRef(e.target.value)}
-                    placeholder="e.g. DEP-EUR-849201"
-                    className="w-full text-xs font-mono font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-bold text-[#18211F] mb-1">Document Title / Note</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Passport Biometric Photo Scan"
-                  className="w-full text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
+      {/* 2. Profile Photo & Investor Overview Card */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5">
+          {/* Avatar Preview & Actions */}
+          <div className="relative group shrink-0 text-center">
+            <div className="w-20 h-20 rounded-2xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-black text-xl overflow-hidden shadow-sm border-2 border-white ring-1 ring-[#DCE4DA]">
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.fullName}
+                  className="w-full h-full object-cover"
                 />
-              </div>
-            )}
-          </div>
-
-          {/* Interactive Drag & Drop Upload Zone */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-[#18211F]">
-              Attach Official Document File / Scan
-            </label>
-            <div
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all cursor-pointer ${
-                isDragging
-                  ? 'border-emerald-600 bg-emerald-50/60'
-                  : selectedFile
-                  ? 'border-emerald-500 bg-[#F6F9F6]'
-                  : 'border-[#CBD5E1] bg-[#F8FAFC] hover:bg-slate-100 hover:border-slate-400'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleFile(e.target.files[0]);
-                  }
-                }}
-              />
-
-              {selectedFile ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shadow-xs">
-                    <FileCheck className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-[#18211F] truncate max-w-sm">{fileName}</h4>
-                    <p className="text-xs text-[#69736F]">
-                      {(fileSize / 1024).toFixed(1)} KB · Ready to submit for compliance confirmation
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedFile(null);
-                      setFileBase64('');
-                      setFileName('');
-                      setFileSize(0);
-                    }}
-                    className="text-xs font-bold text-red-600 hover:underline mt-1 cursor-pointer"
-                  >
-                    Choose another file
-                  </button>
-                </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-white border border-[#E3E8E3] text-[#27845D] flex items-center justify-center mx-auto shadow-xs">
-                    <UploadCloud className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-[#18211F] block">
-                      Click to browse or drag and drop your file here
-                    </span>
-                    <p className="text-xs text-[#69736F] mt-0.5">
-                      Supported formats: PDF, JPG, PNG, WebP (Max 15MB)
-                    </p>
-                  </div>
-                </div>
+                <span>{initials}</span>
               )}
             </div>
-          </div>
 
-          {/* Notes for compliance reviewer */}
-          <div>
-            <label className="block text-xs font-semibold text-[#69736F] mb-1">
-              Additional Notes for Administrator / Compliance Officer (Optional)
-            </label>
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Wire transfer dispatched from CaixaBank online banking at 10:15 AM."
-              className="w-full text-xs p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handlePhotoUpload}
+              accept="image/png, image/jpeg, image/webp"
+              className="hidden"
             />
           </div>
 
-          {/* Submit Action */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-[#E3E8E3]">
-            <p className="text-[11px] text-[#828D89]">
-              Submitted documents are stored encrypted under Spanish GDPR and European AML regulations.
-            </p>
+          {/* Details & Controls */}
+          <div className="flex-1 text-center sm:text-left min-w-0 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-[#18211F]">{user.fullName}</h2>
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-[#69736F] mt-0.5">
+                  <Mail className="w-3.5 h-3.5 text-[#27845D]" />
+                  <span>{user.email}</span>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded-full">
+                    Verified
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center sm:justify-end gap-2 pt-1 sm:pt-0">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-lg bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Camera className="w-3.5 h-3.5 text-[#B7E36A]" />
+                  <span>Upload Photo</span>
+                </button>
+                {user.avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    className="px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Badges Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-left">
+              <div className="p-2 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3]">
+                <span className="text-[10px] text-[#69736F] block">Investor ID</span>
+                <span className="text-xs font-mono font-bold text-[#18211F] truncate block">
+                  {user.id}
+                </span>
+              </div>
+              <div className="p-2 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3]">
+                <span className="text-[10px] text-[#69736F] block">Account Type</span>
+                <span className="text-xs font-bold text-[#18211F] truncate block">
+                  {getAccountTypeLabel(user.accountType, user.role)}
+                </span>
+              </div>
+              <div className="p-2 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3]">
+                <span className="text-[10px] text-[#69736F] block">Compliance Status</span>
+                <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span>Level 2 KYC</span>
+                </span>
+              </div>
+              <div className="p-2 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3]">
+                <span className="text-[10px] text-[#69736F] block">Member Since</span>
+                <span className="text-xs font-bold text-[#18211F] truncate block">
+                  {new Date(user.createdAt).toLocaleDateString('en-GB', {
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Personal Information & Contact Details (2 Columns) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Form A: Personal Information */}
+        <form
+          onSubmit={handleSavePersonal}
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs flex flex-col justify-between space-y-3.5"
+        >
+          <div className="space-y-3">
+            <div className="border-b border-[#E3E8E3] pb-2.5">
+              <h3 className="text-sm font-bold text-[#18211F] flex items-center gap-1.5">
+                <UserIcon className="w-4 h-4 text-[#27845D]" />
+                <span>Personal Information</span>
+              </h3>
+              <p className="text-[11px] text-[#69736F]">
+                Legal personal details registered with your investor profile.
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[11px] font-bold text-[#18211F] mb-1">
+                  Full Legal Name
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  placeholder="e.g. Gabrielle Snooks"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] focus:border-[#182D2A] bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#18211F] mb-1 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-[#69736F]" />
+                    <span>Date of Birth</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#18211F] mb-1 flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-[#69736F]" />
+                    <span>Country of Residence</span>
+                  </label>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white cursor-pointer"
+                  >
+                    <option value="Spain">Spain (ES)</option>
+                    <option value="France">France (FR)</option>
+                    <option value="Germany">Germany (DE)</option>
+                    <option value="United Kingdom">United Kingdom (UK)</option>
+                    <option value="Switzerland">Switzerland (CH)</option>
+                    <option value="Monaco">Monaco (MC)</option>
+                    <option value="Portugal">Portugal (PT)</option>
+                    <option value="Italy">Italy (IT)</option>
+                    <option value="Netherlands">Netherlands (NL)</option>
+                    <option value="United States">United States (US)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#18211F] mb-1 flex items-center gap-1">
+                  <FileCheck2 className="w-3 h-3 text-[#69736F]" />
+                  <span>Tax ID / Fiscal Number</span>
+                </label>
+                <input
+                  type="text"
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                  placeholder="e.g. NIE, NIF, Tax Identification Number"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-mono font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || !selectedFile}
-              className="btn btn-primary text-xs font-bold px-6 py-3 w-full sm:w-auto bg-[#182D2A] hover:bg-[#24423C] text-white flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+              disabled={isSavingPersonal}
+              className="w-full py-2 px-3 rounded-lg bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Submitting to Vault...</span>
-                </>
+              {isSavingPersonal ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <>
-                  <UploadCloud className="w-4 h-4 text-[#B7E36A]" />
-                  <span>Upload & Request Admin Confirmation</span>
-                </>
+                <Check className="w-3.5 h-3.5 text-[#B7E36A]" />
               )}
+              <span>Save Personal Information</span>
+            </button>
+          </div>
+        </form>
+
+        {/* Form B: Contact & Residential Details */}
+        <form
+          onSubmit={handleSaveContact}
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs flex flex-col justify-between space-y-3.5"
+        >
+          <div className="space-y-3">
+            <div className="border-b border-[#E3E8E3] pb-2.5">
+              <h3 className="text-sm font-bold text-[#18211F] flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-[#27845D]" />
+                <span>Contact & Residential Details</span>
+              </h3>
+              <p className="text-[11px] text-[#69736F]">
+                Mailing address and direct communication channels.
+              </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[11px] font-bold text-[#18211F] mb-1 flex items-center gap-1">
+                  <Mail className="w-3 h-3 text-[#69736F]" />
+                  <span>Email Address</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={user.email}
+                    disabled
+                    className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#69736F] bg-[#F6F7F4] cursor-not-allowed"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">
+                    Primary
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#18211F] mb-1 flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-[#69736F]" />
+                  <span>Mobile Phone Number</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="+34 600 000 000"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#18211F] mb-1">
+                  Street Address
+                </label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Street name, building, apartment/suite"
+                  className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#18211F] mb-1">
+                    City / Municipality
+                  </label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="e.g. Barcelona"
+                    className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#18211F] mb-1">
+                    Postal / ZIP Code
+                  </label>
+                  <input
+                    type="text"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    placeholder="e.g. 08007"
+                    className="w-full px-3 py-1.5 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSavingContact}
+              className="w-full py-2 px-3 rounded-lg bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isSavingContact ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Check className="w-3.5 h-3.5 text-[#B7E36A]" />
+              )}
+              <span>Save Contact Details</span>
             </button>
           </div>
         </form>
       </div>
 
-      {/* 4. Vault Listing of Uploaded Documents */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E3E8E3] pb-4">
-          <div>
-            <h3 className="text-lg font-bold text-[#18211F]">Your Uploaded Verification Vault ({uploadedDocs.length})</h3>
-            <p className="text-xs text-[#69736F]">Live tracking of submitted receipts and identity compliance approvals.</p>
-          </div>
-          <span className="text-xs font-bold px-3 py-1 bg-[#EEF1EC] text-[#27845D] rounded-full self-start sm:self-auto">
-            {uploadedDocs.filter(d => d.status === 'pending').length} Pending Admin Approval
-          </span>
+      {/* 4. Password & Authentication Settings Card */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs space-y-3.5">
+        <div className="border-b border-[#E3E8E3] pb-2.5">
+          <h3 className="text-sm font-bold text-[#18211F] flex items-center gap-1.5">
+            <Lock className="w-4 h-4 text-[#27845D]" />
+            <span>Password & Security Credentials</span>
+          </h3>
+          <p className="text-[11px] text-[#69736F]">
+            Update your account password. Ensure it uses at least 8 characters with letters, numbers, and symbols.
+          </p>
         </div>
 
-        {uploadedDocs.length === 0 ? (
-          <div className="text-center py-12 text-[#69736F] space-y-3">
-            <FileText className="w-12 h-12 mx-auto opacity-30 text-[#182D2A]" />
-            <p className="text-sm font-semibold text-[#18211F]">No documents uploaded yet.</p>
-            <p className="text-xs max-w-sm mx-auto">
-              Use the upload area above to attach your deposit bank wire receipt or identity card for admin review.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3.5">
-            {uploadedDocs.map((doc) => (
-              <div
-                key={doc.id}
-                className="p-5 rounded-2xl border border-[#E3E8E3] bg-[#F6F7F4]/60 hover:bg-[#F6F7F4] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shrink-0 mt-0.5">
-                    {doc.category === 'deposit_proof' ? (
-                      <CreditCard className="w-6 h-6" />
-                    ) : doc.category === 'kyc_identity' ? (
-                      <UserCheck className="w-6 h-6" />
-                    ) : (
-                      <FileText className="w-6 h-6" />
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm text-[#18211F]">{doc.title}</span>
-                      {doc.status === 'pending' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-                          <Clock className="w-3 h-3 text-amber-700 animate-pulse" />
-                          <span>Pending Admin Confirmation</span>
-                        </span>
-                      )}
-                      {doc.status === 'approved' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                          <span>Confirmed & Approved</span>
-                        </span>
-                      )}
-                      {doc.status === 'rejected' && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-900 border border-red-200">
-                          <XCircle className="w-3 h-3 text-red-700" />
-                          <span>Declined / Re-upload Required</span>
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="text-xs text-[#69736F] flex flex-wrap gap-x-3 gap-y-1">
-                      <span>Type: <strong className="text-[#18211F]">{doc.documentType}</strong></span>
-                      {doc.transactionReference && (
-                        <span>Ref: <strong className="font-mono text-[#18211F]">{doc.transactionReference}</strong></span>
-                      )}
-                      {doc.amount && (
-                        <span>Amount: <strong className="text-[#27845D]">{formatCurrency(doc.amount)} {doc.currency}</strong></span>
-                      )}
-                      <span>File: <span className="font-mono">{doc.fileName}</span></span>
-                      <span>Uploaded: {formatDate(doc.uploadedAt)}</span>
-                    </div>
-
-                    {doc.notes && (
-                      <p className="text-[11px] text-[#4A5551] italic bg-white p-2 rounded-lg border border-[#E3E8E3] mt-1">
-                        Note: "{doc.notes}"
-                      </p>
-                    )}
-
-                    {doc.rejectionReason && (
-                      <div className="p-2 rounded-lg bg-red-50 text-red-800 text-[11px] font-semibold flex items-center gap-1.5 mt-1">
-                        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                        <span>Compliance Feedback: {doc.rejectionReason}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Document Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewDoc(doc)}
-                    className="btn btn-secondary btn-sm text-xs font-bold px-3 py-2 border-[#CBD5E1] bg-white hover:bg-slate-50 text-[#18211F] flex items-center gap-1 cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-[#27845D]" />
-                    <span>View Document</span>
-                  </button>
-
-                  {doc.status === 'pending' && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDoc(doc.id, doc.title)}
-                      className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                      title="Remove document"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 5. Document Fullscreen Preview Modal */}
-      {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div 
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-[#E3E8E3] relative max-h-[90vh] flex flex-col space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#E3E8E3] pb-3">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-[#27845D] tracking-wider block">
-                  Encrypted Compliance Document Viewer
-                </span>
-                <h3 className="text-lg font-black text-[#18211F]">{previewDoc.title}</h3>
-              </div>
-              <button
-                onClick={() => setPreviewDoc(null)}
-                className="p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-black cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Document Content View */}
-            <div className="flex-1 overflow-y-auto rounded-2xl bg-slate-950 p-2 flex items-center justify-center min-h-[300px]">
-              {previewDoc.fileUrl.startsWith('data:image') || previewDoc.fileUrl.startsWith('http') ? (
-                <img
-                  src={previewDoc.fileUrl}
-                  alt={previewDoc.title}
-                  className="max-h-[60vh] max-w-full rounded-xl object-contain shadow-md"
+        <form onSubmit={handleUpdatePassword} className="space-y-3 max-w-xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label className="block text-[11px] font-bold text-[#18211F] mb-1">
+                Current Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrentPass ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-1.5 pr-8 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
                 />
-              ) : (
-                <div className="text-center p-8 text-white space-y-2">
-                  <FileText className="w-16 h-16 mx-auto text-emerald-400" />
-                  <p className="text-sm font-bold">{previewDoc.fileName}</p>
-                  <p className="text-xs text-slate-400">PDF document file stored in encrypted format</p>
-                </div>
-              )}
-            </div>
-
-            {/* Document Metadata Bar */}
-            <div className="p-3 bg-[#F6F7F4] rounded-2xl border border-[#E3E8E3] flex flex-wrap items-center justify-between text-xs text-[#69736F] gap-2">
-              <div>
-                <span>Document: <strong className="text-[#18211F]">{previewDoc.documentType}</strong></span>
-                {previewDoc.transactionReference && (
-                  <span className="ml-3">Ref: <strong className="font-mono text-[#18211F]">{previewDoc.transactionReference}</strong></span>
-                )}
-              </div>
-              <div>
-                <span>Uploaded: <strong>{formatDate(previewDoc.uploadedAt)}</strong></span>
-              </div>
-            </div>
-
-            {/* Admin Approval Quick Action Button inside preview */}
-            {isAdmin && previewDoc.status === 'pending' && (
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E3E8E3]">
                 <button
                   type="button"
-                  onClick={() => {
-                    ledger.reviewVerificationDocument(previewDoc.id, true);
-                    refreshUser();
-                    setPreviewDoc(null);
-                    setSuccessMsg(`Document "${previewDoc.title}" confirmed & approved!`);
-                  }}
-                  className="btn btn-primary text-xs font-bold px-4 py-2 bg-[#27845D] text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  onClick={() => setShowCurrentPass(!showCurrentPass)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#69736F] hover:text-[#18211F] cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Approve & Confirm Document Now</span>
+                  {showCurrentPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
-            )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#18211F] mb-1">
+                New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPass ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min 8 characters"
+                  className="w-full px-3 py-1.5 pr-8 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPass(!showNewPass)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#69736F] hover:text-[#18211F] cursor-pointer"
+                >
+                  {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#18211F] mb-1">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPass ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                  className="w-full px-3 py-1.5 pr-8 rounded-lg border border-[#DCE4DA] text-xs font-medium text-[#18211F] focus:outline-none focus:ring-1 focus:ring-[#182D2A] bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPass(!showConfirmPass)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#69736F] hover:text-[#18211F] cursor-pointer"
+                >
+                  {showConfirmPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={isUpdatingPass}
+              className="py-2 px-4 rounded-lg bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isUpdatingPass ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ShieldCheck className="w-3.5 h-3.5 text-[#B7E36A]" />
+              )}
+              <span>Update Password</span>
+            </button>
+            <span className="text-[11px] text-[#69736F]">
+              Password must be at least 8 characters long.
+            </span>
+          </div>
+        </form>
+      </div>
+
+      {/* 5. Account Security Settings & Two-Factor Authentication (2FA) */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs space-y-3.5">
+        <div className="border-b border-[#E3E8E3] pb-2.5">
+          <h3 className="text-sm font-bold text-[#18211F] flex items-center gap-1.5">
+            <Shield className="w-4 h-4 text-[#27845D]" />
+            <span>Account Security & Login Protections</span>
+          </h3>
+          <p className="text-[11px] text-[#69736F]">
+            Safeguard your portfolio balance, token holdings, and transactions with enhanced multi-factor security.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {/* 2FA Toggle Item */}
+          <div className="p-3.5 rounded-xl border border-[#DCE4DA] bg-[#F6F8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#182D2A] text-[#B7E36A] flex items-center justify-center shrink-0">
+                <Smartphone className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-[#18211F]">Two-Factor Authentication (2FA)</h4>
+                  <span
+                    className={`text-[9.5px] font-bold px-2 py-0.2 rounded-full ${
+                      twoFactorEnabled
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#69736F] mt-0.5">
+                  Requires a 6-digit verification code from your authenticator app or SMS on each sign-in.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggle2FA}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                twoFactorEnabled
+                  ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+                  : 'bg-[#182D2A] hover:bg-[#24423C] text-white shadow-2xs'
+              }`}
+            >
+              {twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+            </button>
+          </div>
+
+          {/* Security Notification Toggles */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3 rounded-xl border border-[#E3E8E3] bg-white flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Bell className="w-4 h-4 text-[#27845D] shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-[#18211F] block">Login Notifications</span>
+                  <span className="text-[10px] text-[#69736F] block">Email alert on new device or location sign-in</span>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={emailAlerts}
+                onChange={(e) => {
+                  setEmailAlerts(e.target.checked);
+                  showToast('success', 'Security notification preference saved.');
+                }}
+                className="w-4 h-4 rounded text-[#182D2A] focus:ring-[#182D2A] accent-[#182D2A] cursor-pointer"
+              />
+            </div>
+
+            <div className="p-3 rounded-xl border border-[#E3E8E3] bg-white flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-[#27845D] shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-[#18211F] block">Transaction Confirmations</span>
+                  <span className="text-[10px] text-[#69736F] block">Notify on wire deposit and token execution</span>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={tradeConfirmations}
+                onChange={(e) => {
+                  setTradeConfirmations(e.target.checked);
+                  showToast('success', 'Transaction alert preference saved.');
+                }}
+                className="w-4 h-4 rounded text-[#182D2A] focus:ring-[#182D2A] accent-[#182D2A] cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Active Device Session */}
+          <div className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div>
+                <span className="font-bold text-[#18211F]">Current Session: Web Dashboard</span>
+                <span className="text-[10.5px] text-[#69736F] block">
+                  IP: Protected · Encrypted HTTPS Session · Active Now
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => showToast('success', 'All other remote sessions have been terminated.')}
+              className="px-2.5 py-1 rounded-lg border border-[#DCE4DA] hover:bg-white text-[#182D2A] text-[11px] font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+            >
+              Sign Out Other Devices
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
+
+export const ProfileSettings = DocumentUploadVault;
+export default DocumentUploadVault;

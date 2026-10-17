@@ -728,7 +728,7 @@ export const AdminNewsManager: React.FC = () => {
             <div className="relative aspect-video w-full bg-black">
               <iframe
                 className="w-full h-full border-0"
-                src={`https://www.youtube-nocookie.com/embed/${previewVideo.youtubeId}?autoplay=1&rel=0`}
+                src={`https://www.youtube.com/embed/${previewVideo.youtubeId}?autoplay=1&rel=0`}
                 title={previewVideo.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen

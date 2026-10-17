@@ -58,32 +58,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    if (!isConfigured) {
-      // If Supabase credentials are not yet configured in environment variables,
-      // restore session only if a legitimate authenticated user was previously saved
-      const storedId = localStorage.getItem(CURRENT_USER_KEY);
-      if (storedId) {
-        const found = ledger.getUserById(storedId);
-        if (found) {
-          setUser(found);
-          setToken('sess_' + found.id);
-        } else {
-          setUser(null);
-          setToken(null);
-          localStorage.removeItem(CURRENT_USER_KEY);
-        }
-      } else {
-        setUser(null);
-        setToken(null);
+    // Failsafe timer to guarantee loading state never gets stuck
+    const failsafeTimer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+
+    // Immediately restore cached session for instant rendering while validating in background
+    const storedId = localStorage.getItem(CURRENT_USER_KEY);
+    if (storedId) {
+      const found = ledger.getUserById(storedId);
+      if (found) {
+        setUser(found);
+        setToken('sess_' + found.id);
       }
+    }
+
+    if (!isConfigured) {
+      clearTimeout(failsafeTimer);
       setIsLoading(false);
       return;
     }
+
+    let isResolved = false;
 
     // 1. Fetch active Supabase session
     supabase.auth
       .getSession()
       .then(({ data: { session: initialSession }, error }) => {
+        if (isResolved) return;
+        isResolved = true;
+        clearTimeout(failsafeTimer);
+
         if (error) {
           console.error('Error fetching Supabase session:', error.message);
         }
@@ -99,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSession(initialSession);
           setToken(initialSession.access_token);
           localStorage.setItem(CURRENT_USER_KEY, synced.id);
-        } else {
+        } else if (!storedId) {
           // No active Supabase session
           setUser(null);
           setSession(null);
@@ -108,9 +113,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       })
       .catch((err) => {
+        if (isResolved) return;
+        isResolved = true;
+        clearTimeout(failsafeTimer);
         console.error('Supabase getSession exception:', err);
       })
       .finally(() => {
+        if (!isResolved) {
+          isResolved = true;
+          clearTimeout(failsafeTimer);
+        }
         setIsLoading(false);
       });
 

@@ -29,7 +29,8 @@ import {
   Clock,
   Layers,
   Receipt,
-  UserCheck
+  UserCheck,
+  Tv
 } from 'lucide-react';
 
 interface PropertyDetailViewProps {
@@ -936,31 +937,35 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
       {/* Investment Modal */}
       {isInvestModalOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-[0.5px] z-50 flex items-center sm:items-end justify-center p-3 sm:p-6 sm:pb-8 overflow-y-auto"
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsInvestModalOpen(false);
           }}
         >
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#E3E8E3] relative animate-in slide-in-from-bottom-4 duration-200">
+          <div 
+            className="bg-white rounded-2xl w-[92vw] sm:w-full max-w-[440px] max-h-[82vh] sm:max-h-[85vh] p-3.5 sm:p-4.5 shadow-2xl border border-[#E3E8E3] relative animate-in zoom-in-95 duration-150 my-auto overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             {!investSuccessCert ? (
               <div>
-                <div className="flex justify-between items-start mb-6">
+                <div className="flex justify-between items-start mb-3 pb-2 border-b border-[#F0F2EE]">
                   <div>
-                    <span className="text-xs font-semibold text-[#27845D] uppercase tracking-wider block">
+                    <span className="text-[10px] font-semibold text-[#27845D] uppercase tracking-wider block">
                       Participatory Offering
                     </span>
-                    <h3 className="text-xl font-bold text-[#18211F]">{property.title}</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-[#18211F]">{property.title}</h3>
                   </div>
                   <button
                     onClick={() => setIsInvestModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-600 text-xl font-bold p-1"
+                    className="text-gray-400 hover:text-gray-600 text-lg font-bold p-1 cursor-pointer"
+                    aria-label="Close"
                   >
                     ✕
                   </button>
                 </div>
 
                 {/* Balance display */}
-                <div className="bg-[#F6F7F4] p-4 rounded-2xl border border-[#E3E8E3] mb-6 flex items-center justify-between">
+                <div className="bg-[#F6F7F4] p-2.5 rounded-xl border border-[#E3E8E3] mb-3 flex items-center justify-between">
                   <div>
                     <span className="text-xs text-[#69736F] block">Available Cash Balance</span>
                     <span className="text-lg font-bold text-[#182D2A]">
@@ -980,20 +985,20 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 </div>
 
                 {/* Token Selector (Enforces minimumInvestment >= €1,000) */}
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-[#18211F]">
-                      Quantity of Tokens (Min: {minTokens} tokens = {formatCurrency(property.minimumInvestment)})
+                <div className="space-y-2 mb-3">
+                  <div className="flex justify-between items-center text-xs">
+                    <label className="text-[11px] font-bold text-[#18211F]">
+                      Quantity (Min: {minTokens} = {formatCurrency(property.minimumInvestment)})
                     </label>
-                    <span className="text-xs text-[#69736F]">
-                      €{property.tokenPrice} / token
+                    <span className="text-[11px] text-[#69736F]">
+                      €{property.tokenPrice}/token
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => setTokenCount(Math.max(minTokens, tokenCount - 1))}
-                      className="w-10 h-10 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-lg hover:bg-gray-100"
+                      className="w-8 h-8 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-base hover:bg-gray-100 cursor-pointer"
                     >
                       -
                     </button>
@@ -1005,31 +1010,27 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                       onChange={(e) =>
                         setTokenCount(Math.max(minTokens, parseInt(e.target.value) || minTokens))
                       }
-                      className="flex-1 text-center font-bold text-xl py-2 border border-[#E3E8E3] rounded-xl"
+                      className="flex-1 text-center font-bold text-base py-1 border border-[#E3E8E3] rounded-lg"
                     />
                     <button
                       onClick={() =>
                         setTokenCount(Math.min(property.availableTokens, tokenCount + 1))
                       }
-                      className="w-10 h-10 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-lg hover:bg-gray-100"
+                      className="w-8 h-8 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-base hover:bg-gray-100 cursor-pointer"
                     >
                       +
                     </button>
                   </div>
 
                   {/* Summary of this order */}
-                  <div className="p-4 rounded-2xl bg-[#EEF1EC] border border-[#E3E8E3] space-y-2 text-xs">
-                    <div className="flex justify-between text-[#69736F]">
+                  <div className="p-2.5 rounded-xl bg-[#EEF1EC] border border-[#E3E8E3] space-y-1 text-xs">
+                    <div className="flex justify-between text-[#69736F] text-[11px]">
                       <span>Total Acquisition Cost:</span>
-                      <span className="font-bold text-[#18211F] text-sm">{formatCurrency(totalCost)}</span>
+                      <span className="font-bold text-[#18211F] text-xs">{formatCurrency(totalCost)}</span>
                     </div>
-                    <div className="flex justify-between text-[#69736F]">
+                    <div className="flex justify-between text-[#69736F] text-[11px]">
                       <span>Est. Monthly Rental Dividend:</span>
-                      <span className="font-bold text-[#27845D]">{formatCurrency(projectedMonthlyDividend)} /mo</span>
-                    </div>
-                    <div className="flex justify-between text-[#69736F]">
-                      <span>Minimum Required:</span>
-                      <span className="font-bold text-[#18211F]">{formatCurrency(property.minimumInvestment)}</span>
+                      <span className="font-bold text-[#27845D] text-xs">{formatCurrency(projectedMonthlyDividend)} /mo</span>
                     </div>
                   </div>
                 </div>

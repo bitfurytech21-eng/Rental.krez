@@ -28,7 +28,8 @@ import {
   X,
   Filter,
   FileCheck,
-  Tv
+  Tv,
+  RotateCcw
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
@@ -141,6 +142,18 @@ export const AdminPanel: React.FC = () => {
     setVerificationDocs(ledger.getVerificationDocuments());
     setAuditLogs(ledger.getAuditLogs());
     setPaymentConfig(ledger.getPaymentConfig());
+  };
+
+  const handleRestoreDefaults = () => {
+    try {
+      const res = ledger.restoreDefaults();
+      refreshAll();
+      setActionSuccess(res.message);
+      setActionError(null);
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to restore defaults');
+    }
   };
 
   const handleReviewVerificationDoc = async (docId: string, approved: boolean, reason?: string) => {
@@ -471,6 +484,14 @@ export const AdminPanel: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleRestoreDefaults}
+              className="btn bg-[#182D2A] text-white hover:bg-[#24423C] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-800/40"
+              title="Restore all properties and videos to default"
+            >
+              <RotateCcw className="w-4 h-4 text-emerald-400" />
+              Restore Properties & Videos
+            </button>
             <button
               onClick={() => setShowNewPropertyModal(true)}
               className="btn btn-accent text-xs font-bold px-5 cursor-pointer"

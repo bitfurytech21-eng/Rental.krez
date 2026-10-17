@@ -22,7 +22,7 @@ const __dirname = dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = parseInt(process.env.PORT || '3000', 10);
+  const PORT = parseInt(process.env.APP_PORT || (process.env.PORT === '8080' ? '3000' : (process.env.PORT || '3000')), 10);
 
   // Body Parsers
   app.use(express.json({ limit: '2mb' }));

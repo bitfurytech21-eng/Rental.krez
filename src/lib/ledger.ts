@@ -605,8 +605,13 @@ class LedgerService {
       setStorage('users', this.users);
     }
     const storedProps = getStorage<Property[]>('properties', []);
-    const hasValidProps = Array.isArray(storedProps) && storedProps.length === INITIAL_PROPERTIES.length && storedProps.some(p => p.id.startsWith('prop-kretz-'));
+    const hasValidProps = Array.isArray(storedProps) && storedProps.length > 0;
     this.properties = hasValidProps ? storedProps : [...INITIAL_PROPERTIES];
+    const existingPropIds = new Set(this.properties.map(p => p.id));
+    const missingProps = INITIAL_PROPERTIES.filter(p => !existingPropIds.has(p.id));
+    if (missingProps.length > 0) {
+      this.properties = [...this.properties, ...missingProps];
+    }
     setStorage('properties', this.properties);
     this.investments = getStorage('investments', DEFAULT_INVESTMENTS);
     this.transactions = getStorage('transactions', DEFAULT_TRANSACTIONS);
@@ -780,6 +785,30 @@ class LedgerService {
       'USER_PAYMENT_DETAILS_UPDATED',
       `Updated payment integration details for ${user.email}`
     );
+    this.saveState();
+    return user;
+  }
+
+  public updateUserProfile(
+    userId: string,
+    updates: Partial<User>
+  ): User {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found.');
+    
+    if (updates.fullName !== undefined) user.fullName = updates.fullName.trim();
+    if (updates.phoneNumber !== undefined) user.phoneNumber = updates.phoneNumber.trim();
+    if (updates.country !== undefined) user.country = updates.country.trim();
+    if (updates.avatarUrl !== undefined) user.avatarUrl = updates.avatarUrl;
+    if (updates.bankIban !== undefined) user.bankIban = updates.bankIban.trim();
+    if (updates.cryptoDepositAddress !== undefined) user.cryptoDepositAddress = updates.cryptoDepositAddress.trim();
+    if (updates.taxId !== undefined) user.taxId = updates.taxId.trim();
+    if (updates.dateOfBirth !== undefined) user.dateOfBirth = updates.dateOfBirth;
+    if (updates.address !== undefined) user.address = updates.address.trim();
+    if (updates.city !== undefined) user.city = updates.city.trim();
+    if (updates.postalCode !== undefined) user.postalCode = updates.postalCode.trim();
+    if (updates.twoFactorEnabled !== undefined) user.twoFactorEnabled = updates.twoFactorEnabled;
+
     this.saveState();
     return user;
   }
@@ -1004,6 +1033,16 @@ class LedgerService {
     this.logAudit('usr-admin-1', 'admin@kretz.com', 'PROPERTY_UPDATED', `Property ${property.title} was saved/updated`);
     this.saveState();
     return property;
+  }
+
+  public restoreDefaults(): { success: boolean; message: string } {
+    this.properties = [...INITIAL_PROPERTIES];
+    this.companyNews = [...INITIAL_COMPANY_NEWS];
+    setStorage('properties', this.properties);
+    setStorage('companyNews', this.companyNews);
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'SYSTEM_RESTORED', 'Restored all initial properties and company news videos');
+    this.saveState();
+    return { success: true, message: 'Successfully restored all properties and company news videos to initial defaults.' };
   }
 
   // --- Atomic Ledger Operations ---

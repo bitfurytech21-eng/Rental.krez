@@ -15,30 +15,30 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (type) {
       case 'deposit':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#27845D] bg-[#E8F5E9] px-2.5 py-0.5 rounded-full">
-            <ArrowDownLeft className="w-3 h-3" /> Deposit
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#27845D] bg-[#E8F5E9] px-2 py-0.5 rounded-full">
+            <ArrowDownLeft className="w-2.5 h-2.5" /> Deposit
           </span>
         );
       case 'withdrawal':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#C24141] bg-red-50 px-2.5 py-0.5 rounded-full">
-            <ArrowUpRight className="w-3 h-3" /> Withdrawal
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#C24141] bg-red-50 px-2 py-0.5 rounded-full">
+            <ArrowUpRight className="w-2.5 h-2.5" /> Withdrawal
           </span>
         );
       case 'investment':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#182D2A] bg-[#EEF1EC] px-2.5 py-0.5 rounded-full">
-            <Coins className="w-3 h-3" /> Investment
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#182D2A] bg-[#EEF1EC] px-2 py-0.5 rounded-full">
+            <Coins className="w-2.5 h-2.5" /> Investment
           </span>
         );
       case 'distribution':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#27845D] bg-[#E8F5E9] px-2.5 py-0.5 rounded-full">
-            <RefreshCw className="w-3 h-3" /> Dividend
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#27845D] bg-[#E8F5E9] px-2 py-0.5 rounded-full">
+            <RefreshCw className="w-2.5 h-2.5" /> Dividend
           </span>
         );
       default:
-        return <span className="text-xs uppercase">{type}</span>;
+        return <span className="text-[10px] uppercase">{type}</span>;
     }
   };
 
@@ -46,24 +46,24 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (status) {
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#27845D]">
-            <CheckCircle2 className="w-3 h-3" /> Completed
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#27845D]">
+            <CheckCircle2 className="w-2.5 h-2.5" /> Completed
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B7791F]">
-            <Clock className="w-3 h-3" /> Pending Review
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#B7791F]">
+            <Clock className="w-2.5 h-2.5" /> Pending Review
           </span>
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#C24141]">
-            <AlertCircle className="w-3 h-3" /> Declined
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#C24141]">
+            <AlertCircle className="w-2.5 h-2.5" /> Declined
           </span>
         );
       default:
-        return <span>{status}</span>;
+        return <span className="text-[10px]">{status}</span>;
     }
   };
 

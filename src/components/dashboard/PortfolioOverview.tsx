@@ -19,16 +19,19 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   if (investments.length === 0) {
     return (
-      <div className="dash-card p-8 rounded-3xl border text-center shadow-sm">
-        <div className="w-16 h-16 rounded-2xl dash-inner dash-muted flex items-center justify-center mx-auto mb-4 border">
-          <Building2 className="w-8 h-8" />
+      <div className="border border-[#E3E8E3] rounded-xl p-5 sm:p-6 text-center bg-white">
+        <div className="w-10 h-10 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] text-[#18211F] flex items-center justify-center mx-auto mb-2.5">
+          <Building2 className="w-5 h-5" />
         </div>
-        <h3 className="text-lg font-bold dash-text mb-2">No Active Property Holdings Yet</h3>
-        <p className="text-xs dash-muted max-w-md mx-auto mb-6">
+        <h3 className="text-xs sm:text-sm font-bold text-[#18211F] mb-1">No Active Property Holdings Yet</h3>
+        <p className="text-[10.5px] sm:text-xs text-[#69736F] max-w-sm mx-auto mb-3.5 leading-relaxed">
           Start building your real estate portfolio today. Choose from our vetted European residential, coliving, and holiday properties.
         </p>
         {onExploreMore && (
-          <button onClick={onExploreMore} className="btn btn-primary btn-sm">
+          <button 
+            onClick={onExploreMore} 
+            className="bg-[#182D2A] hover:bg-[#24423C] text-white px-4 py-1.5 text-xs font-semibold rounded-full shadow-xs transition-colors cursor-pointer"
+          >
             Browse Active Properties
           </button>
         )}
@@ -37,26 +40,26 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold dash-text">Active Property Assets</h3>
-          <p className="text-xs dash-muted">
+          <h3 className="text-sm sm:text-base font-bold dash-text">Active Property Assets</h3>
+          <p className="text-[11px] dash-muted">
             {investments.length} {investments.length === 1 ? 'Holding' : 'Holdings'} generating monthly distributions
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {investments.map((inv) => (
           <div
             key={inv.id}
-            className="dash-card p-5 rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+            className="dash-card p-3.5 sm:p-4 rounded-xl border border-inherit/40 shadow-xs hover:shadow-sm transition-shadow flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+              <div className="flex items-start justify-between gap-2.5 mb-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                     <img
                       src={inv.propertyImage}
                       alt={inv.propertyTitle}
@@ -64,51 +67,51 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                       referrerPolicy="no-referrer"
                     />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold dash-text line-clamp-1">{inv.propertyTitle}</h4>
-                    <span className="text-xs dash-muted">{inv.propertyLocation}</span>
+                  <div className="min-w-0">
+                    <h4 className="text-xs sm:text-sm font-bold dash-text truncate">{inv.propertyTitle}</h4>
+                    <span className="text-[11px] dash-muted truncate block">{inv.propertyLocation}</span>
                   </div>
                 </div>
 
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full shrink-0">
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded-full shrink-0">
                   Active
                 </span>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-2 py-3 border-y border-inherit/40 text-xs mb-3">
+              <div className="grid grid-cols-3 gap-1.5 py-2 border-y border-inherit/30 text-xs mb-2">
                 <div>
-                  <span className="dash-muted block text-[11px]">Tokens</span>
-                  <span className="font-bold dash-text">{inv.tokensPurchased} ({formatCurrency(inv.totalAmountInvested)})</span>
+                  <span className="dash-muted block text-[10px]">Tokens</span>
+                  <span className="font-bold dash-text text-xs">{inv.tokensPurchased} ({formatCurrency(inv.totalAmountInvested)})</span>
                 </div>
                 <div>
-                  <span className="dash-muted block text-[11px]">Est. Yield</span>
-                  <span className="font-bold text-emerald-400">{formatPercent(inv.estimatedAnnualYield)}</span>
+                  <span className="dash-muted block text-[10px]">Est. Yield</span>
+                  <span className="font-bold text-emerald-500 text-xs">{formatPercent(inv.estimatedAnnualYield)}</span>
                 </div>
                 <div>
-                  <span className="dash-muted block text-[11px]">Monthly Payout</span>
-                  <span className="font-bold dash-text">+{formatCurrency(inv.projectedMonthlyIncome)}/mo</span>
+                  <span className="dash-muted block text-[10px]">Monthly Payout</span>
+                  <span className="font-bold dash-text text-xs">+{formatCurrency(inv.projectedMonthlyIncome)}/mo</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-2">
+            <div className="flex items-center justify-between text-xs pt-1.5">
               <button
                 type="button"
                 onClick={() => setSelectedInvestmentForDocs(inv)}
-                className="font-medium text-emerald-400 hover:underline flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg"
+                className="font-medium text-emerald-500 hover:underline flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg text-[11px]"
               >
-                <FileText className="w-3.5 h-3.5" /> Legal Docs
+                <FileText className="w-3 h-3" /> Legal Docs
               </button>
 
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[10px] dash-muted hidden sm:inline">{inv.certificateId}</span>
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-[9px] dash-muted hidden sm:inline">{inv.certificateId}</span>
                 {onSelectProperty && (
                   <button
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                    className="font-semibold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 text-[11px]"
                   >
-                    View Asset <ArrowRight className="w-3.5 h-3.5" />
+                    View Asset <ArrowRight className="w-3 h-3" />
                   </button>
                 )}
               </div>

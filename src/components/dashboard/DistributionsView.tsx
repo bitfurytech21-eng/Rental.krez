@@ -22,92 +22,92 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
   const totalMonthlyProjected = investments.reduce((acc, inv) => acc + inv.projectedMonthlyIncome, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5">
       {/* Top summary banner */}
-      <div className="bg-gradient-to-r from-[#182D2A] to-[#24423C] text-white p-7 rounded-3xl shadow-lg relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#182D2A] to-[#24423C] text-white p-3.5 sm:p-4.5 rounded-2xl shadow-md relative overflow-hidden border border-[#24423C]/60">
         <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 rounded-full bg-[#B7E36A]/10 pointer-events-none" />
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           <div>
-            <span className="text-xs text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-1">
+            <span className="text-[10px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
               Total Cumulative Dividends
             </span>
-            <div className="text-3xl font-black text-[#B7E36A]">
+            <div className="text-xl sm:text-2xl font-extrabold text-[#B7E36A]">
               {formatCurrency(totalDividendsEarned)}
             </div>
-            <p className="text-[11px] text-[#A0A8A5] mt-1">Paid directly to your uninvested cash balance</p>
+            <p className="text-[10px] text-[#A0A8A5] mt-0.5">Paid directly to your uninvested cash balance</p>
           </div>
 
           <div>
-            <span className="text-xs text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-1">
+            <span className="text-[10px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
               Est. Monthly Passive Cashflow
             </span>
-            <div className="text-3xl font-black text-white">
-              {formatCurrency(totalMonthlyProjected)}<span className="text-sm font-normal text-[#A0A8A5]">/mo</span>
+            <div className="text-xl sm:text-2xl font-extrabold text-white">
+              {formatCurrency(totalMonthlyProjected)}<span className="text-xs font-normal text-[#A0A8A5]">/mo</span>
             </div>
-            <p className="text-[11px] text-[#A0A8A5] mt-1">Across {investments.length} active tokenized assets</p>
+            <p className="text-[10px] text-[#A0A8A5] mt-0.5">Across {investments.length} active tokenized assets</p>
           </div>
 
           <div>
-            <span className="text-xs text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-1">
+            <span className="text-[10px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
               Average Portfolio Yield
             </span>
-            <div className="text-3xl font-black text-white">
+            <div className="text-xl sm:text-2xl font-extrabold text-white">
               {investments.length > 0 
                 ? formatPercent(investments.reduce((acc, i) => acc + i.estimatedAnnualYield, 0) / investments.length)
                 : '0.0%'}
             </div>
-            <p className="text-[11px] text-[#A0A8A5] mt-1">Net rental yields verified via RICS audits</p>
+            <p className="text-[10px] text-[#A0A8A5] mt-0.5">Net rental yields verified via RICS audits</p>
           </div>
         </div>
       </div>
 
       {/* Breakdown per Property */}
-      <div className="dash-card p-7 rounded-3xl border shadow-sm space-y-4">
+      <div className="dash-card p-3.5 sm:p-4.5 rounded-2xl border border-inherit/40 shadow-xs space-y-3">
         <div>
-          <h3 className="text-lg font-bold dash-text">Monthly Yield Distribution Breakdown</h3>
-          <p className="text-xs dash-muted">Real-time accrual and historical dividend payouts per property asset</p>
+          <h3 className="text-sm sm:text-base font-bold dash-text">Monthly Yield Distribution Breakdown</h3>
+          <p className="text-[11px] dash-muted">Real-time accrual and historical dividend payouts per property asset</p>
         </div>
 
         {investments.length === 0 ? (
-          <div className="text-center py-12 text-xs dash-muted space-y-3">
+          <div className="text-center py-8 text-xs dash-muted space-y-2">
             <p>No active properties in your portfolio to generate distributions.</p>
-            <button onClick={onExploreProperties} className="btn btn-primary btn-sm">
+            <button onClick={onExploreProperties} className="btn btn-primary btn-sm text-xs font-semibold py-1.5 px-3">
               Browse Marketplace
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {investments.map((inv) => (
-              <div key={inv.id} className="p-5 rounded-2xl border dash-inner flex flex-col justify-between space-y-4">
-                <div className="flex items-start gap-3">
-                  <img src={inv.propertyImage} alt={inv.propertyTitle} className="w-14 h-14 rounded-xl object-cover shrink-0" />
-                  <div>
-                    <h4 className="text-sm font-bold dash-text">{inv.propertyTitle}</h4>
-                    <span className="text-xs dash-muted block">{inv.propertyLocation}</span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full mt-1.5">
+              <div key={inv.id} className="p-3 sm:p-3.5 rounded-xl border border-inherit/30 dash-inner flex flex-col justify-between space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <img src={inv.propertyImage} alt={inv.propertyTitle} className="w-11 h-11 rounded-lg object-cover shrink-0" />
+                  <div className="min-w-0">
+                    <h4 className="text-xs sm:text-sm font-bold dash-text truncate">{inv.propertyTitle}</h4>
+                    <span className="text-[11px] dash-muted block truncate">{inv.propertyLocation}</span>
+                    <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-500 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.2 rounded-full mt-1">
                       Yield: {formatPercent(inv.estimatedAnnualYield)} Annual
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 py-3 border-y border-inherit/30 text-xs">
+                <div className="grid grid-cols-2 gap-2 py-2 border-y border-inherit/30 text-xs">
                   <div>
-                    <span className="dash-muted block text-[11px]">Total Invested</span>
-                    <span className="font-bold dash-text">{formatCurrency(inv.totalAmountInvested)}</span>
+                    <span className="dash-muted block text-[10px]">Total Invested</span>
+                    <span className="font-bold dash-text text-xs">{formatCurrency(inv.totalAmountInvested)}</span>
                   </div>
                   <div>
-                    <span className="dash-muted block text-[11px]">Dividends Received</span>
-                    <span className="font-bold text-emerald-400">+{formatCurrency(inv.totalDividendsReceived)}</span>
+                    <span className="dash-muted block text-[10px]">Dividends Received</span>
+                    <span className="font-bold text-emerald-500 text-xs">+{formatCurrency(inv.totalDividendsReceived)}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="dash-muted font-mono">Cert: {inv.certificateId}</span>
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <span className="dash-muted font-mono text-[9px]">Cert: {inv.certificateId}</span>
                   <button
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                    className="font-semibold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 text-[11px]"
                   >
-                    View Property <ArrowRight className="w-3.5 h-3.5" />
+                    View Property <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>
