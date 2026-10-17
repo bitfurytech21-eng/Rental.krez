@@ -1,0 +1,7041 @@
+import { Property } from "../types/property";
+
+const rawProperties: Property[] = [
+  {
+    "id": "prop-kretz-kp1-102",
+    "slug": "kp1-102-roquebrune-cap-martin",
+    "title": "ROQUEBRUNE-CAP-MARTIN - Ramingao - Golf Bleu",
+    "location": "Roquebrune Cap Martin, Alpes-Maritimes",
+    "city": "Roquebrune Cap Martin",
+    "country": "France",
+    "type": "Villa",
+    "status": "upcoming",
+    "images": [
+      "https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg",
+      "https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg",
+      "https://files.kretzrealestate.com/3286f7373a9319f6adb33037462b9324.jpg",
+      "https://files.kretzrealestate.com/6bc1db91a5f1856684da4204fd49ddd.jpg",
+      "https://files.kretzrealestate.com/77505885976169785aa355b7b21d7abe.jpg",
+      "https://files.kretzrealestate.com/337717ee33c361d8662e538c0cf8088.jpg",
+      "https://files.kretzrealestate.com/413290f763843c687cca11f6bc94ca.jpg",
+      "https://files.kretzrealestate.com/ecc8bc989731164210998af65c2a8551.jpg",
+      "https://files.kretzrealestate.com/e95a2af2fad904f3637ef1a855fa8a.jpg",
+      "https://files.kretzrealestate.com/d7c35b31b53f3c2a33a4cd2af1c0.jpg",
+      "https://files.kretzrealestate.com/6f3c5db6825d6a512c83c566a99d45db.jpg",
+      "https://files.kretzrealestate.com/e76c85c8046be33a95274227bb07af7.jpg",
+      "https://files.kretzrealestate.com/73b91aa2e6ef1d290f40adadb74b67.jpg",
+      "https://files.kretzrealestate.com/97baa5e837145628d796ce8e4be0e7.jpg",
+      "https://files.kretzrealestate.com/6558c557c9fca7d231934bc316f5c2.jpg",
+      "https://files.kretzrealestate.com/fee76ea89678cf4b1ca92f10ce80fdc.jpg",
+      "https://files.kretzrealestate.com/855fb551563e54162c89ecbe42793155.jpg",
+      "https://files.kretzrealestate.com/b261a3f6544ba54a338e5db1034f47f.jpg",
+      "https://files.kretzrealestate.com/2e555598be61b6c2415ef44f38a92f1.jpg",
+      "https://files.kretzrealestate.com/12da5b8b15fde7a7e11be3c21bcaa6.jpg",
+      "https://files.kretzrealestate.com/55847e92a93d6e143d40d46eb49f.jpg",
+      "https://files.kretzrealestate.com/a65a287b295d5fcd23522e9bf9f041e9.jpg",
+      "https://files.kretzrealestate.com/4573a989c96621d08f12ed6a7016a35f.jpg",
+      "https://files.kretzrealestate.com/2ebff9d2f5f85f1984fbeadcf2ab3.jpg",
+      "https://files.kretzrealestate.com/d93dbb8e9adfac3e50dff88dfeca54d.jpg",
+      "https://files.kretzrealestate.com/477949c91e5a79d558b01bc781d9421b.jpg",
+      "https://files.kretzrealestate.com/6bb4f861acbcf4459165759fb2d88d.jpg",
+      "https://files.kretzrealestate.com/22429610ac0a12f22a984337b1feb6.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg",
+    "targetAmount": 5900000,
+    "fundedAmount": 3540000,
+    "tokenPrice": 100,
+    "totalTokens": 59000,
+    "availableTokens": 23600,
+    "estimatedAnnualYield": 7.5,
+    "capitalAppreciationYield": 3.5,
+    "totalEstimatedReturn": 11,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1102",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7aa98ac7",
+    "description": "ROQUEBRUNE-CAP-MARTIN - Ramingao - Golf Bleu\nLocated in the highly sought-after Golf Bleu area bordering Monaco, this magnificent villa, recently renovated in a modern Californian style, offers an exceptional living environment in absolute calm with a heavenly sea view.\nThis prestigious south-facing property boasts panoramic sea views from every main room on every level of the house.\nLarge bay windows open onto a vast, light-filled 90 m² double living room. The villa also features 5 bedrooms, including two master suites, as well as a gym and sauna for optimum comfort.\nThe interiors, tastefully furnished at a cost of €200,000, were carefully designed by a renowned Italian architect. The renovation, carried out with modern, elegant materials, includes a fully-equipped open-plan kitchen with top-of-the-range MIELE appliances, bringing a unique, refined touch to every room and offering exceptional performance.\nA large garage for 2 vehicles can be accessed directly from the villa via a private elevator, in addition to outdoor parking.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "300 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,000 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5900000,
+      "refurbishmentBudget": 295000,
+      "legalAndClosingCosts": 236000,
+      "operatingReserve": 118000,
+      "totalProjectCost": 6549000,
+      "projectedAnnualGrossRent": 531000,
+      "estimatedOperatingExpenses": 88500,
+      "projectedAnnualNetRent": 442500,
+      "estimatedNetYield": 7.5,
+      "estimatedCapitalGainYield": 3.5,
+      "totalEstimatedYield": 11
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-102-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-102",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-102-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-102-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 45,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 300,
+    "bedrooms": 5,
+    "bathrooms": 4,
+    "amenities": [
+      "Villa",
+      "300 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,000 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-102",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-102/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-102/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-117",
+    "slug": "kp1-117-paris",
+    "title": "Reception apartment",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "upcoming",
+    "images": [
+      "https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg",
+      "https://files.kretzrealestate.com/7cae7d2c3b9bbf8e9445a1b2cc78e81.jpg",
+      "https://files.kretzrealestate.com/e1d5efb0c63a5b291d5efb22df70cc39.jpg",
+      "https://files.kretzrealestate.com/e7e489daf8576c47b86b67dbf4f485f0.jpg",
+      "https://files.kretzrealestate.com/fbe8c867d2784f380b3807a158c6884.jpg",
+      "https://files.kretzrealestate.com/6a77458677373ffdf7f079469ee4cb9d.jpg",
+      "https://files.kretzrealestate.com/731c8cee8eaed1d325aec48d46bad7.jpg",
+      "https://files.kretzrealestate.com/52b0f95b893fbb5da2fa2dac71fedc8.jpg",
+      "https://files.kretzrealestate.com/1e54c2e6541d3967fb1ce8e90fd8b.jpg",
+      "https://files.kretzrealestate.com/5f6c1f5f16698f1829b46c1f60c6c299.jpg",
+      "https://files.kretzrealestate.com/3a1a275d9bf751a4d865611d17c633.jpg",
+      "https://files.kretzrealestate.com/4d6b4d464e7606f54279170571de39.jpg",
+      "https://files.kretzrealestate.com/1db8b3ec8dc63fdd97d73f649fc469ef.jpg",
+      "https://files.kretzrealestate.com/404c974942364df0553b851c86b76760.jpg",
+      "https://files.kretzrealestate.com/187df0329f74e774a37928f64a593dae.jpg",
+      "https://files.kretzrealestate.com/363e31a1202206ab95df4a5e41cc65f.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg",
+    "targetAmount": 12900000,
+    "fundedAmount": 10191000,
+    "tokenPrice": 100,
+    "totalTokens": 129000,
+    "availableTokens": 27090,
+    "estimatedAnnualYield": 11.2,
+    "capitalAppreciationYield": 5.8,
+    "totalEstimatedReturn": 17,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1117",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7153158e",
+    "description": "Paris 16th/Walters building. Completely refurbished reception apartment of approx. 390m2 once owned by Pierre Balmain. Beautiful entrance gallery leading to living room, dining room with high ceilings, fireplace and gold-leaf walls. 2nd living room/library separated by alabaster panels. Independent, fully-equipped kitchen and laundry room. Master suite with dressing room and marble bathroom. 3 other en suite bedrooms. Parking space for 2 vehicles.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "425 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 12900000,
+      "refurbishmentBudget": 645000,
+      "legalAndClosingCosts": 516000,
+      "operatingReserve": 258000,
+      "totalProjectCost": 14319000,
+      "projectedAnnualGrossRent": 1733760,
+      "estimatedOperatingExpenses": 288960,
+      "projectedAnnualNetRent": 1444800,
+      "estimatedNetYield": 11.2,
+      "estimatedCapitalGainYield": 5.8,
+      "totalEstimatedYield": 17
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-117-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-117",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-117-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-117-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 58,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 425,
+    "bedrooms": 4,
+    "bathrooms": 5,
+    "amenities": [
+      "Apartment",
+      "425 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Martin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "martin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-117",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-117/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-117/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-173",
+    "slug": "kp1-173-gretz-armainvilliers",
+    "title": "Château d'Armainvilliers",
+    "location": "Gretz Armainvilliers, Seine-et-Marne",
+    "city": "Gretz Armainvilliers",
+    "country": "France",
+    "type": "Château",
+    "status": "upcoming",
+    "images": [
+      "https://files.kretzrealestate.com/67ec4082a8f72d825044d16021ae9bdf.jpg",
+      "https://files.kretzrealestate.com/47d27a2820b4f3b2ea5f1795dbddf053.jpg",
+      "https://files.kretzrealestate.com/c07554fdaef728c3c09b885a12121a4c.jpg",
+      "https://files.kretzrealestate.com/e274a41c9372c2ade413f2fe3999288.jpg",
+      "https://files.kretzrealestate.com/5b9c59e35277458a3e4b2aaecb0d9.jpg",
+      "https://files.kretzrealestate.com/ded093d475954221f4b924996ad596e.jpg",
+      "https://files.kretzrealestate.com/50a4834bc4c267c3eb17fd5f1ef6d2cb.jpg",
+      "https://files.kretzrealestate.com/8144bba4ab47bac03081eaa3ca268359.jpg",
+      "https://files.kretzrealestate.com/1f662fd145e68148f20a562d542d17.jpg",
+      "https://files.kretzrealestate.com/2d3253fd42551c6e3d5ccc5fc4464cfa.jpg",
+      "https://files.kretzrealestate.com/ccaf6f82868d6391695592144ca6f398.jpg",
+      "https://files.kretzrealestate.com/bc42cb44d8ce304e46c9f0bbe6bf5766.jpg",
+      "https://files.kretzrealestate.com/fdc199901ed2811f38a81b455ddd68e0.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/67ec4082a8f72d825044d16021ae9bdf.jpg",
+    "targetAmount": 180000000,
+    "fundedAmount": 176400000,
+    "tokenPrice": 100,
+    "totalTokens": 1800000,
+    "availableTokens": 36000,
+    "estimatedAnnualYield": 9.4,
+    "capitalAppreciationYield": 4.1,
+    "totalEstimatedReturn": 13.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1173",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a71fca055",
+    "description": "Chateau d'Armainvilliers was built in the 12th century. It became the property of the Rothschilds in 1887. In 1984, His Majesty Hassan II, King of Morocco, added an extension and completely renovated it.\nSet in an 1100-hectare estate, the château covers an area of 9,000m2.\nThe estate includes a hunting ground, 2 ponds, a forest, an organic farm, 36 outbuildings, a stud farm and numerous outbuildings.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Château",
+      "9000 m²",
+      "Film",
+      "Private Grounds (11,000,000 m²)"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 180000000,
+      "refurbishmentBudget": 9000000,
+      "legalAndClosingCosts": 7200000,
+      "operatingReserve": 3600000,
+      "totalProjectCost": 199800000,
+      "projectedAnnualGrossRent": 20304000,
+      "estimatedOperatingExpenses": 3384000,
+      "projectedAnnualNetRent": 16920000,
+      "estimatedNetYield": 9.4,
+      "estimatedCapitalGainYield": 4.1,
+      "totalEstimatedYield": 13.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-173-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-173",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-173-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-173-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 71,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 9000,
+    "bedrooms": 40,
+    "bathrooms": 10,
+    "amenities": [
+      "Château",
+      "9000 m²",
+      "Film",
+      "Private Grounds (11,000,000 m²)"
+    ],
+    "agent": {
+      "name": "Olivier Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "olivier@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-173",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-173/castle/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-173/castle/"
+  },
+  {
+    "id": "prop-kretz-kp1-183",
+    "slug": "kp1-183-antibes",
+    "title": "House",
+    "location": "Antibes, Cannes",
+    "city": "Antibes",
+    "country": "France",
+    "type": "Villa",
+    "status": "upcoming",
+    "images": [
+      "https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg",
+      "https://files.kretzrealestate.com/75697f0376827e4f8ca11760d17be4.jpg",
+      "https://files.kretzrealestate.com/7eefe58406cdce325e79d9c8953d4e1.jpg",
+      "https://files.kretzrealestate.com/2ff3a57f16aaa7ac64c8ddec17cfd3bf.jpg",
+      "https://files.kretzrealestate.com/8b3a40236d82d5ce45cfac68a42693e5.jpg",
+      "https://files.kretzrealestate.com/3288d4e33d484fbd2b8dca2d3746c5b.jpg",
+      "https://files.kretzrealestate.com/1d6b7d73cb38d69fb1cd847a7a39c3cc.jpg",
+      "https://files.kretzrealestate.com/ec3fbf173171e2d113e1d20b66db93.jpg",
+      "https://files.kretzrealestate.com/de51f011618b5b5339c4fff03276938.jpg",
+      "https://files.kretzrealestate.com/70dee65641fc30debdb7bf12b47e9ca6.jpg",
+      "https://files.kretzrealestate.com/cd5156e2060334dee7f565ee6bde51e.jpg",
+      "https://files.kretzrealestate.com/3699cc59ec5fd246f6d0c77a55edc413.jpg",
+      "https://files.kretzrealestate.com/4f59713b4c4829bdc11eede62a09f4a.jpg",
+      "https://files.kretzrealestate.com/4b70db4319e86fbf43935c0b62ce894.jpg",
+      "https://files.kretzrealestate.com/afa467afe6dfc9802707b6a331cb1cd.jpg",
+      "https://files.kretzrealestate.com/557fb1f965d590d2231448f3fff1bd30.jpg",
+      "https://files.kretzrealestate.com/b3f5d7597b0571d2626f473eca5719d.jpg",
+      "https://files.kretzrealestate.com/b0c1ab78c8f1de5a9d771de98ad5485.jpg",
+      "https://files.kretzrealestate.com/4784b6696ac37bb222e0e2e1a23b212f.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg",
+    "targetAmount": 5300000,
+    "fundedAmount": 4028000,
+    "tokenPrice": 100,
+    "totalTokens": 53000,
+    "availableTokens": 12720,
+    "estimatedAnnualYield": 7.6,
+    "capitalAppreciationYield": 6.4,
+    "totalEstimatedReturn": 14,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1183",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a72a62b1c",
+    "description": "Villa restored in 2024 of approx. 300m2 located at Cap d'Antibes. Landscaped grounds of approx. 2200m2 with 15mX5m swimming pool. 5 en suite bedrooms. Cathedral entrance, living room and dining room opening onto a 50m2 east-facing terrace.\nTop-of-the-range fitted kitchen.\nGarage for two vehicles, studio in outbuilding.\nClose to Chez Joseph beach.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "300 m²",
+      "Swimming Pool",
+      "Private Grounds (2,200 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5300000,
+      "refurbishmentBudget": 265000,
+      "legalAndClosingCosts": 212000,
+      "operatingReserve": 106000,
+      "totalProjectCost": 5883000,
+      "projectedAnnualGrossRent": 483360,
+      "estimatedOperatingExpenses": 80560,
+      "projectedAnnualNetRent": 402800,
+      "estimatedNetYield": 7.6,
+      "estimatedCapitalGainYield": 6.4,
+      "totalEstimatedYield": 14
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-183-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-183",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-183-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-183-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 84,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 300,
+    "bedrooms": 6,
+    "bathrooms": 4,
+    "amenities": [
+      "Villa",
+      "300 m²",
+      "Swimming Pool",
+      "Private Grounds (2,200 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-183",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-183/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-183/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-214",
+    "slug": "kp1-214-le-vesinet",
+    "title": "The Pink Palace",
+    "location": "Le Vesinet, Yvelines",
+    "city": "Le Vesinet",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "upcoming",
+    "images": [
+      "https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg",
+      "https://files.kretzrealestate.com/961ddc807a1e681238974115e41115.jpg",
+      "https://files.kretzrealestate.com/90f8ded01ab31538f73fcdb7fa8d6e4c.jpg",
+      "https://files.kretzrealestate.com/d046183038cdcec1a74193853152ca38.jpg",
+      "https://files.kretzrealestate.com/6a799bae4791f7e669c9818184b95.jpg",
+      "https://files.kretzrealestate.com/6c5238be3f8caa9f43f472afa4dab6.jpg",
+      "https://files.kretzrealestate.com/69e5b080783ffafe6eaeb573148d2f6.jpg",
+      "https://files.kretzrealestate.com/79d882b127fed3ef04fdebd70dbaf3d.jpg",
+      "https://files.kretzrealestate.com/89eddd0955c7da41495b75ecda9dc92.jpg",
+      "https://files.kretzrealestate.com/8d33e8f47101c457ae26f8b11489c80.jpg",
+      "https://files.kretzrealestate.com/894e479877aa90bc7ba9e2a20241f37.jpg",
+      "https://files.kretzrealestate.com/bf2a3070f11034ee2fcd8f430211540.jpg",
+      "https://files.kretzrealestate.com/c1b41f1e8bf8393763b04d5ef2ad4ae.jpg",
+      "https://files.kretzrealestate.com/f920b27ff3062fe2885f4732fa11969.jpg",
+      "https://files.kretzrealestate.com/2569abadd9ca2ba18120683cf1c6875b.jpg",
+      "https://files.kretzrealestate.com/54ef46acc3c97d995a8aa2c1b48b694b.jpg",
+      "https://files.kretzrealestate.com/ad3807410c6bd71199c2fc2221c14.jpg",
+      "https://files.kretzrealestate.com/15755a196a76eddc57e0f361fc8f6ac9.jpg",
+      "https://files.kretzrealestate.com/6696d9bd83ec17a28de99d9820c84e5e.jpg",
+      "https://files.kretzrealestate.com/e0cb9c2c22533667ca98853f30b78ff9.jpg",
+      "https://files.kretzrealestate.com/fe8c8467d48f11ffea03438748d1522.jpg",
+      "https://files.kretzrealestate.com/dece01c8b9a9c7697a247774c6a4f2.jpg",
+      "https://files.kretzrealestate.com/f8e9917c4364ed0da229791c58f.jpg",
+      "https://files.kretzrealestate.com/db7553d3b3fed3b6bf24c672cbca556.jpg",
+      "https://files.kretzrealestate.com/6c95206089305fd5e1b9ad11d42d1c.jpg",
+      "https://files.kretzrealestate.com/37317428801fcd6a78277764959986d5.jpg",
+      "https://files.kretzrealestate.com/8b5624eda1c59b36ba58293deb63c5d.jpg",
+      "https://files.kretzrealestate.com/4d737eaa2a5f37947ee0833143523918.jpg",
+      "https://files.kretzrealestate.com/545bb7ed7f94b5cc5d62c5b2c80622b.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg",
+    "targetAmount": 38000000,
+    "fundedAmount": 36100000,
+    "tokenPrice": 100,
+    "totalTokens": 380000,
+    "availableTokens": 19000,
+    "estimatedAnnualYield": 11.3,
+    "capitalAppreciationYield": 4.7,
+    "totalEstimatedReturn": 16,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1214",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a734fb5e3",
+    "description": "The Pink Palace\n\nSituated in the prestigious setting of Le Vesinet (Yvelines), this exceptional private mansion encompasses approximately 2000 m² of refined living space, complemented by 18 magnificent rooms including 11 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "2000 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (7,000 m²)"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 38000000,
+      "refurbishmentBudget": 1900000,
+      "legalAndClosingCosts": 1520000,
+      "operatingReserve": 760000,
+      "totalProjectCost": 42180000,
+      "projectedAnnualGrossRent": 5152800,
+      "estimatedOperatingExpenses": 858800,
+      "projectedAnnualNetRent": 4294000,
+      "estimatedNetYield": 11.3,
+      "estimatedCapitalGainYield": 4.7,
+      "totalEstimatedYield": 16
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-214-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-214",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-214-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-214-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 97,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 2000,
+    "bedrooms": 11,
+    "bathrooms": 10,
+    "amenities": [
+      "Private Mansion",
+      "2000 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (7,000 m²)"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-214",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-214/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-214/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-340a",
+    "slug": "kp1-340a-sevres",
+    "title": "Architect's house",
+    "location": "Sevres, Hauts-de-Seine",
+    "city": "Sevres",
+    "country": "France",
+    "type": "House",
+    "status": "upcoming",
+    "images": [
+      "https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg",
+      "https://files.kretzrealestate.com/67d719b53b4d8cff16912b54539849d.jpg",
+      "https://files.kretzrealestate.com/92e6258d020ad1870ec6769394ec9ee.jpg",
+      "https://files.kretzrealestate.com/57b32322b31312688cb22be0efb8541.jpg",
+      "https://files.kretzrealestate.com/51c18c8b8742f62d8eb2b09ae3f75a8.jpg",
+      "https://files.kretzrealestate.com/89756fa01928145bcd14485782fa98.jpg",
+      "https://files.kretzrealestate.com/126d6331ea6e9f663263926534534253.jpg",
+      "https://files.kretzrealestate.com/f4e78e741ba41d1e6f98b3e6cb781b.jpg",
+      "https://files.kretzrealestate.com/c6403dda9b3f723a836436d4442da60.jpg",
+      "https://files.kretzrealestate.com/b86f249c9016a87a03aaa7afdb936f.jpg",
+      "https://files.kretzrealestate.com/42f879a0381feab5f71a94b1c3eb4d8d.jpg",
+      "https://files.kretzrealestate.com/4c477a8075bfe2d13055d2cbecab2c9.jpg",
+      "https://files.kretzrealestate.com/bce86322dffa7c9b328e9467d54dfb.jpg",
+      "https://files.kretzrealestate.com/2ef2b9fb1718a1b77bf97b4199b1c6b.jpg",
+      "https://files.kretzrealestate.com/4c7c32cab2394d256f028bd3ac24e45.jpg",
+      "https://files.kretzrealestate.com/69f064986e7434c75d1243db9ab08d29.jpg",
+      "https://files.kretzrealestate.com/7f1585e75548fb8897d19729a88056.jpg",
+      "https://files.kretzrealestate.com/52466767de426aa226af13918f7c6be8.jpg",
+      "https://files.kretzrealestate.com/ab365cfd4f79b227964dcbe957ece72f.jpg",
+      "https://files.kretzrealestate.com/f7956179899ebf9c8d63bdcce1d3d8d.jpg",
+      "https://files.kretzrealestate.com/e7f2eea9828b1bbb74d1569fb2f899f6.jpg",
+      "https://files.kretzrealestate.com/ed867d5707e6627be2f9f8c1b642256.jpg",
+      "https://files.kretzrealestate.com/6ae83060f61deba1eb3cc584ad3b7612.jpg",
+      "https://files.kretzrealestate.com/3cda887eb946d5452c42d59143113c46.jpg",
+      "https://files.kretzrealestate.com/bee119becc25a9b23c4ac013646c4733.jpg",
+      "https://files.kretzrealestate.com/9aeaf7286f68d0f17979f4f6531dc59.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg",
+    "targetAmount": 5000000,
+    "fundedAmount": 3650000,
+    "tokenPrice": 100,
+    "totalTokens": 50000,
+    "availableTokens": 13500,
+    "estimatedAnnualYield": 9.5,
+    "capitalAppreciationYield": 7,
+    "totalEstimatedReturn": 16.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P1340A",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a73f940aa",
+    "description": "v",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "560 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (954 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5000000,
+      "refurbishmentBudget": 250000,
+      "legalAndClosingCosts": 200000,
+      "operatingReserve": 100000,
+      "totalProjectCost": 5550000,
+      "projectedAnnualGrossRent": 570000,
+      "estimatedOperatingExpenses": 95000,
+      "projectedAnnualNetRent": 475000,
+      "estimatedNetYield": 9.5,
+      "estimatedCapitalGainYield": 7,
+      "totalEstimatedYield": 16.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-340A-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-340A",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-340A-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-340A-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 110,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 560,
+    "bedrooms": 4,
+    "bathrooms": 6,
+    "amenities": [
+      "House",
+      "560 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (954 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-340A",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-340a/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-340a/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-598a",
+    "slug": "kp1-598a-aix-en-provence",
+    "title": "Remarkable 18th-century bastide set in 9.5 hectares of parkland",
+    "location": "Aix En Provence, Aix",
+    "city": "Aix En Provence",
+    "country": "France",
+    "type": "Château",
+    "status": "upcoming",
+    "images": [
+      "https://files.kretzrealestate.com/19c23e6587bc7e7e96e969be390bf34.jpg",
+      "https://files.kretzrealestate.com/e1f17df01ac0d3f74df7ff17e913373d.jpg",
+      "https://files.kretzrealestate.com/fafc48dac3846b7ddb11bd46262b2088.jpg",
+      "https://files.kretzrealestate.com/1985b6e2974fa33a1f26012eabe2a8.jpg",
+      "https://files.kretzrealestate.com/7de99c7992f7cbf45d2842d984c365.jpg",
+      "https://files.kretzrealestate.com/e2ddfd558daee84d98e2d339fb3c6e5f.jpg",
+      "https://files.kretzrealestate.com/95b67ed7720a7e924e85faa2cd5a79b.jpg",
+      "https://files.kretzrealestate.com/f59187236ae47428466bc10f8da19d0.jpg",
+      "https://files.kretzrealestate.com/e66534624671bd2d7f9cf995d281b1c6.jpg",
+      "https://files.kretzrealestate.com/c46cfe6fc5a7c8b0c9abaa2b3a75e2ac.jpg",
+      "https://files.kretzrealestate.com/ba8b7e59cddedc24969d7b1434b68af.jpg",
+      "https://files.kretzrealestate.com/6f6db3e8649e6ffed33f9f8ead7d9d.jpg",
+      "https://files.kretzrealestate.com/fcc5fcffd24af7ece67fc1a93fd5c141.jpg",
+      "https://files.kretzrealestate.com/1e85bd83c02995d7c795d75c5a822bf.jpg",
+      "https://files.kretzrealestate.com/8bbe5c8ce75062f35730a81b1b864fda.jpg",
+      "https://files.kretzrealestate.com/9fddb7728083eb5aa2d5677a4a4239fb.jpg",
+      "https://files.kretzrealestate.com/56bb782cbd1fc1cee72f589b1f406117.jpg",
+      "https://files.kretzrealestate.com/7ba591b0461b8c2f9acb6a0b33f36cf.jpg",
+      "https://files.kretzrealestate.com/5484ac7f9f8d64fd3dcfd2bdc4fa1b.jpg",
+      "https://files.kretzrealestate.com/8f31af729c047d61dc7942db9aeaa10.jpg",
+      "https://files.kretzrealestate.com/6136bccf7daf31666886a3122523c27a.jpg",
+      "https://files.kretzrealestate.com/318e6e479952447793ae3b6d9d40a665.jpg",
+      "https://files.kretzrealestate.com/4b635db9f6e3639bcc860ca6d9a7b38.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/19c23e6587bc7e7e96e969be390bf34.jpg",
+    "targetAmount": 6700000,
+    "fundedAmount": 6164000,
+    "tokenPrice": 100,
+    "totalTokens": 67000,
+    "availableTokens": 5360,
+    "estimatedAnnualYield": 7.7,
+    "capitalAppreciationYield": 5.3,
+    "totalEstimatedReturn": 13,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P1598A",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a74a2cb71",
+    "description": "Aix-en-Provence. A unique and exceptional place, one of the most beautiful pleasure residences in Provence, ideally located 20 minutes from the Cours Mirabeau.\nThis 18th-century Bastide is set in 9.5 hectares of beautifully landscaped grounds, surrounded by vineyards.\nThe main building has 2 floors and 2 wings.\nIt comprises more than 20 main rooms, including a reception room that can accommodate up to 200 guests for weddings and events, and several guest rooms.\nA pavilion, a one-storey farmhouse with 3 bedrooms, and several outbuildings complete the property.\nThe majestic grounds, planted with century-old trees (lime, oak, ash and chestnut), are adorned with numerous fountains and statues listed as Monuments Historiques.\nThe main pool, 90m long, is protected at its center by the sublime statue of Neptune.\nThe park has a second pool at the entrance to the property, below the swimming pool, and a third along the avenue of plane trees.\nThe gardens also offer a wonderful relaxation area, with a beautiful swimming pool with pool house, a vast terrace and a pétanque court.\nThe property includes several cellars accessible from the main hall.\nThis estate embodies elegance and the French art of living. It is the ideal location for a leisure residence, or for events, weddings, receptions, seminars, or as a B&B project.\nIdeally located just 30 minutes from Aix-en-Provence TGV station and 45 minutes from Marseille-Provence airport.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Château",
+      "1700 m²",
+      "Film",
+      "Swimming Pool",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6700000,
+      "refurbishmentBudget": 335000,
+      "legalAndClosingCosts": 268000,
+      "operatingReserve": 134000,
+      "totalProjectCost": 7437000,
+      "projectedAnnualGrossRent": 619080,
+      "estimatedOperatingExpenses": 103180,
+      "projectedAnnualNetRent": 515900,
+      "estimatedNetYield": 7.7,
+      "estimatedCapitalGainYield": 5.3,
+      "totalEstimatedYield": 13
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-598A-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-598A",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-598A-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-598A-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 123,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 1700,
+    "bedrooms": 8,
+    "bathrooms": 10,
+    "amenities": [
+      "Château",
+      "1700 m²",
+      "Film",
+      "Swimming Pool",
+      "Balcony"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-598A",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-598a/castle/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-598a/castle/"
+  },
+  {
+    "id": "prop-kretz-kp1-608a",
+    "slug": "kp1-608a-saint-tropez",
+    "title": "Architect-designed villa with exceptional view of the Gulf of Saint-Tropez",
+    "location": "Saint Tropez, St-tropez",
+    "city": "Saint Tropez",
+    "country": "France",
+    "type": "Villa",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg",
+      "https://files.kretzrealestate.com/b8d5f1e23efcd102b11bcb49831c99.jpg",
+      "https://files.kretzrealestate.com/31574c24ff15ac43bf531be459a515f9.jpg",
+      "https://files.kretzrealestate.com/5119d44dafc90cfbc7b9ad4b0bc97f6.jpg",
+      "https://files.kretzrealestate.com/884c6164cdc148e7541dfb6979da25fd.jpg",
+      "https://files.kretzrealestate.com/fe84771b9795b1a67c215454804f17dd.jpg",
+      "https://files.kretzrealestate.com/3f2d99e95d12dd319ada5b61e72231f.jpg",
+      "https://files.kretzrealestate.com/4dc51f1c820c02d60915877f15c796.jpg",
+      "https://files.kretzrealestate.com/56118556f5c09c9faff1721a7e29f25.jpg",
+      "https://files.kretzrealestate.com/8752cb757d935df366389546ec5e826.jpg",
+      "https://files.kretzrealestate.com/32ffbba6c439e14a7eda3919cbef193.jpg",
+      "https://files.kretzrealestate.com/95cbb166acc28e29772fc847c126dc1c.jpg",
+      "https://files.kretzrealestate.com/a831d75c3d4ee536502bffe83a4c23.jpg",
+      "https://files.kretzrealestate.com/b6e988884ca0473a6f97191b3a0d767.jpg",
+      "https://files.kretzrealestate.com/5ffa746e889656b8cf5ebd3e65292c8.jpg",
+      "https://files.kretzrealestate.com/8360d0ea5d564aaeda52f1e417e5836d.jpg",
+      "https://files.kretzrealestate.com/70a538d1eb627dd25f27d5861ca0da.jpg",
+      "https://files.kretzrealestate.com/2aa4152ac5419a44643aea2eb1586da.jpg",
+      "https://files.kretzrealestate.com/763d4a9fd52e3d958a9bc5aaa4281a.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg",
+    "targetAmount": 7490000,
+    "fundedAmount": 7490000,
+    "tokenPrice": 100,
+    "totalTokens": 74900,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 11.4,
+    "capitalAppreciationYield": 3.6,
+    "totalEstimatedReturn": 15,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P1608A",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a754c5638",
+    "description": "Grimaud. Magnificent architect-designed villa located in the heart of the prestigious private domain of Beauvallon Bartole. Out of sight, in a dominant position with an exceptional panoramic sea view over the Gulf of Saint-Tropez. South exposure. The villa offers a total area of approximately 425 m2 on 2 levels. It consists of a large living room, with large bay windows, opening onto a large terrace, 2 kitchens, 1 suite with bathroom and 6 other suites each with their own bathroom, a relaxation area with bathroom sports and sauna. Heated 16x4 mirror swimming pool with breathtaking sea views, fully equipped pool house. Petanque. Numerous high-end services complete this property: alarm, home automation, air conditioning, solar panels, cold room, sound system. 2 car garage. Parking for 3 cars. A haven of peace just 5 minutes from the beach and the golf course, close to Sainte-Maxime, Saint-Tropez and the beaches of Ramatuelle.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "423 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (2,500 m²)",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 7490000,
+      "refurbishmentBudget": 374500,
+      "legalAndClosingCosts": 299600,
+      "operatingReserve": 149800,
+      "totalProjectCost": 8313900,
+      "projectedAnnualGrossRent": 1024632,
+      "estimatedOperatingExpenses": 170772,
+      "projectedAnnualNetRent": 853860,
+      "estimatedNetYield": 11.4,
+      "estimatedCapitalGainYield": 3.6,
+      "totalEstimatedYield": 15
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-608A-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-608A",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-608A-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-608A-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 136,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 423,
+    "bedrooms": 7,
+    "bathrooms": 5,
+    "amenities": [
+      "Villa",
+      "423 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (2,500 m²)",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-608A",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-608a/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-608a/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-616x",
+    "slug": "kp1-616x-uzes",
+    "title": "Exceptionnel domaine aux portes d'Uzès",
+    "location": "Uzes, Gard",
+    "city": "Uzes",
+    "country": "France",
+    "type": "House",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg",
+      "https://files.kretzrealestate.com/6a340a8cb2d7d11ae9318588311446.jpg",
+      "https://files.kretzrealestate.com/22f2c4fa7b7b5428ccb7ef8c1b252e52.jpg",
+      "https://files.kretzrealestate.com/5f97e6f76622c422653a54cee46bf127.jpg",
+      "https://files.kretzrealestate.com/fd924cdbfc95936dd79bd44ae8612fc1.jpg",
+      "https://files.kretzrealestate.com/78641a555d4f7526e56c9b65e3e392c1.jpg",
+      "https://files.kretzrealestate.com/67873329be5e8b4773fc68aa5b9f61b.jpg",
+      "https://files.kretzrealestate.com/dee354de96d956e6f65f37dc65f042eb.jpg",
+      "https://files.kretzrealestate.com/db37e7a52b9276f75e5c24d6b222ce.jpg",
+      "https://files.kretzrealestate.com/969621fe654943b4e56a7ce71f2d7ac.jpg",
+      "https://files.kretzrealestate.com/595964ddc63f463c7fcb648da42c34.jpg",
+      "https://files.kretzrealestate.com/c7d3bc39c61e072ce9f4dc48fc19c.jpg",
+      "https://files.kretzrealestate.com/48fdb152cee679a7a461224e959bf55b.jpg",
+      "https://files.kretzrealestate.com/51442538565f5466673965c3e437d6d.jpg",
+      "https://files.kretzrealestate.com/32d4483c76dc7b3c4282596eca977e.jpg",
+      "https://files.kretzrealestate.com/dc7ea977f8e1ee8c85a1813a509ec.jpg",
+      "https://files.kretzrealestate.com/6c3442ee532b3a948266eb72ff97451b.jpg",
+      "https://files.kretzrealestate.com/82b09fb89ff7524c394bb38a8f62a40.jpg",
+      "https://files.kretzrealestate.com/5d7646b6bfd131521faaf4d8fdd05afa.jpg",
+      "https://files.kretzrealestate.com/dd16471f0fb748eb7aefe4945dbba.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg",
+    "targetAmount": 6727500,
+    "fundedAmount": 6727500,
+    "tokenPrice": 100,
+    "totalTokens": 67275,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 9.6,
+    "capitalAppreciationYield": 5.9,
+    "totalEstimatedReturn": 15.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P1616X",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a75f5e0ff",
+    "description": "Exclusivité. A moins de 10 minutes d'Uzès - Exceptionnelle propriété de 1.650m² sur un terrain de 2,7 hectares. Tirant ses origines du 16ème siècle, puis remaniée aux 18ème et 19ème siècles, la propriété à fait l'objet d'une restauration intégrale selon les plus hauts standards de qualité. Menée sur 4 ans, cette restauration a su amener un niveau de confort moderne et d'élégance rare tout en préservant l'histoire des lieux. Aujourd'hui exploitée en hôtel de luxe, la configuration de ce domaine se prête tout aussi bien à une grande maison de famille, une résidence secondaire ou un projet mixte.\nArticulée autour de 2 corps de bâtiments, la propriété comprend 8 chambres, toutes avec terrasse, 4 junior suites de 60 à 75m² avec terrasses de 26 à 40m², 2 suites de 90 et 95m² avec terrasses de 130m² et 70m², un restaurant bistronomique (35 couverts intérieurs et 50 extérieurs), une cuisine professionnelle, un bar, un espace SPA de 400m² avec piscine intérieure, sauna, hammam et 3 cabines de massage, divers locaux à usage du personnel, une buanderie, une salle de séminaire de 50m² (capacité 30 personnes) et 2 chambres pour le personnel. 3 ascenseurs permettent de circuler entre les niveaux. Tous les espaces intérieurs et les 1.200m² de terrasses offrent une vue panoramique sur les vignes et les oliviers alentour. Le parc accueille une piscine chauffée 15x10m avec son grand poolhouse comprenant un bar, un vestiaire et des douches. 3 forages, parking pour plus de 60 véhicules. Permis de construire accordé pour 6 chambres supplémentaires. A 25mn de Nîmes, 50mn de Montpellier (centre historique et aéroport) et Avignon, 1h20 d'Aix-en-Provence et de l'aéroport de Marseille-Provence.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "1650 m²",
+      "Film",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (27,000 m²)",
+      "Terrace (1200 m²)",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6727500,
+      "refurbishmentBudget": 336375,
+      "legalAndClosingCosts": 269100,
+      "operatingReserve": 134550,
+      "totalProjectCost": 7467525,
+      "projectedAnnualGrossRent": 775008,
+      "estimatedOperatingExpenses": 129168,
+      "projectedAnnualNetRent": 645840,
+      "estimatedNetYield": 9.6,
+      "estimatedCapitalGainYield": 5.9,
+      "totalEstimatedYield": 15.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-616X-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-616X",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-616X-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-616X-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 149,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 1650,
+    "bedrooms": 16,
+    "bathrooms": 10,
+    "amenities": [
+      "House",
+      "1650 m²",
+      "Film",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (27,000 m²)",
+      "Terrace (1200 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-616X",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-616x/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-616x/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-681a",
+    "slug": "kp1-681a-saint-tropez",
+    "title": "New apartment at the foot of Place des Lices in Saint-Tropez",
+    "location": "Saint Tropez, St-tropez",
+    "city": "Saint Tropez",
+    "country": "France",
+    "type": "Apartment",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/45f052b49abe0b4fe8eb139a021325d.jpg",
+      "https://files.kretzrealestate.com/ee4c4a9635497fe4611ade53387753c6.jpg",
+      "https://files.kretzrealestate.com/9ffcb441293eaee053ba751f65b19a3a.jpg",
+      "https://files.kretzrealestate.com/7e92f02b41d698ae8e01a38b62c58c.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/45f052b49abe0b4fe8eb139a021325d.jpg",
+    "targetAmount": 4990000,
+    "fundedAmount": 4990000,
+    "tokenPrice": 100,
+    "totalTokens": 49900,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 7.8,
+    "capitalAppreciationYield": 4.2,
+    "totalEstimatedReturn": 12,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P1681A",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a769f6bc6",
+    "description": "Saint-Tropez. At the foot of Place des Lices, magnificent contemporary apartment on the 1st and top floor, approx. 171 m2, comprising an entrance hall, fitted kitchen and 62 m2 living space, all opening onto a terrace overlooking the pool and garden, 4 en suite bedrooms, each with its own balcony.\nThis exceptional apartment is set in the heart of a garden planted with Mediterranean trees, umbrella pines and a 15 m x 3.4 m tiled, stone-tone swimming pool.\nAn elevator will serve the landing of each apartment.\nGarage (extra): box with motorized door, recharging station for electric vehicle.\nSecure property, videophone, burglar-proof entrance door.\nAn exceptional address in the heart of Saint-Tropez.\nClose to the famous Place des Lices market, a 5-minute walk from the port, its restaurants and stores. Less than 10 minutes by car from the sandy beaches of Pampelonne.\nVEFA sale.\nFor further information, please contact our agent Nathalie Normand on 33 6 34 15 83 93 or by e-mail nathalie@kretzrealestate.com",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "171 m²",
+      "Swimming Pool",
+      "Private Grounds (502 m²)",
+      "Terrace (66 m²)",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4990000,
+      "refurbishmentBudget": 249500,
+      "legalAndClosingCosts": 199600,
+      "operatingReserve": 99800,
+      "totalProjectCost": 5538900,
+      "projectedAnnualGrossRent": 467064,
+      "estimatedOperatingExpenses": 77844,
+      "projectedAnnualNetRent": 389220,
+      "estimatedNetYield": 7.8,
+      "estimatedCapitalGainYield": 4.2,
+      "totalEstimatedYield": 12
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-681A-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-681A",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-681A-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-681A-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 162,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 171,
+    "bedrooms": 4,
+    "bathrooms": 2,
+    "amenities": [
+      "Apartment",
+      "171 m²",
+      "Swimming Pool",
+      "Private Grounds (502 m²)",
+      "Terrace (66 m²)",
+      "Balcony"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-681A",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-681a/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-681a/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-697",
+    "slug": "kp1-697-paris",
+    "title": "Prestigious architect-designed house near Ranelagh",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "House",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/d92edb3b50aae9836a6fd0808b3fd4f.jpg",
+      "https://files.kretzrealestate.com/b014d988f1d5c6e0bf2ef9d2e9408c3e.jpg",
+      "https://files.kretzrealestate.com/e93e50a3d237bb408cfae295e2e51a68.jpg",
+      "https://files.kretzrealestate.com/bebab61b90efdf79f08e6b5c6e24ac4d.jpg",
+      "https://files.kretzrealestate.com/eff16b793847e12b24dcfc91a33b3ad.jpg",
+      "https://files.kretzrealestate.com/7739bda6a8864155554e8c851257e99.jpg",
+      "https://files.kretzrealestate.com/2f7e3f5e33cac16b5767952f12d452a.jpg",
+      "https://files.kretzrealestate.com/11d83ea8d0c0d89a74cd8ec353a6da2.jpg",
+      "https://files.kretzrealestate.com/55e070a9748d5f59fc99ae0d9523554.jpg",
+      "https://files.kretzrealestate.com/71346524f57ef5af7293552e4356047.jpg",
+      "https://files.kretzrealestate.com/7c1ea3228526d33534cc1419b8356d40.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/d92edb3b50aae9836a6fd0808b3fd4f.jpg",
+    "targetAmount": 9600000,
+    "fundedAmount": 9600000,
+    "tokenPrice": 100,
+    "totalTokens": 96000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 11.5,
+    "capitalAppreciationYield": 6.5,
+    "totalEstimatedReturn": 18,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1697",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7748f68d",
+    "description": "La Muette - OECD. Prestigious architect-designed house of approx. 400m2 with wooded garden of approx. 500m2.\nDouble reception room, dining room, independent kitchen. 1 master suite. Office (bedroom possible).\n1 apartment with direct or independent access, kitchenette. 2 bedrooms, 2 shower rooms.\nHigh-quality materials. Indoor pool, hammam, gym. 3 double boxes. 3-minute walk to Jardin du Ranelagh, shops and restaurants.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "425 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (400 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 9600000,
+      "refurbishmentBudget": 480000,
+      "legalAndClosingCosts": 384000,
+      "operatingReserve": 192000,
+      "totalProjectCost": 10656000,
+      "projectedAnnualGrossRent": 1324800,
+      "estimatedOperatingExpenses": 220800,
+      "projectedAnnualNetRent": 1104000,
+      "estimatedNetYield": 11.5,
+      "estimatedCapitalGainYield": 6.5,
+      "totalEstimatedYield": 18
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-697-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-697",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-697-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-697-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 175,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 425,
+    "bedrooms": 4,
+    "bathrooms": 5,
+    "amenities": [
+      "House",
+      "425 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (400 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Martin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "martin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-697",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-697/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-697/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-892",
+    "slug": "kp1-892-cannes",
+    "title": "Renovated villa with sea view",
+    "location": "Cannes, Cannes",
+    "city": "Cannes",
+    "country": "France",
+    "type": "House",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg",
+      "https://files.kretzrealestate.com/3567cd4c6411c43ce88382d0dc5aa3f7.jpg",
+      "https://files.kretzrealestate.com/82958879f5fa5ab4894ccdc1aaaa2b.jpg",
+      "https://files.kretzrealestate.com/3994957816bf3245ed6727de8183566a.jpg",
+      "https://files.kretzrealestate.com/513e4c7b84527e1799c435ecf3918f8e.jpg",
+      "https://files.kretzrealestate.com/81fb4f2e39221221b2851312219fee50.jpg",
+      "https://files.kretzrealestate.com/5c6cf16621b2bdd79fb363ebacf1441a.jpg",
+      "https://files.kretzrealestate.com/6a8ad37beff711e6eb47ef1f725b6.jpg",
+      "https://files.kretzrealestate.com/73c02415eda97afc22b2b382c6b77312.jpg",
+      "https://files.kretzrealestate.com/43a48374a3ff8a4a434ce6917943a3d9.jpg",
+      "https://files.kretzrealestate.com/1cbe7a55babda4d2c515d7226d6310fb.jpg",
+      "https://files.kretzrealestate.com/422b5807b9e8a8e932a36f5fc95795.jpg",
+      "https://files.kretzrealestate.com/bf85b955fed48a34a245e542bb0f4ad.jpg",
+      "https://files.kretzrealestate.com/37962755a7fdccbdba78a84fadd25b7.jpg",
+      "https://files.kretzrealestate.com/627f1965dd7dcb339b7397fff83293.jpg",
+      "https://files.kretzrealestate.com/8da0e7d0e2e4222373a04a4a92135a12.jpg",
+      "https://files.kretzrealestate.com/1bcbf8f3a7562503eba5c3e5ba3e06c.jpg",
+      "https://files.kretzrealestate.com/3234b802bd344477d83c222396210.jpg",
+      "https://files.kretzrealestate.com/fa8728195bae339d0587f197aee172.jpg",
+      "https://files.kretzrealestate.com/1eee2bdaedd6dafeda696846ab171cd.jpg",
+      "https://files.kretzrealestate.com/778f96372fd3259e9a7a825e6c98edeb.jpg",
+      "https://files.kretzrealestate.com/32c81480fb3578d1e6ac3ccd1cdf97a.jpg",
+      "https://files.kretzrealestate.com/65d57d5df47e9cfbd2fe48be47c9e1d0.jpg",
+      "https://files.kretzrealestate.com/2bc0f6efb3c72570663a5cb1851344d8.jpg",
+      "https://files.kretzrealestate.com/9b96b8202651e156ed8ab362ad27272.jpg",
+      "https://files.kretzrealestate.com/1e38266a228ef11f270ff752da7b730.jpg",
+      "https://files.kretzrealestate.com/97c4e299381cbfe521c174ed5cbffb.jpg",
+      "https://files.kretzrealestate.com/db379923b43474e7657ace5e234a.jpg",
+      "https://files.kretzrealestate.com/5795dd9d24b91fe13e9fd0726dcb63.jpg",
+      "https://files.kretzrealestate.com/ebc4c0802c90f172319c699c813d6d5d.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg",
+    "targetAmount": 6950000,
+    "fundedAmount": 6950000,
+    "tokenPrice": 100,
+    "totalTokens": 69500,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 9.7,
+    "capitalAppreciationYield": 4.8,
+    "totalEstimatedReturn": 14.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1892",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a77f28154",
+    "description": "Cannes - Californie. Villa of 416 m² entirely renovated with top-of-the-range materials on a 3100 m² plot, south-east facing with sea view.\n\nGarden level: living room, dining room, kitchen, 2 bedrooms including a master bedroom with bathroom and dressing room for women, bathroom and dressing room for men, 2 other bedrooms en suite, guest shower room and guest toilet.\n\nFirst floor: 2 en suite bedrooms, fitness room, cinema room, wine cellar and tasting room, steam room, utility room, janitor's accommodation and 3-car garage.\n\nPrestigious location in absolute calm, 10 minutes from downtown Cannes and the beaches.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "416 m²",
+      "Swimming Pool",
+      "Private Grounds (3,041 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6950000,
+      "refurbishmentBudget": 347500,
+      "legalAndClosingCosts": 278000,
+      "operatingReserve": 139000,
+      "totalProjectCost": 7714500,
+      "projectedAnnualGrossRent": 808980,
+      "estimatedOperatingExpenses": 134830,
+      "projectedAnnualNetRent": 674150,
+      "estimatedNetYield": 9.7,
+      "estimatedCapitalGainYield": 4.8,
+      "totalEstimatedYield": 14.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-892-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-892",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-892-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-892-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 188,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 416,
+    "bedrooms": 5,
+    "bathrooms": 5,
+    "amenities": [
+      "House",
+      "416 m²",
+      "Swimming Pool",
+      "Private Grounds (3,041 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-892",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-892/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-892/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-920",
+    "slug": "kp1-920-mouans-sartoux",
+    "title": "New villa with panoramic sea and mountain views",
+    "location": "Mouans Sartoux, Cannes",
+    "city": "Mouans Sartoux",
+    "country": "France",
+    "type": "House",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/3c62f78b3114e7f8f343dfcd6ca6dbf.jpg",
+      "https://files.kretzrealestate.com/a47ddbae8542451530f7a05b6ad5134a.jpg",
+      "https://files.kretzrealestate.com/cdcb2f081741313bda6cdc7db5d9f2f.jpg",
+      "https://files.kretzrealestate.com/71cf2e16789fe93819363a8ed9832b20.jpg",
+      "https://files.kretzrealestate.com/96b6b3574bd0a1281a5b72a2347f294f.jpg",
+      "https://files.kretzrealestate.com/508326f2f39c632974652e5848b33e.jpg",
+      "https://files.kretzrealestate.com/181ce1b3b0cf156d9160d6b777c0c3c3.jpg",
+      "https://files.kretzrealestate.com/759ea231ab8bf6905832ad9018d29f88.jpg",
+      "https://files.kretzrealestate.com/a365823ea426b42dba9ceb714212e93.jpg",
+      "https://files.kretzrealestate.com/a5c6f5bccd88541759bd87b0adbc4b9c.jpg",
+      "https://files.kretzrealestate.com/b3dcb6c98c24594dcf343af83e94f3ab.jpg",
+      "https://files.kretzrealestate.com/32b2266514f4338ff460e66a3c56a93d.jpg",
+      "https://files.kretzrealestate.com/16a4c778b5f0c211eb7b75221eb34cbb.jpg",
+      "https://files.kretzrealestate.com/d83fc14f6d2d0a41f54eee9db7bfe2c.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/3c62f78b3114e7f8f343dfcd6ca6dbf.jpg",
+    "targetAmount": 9950000,
+    "fundedAmount": 9950000,
+    "tokenPrice": 100,
+    "totalTokens": 99500,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 7.9,
+    "capitalAppreciationYield": 7.1,
+    "totalEstimatedReturn": 15,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1920",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a789c0c1b",
+    "description": "New villa - 180° sea view. Infinity pool. Sunny terraces. Double living room, dining room, independent fitted kitchen, elevator. 6 en suite bedrooms, each with bathroom. Fitness room, hammam, wine cellar. 6-car garage. Top-of-the-range materials, luxurious amenities.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "750 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (4,400 m²)",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 9950000,
+      "refurbishmentBudget": 497500,
+      "legalAndClosingCosts": 398000,
+      "operatingReserve": 199000,
+      "totalProjectCost": 11044500,
+      "projectedAnnualGrossRent": 943260,
+      "estimatedOperatingExpenses": 157210,
+      "projectedAnnualNetRent": 786050,
+      "estimatedNetYield": 7.9,
+      "estimatedCapitalGainYield": 7.1,
+      "totalEstimatedYield": 15
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-920-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-920",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-920-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-920-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 201,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 750,
+    "bedrooms": 5,
+    "bathrooms": 8,
+    "amenities": [
+      "House",
+      "750 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (4,400 m²)",
+      "Balcony"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-920",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-920/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-920/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-1009b",
+    "slug": "kp1-1009b-aix-en-provence",
+    "title": "Exceptional estate with panoramic view of the Sainte-Victoire in the heart of a 6-hectare estate",
+    "location": "Aix En Provence, Aix",
+    "city": "Aix En Provence",
+    "country": "France",
+    "type": "House",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/155fa36e78e4f33d3137c96c345533bd.jpg",
+      "https://files.kretzrealestate.com/39383111be1142d41516f7916b1b4758.jpg",
+      "https://files.kretzrealestate.com/44a1bedac8d1d19705933809596abfb.jpg",
+      "https://files.kretzrealestate.com/85719066337c75b8c21eaf8c1b31256.jpg",
+      "https://files.kretzrealestate.com/12bba442c2a2d6704f566473a672791.jpg",
+      "https://files.kretzrealestate.com/85719066337c75b8c21eaf8c1b31256.jpg",
+      "https://files.kretzrealestate.com/47dc7abac2be4870cb242721cc07f45.jpg",
+      "https://files.kretzrealestate.com/5bb51cd86d1a35569dfb24301747fbdd.jpg",
+      "https://files.kretzrealestate.com/a1761b4075e72c61178dacd8833bf0.jpg",
+      "https://files.kretzrealestate.com/47d733b302f4cc593beb0acf0c42ae7.jpg",
+      "https://files.kretzrealestate.com/1bab526ae2a77c472ff5d3a0f79d9caf.jpg",
+      "https://files.kretzrealestate.com/9998e3301ad3e54e49cc7a7095544.jpg",
+      "https://files.kretzrealestate.com/27324b48db7318c6310a120f1fa31f5.jpg",
+      "https://files.kretzrealestate.com/f4b9a17c2ef361e6a476eb99866ad8d.jpg",
+      "https://files.kretzrealestate.com/3b4263d5ac90bf6f7ee4c5f463da1463.jpg",
+      "https://files.kretzrealestate.com/54828fe2fddefc2d9d5c9e83ad9aa6a6.jpg",
+      "https://files.kretzrealestate.com/9a1e31d63f5be06384d19a9e9b0afa7.jpg",
+      "https://files.kretzrealestate.com/529face798de62f67b44748c3f672262.jpg",
+      "https://files.kretzrealestate.com/6fc9026cbd179675c4d2d6c7079c760.jpg",
+      "https://files.kretzrealestate.com/e150287239b6225c2cecfa358d1ac8d7.jpg",
+      "https://files.kretzrealestate.com/47bd80c532a833f22dff8c7c154a71c.jpg",
+      "https://files.kretzrealestate.com/30af3ef099b4863d8859df0bec83911.jpg",
+      "https://files.kretzrealestate.com/c92bbb37b4b75be6d38a1c8b139c325a.jpg",
+      "https://files.kretzrealestate.com/dc912fbc56615e4895c8f912887344.jpg",
+      "https://files.kretzrealestate.com/d82c296bcbc6f471bb91fd242b5ee2be.jpg",
+      "https://files.kretzrealestate.com/3d3a144476f3ac10843a4ad647fee07a.jpg",
+      "https://files.kretzrealestate.com/502265a253816d6763236b6880ca1b.jpg",
+      "https://files.kretzrealestate.com/ecf57b8893c1d971cb74bd6c957de4c7.jpg",
+      "https://files.kretzrealestate.com/ecf57b8893c1d971cb74bd6c957de4c7.jpg",
+      "https://files.kretzrealestate.com/d6ad1af4de9f801d1c5ea96458fe8e75.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/155fa36e78e4f33d3137c96c345533bd.jpg",
+    "targetAmount": 5200000,
+    "fundedAmount": 5200000,
+    "tokenPrice": 100,
+    "totalTokens": 52000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 11.6,
+    "capitalAppreciationYield": 5.4,
+    "totalEstimatedReturn": 17,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-11009B",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a794596e2",
+    "description": "15 minutes from Aix-en-Provence and 20 minutes from Lourmarin, this exceptional property perfectly illustrates the charm of Provence. This recently built 500 m² dry-stone Provencal farmhouse is set in 6 hectares of magnificent grounds planted with olive trees and Mediterranean species. The property offers panoramic views of the Sainte Victoire massif and the Luberon mountain range. This elegantly decorated and renovated manor house has 3 floors. Particular attention has been paid to the quality of the materials used. The first floor features a vast hall, a fully-equipped kitchen, a magnificent living/dining area opening onto a large 250 m2 south-facing terrace with access to the 15 x 5 infinity pool. The night space offers 2 bedrooms, including 1 suite with bathroom and dressing room.\nOn the 1st floor, a beautiful office-library area, 2 suites including the 70 m2 master suite with bathroom, large dressing room and private terrace.\nThe garden level features 2 bedrooms, including 1 suite with bathroom and dressing room, a bar area and a fully-equipped cinema room. 1 independent maid's room with bathroom completes this property.\nYou'll also enjoy a sauna and a 10 x 4 heated indoor pool opening onto a terrace with jacuzzi, offering the chance to relax in any season.\nOutside, you'll be delighted by the superb fenced landscaped garden, where every space has been designed to offer a pleasant atmosphere in an enchanting setting, ideal for balmy summer evenings. Parking and garage for several cars are provided.\nA privileged location in the heart of the Châteaux de Provence, in absolute calm between Aix-en-Provence, the Alpilles and the Luberon. This estate offers exceptional comfort and an idyllic setting for enjoying the Provencal way of life.\nFor further information, please contact our agent Nathalie Normand on 33 6 34 15 83 93 or by e-mail nathalie@kretzrealestate.com",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "500 m²",
+      "Swimming Pool",
+      "Private Grounds (60,000 m²)",
+      "Terrace (250 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5200000,
+      "refurbishmentBudget": 260000,
+      "legalAndClosingCosts": 208000,
+      "operatingReserve": 104000,
+      "totalProjectCost": 5772000,
+      "projectedAnnualGrossRent": 723840,
+      "estimatedOperatingExpenses": 120640,
+      "projectedAnnualNetRent": 603200,
+      "estimatedNetYield": 11.6,
+      "estimatedCapitalGainYield": 5.4,
+      "totalEstimatedYield": 17
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-1009B-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-1009B",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-1009B-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-1009B-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 214,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 500,
+    "bedrooms": 7,
+    "bathrooms": 6,
+    "amenities": [
+      "House",
+      "500 m²",
+      "Swimming Pool",
+      "Private Grounds (60,000 m²)",
+      "Terrace (250 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-1009B",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-1009b/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-1009b/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-1038",
+    "slug": "kp1-1038-mougins",
+    "title": "Villa neuve au contact du vieux village de Mougins",
+    "location": "Mougins, Cannes",
+    "city": "Mougins",
+    "country": "France",
+    "type": "Villa",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/2876787d3d8a4a862a3417c6f96448cb.jpg",
+      "https://files.kretzrealestate.com/23d83efc65d8ecf8f2cdcadd7acb0b9.jpg",
+      "https://files.kretzrealestate.com/6bbe9f75766c5318852c35a2e716bcd9.jpg",
+      "https://files.kretzrealestate.com/a03425e287a61de4ba8d6ad39cc8e68e.jpg",
+      "https://files.kretzrealestate.com/48726b8ddc7b93c3339ed8f376a75d.jpg",
+      "https://files.kretzrealestate.com/ee55a429ccc66a9b27421026d43b666.jpg",
+      "https://files.kretzrealestate.com/c0b84218e4e2d7fc7adab2bd04e2c85.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/2876787d3d8a4a862a3417c6f96448cb.jpg",
+    "targetAmount": 7900000,
+    "fundedAmount": 7900000,
+    "tokenPrice": 100,
+    "totalTokens": 79000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 9.8,
+    "capitalAppreciationYield": 3.7,
+    "totalEstimatedReturn": 13.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P11038",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a79ef21a9",
+    "description": "Au cœur du village de Mougins, à seulement une centaine de mètres de ses ruelles pittoresques, s'élève un domaine d'exception aux allures de havre de paix. Entièrement rénovée avec l'exigence des plus belles demeures de la Côte d'Azur, cette propriété sera livrable en janvier 2027 et s'inscrit dans un parc arboré et clos d'environ un hectare, véritable écrin de verdure baigné de lumière méditerranéenne.\nD'une superficie d'environ 600 m², la villa neuve déploie de vastes espaces de réception pensés pour l'art de recevoir : une cuisine entièrement équipée, une salle à manger et un salon chaleureux réchauffé par une cheminée en pierre. Six chambres et six salles d'eau, toutes tournées vers un panorama d'exception sur la mer, composent un univers intime où raffinement et sérénité se conjuguent à chaque étage.\nLe parc paysager, planté de cyprès et de pins centenaires, s'organise autour d'une piscine habillée de pierre naturelle et prolongée par un pool house d'environ 60 m² abritant deux chambres supplémentaires, idéal pour recevoir dans la plus grande discrétion. Une villa de gardien indépendante — deux chambres, salon, salle à manger et cuisine — achève de faire de cette propriété un lieu de vie complet, pensé pour la tranquillité et l'intimité de ses résidents.\nUn emplacement rare, à 100 mètres du village de Mougins, à 20 minutes de l'aéroport de Nice et à 15 minutes de la Croisette, offrant un accès privilégié entre authenticité provençale et art de vivre azuréen.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "643 m²",
+      "Swimming Pool",
+      "Private Grounds (10,220 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 7900000,
+      "refurbishmentBudget": 395000,
+      "legalAndClosingCosts": 316000,
+      "operatingReserve": 158000,
+      "totalProjectCost": 8769000,
+      "projectedAnnualGrossRent": 929040,
+      "estimatedOperatingExpenses": 154840,
+      "projectedAnnualNetRent": 774200,
+      "estimatedNetYield": 9.8,
+      "estimatedCapitalGainYield": 3.7,
+      "totalEstimatedYield": 13.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-1038-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-1038",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-1038-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-1038-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 227,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 643,
+    "bedrooms": 6,
+    "bathrooms": 6,
+    "amenities": [
+      "Villa",
+      "643 m²",
+      "Swimming Pool",
+      "Private Grounds (10,220 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-1038",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-1038/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-1038/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-1258",
+    "slug": "kp1-1258-vaucresson",
+    "title": "Home",
+    "location": "Vaucresson, Hauts-de-Seine",
+    "city": "Vaucresson",
+    "country": "France",
+    "type": "House",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/1658fe5e398d17581a269ab188558.jpg",
+      "https://files.kretzrealestate.com/1e239fb6a874a46aef8dc436a7722.jpg",
+      "https://files.kretzrealestate.com/399e8d819b29256d73754540fe16aa5d.jpg",
+      "https://files.kretzrealestate.com/c349553a65e81cad170d5ab3e2c4b35.jpg",
+      "https://files.kretzrealestate.com/2e38410bf735b48837fe9154ef45e1d.jpg",
+      "https://files.kretzrealestate.com/fb9bcec4df20c1cdf2924592b6d6f824.jpg",
+      "https://files.kretzrealestate.com/de2f34bdc5daed97349e239d46c482a.jpg",
+      "https://files.kretzrealestate.com/b59df7d9f04cec8137332f42bc3b71c4.jpg",
+      "https://files.kretzrealestate.com/3d3663ca5e4487b73e7a9bac75f469b.jpg",
+      "https://files.kretzrealestate.com/67c4f099c992cac873c599be28a778.jpg",
+      "https://files.kretzrealestate.com/9921eb25fd4ea02ff11ef5496215bb6.jpg",
+      "https://files.kretzrealestate.com/29c9704dba92acff3847271aafaae1ec.jpg",
+      "https://files.kretzrealestate.com/b8c613d0cc43811f138e5b0aa382f1.jpg",
+      "https://files.kretzrealestate.com/e488ff6836c1785387ddc35398925f.jpg",
+      "https://files.kretzrealestate.com/15bb2a7fca7f7f46933c6a9b126c514.jpg",
+      "https://files.kretzrealestate.com/741eae70e71f19b3fd61e24b61882.jpg",
+      "https://files.kretzrealestate.com/becd47de39643adfa2b3e84821fc4836.jpg",
+      "https://files.kretzrealestate.com/986bb8e15218689486a61b6d7d3a6318.jpg",
+      "https://files.kretzrealestate.com/4789ff0858ed8435afb29f3777d5f.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/1658fe5e398d17581a269ab188558.jpg",
+    "targetAmount": 11800000,
+    "fundedAmount": 11800000,
+    "tokenPrice": 100,
+    "totalTokens": 118000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 8,
+    "capitalAppreciationYield": 6,
+    "totalEstimatedReturn": 14,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P11258",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a98ac70",
+    "description": "« Mount Vernon Paris” – An exceptional historic property on the outskirts of Paris. A full-scale replica of George Washington’s famous Virginia mansion, “Mount Vernon Paris” is a unique residence built for the American pavilion at the 1931 Colonial Exposition. Designated a remarkable monument, this rare property combines historical prestige, elegance, and the art of living. Located in a privileged residential area just 20 minutes from the Place de l’Étoile, opposite the Saint-Cloud Golf Course, near the Country Club de Paris and the Haras de Jardy stud farm, the property offers a verdant and peaceful setting of 6,500 m², completely secluded from view. The main house has a floor area of 920 m² spread over four floors: spacious reception rooms, master bedroom with walk-in wardrobe and en-suite bathroom, 5 bedrooms, bathrooms, on the upper floor, a converted attic space, billiard room, gym, music studio and cellars, an elegant 100 m² terrace with columns. An 80 m² caretaker’s house with an adjoining garage and two gatehouses at the entrance complete this exceptional property. A unique historic residence, nestled between the countryside and Paris, for lovers of heritage and extraordinary properties.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "920 m²",
+      "Private Grounds (2,000 m²)"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 11800000,
+      "refurbishmentBudget": 590000,
+      "legalAndClosingCosts": 472000,
+      "operatingReserve": 236000,
+      "totalProjectCost": 13098000,
+      "projectedAnnualGrossRent": 1132800,
+      "estimatedOperatingExpenses": 188800,
+      "projectedAnnualNetRent": 944000,
+      "estimatedNetYield": 8,
+      "estimatedCapitalGainYield": 6,
+      "totalEstimatedYield": 14
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-1258-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-1258",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-1258-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-1258-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 240,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 920,
+    "bedrooms": 6,
+    "bathrooms": 10,
+    "amenities": [
+      "House",
+      "920 m²",
+      "Private Grounds (2,000 m²)"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-1258",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-1258/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-1258/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-1620",
+    "slug": "kp1-1620-cannes",
+    "title": "Fully renovated apartment with panoramic sea view",
+    "location": "Cannes, Cannes",
+    "city": "Cannes",
+    "country": "France",
+    "type": "Apartment",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/34e1837a734b39f2b57914709fa3c189.jpg",
+      "https://files.kretzrealestate.com/734bdbca7dcd5333708f3bbd96fc410.jpg",
+      "https://files.kretzrealestate.com/974ecb0e37897b983966b577412ab2e.jpg",
+      "https://files.kretzrealestate.com/a186491cb3b791b236f8ad4dcbe435ac.jpg",
+      "https://files.kretzrealestate.com/fa7eaf255df5d18c977e64569121265.jpg",
+      "https://files.kretzrealestate.com/8ade18eb28c8e287577b5ed24989e69f.jpg",
+      "https://files.kretzrealestate.com/631cd1dae633286d9dca676ee233b4f9.jpg",
+      "https://files.kretzrealestate.com/fed1ceb701e154c5a1b63acaa3da74f.jpg",
+      "https://files.kretzrealestate.com/7e5655f47d0cf5989cad72593ee8a11.jpg",
+      "https://files.kretzrealestate.com/472e77c35faee88fc49986b5a33b55b.jpg",
+      "https://files.kretzrealestate.com/e491f047e5fadbfe4498365ef9787.jpg",
+      "https://files.kretzrealestate.com/2d39aa582b472ad873172b8f9ee7efad.jpg",
+      "https://files.kretzrealestate.com/7b9b8da5498d9dfb101bdb856334deba.jpg",
+      "https://files.kretzrealestate.com/d8691a4756c3668eb5a35fae124507d.jpg",
+      "https://files.kretzrealestate.com/256ca5a276f1bad8e7f62f68beb14c9.jpg",
+      "https://files.kretzrealestate.com/68396bf2bfd73373629c416b1650db.jpg",
+      "https://files.kretzrealestate.com/4b4ce6fcd4d6b42cfcc967016615fa9.jpg",
+      "https://files.kretzrealestate.com/99f87b886d949c6e97dbb77b6a260ec.jpg",
+      "https://files.kretzrealestate.com/7d73c5c2d57e484737a35520d0e941.jpg",
+      "https://files.kretzrealestate.com/8d67acb3dfc90e7ce96ed8ed535149b.jpg",
+      "https://files.kretzrealestate.com/22d05652a415506f3f0e5a9d03afc8d.jpg",
+      "https://files.kretzrealestate.com/92dd7865bc56273252e53929a4dd66.jpg",
+      "https://files.kretzrealestate.com/1d3ed38789377aca8aedd871f2d3a3.jpg",
+      "https://files.kretzrealestate.com/32164e6abf4c3722edeb61c90b551ed.jpg",
+      "https://files.kretzrealestate.com/aa9258dc425fa70cd858b349ef1f5f.jpg",
+      "https://files.kretzrealestate.com/7efa69dda459a9899596a47f95b78.jpg",
+      "https://files.kretzrealestate.com/f25a85ef49c39344388b1190a52cc3b4.jpg",
+      "https://files.kretzrealestate.com/b6db354ed978ade5ed35d7b2bb6df.jpg",
+      "https://files.kretzrealestate.com/da68df3612f580f8e35a38f67c19e596.jpg",
+      "https://files.kretzrealestate.com/6c2de4b23bb9ff89f1158109d628819.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/34e1837a734b39f2b57914709fa3c189.jpg",
+    "targetAmount": 4990000,
+    "fundedAmount": 4990000,
+    "tokenPrice": 100,
+    "totalTokens": 49900,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 11.7,
+    "capitalAppreciationYield": 4.3,
+    "totalEstimatedReturn": 16,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P11620",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7b423737",
+    "description": "Cannes - Californie. 210 m², 5-room apartment on the 4th floor of a luxury residence with swimming pool and janitor.\n\nVery large, bright living room: lounge, dining room, kitchen. 4 bedrooms, 4 bathrooms, laundry room. 2 terraces, including a 40 m² terrace with panoramic sea view.\n\nCompletely renovated with top-quality materials.\n\n2 basement garages, 1 cellar.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "210 m²",
+      "Swimming Pool",
+      "Terrace (48 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4990000,
+      "refurbishmentBudget": 249500,
+      "legalAndClosingCosts": 199600,
+      "operatingReserve": 99800,
+      "totalProjectCost": 5538900,
+      "projectedAnnualGrossRent": 700596,
+      "estimatedOperatingExpenses": 116766,
+      "projectedAnnualNetRent": 583830,
+      "estimatedNetYield": 11.7,
+      "estimatedCapitalGainYield": 4.3,
+      "totalEstimatedYield": 16
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-1620-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-1620",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-1620-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-1620-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 253,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 210,
+    "bedrooms": 4,
+    "bathrooms": 3,
+    "amenities": [
+      "Apartment",
+      "210 m²",
+      "Swimming Pool",
+      "Terrace (48 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-1620",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-1620/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-1620/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-2063",
+    "slug": "kp1-2063-boulogne-billancourt",
+    "title": "Architect&#39;s house on the waterfront 5 minutes from the center of Paris",
+    "location": "Boulogne Billancourt, Hauts-de-Seine",
+    "city": "Boulogne Billancourt",
+    "country": "France",
+    "type": "House",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg",
+      "https://files.kretzrealestate.com/72caffefa7bb9054d13a91e0971c27.jpg",
+      "https://files.kretzrealestate.com/bb174594c0d78cafc58316658dff3b6f.jpg",
+      "https://files.kretzrealestate.com/875f4d3f3a101058a15e9823f287fa3b.jpg",
+      "https://files.kretzrealestate.com/3be39d1531dd67bf125a61ff8013842.jpg",
+      "https://files.kretzrealestate.com/6c2b2ff2247113176236ba879ff974.jpg",
+      "https://files.kretzrealestate.com/56641a415bc145478612231e9825383.jpg",
+      "https://files.kretzrealestate.com/54842f884bdf4c3a7629c25283e1412b.jpg",
+      "https://files.kretzrealestate.com/abc7ecb7113b36dee7af8837dc29ef0.jpg",
+      "https://files.kretzrealestate.com/ef27864a9eaef8fbd2f05ffebdd8d.jpg",
+      "https://files.kretzrealestate.com/75c96c3ee8ea79cce21216aceaeef1.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg",
+    "targetAmount": 5900000,
+    "fundedAmount": 5900000,
+    "tokenPrice": 100,
+    "totalTokens": 59000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 9.9,
+    "capitalAppreciationYield": 6.6,
+    "totalEstimatedReturn": 16.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P12063",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7bebc1fe",
+    "description": "Exclusivity. Saint Germain Island. Contemporary house of approximately 750 m2 built in 1991 by architect Philippe Starck. Unique construction with clean lines in the boat style with parquet floors, mahogany walls and ceilings, windows on the entire surface of the facades. Elevator serving 5 identical floors, side passageways. On the ground floor: entrance hall, double living room on one level opening onto terrace and garden not overlooked with access to the Seine and possibility of creating a swimming pool, American kitchen, laundry room. On the 1st floor: 2 bedrooms and 1 bathroom. On the 2nd floor, 3 bedrooms, bathroom and shower. On the 3rd floor: large master suite with dressing room, bathroom and shower. Basement with independent access, fully soundproofed studio with cabins overlooking the English courtyard, kitchen, machine room. Furnished roof terrace. Separate offices that can be converted into a studio or independent service accommodation. Closed garage and two places in the inner courtyard. Possibility of converting all or part of the house into offices with large open spaces.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "785 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5900000,
+      "refurbishmentBudget": 295000,
+      "legalAndClosingCosts": 236000,
+      "operatingReserve": 118000,
+      "totalProjectCost": 6549000,
+      "projectedAnnualGrossRent": 700920,
+      "estimatedOperatingExpenses": 116820,
+      "projectedAnnualNetRent": 584100,
+      "estimatedNetYield": 9.9,
+      "estimatedCapitalGainYield": 6.6,
+      "totalEstimatedYield": 16.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-2063-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-2063",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-2063-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-2063-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 56,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 785,
+    "bedrooms": 6,
+    "bathrooms": 8,
+    "amenities": [
+      "House",
+      "785 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-2063",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-2063/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-2063/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-2220",
+    "slug": "kp1-2220-toulouse",
+    "title": "1000m2 townhouse in the golden triangle",
+    "location": "Toulouse, Toulouse",
+    "city": "Toulouse",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/ccdb7a3b7128b4d58ca96e275367e7cc.jpg",
+      "https://files.kretzrealestate.com/5a831929144391d8666b2d65a60278c.jpg",
+      "https://files.kretzrealestate.com/8e8b7c6495fa62905df5ce8a2c65c097.jpg",
+      "https://files.kretzrealestate.com/9299f5c8318f3a3b0f549ac6242b04b.jpg",
+      "https://files.kretzrealestate.com/7ee8a696a8c314029db606c26414ea7.jpg",
+      "https://files.kretzrealestate.com/68257e8f88a2e77c0bfdc7e81d7f6e.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/ccdb7a3b7128b4d58ca96e275367e7cc.jpg",
+    "targetAmount": 6300000,
+    "fundedAmount": 6300000,
+    "tokenPrice": 100,
+    "totalTokens": 63000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 8.1,
+    "capitalAppreciationYield": 4.9,
+    "totalEstimatedReturn": 13,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P12220",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7c954cc5",
+    "description": "1000m2 townhouse in the golden triangle\n\nSituated in the prestigious setting of Toulouse (Toulouse), this exceptional private mansion encompasses approximately 1000 m² of refined living space, complemented by 18 magnificent rooms including 11 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "1000 m²",
+      "Private Grounds (1,552 m²)"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6300000,
+      "refurbishmentBudget": 315000,
+      "legalAndClosingCosts": 252000,
+      "operatingReserve": 126000,
+      "totalProjectCost": 6993000,
+      "projectedAnnualGrossRent": 612360,
+      "estimatedOperatingExpenses": 102060,
+      "projectedAnnualNetRent": 510300,
+      "estimatedNetYield": 8.1,
+      "estimatedCapitalGainYield": 4.9,
+      "totalEstimatedYield": 13
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-2220-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-2220",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-2220-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-2220-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 69,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 1000,
+    "bedrooms": 11,
+    "bathrooms": 10,
+    "amenities": [
+      "Private Mansion",
+      "1000 m²",
+      "Private Grounds (1,552 m²)"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-2220",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-2220/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-2220/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-2304",
+    "slug": "kp1-2304-paris",
+    "title": "Reception apartment with Eiffel Tower view",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "funded",
+    "images": [
+      "https://files.kretzrealestate.com/da29c4bbbba6731194dad1351b3e912c.jpg",
+      "https://files.kretzrealestate.com/a547aeed7229ec18a4e11ad2f175e96.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/da29c4bbbba6731194dad1351b3e912c.jpg",
+    "targetAmount": 5800000,
+    "fundedAmount": 5800000,
+    "tokenPrice": 100,
+    "totalTokens": 58000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 11.8,
+    "capitalAppreciationYield": 7.2,
+    "totalEstimatedReturn": 19,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P12304",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7d3ed78c",
+    "description": "Reception apartment with Eiffel Tower view\n\nSituated in the prestigious setting of Paris (Paris), this exceptional apartment encompasses approximately 245 m² of refined living space, complemented by 8 magnificent rooms including 5 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "245 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5800000,
+      "refurbishmentBudget": 290000,
+      "legalAndClosingCosts": 232000,
+      "operatingReserve": 116000,
+      "totalProjectCost": 6438000,
+      "projectedAnnualGrossRent": 821280,
+      "estimatedOperatingExpenses": 136880,
+      "projectedAnnualNetRent": 684400,
+      "estimatedNetYield": 11.8,
+      "estimatedCapitalGainYield": 7.2,
+      "totalEstimatedYield": 19
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-2304-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-2304",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-2304-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-2304-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 82,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 245,
+    "bedrooms": 5,
+    "bathrooms": 4,
+    "amenities": [
+      "Apartment",
+      "245 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-2304",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-2304/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-2304/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-3774",
+    "slug": "kp1-3774-cap-d-antibes",
+    "title": "CAP D'ANTIBES - FAMILY PROPERTY WALKING DISTANCE TO THE BEACH",
+    "location": "Cap D Antibes, Cannes",
+    "city": "Cap D Antibes",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/dfbc5aace41eddc3cc7d10c7e5497ef.jpg",
+      "https://files.kretzrealestate.com/7bd93c88d798367dc71aeadbbef026.jpg",
+      "https://files.kretzrealestate.com/dce586f675d81eb2fdde80545bd35c36.jpg",
+      "https://files.kretzrealestate.com/7ea2385e5dfcbe73378329bc2e59a47.jpg",
+      "https://files.kretzrealestate.com/4402b7653c5d73f064d66cc0ee37f9.jpg",
+      "https://files.kretzrealestate.com/da7d64fc5c1e1267951e383df413bca.jpg",
+      "https://files.kretzrealestate.com/12de7411d1c8b3598ae1a4ad557af4d.jpg",
+      "https://files.kretzrealestate.com/8d529b1d1fbfb5985ee2664c6eb9699.jpg",
+      "https://files.kretzrealestate.com/9ebd817b6856aeeb4ead760e24760b7.jpg",
+      "https://files.kretzrealestate.com/bbfdffc5ad2f7cb8d27a647487df44b0.jpg",
+      "https://files.kretzrealestate.com/63316378f83153d4de8329ca22116239.jpg",
+      "https://files.kretzrealestate.com/773b47acb5229e564211b5fa4552ed7.jpg",
+      "https://files.kretzrealestate.com/f337508cdf42d9fd863066dc469d455e.jpg",
+      "https://files.kretzrealestate.com/3d8359c891ca1ce59a429082f555f7c.jpg",
+      "https://files.kretzrealestate.com/31c8ecc7439db4fdf322c56f538a31d8.jpg",
+      "https://files.kretzrealestate.com/7c5e48ba235e3c4d44d3da35ad1655.jpg",
+      "https://files.kretzrealestate.com/36e98a95b2963d633bc7782676e8fcde.jpg",
+      "https://files.kretzrealestate.com/869bdc0c4fc4cf7edfad887d90ca39.jpg",
+      "https://files.kretzrealestate.com/596839801e37b683031efef9bc2c1a0.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/dfbc5aace41eddc3cc7d10c7e5497ef.jpg",
+    "targetAmount": 4500000,
+    "fundedAmount": 3195000,
+    "tokenPrice": 100,
+    "totalTokens": 45000,
+    "availableTokens": 13050,
+    "estimatedAnnualYield": 10,
+    "capitalAppreciationYield": 5.5,
+    "totalEstimatedReturn": 15.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P13774",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7de86253",
+    "description": "EXCLUSIVE – Cap d’Antibes – Elegant villa within walking distance to the beaches\n\nIdeally located in the heart of the prestigious Cap d’Antibes, just a short walk from the beaches, this elegant bourgeois-style villa offers approximately 230 sqm of living space, set within a beautifully landscaped Mediterranean garden of around 1,400 sqm.\n\nFrom the moment you enter, the charm is undeniable. Generous volumes and natural light create a warm and refined atmosphere. The double living room with fireplace opens seamlessly onto the outdoors, complemented by a welcoming dining area and a fully integrated open-plan kitchen. The entire space extends onto a south-facing dining terrace, perfect for enjoying the Riviera lifestyle.\n\nThe villa features five bedrooms, including one on the ground floor. Upstairs, three bedrooms each benefit from access to private terraces with sea views, enhancing the exclusivity of the sleeping area. An additional bedroom, set within the tower, offers a unique and independent space, ideal as a children’s room, office, or guest area.\n\nFour bathrooms complete the interior layout, ensuring comfort and practicality.\n\nThe basement level provides functional spaces including a laundry room, workshop, storage areas, and a wine cellar.\n\nOutside, the landscaped garden invites relaxation, featuring a secure 12 x 6 meter swimming pool perfectly integrated into its surroundings. A carport for two vehicles as well as additional parking spaces complete the property.\n\nA rare opportunity combining elegance, privacy, and exceptional quality of life in one of the most sought-after areas of the French Riviera.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "253 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,438 m²)",
+      "Terrace (1400 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4500000,
+      "refurbishmentBudget": 225000,
+      "legalAndClosingCosts": 180000,
+      "operatingReserve": 90000,
+      "totalProjectCost": 4995000,
+      "projectedAnnualGrossRent": 540000,
+      "estimatedOperatingExpenses": 90000,
+      "projectedAnnualNetRent": 450000,
+      "estimatedNetYield": 10,
+      "estimatedCapitalGainYield": 5.5,
+      "totalEstimatedYield": 15.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-3774-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-3774",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-3774-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-3774-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 95,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 253,
+    "bedrooms": 5,
+    "bathrooms": 4,
+    "amenities": [
+      "House",
+      "253 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,438 m²)",
+      "Terrace (1400 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-3774",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-3774/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-3774/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-3996",
+    "slug": "kp1-3996-paris",
+    "title": "Duplex with unique view of the Arc de Triomphe",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/4e1dd51b1174dee18d319e7582a8d4.jpg",
+      "https://files.kretzrealestate.com/4586ea4ad31d39513d64871d6ae5d3d7.jpg",
+      "https://files.kretzrealestate.com/ca149b68763b216e39e3d9789f19b4d.jpg",
+      "https://files.kretzrealestate.com/293824e2b32df55edd42385b747af0.jpg",
+      "https://files.kretzrealestate.com/ac5424b877ab379fa58e5932aee4b49d.jpg",
+      "https://files.kretzrealestate.com/2f33612c9baaa7ec758e9ab255ce7bd.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/4e1dd51b1174dee18d319e7582a8d4.jpg",
+    "targetAmount": 19000000,
+    "fundedAmount": 17100000,
+    "tokenPrice": 100,
+    "totalTokens": 190000,
+    "availableTokens": 19000,
+    "estimatedAnnualYield": 8.2,
+    "capitalAppreciationYield": 3.8,
+    "totalEstimatedReturn": 12,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P13996",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7e91ed1a",
+    "description": "Paris XVI - Facing the Arc de Triomphe, on the top 2 floors of one of the prestigious Hotel des Maréchaux, 530m2 duplex apartment. Entirely renovated with high-quality materials.\nOn 1st level: double living room, dining room. 1 master suite, 2 bedrooms, 2 bathrooms, kitchen and pantry.\n2nd level: 4 bedrooms, 4 bathrooms. TV lounge. Linen room. Parking for 1 vehicle. 1 cellar. 5-minute walk to restaurants, cinemas, shops and schools.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Duplex / Penthouse",
+      "530 m²",
+      "Film",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 19000000,
+      "refurbishmentBudget": 950000,
+      "legalAndClosingCosts": 760000,
+      "operatingReserve": 380000,
+      "totalProjectCost": 21090000,
+      "projectedAnnualGrossRent": 1869600,
+      "estimatedOperatingExpenses": 311600,
+      "projectedAnnualNetRent": 1558000,
+      "estimatedNetYield": 8.2,
+      "estimatedCapitalGainYield": 3.8,
+      "totalEstimatedYield": 12
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-3996-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-3996",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-3996-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-3996-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 108,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 530,
+    "bedrooms": 7,
+    "bathrooms": 6,
+    "amenities": [
+      "Duplex / Penthouse",
+      "530 m²",
+      "Film",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-3996",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-3996/duplex/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-3996/duplex/"
+  },
+  {
+    "id": "prop-kretz-kp1-5606b",
+    "slug": "kp1-5606b-paris",
+    "title": "Mansion",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/8ea96ea88eac7013d9d6445c14583f8e.jpg",
+      "https://files.kretzrealestate.com/5f68ed06338c958e1f29771fb72f95.jpg",
+      "https://files.kretzrealestate.com/3878b89cedf6e663d4a249fede884164.jpg",
+      "https://files.kretzrealestate.com/6b97e8849bc38b8c62c6f9299fe419d.jpg",
+      "https://files.kretzrealestate.com/68db638c715b71bca66facdd1478ca.jpg",
+      "https://files.kretzrealestate.com/40dee2423eb7563c1b413e4a5c07d7c.jpg",
+      "https://files.kretzrealestate.com/29e25f6e41af1c52d91aef6f0619b.jpg",
+      "https://files.kretzrealestate.com/8a52d74d368ce3723241902d7d093e9.jpg",
+      "https://files.kretzrealestate.com/6a61bca09d4bbe7312b0de48bac6f89.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/8ea96ea88eac7013d9d6445c14583f8e.jpg",
+    "targetAmount": 5100000,
+    "fundedAmount": 3468000,
+    "tokenPrice": 100,
+    "totalTokens": 51000,
+    "availableTokens": 16320,
+    "estimatedAnnualYield": 11.9,
+    "capitalAppreciationYield": 6.1,
+    "totalEstimatedReturn": 18,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-15606B",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7f3b77e1",
+    "description": "Mansion\n\nSituated in the prestigious setting of Paris (Paris), this exceptional private mansion encompasses approximately 520 m² of refined living space, complemented by 12 magnificent rooms including 7 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "520 m²",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5100000,
+      "refurbishmentBudget": 255000,
+      "legalAndClosingCosts": 204000,
+      "operatingReserve": 102000,
+      "totalProjectCost": 5661000,
+      "projectedAnnualGrossRent": 728280,
+      "estimatedOperatingExpenses": 121380,
+      "projectedAnnualNetRent": 606900,
+      "estimatedNetYield": 11.9,
+      "estimatedCapitalGainYield": 6.1,
+      "totalEstimatedYield": 18
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-5606B-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-5606B",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-5606B-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-5606B-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 121,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 520,
+    "bedrooms": 7,
+    "bathrooms": 6,
+    "amenities": [
+      "Private Mansion",
+      "520 m²",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Martin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "martin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-5606B",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-5606b/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-5606b/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-5704",
+    "slug": "kp1-5704-cannes",
+    "title": "Villa Sea View Cannes California",
+    "location": "Cannes, Cannes",
+    "city": "Cannes",
+    "country": "France",
+    "type": "Villa",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/cbcc2e608b69680fe4982467b4c3ca.jpg",
+      "https://files.kretzrealestate.com/c35484ca3fd8fe074102b5a55635776.jpg",
+      "https://files.kretzrealestate.com/f1162ae79e15652523a2757d5e4164.jpg",
+      "https://files.kretzrealestate.com/a8fa6f24ba52b55e1317e59891f64.jpg",
+      "https://files.kretzrealestate.com/7f83df9bce87702ef4636d33d742691f.jpg",
+      "https://files.kretzrealestate.com/16c084763931cefeb1c17878243b4c8a.jpg",
+      "https://files.kretzrealestate.com/b3dced22e9494d3f593782cf5248dc.jpg",
+      "https://files.kretzrealestate.com/2de6b4bbf412a7abbde1493a61b565.jpg",
+      "https://files.kretzrealestate.com/a3982492b76a2b21b7b773118963b29.jpg",
+      "https://files.kretzrealestate.com/4ec44919dc7e2573358d149273ac292.jpg",
+      "https://files.kretzrealestate.com/a7d19ba46d4470e6ef82fa4a756f729c.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/cbcc2e608b69680fe4982467b4c3ca.jpg",
+    "targetAmount": 6970000,
+    "fundedAmount": 6063900,
+    "tokenPrice": 100,
+    "totalTokens": 69700,
+    "availableTokens": 9061,
+    "estimatedAnnualYield": 10.1,
+    "capitalAppreciationYield": 4.4,
+    "totalEstimatedReturn": 14.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P15704",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7fe502a8",
+    "description": "350 m2 property renovated by a renowned architect, located in the prestigious Californie area of Cannes, with a dazzling sea view.\nAs soon as you enter, you'll be seduced by the reception area, followed by the winter lounge and dining room opening onto a terrace with a view of the outdoors. A separate fitted kitchen adjoins the dining room to complete this level.\nThe middle floor offers 3 en suite bedrooms.\nThe garden level features a beautiful space open to the outdoors, with a summer kitchen and living room. Two en suite bedrooms complete this level.\nIn the annex, you'll find a 50m2 top-of-the-range gym, fully equipped with ExclusiveFit machines.\nAn elevator serves all levels, facilitating access.\nOutside, you'll find a spacious terrace, a wooded garden and an infinity pool with a breathtaking sea view.\nTwo enclosed garages and a video surveillance security system ensure your comfort and peace of mind.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "350 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (825 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6970000,
+      "refurbishmentBudget": 348500,
+      "legalAndClosingCosts": 278800,
+      "operatingReserve": 139400,
+      "totalProjectCost": 7736700,
+      "projectedAnnualGrossRent": 844764,
+      "estimatedOperatingExpenses": 140794,
+      "projectedAnnualNetRent": 703970,
+      "estimatedNetYield": 10.1,
+      "estimatedCapitalGainYield": 4.4,
+      "totalEstimatedYield": 14.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-5704-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-5704",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-5704-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-5704-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 134,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 350,
+    "bedrooms": 5,
+    "bathrooms": 5,
+    "amenities": [
+      "Villa",
+      "350 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (825 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-5704",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-5704/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-5704/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-5763w",
+    "slug": "kp1-5763w-beziers",
+    "title": "Exceptional castle near the beaches",
+    "location": "Beziers, Montpellier",
+    "city": "Beziers",
+    "country": "France",
+    "type": "Château",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/fb3bab1a7278eb92b1d33c6eff16d7.jpg",
+      "https://files.kretzrealestate.com/245891a8ef69374891f3d15418e3b79.jpg",
+      "https://files.kretzrealestate.com/ba89a323563b8852edc585a6665fc60.jpg",
+      "https://files.kretzrealestate.com/569d02d1d6ddd745590a8c41634ee9.jpg",
+      "https://files.kretzrealestate.com/d852937d73a0a28c7c1e768368dd8d6f.jpg",
+      "https://files.kretzrealestate.com/7dc4f5599847b8af728a799418958b4f.jpg",
+      "https://files.kretzrealestate.com/5613ca1ed6deca6e18a3691627f455.jpg",
+      "https://files.kretzrealestate.com/f58c31aea568335ea6bbe518b6d5c81.jpg",
+      "https://files.kretzrealestate.com/1a568d295525a0e9e8bcdbb27daa1687.jpg",
+      "https://files.kretzrealestate.com/2ddaa724d8976277f20fbcfe96df3d.jpg",
+      "https://files.kretzrealestate.com/2663f57821e8d6ee5888d47273abfa1.jpg",
+      "https://files.kretzrealestate.com/e880c2a643b44bae2385cc56de3ee13.jpg",
+      "https://files.kretzrealestate.com/5aae5e2bead7c72746997d7d3369b2bc.jpg",
+      "https://files.kretzrealestate.com/f29ec192ddff55f75eb467eeef0ccae.jpg",
+      "https://files.kretzrealestate.com/ec9a095ce6d6db96150dfa251ac5622.jpg",
+      "https://files.kretzrealestate.com/e91163374b0b8f7a9fabbff672b4dd3.jpg",
+      "https://files.kretzrealestate.com/1fcb1628ec6b014151bbf90a7e827eb.jpg",
+      "https://files.kretzrealestate.com/58d6a14e406cf0cfca69c7ee919ea43f.jpg",
+      "https://files.kretzrealestate.com/9a48a03ed17fc2783542a980ac622ad.jpg",
+      "https://files.kretzrealestate.com/b692a476e913d57c839576e356830f0.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/fb3bab1a7278eb92b1d33c6eff16d7.jpg",
+    "targetAmount": 4995000,
+    "fundedAmount": 3246750,
+    "tokenPrice": 100,
+    "totalTokens": 49950,
+    "availableTokens": 17483,
+    "estimatedAnnualYield": 8.3,
+    "capitalAppreciationYield": 6.7,
+    "totalEstimatedReturn": 15,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-15763W",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a108e8d6f",
+    "description": "Exclusively, 19th century castle, incorporating the architectural codes of the Loire castles and developing nearly 1,300m² on a park of more than 3 hectares with 800m² of outbuildings. Completely restored recently, this castle presents many remarkable architectural elements and ornamentations. More than 400m² of reception rooms, 3 kitchens, pantry, 9 suites and an office. The last level of 300m² remains to be fitted out. The perfectly maintained park houses a swimming pool with pool house and summer kitchen, a former hunting lodge of approximately 150m² with terrace, a guest house of 70m², an apartment of 80m² with living room, kitchen, 2 bedrooms and 1 bathroom, a mazet, 60m² garage, old stables and several barns and shelters. In the immediate vicinity of the Canal du Midi, TGV station 10 minutes away, beaches 15 minutes away, airport 20 minutes away and 45 minutes from Montpellier",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Château",
+      "2000 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (32,000 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4995000,
+      "refurbishmentBudget": 249750,
+      "legalAndClosingCosts": 199800,
+      "operatingReserve": 99900,
+      "totalProjectCost": 5544450,
+      "projectedAnnualGrossRent": 497502,
+      "estimatedOperatingExpenses": 82917,
+      "projectedAnnualNetRent": 414585,
+      "estimatedNetYield": 8.3,
+      "estimatedCapitalGainYield": 6.7,
+      "totalEstimatedYield": 15
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-5763W-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-5763W",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-5763W-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-5763W-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 147,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 2000,
+    "bedrooms": 13,
+    "bathrooms": 10,
+    "amenities": [
+      "Château",
+      "2000 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (32,000 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Olivier Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "olivier@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-5763W",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-5763w/castle/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-5763w/castle/"
+  },
+  {
+    "id": "prop-kretz-kp1-8590a",
+    "slug": "kp1-8590a-saint-tropez",
+    "title": "New apartment at the foot of Place des Lices in Saint-Tropez",
+    "location": "Saint Tropez, St-tropez",
+    "city": "Saint Tropez",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/45f052b49abe0b4fe8eb139a021325d.jpg",
+      "https://files.kretzrealestate.com/ee4c4a9635497fe4611ade53387753c6.jpg",
+      "https://files.kretzrealestate.com/9ffcb441293eaee053ba751f65b19a3a.jpg",
+      "https://files.kretzrealestate.com/7e92f02b41d698ae8e01a38b62c58c.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/45f052b49abe0b4fe8eb139a021325d.jpg",
+    "targetAmount": 5600000,
+    "fundedAmount": 4704000,
+    "tokenPrice": 100,
+    "totalTokens": 56000,
+    "availableTokens": 8960,
+    "estimatedAnnualYield": 12,
+    "capitalAppreciationYield": 5,
+    "totalEstimatedReturn": 17,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-18590A",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a11381836",
+    "description": "Saint-Tropez. At the foot of Place des Lices, magnificent contemporary garden-level apartment of approx. 171 m2 featuring an entrance hall, fitted kitchen and 62 m2 living space, all opening onto a terrace overlooking the pool and garden, 4 en suite bedrooms, each with its own balcony.\nThis exceptional apartment is set in the heart of a garden planted with Mediterranean trees, umbrella pines and a 15 m x 3.4 m tiled, stone-tone swimming pool.\nAn elevator will serve the landing of each apartment.\nGarage (extra): box with motorized door, electric vehicle charging station.\nSecure property, videophone, burglar-proof entrance door.\nAn exceptional address in the heart of Saint-Tropez.\nClose to the famous Place des Lices market, a 5-minute walk from the port, its restaurants and stores. Less than 10 minutes by car from the sandy beaches of Pampelonne.\nVEFA sale.\nFor further information, please contact our agent Nathalie Normand on 33 6 34 15 83 93 or by e-mail nathalie@kretzrealestate.com",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "171 m²",
+      "Swimming Pool",
+      "Private Grounds (502 m²)",
+      "Terrace (66 m²)",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5600000,
+      "refurbishmentBudget": 280000,
+      "legalAndClosingCosts": 224000,
+      "operatingReserve": 112000,
+      "totalProjectCost": 6216000,
+      "projectedAnnualGrossRent": 806400,
+      "estimatedOperatingExpenses": 134400,
+      "projectedAnnualNetRent": 672000,
+      "estimatedNetYield": 12,
+      "estimatedCapitalGainYield": 5,
+      "totalEstimatedYield": 17
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-8590A-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-8590A",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-8590A-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-8590A-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 160,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 171,
+    "bedrooms": 4,
+    "bathrooms": 2,
+    "amenities": [
+      "Apartment",
+      "171 m²",
+      "Swimming Pool",
+      "Private Grounds (502 m²)",
+      "Terrace (66 m²)",
+      "Balcony"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-8590A",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-8590a/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-8590a/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-8733",
+    "slug": "kp1-8733-paris",
+    "title": "Exceptional apartment in a private villa in the heart of the 16th arrondissement.",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/d67953758a3e93a1467ce9127bcf12.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/d67953758a3e93a1467ce9127bcf12.jpg",
+    "targetAmount": 8900000,
+    "fundedAmount": 5518000,
+    "tokenPrice": 100,
+    "totalTokens": 89000,
+    "availableTokens": 33820,
+    "estimatedAnnualYield": 10.2,
+    "capitalAppreciationYield": 7.3,
+    "totalEstimatedReturn": 17.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P18733",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a11e1a2fd",
+    "description": "Exceptional apartment in a private villa in the heart of the 16th arrondissement.\n\nSituated in the prestigious setting of Paris (Paris), this exceptional apartment encompasses approximately 309 m² of refined living space, complemented by 8 magnificent rooms including 5 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "309 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 8900000,
+      "refurbishmentBudget": 445000,
+      "legalAndClosingCosts": 356000,
+      "operatingReserve": 178000,
+      "totalProjectCost": 9879000,
+      "projectedAnnualGrossRent": 1089360,
+      "estimatedOperatingExpenses": 181560,
+      "projectedAnnualNetRent": 907800,
+      "estimatedNetYield": 10.2,
+      "estimatedCapitalGainYield": 7.3,
+      "totalEstimatedYield": 17.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-8733-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-8733",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-8733-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-8733-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 173,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 309,
+    "bedrooms": 5,
+    "bathrooms": 4,
+    "amenities": [
+      "Apartment",
+      "309 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-8733",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-8733/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-8733/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-9123",
+    "slug": "kp1-9123-bidart",
+    "title": "Exceptional Off-Market Property - Rare Seafront - Basque Coast",
+    "location": "Bidart, Biarritz",
+    "city": "Bidart",
+    "country": "France",
+    "type": "Villa",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/70509e8d3be778eb7cf29fbc76b6743.jpg",
+      "https://files.kretzrealestate.com/4b7b58c7cd0e406b4ed8ca8794d62f.jpg",
+      "https://files.kretzrealestate.com/b24b2b1618562c11b827aa6815e017b7.jpg",
+      "https://files.kretzrealestate.com/6ad21efe13ec5f0b737e7837949f64.jpg",
+      "https://files.kretzrealestate.com/6633df36cb431d8f454cc2c83fad45.jpg",
+      "https://files.kretzrealestate.com/e3faa779db4f73c8142343ee69fffd.jpg",
+      "https://files.kretzrealestate.com/225eca1b652cb772ff86ead0a16c8384.jpg",
+      "https://files.kretzrealestate.com/f1ecd05fc3a993bb4a7a7f97c8b09539.jpg",
+      "https://files.kretzrealestate.com/6f11e3c1874cb465acff5e0817c511c.jpg",
+      "https://files.kretzrealestate.com/43721d5a6a4eb56e41268717cd5d445a.jpg",
+      "https://files.kretzrealestate.com/44ae61f227958d1946ff89e52a1f477.jpg",
+      "https://files.kretzrealestate.com/1cd774ad5eb73e3ab33c3821ffb5f6c.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/70509e8d3be778eb7cf29fbc76b6743.jpg",
+    "targetAmount": 15700000,
+    "fundedAmount": 12717000,
+    "tokenPrice": 100,
+    "totalTokens": 157000,
+    "availableTokens": 29830,
+    "estimatedAnnualYield": 8.4,
+    "capitalAppreciationYield": 5.6,
+    "totalEstimatedReturn": 14,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P19123",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a128b2dc4",
+    "description": "Exceptional Off-Market Property - Rare Seafront - Basque Coast\n\nSituated in the prestigious setting of Bidart (Biarritz), this exceptional villa encompasses approximately 500 m² of refined living space, complemented by 12 magnificent rooms including 7 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "500 m²",
+      "Swimming Pool",
+      "Private Grounds (51,518 m²)",
+      "Terrace (67 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 15700000,
+      "refurbishmentBudget": 785000,
+      "legalAndClosingCosts": 628000,
+      "operatingReserve": 314000,
+      "totalProjectCost": 17427000,
+      "projectedAnnualGrossRent": 1582560,
+      "estimatedOperatingExpenses": 263760,
+      "projectedAnnualNetRent": 1318800,
+      "estimatedNetYield": 8.4,
+      "estimatedCapitalGainYield": 5.6,
+      "totalEstimatedYield": 14
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9123-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9123",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9123-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9123-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 186,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 500,
+    "bedrooms": 7,
+    "bathrooms": 6,
+    "amenities": [
+      "Villa",
+      "500 m²",
+      "Swimming Pool",
+      "Private Grounds (51,518 m²)",
+      "Terrace (67 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Raphaël Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "raphael@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Family Associate"
+    },
+    "ref": "KP1-9123",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9123/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9123/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-9380",
+    "slug": "kp1-9380-paris",
+    "title": "Penthouse with terrace",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg",
+      "https://files.kretzrealestate.com/919fa294cce204efdfcd472af8515.jpg",
+      "https://files.kretzrealestate.com/ed3771c79e925b3661a6c6ce7f03e59.jpg",
+      "https://files.kretzrealestate.com/20d083a57c1b60c232751dc9c8da4958.jpg",
+      "https://files.kretzrealestate.com/a7a92134ad45ded99ed0744426fea27f.jpg",
+      "https://files.kretzrealestate.com/e25f219b3163213085b0691e8bd2b25c.jpg",
+      "https://files.kretzrealestate.com/7027134ecc789e66f0ea45fa524bd1ae.jpg",
+      "https://files.kretzrealestate.com/cd31da12f678a4e2211acf27f3477f.jpg",
+      "https://files.kretzrealestate.com/ddc18924d8873e2a863fd343aef79c2a.jpg",
+      "https://files.kretzrealestate.com/f3124fb751376e28e12eb5a38253395.jpg",
+      "https://files.kretzrealestate.com/dd2293c84daa63cd4836c29c72ae5e.jpg",
+      "https://files.kretzrealestate.com/e11eeeb240245ed3fe541ce8381fbda6.jpg",
+      "https://files.kretzrealestate.com/a822f8ebc41989ffaa2e994d622a897.jpg",
+      "https://files.kretzrealestate.com/8411ce3ad446c6f62619cfc04a90b61e.jpg",
+      "https://files.kretzrealestate.com/1e67458889bca4a14575c8f57d97c.jpg",
+      "https://files.kretzrealestate.com/47bf588f17c1554bf3f9ff6cc9bca041.jpg",
+      "https://files.kretzrealestate.com/f84812666141a6c9e7239eec3162178c.jpg",
+      "https://files.kretzrealestate.com/c993fa6a77e35a5742d557c9b76dae.jpg",
+      "https://files.kretzrealestate.com/2e5d8b6457782458b5eb48aa2d5f799.jpg",
+      "https://files.kretzrealestate.com/be3fee3d2dfee513766b264fae226d.jpg",
+      "https://files.kretzrealestate.com/2396b0b6ebbb39eb79e46751995a274e.jpg",
+      "https://files.kretzrealestate.com/99735ce4d66241e3148cddbcb9114a2c.jpg",
+      "https://files.kretzrealestate.com/456e512e14775c3b1eb998e93767563.jpg",
+      "https://files.kretzrealestate.com/9cb0bf30091cb5c4794844d51da5cd.jpg",
+      "https://files.kretzrealestate.com/883a176b484e8c7a88615356085d05c.jpg",
+      "https://files.kretzrealestate.com/934899937ef55bb44d5aff7d1699f11.jpg",
+      "https://files.kretzrealestate.com/d026f4a6a7f83850d494f5e697c6db.jpg",
+      "https://files.kretzrealestate.com/2e92a552e8727f84a5218c908f98d4.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg",
+    "targetAmount": 11600000,
+    "fundedAmount": 11600000,
+    "tokenPrice": 100,
+    "totalTokens": 116000,
+    "availableTokens": 0,
+    "estimatedAnnualYield": 12.1,
+    "capitalAppreciationYield": 3.9,
+    "totalEstimatedReturn": 16,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P19380",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1334b88b",
+    "description": "Exclusive listing. Paris Montmartre. Exceptional penthouse of approximately 220 sqm, fully renovated by a renowned architect. Loft-style living room, separate fully equipped kitchen. Master suite with walk-in closet and bathroom, plus an additional bedroom with its own bathroom. Second living area and open-plan kitchen under a glass veranda, offering breathtaking views over the rooftops of Paris, with direct access to a landscaped terrace, completely private and not overlooked, featuring views of the Sacré-Cœur and the Eiffel Tower.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Duplex / Penthouse",
+      "220 m²",
+      "Elevator Access",
+      "Terrace (130 m²)",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 11600000,
+      "refurbishmentBudget": 580000,
+      "legalAndClosingCosts": 464000,
+      "operatingReserve": 232000,
+      "totalProjectCost": 12876000,
+      "projectedAnnualGrossRent": 1684320,
+      "estimatedOperatingExpenses": 280720,
+      "projectedAnnualNetRent": 1403600,
+      "estimatedNetYield": 12.1,
+      "estimatedCapitalGainYield": 3.9,
+      "totalEstimatedYield": 16
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9380-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9380",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9380-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9380-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 199,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 220,
+    "bedrooms": 2,
+    "bathrooms": 3,
+    "amenities": [
+      "Duplex / Penthouse",
+      "220 m²",
+      "Elevator Access",
+      "Terrace (130 m²)",
+      "Balcony"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-9380",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9380/duplex/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9380/duplex/"
+  },
+  {
+    "id": "prop-kretz-kp1-9589",
+    "slug": "kp1-9589-paris",
+    "title": "Exceptional apartment Avenue Montaigne",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/c665eebb51624c2be2292fa4d4506289.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/c665eebb51624c2be2292fa4d4506289.jpg",
+    "targetAmount": 59000000,
+    "fundedAmount": 46020000,
+    "tokenPrice": 100,
+    "totalTokens": 590000,
+    "availableTokens": 129800,
+    "estimatedAnnualYield": 10.3,
+    "capitalAppreciationYield": 6.2,
+    "totalEstimatedReturn": 16.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P19589",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a13de4352",
+    "description": "Exceptional apartment Avenue Montaigne\n\nSituated in the prestigious setting of Paris (Paris), this exceptional apartment encompasses approximately 900 m² of refined living space, complemented by 15 magnificent rooms including 9 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "900 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 59000000,
+      "refurbishmentBudget": 2950000,
+      "legalAndClosingCosts": 2360000,
+      "operatingReserve": 1180000,
+      "totalProjectCost": 65490000,
+      "projectedAnnualGrossRent": 7292400,
+      "estimatedOperatingExpenses": 1215400,
+      "projectedAnnualNetRent": 6077000,
+      "estimatedNetYield": 10.3,
+      "estimatedCapitalGainYield": 6.2,
+      "totalEstimatedYield": 16.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9589-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9589",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9589-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9589-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 212,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 900,
+    "bedrooms": 9,
+    "bathrooms": 8,
+    "amenities": [
+      "Apartment",
+      "900 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-9589",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9589/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9589/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-1654",
+    "slug": "kp1-1654-neuilly-sur-seine",
+    "title": "Hotel Particulier Neuilly Saint James",
+    "location": "Neuilly Sur Seine, Hauts-de-Seine",
+    "city": "Neuilly Sur Seine",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/df479f9320837cbaf08d5156339b027.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/df479f9320837cbaf08d5156339b027.jpg",
+    "targetAmount": 16500000,
+    "fundedAmount": 16005000,
+    "tokenPrice": 100,
+    "totalTokens": 165000,
+    "availableTokens": 4950,
+    "estimatedAnnualYield": 8.5,
+    "capitalAppreciationYield": 4.5,
+    "totalEstimatedReturn": 13,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P11654",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1487ce19",
+    "description": "Hotel Particulier Neuilly Saint James\n\nSituated in the prestigious setting of Neuilly Sur Seine (Hauts-de-Seine), this exceptional private mansion encompasses approximately 725 m² of refined living space, complemented by 15 magnificent rooms including 9 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "725 m²",
+      "Private Grounds (800 m²)",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 16500000,
+      "refurbishmentBudget": 825000,
+      "legalAndClosingCosts": 660000,
+      "operatingReserve": 330000,
+      "totalProjectCost": 18315000,
+      "projectedAnnualGrossRent": 1683000,
+      "estimatedOperatingExpenses": 280500,
+      "projectedAnnualNetRent": 1402500,
+      "estimatedNetYield": 8.5,
+      "estimatedCapitalGainYield": 4.5,
+      "totalEstimatedYield": 13
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-1654-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-1654",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-1654-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-1654-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 225,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 725,
+    "bedrooms": 9,
+    "bathrooms": 8,
+    "amenities": [
+      "Private Mansion",
+      "725 m²",
+      "Private Grounds (800 m²)",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Martin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "martin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-1654",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-1654/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-1654/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-1139",
+    "slug": "kp1-1139-paris",
+    "title": "Hôtel Particulier d'exception dans une voie privée",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/5599747deaba0582b44297b4cce9180.jpg",
+      "https://files.kretzrealestate.com/e8b1175b63f71af1e8db6a98759b3ea1.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/5599747deaba0582b44297b4cce9180.jpg",
+    "targetAmount": 7500000,
+    "fundedAmount": 5625000,
+    "tokenPrice": 100,
+    "totalTokens": 75000,
+    "availableTokens": 18750,
+    "estimatedAnnualYield": 12.2,
+    "capitalAppreciationYield": 6.8,
+    "totalEstimatedReturn": 19,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P11139",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a153158e0",
+    "description": "Hôtel Particulier d'exception dans une voie privée\n\nSituated in the prestigious setting of Paris (Paris), this exceptional private mansion encompasses approximately 420 m² of refined living space, complemented by 10 magnificent rooms including 6 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "420 m²",
+      "Elevator Access",
+      "Terrace (34 m²)",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 7500000,
+      "refurbishmentBudget": 375000,
+      "legalAndClosingCosts": 300000,
+      "operatingReserve": 150000,
+      "totalProjectCost": 8325000,
+      "projectedAnnualGrossRent": 1098000,
+      "estimatedOperatingExpenses": 183000,
+      "projectedAnnualNetRent": 915000,
+      "estimatedNetYield": 12.2,
+      "estimatedCapitalGainYield": 6.8,
+      "totalEstimatedYield": 19
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-1139-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-1139",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-1139-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-1139-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 238,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 420,
+    "bedrooms": 6,
+    "bathrooms": 5,
+    "amenities": [
+      "Private Mansion",
+      "420 m²",
+      "Elevator Access",
+      "Terrace (34 m²)",
+      "Balcony"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-1139",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-1139/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-1139/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-2126",
+    "slug": "kp1-2126-rambouillet",
+    "title": "Exclusive Property",
+    "location": "Rambouillet, Yvelines",
+    "city": "Rambouillet",
+    "country": "France",
+    "type": "Estate / Property",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/6a2f270bdff8fd873488ff35d9ab033.jpg",
+      "https://files.kretzrealestate.com/9e78a6510d795b65657298dac2cc9b3.jpg",
+      "https://files.kretzrealestate.com/ecd3747d51f3e955491d8d785a766d.jpg",
+      "https://files.kretzrealestate.com/ebe880f33a48682c982632d1b2a4b429.jpg",
+      "https://files.kretzrealestate.com/a99b7514de52745b786f1948be84f87.jpg",
+      "https://files.kretzrealestate.com/3c1dcf835a7d7c886d2936cb25d8e4.jpg",
+      "https://files.kretzrealestate.com/f7c0b22e22a68c6d6648f0de2c52459.jpg",
+      "https://files.kretzrealestate.com/9c60d4196516a45e716e47bf86ace760.jpg",
+      "https://files.kretzrealestate.com/43263494cff9585ccf7935d36be89b26.jpg",
+      "https://files.kretzrealestate.com/349a52587d6eb9701e5710920276050.jpg",
+      "https://files.kretzrealestate.com/3eb74d8978dfdd2162de2c98a65c89ff.jpg",
+      "https://files.kretzrealestate.com/9be34521496ba934916406345159f55.jpg",
+      "https://files.kretzrealestate.com/79fd4be754ccfb8e88574e5695ec5.jpg",
+      "https://files.kretzrealestate.com/a12e71fd53e4892919e885673fcf2f1.jpg",
+      "https://files.kretzrealestate.com/19b5114cde347d0201de5e5941eff49.jpg",
+      "https://files.kretzrealestate.com/3c753cf0cdfd823f1c0744d8a0416a.jpg",
+      "https://files.kretzrealestate.com/dd1b9322e53d0bc4238b587d3dbc9d.jpg",
+      "https://files.kretzrealestate.com/5efcdcd1ff19d8ea2b6c79b08499c96.jpg",
+      "https://files.kretzrealestate.com/8791c32da82293a710f94ec985193765.jpg",
+      "https://files.kretzrealestate.com/c1f1ec0d37f4bca4b11eed6f3a53bd5.jpg",
+      "https://files.kretzrealestate.com/639add9cda13cb293b4dfc5e81d4a542.jpg",
+      "https://files.kretzrealestate.com/5485c5bb7e6b863be5b52c921a59cef.jpg",
+      "https://files.kretzrealestate.com/4148a59079ef61a11d519d56ea20.jpg",
+      "https://files.kretzrealestate.com/385e1dde9f48f56682ef6b724c8541e.jpg",
+      "https://files.kretzrealestate.com/b8c15ca8719fa92a6b6583d1b87b9a6.jpg",
+      "https://files.kretzrealestate.com/4688dc16ed669343cb996e7c63238b7.jpg",
+      "https://files.kretzrealestate.com/d7de5d3c813d8d95fdc8329eeb9fe8e.jpg",
+      "https://files.kretzrealestate.com/ea1042fd45f1d5d3f2796b12e37fbb9.jpg",
+      "https://files.kretzrealestate.com/96ab1e8edb8c7ca6dc38a4b541b6c.jpg",
+      "https://files.kretzrealestate.com/8faf5978566356979e259e145eaa75.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/6a2f270bdff8fd873488ff35d9ab033.jpg",
+    "targetAmount": 16000000,
+    "fundedAmount": 15040000,
+    "tokenPrice": 100,
+    "totalTokens": 160000,
+    "availableTokens": 9600,
+    "estimatedAnnualYield": 10.4,
+    "capitalAppreciationYield": 5.1,
+    "totalEstimatedReturn": 15.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P12126",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a15dae3a7",
+    "description": "RAMBOUILLET - An equestrian estate located approximately 50 km west of Paris, near the Palace of Versailles.\nSet on 41 fully enclosed hectares with over 3,300 m² of living space, it offers a world apart, untouched by time. This former 18th-century hunting lodge was renovated in the 1990s and has retained all its elegance. \n\nThe estate comprises several buildings, a professional stud farm, high-end hospitality facilities, and numerous independent accommodations—lodges, chalets, and guesthouses—forming a complex that is as exclusive as it is versatile.\n\nUpon entering, a majestic driveway gradually reveals a secluded valley, a true natural setting where the buildings are arranged around a central fountain.\nThe hunting lodge, the manor house, the reception and relaxation areas, a spectacular Baltard-inspired glass roof, and the various accommodation units can accommodate up to 150 guests in absolute comfort.\n\nThe experience is enhanced by exceptional amenities: an indoor pool, a tropical aquarium, a wellness area with a sauna, a private screening room, and reception lounges featuring elegant spaces and luxurious finishes… Each space has been designed to offer an atmosphere that is refined, warm, and intimate.\n\nThis exceptional venue is ideally suited for hosting large-scale events, whether private or professional: extraordinary weddings, exclusive seminars",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Estate / Property",
+      "3300 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (410,000 m²)",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 16000000,
+      "refurbishmentBudget": 800000,
+      "legalAndClosingCosts": 640000,
+      "operatingReserve": 320000,
+      "totalProjectCost": 17760000,
+      "projectedAnnualGrossRent": 1996800,
+      "estimatedOperatingExpenses": 332800,
+      "projectedAnnualNetRent": 1664000,
+      "estimatedNetYield": 10.4,
+      "estimatedCapitalGainYield": 5.1,
+      "totalEstimatedYield": 15.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-2126-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-2126",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-2126-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-2126-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 251,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 3300,
+    "bedrooms": 50,
+    "bathrooms": 10,
+    "amenities": [
+      "Estate / Property",
+      "3300 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (410,000 m²)",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-2126",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-2126/property/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-2126/property/"
+  },
+  {
+    "id": "prop-kretz-kp1-290",
+    "slug": "kp1-290-paris",
+    "title": "Hôtel Particulier with garden just a stone's throw from Passy",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/87ec232bc43b504877f487946947f1e7.jpg",
+      "https://files.kretzrealestate.com/104c414b3b21a8fb67ed2221a999c27.jpg",
+      "https://files.kretzrealestate.com/e18ef0bd6d3ff3343476e628d5bda6e9.jpg",
+      "https://files.kretzrealestate.com/b1b16eb2bc5a69cda73e6268439bf.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/87ec232bc43b504877f487946947f1e7.jpg",
+    "targetAmount": 8200000,
+    "fundedAmount": 5904000,
+    "tokenPrice": 100,
+    "totalTokens": 82000,
+    "availableTokens": 22960,
+    "estimatedAnnualYield": 8.6,
+    "capitalAppreciationYield": 7.4,
+    "totalEstimatedReturn": 16,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1290",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a16846e6e",
+    "description": "Hôtel Particulier with garden just a stone's throw from Passy\n\nSituated in the prestigious setting of Paris (Paris), this exceptional private mansion encompasses approximately 500 m² of refined living space, complemented by 12 magnificent rooms including 7 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "500 m²",
+      "Elevator Access",
+      "Private Grounds (250 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 8200000,
+      "refurbishmentBudget": 410000,
+      "legalAndClosingCosts": 328000,
+      "operatingReserve": 164000,
+      "totalProjectCost": 9102000,
+      "projectedAnnualGrossRent": 846240,
+      "estimatedOperatingExpenses": 141040,
+      "projectedAnnualNetRent": 705200,
+      "estimatedNetYield": 8.6,
+      "estimatedCapitalGainYield": 7.4,
+      "totalEstimatedYield": 16
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-290-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-290",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-290-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-290-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 54,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 500,
+    "bedrooms": 7,
+    "bathrooms": 6,
+    "amenities": [
+      "Private Mansion",
+      "500 m²",
+      "Elevator Access",
+      "Private Grounds (250 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Martin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "martin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-290",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-290/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-290/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-6400",
+    "slug": "kp1-6400-ville-d-avray",
+    "title": "Family home on the edge of the park",
+    "location": "Ville D Avray, Hauts-de-Seine",
+    "city": "Ville D Avray",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/56825c1c57c7324e72a9e82d6635b0.jpg",
+      "https://files.kretzrealestate.com/c86d80d6433f49a3f4d7e46fdfd1cdf8.jpg",
+      "https://files.kretzrealestate.com/23e491cbc6c55cf438c1454fa0a6b37d.jpg",
+      "https://files.kretzrealestate.com/c8c0f2e670896ad2968d6346444779b.jpg",
+      "https://files.kretzrealestate.com/e4544a43d87536ea51b741df772ef2.jpg",
+      "https://files.kretzrealestate.com/c1338bcf96c6d9574ff5218aa6d674.jpg",
+      "https://files.kretzrealestate.com/f98250acb495c5acd8b4afbecc36be6d.jpg",
+      "https://files.kretzrealestate.com/540d3fb518d665455aa534bd4dff424.jpg",
+      "https://files.kretzrealestate.com/93acc965145da8ba6c3cd8494e77d5f.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/56825c1c57c7324e72a9e82d6635b0.jpg",
+    "targetAmount": 5900000,
+    "fundedAmount": 5369000,
+    "tokenPrice": 100,
+    "totalTokens": 59000,
+    "availableTokens": 5310,
+    "estimatedAnnualYield": 12.3,
+    "capitalAppreciationYield": 5.7,
+    "totalEstimatedReturn": 18,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P16400",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a172df935",
+    "description": "Exclusive, Ville d'Avray, character house of 500 m2 on 3 levels on a 3600 m2 plot of land, quietly situated on the edge of the Parc de Saint Cloud. First floor: entrance hall, fitted kitchen opening onto terrace, dining room, open-plan living room with fireplace opening onto terrace and garden, TV room. Second floor: study, 2 bedrooms, master suite with dressing room and bathroom, shower room. Second floor: 3 bedrooms, bathroom. South/west exposure, large garage, walled garden with century-old trees. Close to shops, schools and transport.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "500 m²",
+      "Private Grounds (3,600 m²)"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5900000,
+      "refurbishmentBudget": 295000,
+      "legalAndClosingCosts": 236000,
+      "operatingReserve": 118000,
+      "totalProjectCost": 6549000,
+      "projectedAnnualGrossRent": 870840,
+      "estimatedOperatingExpenses": 145140,
+      "projectedAnnualNetRent": 725700,
+      "estimatedNetYield": 12.3,
+      "estimatedCapitalGainYield": 5.7,
+      "totalEstimatedYield": 18
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-6400-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-6400",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-6400-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-6400-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 67,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 500,
+    "bedrooms": 6,
+    "bathrooms": 6,
+    "amenities": [
+      "House",
+      "500 m²",
+      "Private Grounds (3,600 m²)"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-6400",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-6400/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-6400/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-735",
+    "slug": "kp1-735-paris",
+    "title": "Hotel Particulier Familial Paris XVII",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/eef0adc97c84bf51b33bf920409db9a2.jpg",
+      "https://files.kretzrealestate.com/9d43325e4f61aa719dd9975dfb7780.jpg",
+      "https://files.kretzrealestate.com/2bee1b6ac23e2df9fb79e1958e4a2b9.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/eef0adc97c84bf51b33bf920409db9a2.jpg",
+    "targetAmount": 4690000,
+    "fundedAmount": 3236100,
+    "tokenPrice": 100,
+    "totalTokens": 46900,
+    "availableTokens": 14539,
+    "estimatedAnnualYield": 10.5,
+    "capitalAppreciationYield": 4,
+    "totalEstimatedReturn": 14.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-KP1735",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a17d783fc",
+    "description": "Hotel Particulier Familial Paris XVII\n\nSituated in the prestigious setting of Paris (Paris), this exceptional private mansion encompasses approximately 401 m² of refined living space, complemented by 10 magnificent rooms including 6 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "401 m²",
+      "Elevator Access",
+      "Private Grounds (38 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4690000,
+      "refurbishmentBudget": 234500,
+      "legalAndClosingCosts": 187600,
+      "operatingReserve": 93800,
+      "totalProjectCost": 5205900,
+      "projectedAnnualGrossRent": 590940,
+      "estimatedOperatingExpenses": 98490,
+      "projectedAnnualNetRent": 492450,
+      "estimatedNetYield": 10.5,
+      "estimatedCapitalGainYield": 4,
+      "totalEstimatedYield": 14.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-735-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-735",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-735-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-735-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 80,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 401,
+    "bedrooms": 6,
+    "bathrooms": 5,
+    "amenities": [
+      "Private Mansion",
+      "401 m²",
+      "Elevator Access",
+      "Private Grounds (38 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-735",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-735/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-735/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-1626",
+    "slug": "kp1-1626-paris",
+    "title": "Exceptional penthouse overlooking the Arc de Triomphe.",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/57597262d0e282a1c34ff9e1a4a539d1.jpg",
+      "https://files.kretzrealestate.com/94e9be92eb586591f6153c851a193e.jpg",
+      "https://files.kretzrealestate.com/11c3f6decdda4c1d3ef7f659d5caac58.jpg",
+      "https://files.kretzrealestate.com/8476ca35ac81b192d051e61da721bb5.jpg",
+      "https://files.kretzrealestate.com/a6cae746ac8ecf9ecda17b762da6f23.jpg",
+      "https://files.kretzrealestate.com/d71bb124be379d278962ea11c6b5c82.jpg",
+      "https://files.kretzrealestate.com/95f9cf6c58f021f086c5a991c269730.jpg",
+      "https://files.kretzrealestate.com/9944106352802a5475742854e82b99c.jpg",
+      "https://files.kretzrealestate.com/374661b8f3f53d97357ba865582994a3.jpg",
+      "https://files.kretzrealestate.com/b9b5788b238c57f726e7c6a7fbce69.jpg",
+      "https://files.kretzrealestate.com/780159ddd58fba84c5dda4d1fb895df.jpg",
+      "https://files.kretzrealestate.com/ba67ebb0ac103cb83d5dbc7684ecca1d.jpg",
+      "https://files.kretzrealestate.com/43293dab5cafd516f01216f6d40c4.jpg",
+      "https://files.kretzrealestate.com/e7c0616bb0cbd9793b89b84fd2e6d1ae.jpg",
+      "https://files.kretzrealestate.com/c17f5a09dc69158a1403f4a948d15db.jpg",
+      "https://files.kretzrealestate.com/28654d3146615f925e92c5fb236b84.jpg",
+      "https://files.kretzrealestate.com/ae22aaecb0473d3129f0b1a8a23ba43e.jpg",
+      "https://files.kretzrealestate.com/e95759925d459d71aea05c69d3ddb7bc.jpg",
+      "https://files.kretzrealestate.com/6a14c36766d2b9ee6234b67e892bcc2a.jpg",
+      "https://files.kretzrealestate.com/18fe41a081f64d1dcc49b086d83d8979.jpg",
+      "https://files.kretzrealestate.com/5e87aeb1b98f69157a08a667e70e138.jpg",
+      "https://files.kretzrealestate.com/f3219b23da66763536836b5edec4dfa0.jpg",
+      "https://files.kretzrealestate.com/4c7aab725b27c7a62619c2f714d72d.jpg",
+      "https://files.kretzrealestate.com/8eee559324843286ac69efd7e15903f.jpg",
+      "https://files.kretzrealestate.com/31050dc7cc5f8f64cc584e64886a58c.jpg",
+      "https://files.kretzrealestate.com/27e61d4e25dd83cb19653da6a4a21eef.jpg",
+      "https://files.kretzrealestate.com/c28c2d88bc9e27d7fb65be44d387c917.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/57597262d0e282a1c34ff9e1a4a539d1.jpg",
+    "targetAmount": 4700000,
+    "fundedAmount": 4136000,
+    "tokenPrice": 100,
+    "totalTokens": 47000,
+    "availableTokens": 5640,
+    "estimatedAnnualYield": 8.7,
+    "capitalAppreciationYield": 6.3,
+    "totalEstimatedReturn": 15,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P11626",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a18810ec3",
+    "description": "Exceptional penthouse overlooking the Arc de Triomphe.\n\nSituated in the prestigious setting of Paris (Paris), this exceptional apartment encompasses approximately 195 m² of refined living space, complemented by 6 magnificent rooms including 4 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "195 m²",
+      "Elevator Access",
+      "Terrace (70 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4700000,
+      "refurbishmentBudget": 235000,
+      "legalAndClosingCosts": 188000,
+      "operatingReserve": 94000,
+      "totalProjectCost": 5217000,
+      "projectedAnnualGrossRent": 490680,
+      "estimatedOperatingExpenses": 81780,
+      "projectedAnnualNetRent": 408900,
+      "estimatedNetYield": 8.7,
+      "estimatedCapitalGainYield": 6.3,
+      "totalEstimatedYield": 15
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-1626-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-1626",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-1626-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-1626-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 93,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 195,
+    "bedrooms": 4,
+    "bathrooms": 3,
+    "amenities": [
+      "Apartment",
+      "195 m²",
+      "Elevator Access",
+      "Terrace (70 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-1626",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-1626/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-1626/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-9821",
+    "slug": "kp1-9821-guerande",
+    "title": "Prestigieuse Demeure Contemporaine de 872 m² sur un Domaine Boisé de Plus d’1 Hectare",
+    "location": "Guerande, La Baule",
+    "city": "Guerande",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/cd4d3c4d3a9bcbd754c2395e28a51a9a.jpg",
+      "https://files.kretzrealestate.com/9a52deea53e30b3eda7e476606464a3.jpg",
+      "https://files.kretzrealestate.com/b0dca4943ded4245b6efd55713d78d.jpg",
+      "https://files.kretzrealestate.com/a682625b67c960c91b0c4e5e3c1dc3.jpg",
+      "https://files.kretzrealestate.com/32596e806f4ac4caca90ed9b7e94604a.jpg",
+      "https://files.kretzrealestate.com/edccf4474e3ce126cb65526ec6accf.jpg",
+      "https://files.kretzrealestate.com/806adc4a2e3271b89ce653e9ddc12e1b.jpg",
+      "https://files.kretzrealestate.com/3ff0b541d84a7565fd95ed0226d8fbb.jpg",
+      "https://files.kretzrealestate.com/134cda35b435a47ce3a9455785dd58e7.jpg",
+      "https://files.kretzrealestate.com/249810fb8869ea6e635b2024a4b14cd5.jpg",
+      "https://files.kretzrealestate.com/2d24ce211e65c0621dc0733f86ded83f.jpg",
+      "https://files.kretzrealestate.com/8cd32f7831b51961361b74a2d93753.jpg",
+      "https://files.kretzrealestate.com/fa4bf3af7615697d7271cbeddb79db5d.jpg",
+      "https://files.kretzrealestate.com/bcadb32eca69471ede73211c1271b5f1.jpg",
+      "https://files.kretzrealestate.com/a3ea3179b1cae5227aa1c1420b646ae.jpg",
+      "https://files.kretzrealestate.com/cec30cf6eecc234225139eb3de155.jpg",
+      "https://files.kretzrealestate.com/e36a7c6da5e8b070d3d8ffbde978f7e7.jpg",
+      "https://files.kretzrealestate.com/65256bdd2bb92b625c882fd7266876c0.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/cd4d3c4d3a9bcbd754c2395e28a51a9a.jpg",
+    "targetAmount": 4800000,
+    "fundedAmount": 3168000,
+    "tokenPrice": 100,
+    "totalTokens": 48000,
+    "availableTokens": 16320,
+    "estimatedAnnualYield": 12.4,
+    "capitalAppreciationYield": 4.6,
+    "totalEstimatedReturn": 17,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P19821",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a192a998a",
+    "description": "Cette propriété d’exception, d’une superficie de 872 m² répartis sur quatre niveaux, allie luxe, élégance intemporelle et modernité. Conçue avec des matériaux haut de gamme et des équipements prestigieux, elle s’inscrit dans un cadre naturel privilégié de plus d’un hectare, où pins majestueux et une pièce d’eau apportent une atmosphère de sérénité et de raffinement.\nRez-de-chaussée : Un spacieux hall d’entrée ouvre sur une vaste pièce de réception de 150 m², inondée de lumière grâce à ses grandes baies vitrées et offrant un accès direct à des terrasses extérieures. À gauche, une cuisine équipée haut de gamme avec espace repas et une arrière-cuisine pratique. À droite, un bureau, une salle d’eau avec toilettes, et un espace de circulation bien pensé. Une seconde entrée via le garage mène à un hall lumineux connecté au séjour.\nPremier étage : Un palier dessert une magnifique suite parentale de 41 m², comprenant une salle de bains avec toilettes, un balcon, une terrasse couverte, ainsi qu’une deuxième chambre de 30 m² dotée de sa salle d’eau, toilettes et d’un espace bureau. Un escalier en colimaçon blanc, véritable pièce artistique, conduit à un palier desservant une chambre supplémentaire, une salle de bains, des toilettes, des rangements, et donnant accès à une grande terrasse orientée Ouest.\nRez-de-jardin : Un espace détente exclusif avec accès à une vaste terrasse. Une piscine rectangulaire s’intègre parfaitement à son environnement. Un bar et une cuisine d’été en bois massif, ainsi que des cabines pour un confort optimal. Un couloir dessert trois chambres supplémentaires, chacune avec salle d’eau et toilettes, et des baies vitrées ouvrant sur la terrasse.\nDernier niveau : Un espace dédié au bien-être et à la détente, comprenant une salle de cinéma, un sauna et un hammam. Un local technique complète cet étage.\nExtérieurs : Un terrain boisé de plus d’un hectare, planté de pins majestueux. Un bassin naturel entouré d’une végétation luxuriante, apportant fraîcheur et tranquillité. Deux puits artésiens pour une gestion optimale des ressources en eau.\nCette propriété, alliant luxe, calme et nature, offre une expérience de vie unique. Il est possible d’acquérir en complément (LOT n°2) : un terrain de 1 hectare 53 ares 76 centiares, comprenant une salle de sport avec vestiaire, un garage spacieux, une pièce d’eau ornée d’une fontaine, et un court de tennis. Cette acquisition porterait le prix total de l’ensemble, incluant la résidence principale, le parc arboré et le lot additionnel, à 5.775.000 €.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Contemporary House",
+      "872 m²",
+      "Swimming Pool",
+      "Private Grounds (10,000 m²)",
+      "Balcony",
+      "Jacuzzi / Spa",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4800000,
+      "refurbishmentBudget": 240000,
+      "legalAndClosingCosts": 192000,
+      "operatingReserve": 96000,
+      "totalProjectCost": 5328000,
+      "projectedAnnualGrossRent": 714240,
+      "estimatedOperatingExpenses": 119040,
+      "projectedAnnualNetRent": 595200,
+      "estimatedNetYield": 12.4,
+      "estimatedCapitalGainYield": 4.6,
+      "totalEstimatedYield": 17
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9821-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9821",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9821-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9821-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 106,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 872,
+    "bedrooms": 6,
+    "bathrooms": 8,
+    "amenities": [
+      "Contemporary House",
+      "872 m²",
+      "Swimming Pool",
+      "Private Grounds (10,000 m²)",
+      "Balcony",
+      "Jacuzzi / Spa",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-9821",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9821/maiscontemporaine/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9821/maiscontemporaine/"
+  },
+  {
+    "id": "prop-kretz-kp1-9020",
+    "slug": "kp1-9020-paris",
+    "title": "Exclusive to Paris 16 - Victor Hugo. Mansion",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg",
+      "https://files.kretzrealestate.com/28161d1bfcd6c7bf1b7b7bdf4d55ca.jpg",
+      "https://files.kretzrealestate.com/a6c120ffad12243faa3022a591bf4d46.jpg",
+      "https://files.kretzrealestate.com/c1a636ed6f71134b629d71da87ef5f9.jpg",
+      "https://files.kretzrealestate.com/ee12ea533edbbbcfbcb731e67020aeba.jpg",
+      "https://files.kretzrealestate.com/a5fa2b6ae43dab683aa494911e0ffbb.jpg",
+      "https://files.kretzrealestate.com/f594c3411a2bded9388ef8118b9f06.jpg",
+      "https://files.kretzrealestate.com/996b7114d450cfb64170456545a38aa.jpg",
+      "https://files.kretzrealestate.com/a5b78e28060373f2048c1aaeb9d5691.jpg",
+      "https://files.kretzrealestate.com/48ba1daaa5f9ef2bcb342a37ef5dae.jpg",
+      "https://files.kretzrealestate.com/b5699ce1ef9761133b8e3bd64183824.jpg",
+      "https://files.kretzrealestate.com/b4e4a0ad88d1cdd3416895c2a773d149.jpg",
+      "https://files.kretzrealestate.com/3c4ed8e51d76683dd36132224a5cb17c.jpg",
+      "https://files.kretzrealestate.com/51c477e6985f7dcedb427dd3cf6f47b4.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg",
+    "targetAmount": 10400000,
+    "fundedAmount": 8840000,
+    "tokenPrice": 100,
+    "totalTokens": 104000,
+    "availableTokens": 15600,
+    "estimatedAnnualYield": 10.6,
+    "capitalAppreciationYield": 6.9,
+    "totalEstimatedReturn": 17.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P19020",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a19d42451",
+    "description": "Exclusive to Paris 16 - Victor Hugo. Mansion\n\nSituated in the prestigious setting of Paris (Paris), this exceptional private mansion encompasses approximately 580 m² of refined living space, complemented by 12 magnificent rooms including 7 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "580 m²",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 10400000,
+      "refurbishmentBudget": 520000,
+      "legalAndClosingCosts": 416000,
+      "operatingReserve": 208000,
+      "totalProjectCost": 11544000,
+      "projectedAnnualGrossRent": 1322880,
+      "estimatedOperatingExpenses": 220480,
+      "projectedAnnualNetRent": 1102400,
+      "estimatedNetYield": 10.6,
+      "estimatedCapitalGainYield": 6.9,
+      "totalEstimatedYield": 17.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9020-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9020",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9020-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9020-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 119,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 580,
+    "bedrooms": 7,
+    "bathrooms": 6,
+    "amenities": [
+      "Private Mansion",
+      "580 m²",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-9020",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9020/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9020/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-9804d",
+    "slug": "kp1-9804d-hyeres",
+    "title": "Domaine viticole en Provence",
+    "location": "Hyeres, St-tropez",
+    "city": "Hyeres",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/49d17b98fff81a47293794bc8b63de1.jpg",
+      "https://files.kretzrealestate.com/7acdd503ed22574a7dcb53589ca5f1.jpg",
+      "https://files.kretzrealestate.com/3e902f71948a6ab31e6f4491b938db93.jpg",
+      "https://files.kretzrealestate.com/b361f4ca1678baf26efd857ef9456cc.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/49d17b98fff81a47293794bc8b63de1.jpg",
+    "targetAmount": 9000000,
+    "fundedAmount": 5670000,
+    "tokenPrice": 100,
+    "totalTokens": 90000,
+    "availableTokens": 33300,
+    "estimatedAnnualYield": 8.8,
+    "capitalAppreciationYield": 5.2,
+    "totalEstimatedReturn": 14,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-19804D",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1a7daf18",
+    "description": "Domaine viticole avec une Appellation Château de 25 hectares en AOC Côtes de Provence.\nD'un seul tenant, en culture BIO et au coeur du triangle d'or, l'exploitation bénéficie d'un outil professionnel complet pour la viticulture, la vinification, le vieillissement, la mise en bouteilles, le stockage et la commercialisation avec le caveau de vente notamment.\nCôté habitat, la demeure de Maître s'accompagne d'une piscine en bassin aixois, et de 3 dépendances supplémentaires totalisant près de 800m2.\nUne salle de réception face aux vignes a été créée pour l'organisation d'évènements. Outils œnotouristique à fort potentiel.\nL'exploitation est pérenne avec un résultat et un bilan s'accompagnant d'une forte rentabilité.\nCharlotte Borie 06.10.79.37.33 / charlotte@kretzrealestate.com",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "800 m²",
+      "Swimming Pool",
+      "Private Grounds (250,000 m²)",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 9000000,
+      "refurbishmentBudget": 450000,
+      "legalAndClosingCosts": 360000,
+      "operatingReserve": 180000,
+      "totalProjectCost": 9990000,
+      "projectedAnnualGrossRent": 950400,
+      "estimatedOperatingExpenses": 158400,
+      "projectedAnnualNetRent": 792000,
+      "estimatedNetYield": 8.8,
+      "estimatedCapitalGainYield": 5.2,
+      "totalEstimatedYield": 14
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9804D-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9804D",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9804D-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9804D-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 132,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 800,
+    "bedrooms": 10,
+    "bathrooms": 8,
+    "amenities": [
+      "House",
+      "800 m²",
+      "Swimming Pool",
+      "Private Grounds (250,000 m²)",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-9804D",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9804d/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9804d/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-2333b",
+    "slug": "kp1-2333b-bordeaux",
+    "title": "Hôtel particulier d'exception",
+    "location": "Bordeaux, Bordeaux",
+    "city": "Bordeaux",
+    "country": "France",
+    "type": "Private Mansion",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/f75cbc7a7e5bb2ec85ff519ac144.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/f75cbc7a7e5bb2ec85ff519ac144.jpg",
+    "targetAmount": 4990000,
+    "fundedAmount": 4091800,
+    "tokenPrice": 100,
+    "totalTokens": 49900,
+    "availableTokens": 8982,
+    "estimatedAnnualYield": 12.5,
+    "capitalAppreciationYield": 3.5,
+    "totalEstimatedReturn": 16,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-12333B",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1b2739df",
+    "description": "Hôtel particulier d'exception\n\nSituated in the prestigious setting of Bordeaux (Bordeaux), this exceptional private mansion encompasses approximately 695 m² of refined living space, complemented by 15 magnificent rooms including 9 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Private Mansion",
+      "695 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (800 m²)",
+      "Terrace (16 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4990000,
+      "refurbishmentBudget": 249500,
+      "legalAndClosingCosts": 199600,
+      "operatingReserve": 99800,
+      "totalProjectCost": 5538900,
+      "projectedAnnualGrossRent": 748500,
+      "estimatedOperatingExpenses": 124750,
+      "projectedAnnualNetRent": 623750,
+      "estimatedNetYield": 12.5,
+      "estimatedCapitalGainYield": 3.5,
+      "totalEstimatedYield": 16
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-2333B-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-2333B",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-2333B-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-2333B-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 145,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 695,
+    "bedrooms": 9,
+    "bathrooms": 8,
+    "amenities": [
+      "Private Mansion",
+      "695 m²",
+      "Swimming Pool",
+      "Elevator Access",
+      "Private Grounds (800 m²)",
+      "Terrace (16 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Raphaël Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "raphael@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Family Associate"
+    },
+    "ref": "KP1-2333B",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-2333b/hotel-particulier/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-2333b/hotel-particulier/"
+  },
+  {
+    "id": "prop-kretz-kp1-10125",
+    "slug": "kp1-10125-mandelieu-la-napoule",
+    "title": "Exceptional Property",
+    "location": "Mandelieu La Napoule, Cannes",
+    "city": "Mandelieu La Napoule",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/a88e3e17b7a34f10b9c1fca765a96388.jpg",
+      "https://files.kretzrealestate.com/fd4f689ee93415fe413a765b0d1fee0.jpg",
+      "https://files.kretzrealestate.com/3df7688da98aab2ba3aa75590e494e0.jpg",
+      "https://files.kretzrealestate.com/f05088a6f7dea483343e1d7465c894.jpg",
+      "https://files.kretzrealestate.com/c7abf92b64b1aa7020a7fb29048166a.jpg",
+      "https://files.kretzrealestate.com/924232f7c8e5b4304783ed4217d76451.jpg",
+      "https://files.kretzrealestate.com/c191fa353d5cdfc12153d8d61208a48.jpg",
+      "https://files.kretzrealestate.com/ef37e2f4d24a3b42ae33aaf1808bec.jpg",
+      "https://files.kretzrealestate.com/7e30117ff2984fbe12f8e734a2a535b.jpg",
+      "https://files.kretzrealestate.com/6657ad11919f9eb440833cdcd3211732.jpg",
+      "https://files.kretzrealestate.com/bce1fbbb63dc4f872f66b28dcb4ada8.jpg",
+      "https://files.kretzrealestate.com/cdf9c74424a6238467917307c997b2b.jpg",
+      "https://files.kretzrealestate.com/3a636fd0ce8c2edb75257d521ffc8714.jpg",
+      "https://files.kretzrealestate.com/4e832489d8fbead4c95984bfbfff389.jpg",
+      "https://files.kretzrealestate.com/bc7039ae1aad756fe530519079b39a8.jpg",
+      "https://files.kretzrealestate.com/8ac874d39743b74a58e685b13c68a0b6.jpg",
+      "https://files.kretzrealestate.com/fa1d80f3bc5efa44caa26a44dd48a54.jpg",
+      "https://files.kretzrealestate.com/8e2f28a3c352447e7654d283efe8330.jpg",
+      "https://files.kretzrealestate.com/e33fb22c69ae41ffcc926209457dc33.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/a88e3e17b7a34f10b9c1fca765a96388.jpg",
+    "targetAmount": 19800000,
+    "fundedAmount": 11880000,
+    "tokenPrice": 100,
+    "totalTokens": 198000,
+    "availableTokens": 79200,
+    "estimatedAnnualYield": 10.7,
+    "capitalAppreciationYield": 5.8,
+    "totalEstimatedReturn": 16.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-110125",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1bd0c4a6",
+    "description": "Mandelieu la Napoule. Propriété d'exception en première ligne de 470m2. De plain pied, cuisine ouverte avec ilot central en granit Azul de Bahia, espace salon avec bar et cheminée. Au centre avec plus de 6m de hauteur sous plafond un salon cathédrale donnant sur le jardin arboré surplombant la mer, piscine, jacuzzi. Au niveau supérieur 4 chambres en suite. Au niveau inférieur un très grand garage. Ascenseur desservant les 3 niveaux, prestations très haut de gamme",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "500 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,130 m²)",
+      "Jacuzzi / Spa"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 19800000,
+      "refurbishmentBudget": 990000,
+      "legalAndClosingCosts": 792000,
+      "operatingReserve": 396000,
+      "totalProjectCost": 21978000,
+      "projectedAnnualGrossRent": 2542320,
+      "estimatedOperatingExpenses": 423720,
+      "projectedAnnualNetRent": 2118600,
+      "estimatedNetYield": 10.7,
+      "estimatedCapitalGainYield": 5.8,
+      "totalEstimatedYield": 16.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10125-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10125",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10125-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10125-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 158,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 500,
+    "bedrooms": 4,
+    "bathrooms": 6,
+    "amenities": [
+      "House",
+      "500 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,130 m²)",
+      "Jacuzzi / Spa"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-10125",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10125/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10125/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-9961w",
+    "slug": "kp1-9961w-montpellier",
+    "title": "Domaine des Vautes - Propriété spectaculaire",
+    "location": "Montpellier, Montpellier",
+    "city": "Montpellier",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/ddce76abb0628b3263627af85ef5b498.jpg",
+      "https://files.kretzrealestate.com/a131c8ca58c2759a542bfa72640dd66.jpg",
+      "https://files.kretzrealestate.com/fe75c3c56b3ee983b375208544548242.jpg",
+      "https://files.kretzrealestate.com/25cbfd23c49266cd6924f356901c93.jpg",
+      "https://files.kretzrealestate.com/8613e38e932535468856a9a44d7aca41.jpg",
+      "https://files.kretzrealestate.com/5c7c9b952fc2589368d7cae0c6431d.jpg",
+      "https://files.kretzrealestate.com/a4ccc988590a4ad3661c7cca2a1eaa.jpg",
+      "https://files.kretzrealestate.com/d538d3bbd174e6363f157dc9eb12ca.jpg",
+      "https://files.kretzrealestate.com/c65a89ad52712a8e3ea3b9357ef354b.jpg",
+      "https://files.kretzrealestate.com/4f9d40f715917115599a97c67e5e62aa.jpg",
+      "https://files.kretzrealestate.com/99fd911161b0bb43c982242cd4876a3.jpg",
+      "https://files.kretzrealestate.com/cf10765ede7f60d68ee57f1071bd2e8.jpg",
+      "https://files.kretzrealestate.com/3a2bfebb9565f9fce19b6b3ff2ca74.jpg",
+      "https://files.kretzrealestate.com/9824fae43e9d772e76d17d6c1b6feec7.jpg",
+      "https://files.kretzrealestate.com/1384b6cf9efd81b49bd5ad73b14ea9a2.jpg",
+      "https://files.kretzrealestate.com/f4d5dd65d2d34e14aa2fc66827da85f5.jpg",
+      "https://files.kretzrealestate.com/8dadf5222732fa6d5bbf2863b2d7916.jpg",
+      "https://files.kretzrealestate.com/86de21913127e0934b7d52ae738269a.jpg",
+      "https://files.kretzrealestate.com/93e74d6ddb1ec6b11b50b1b877f34499.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/ddce76abb0628b3263627af85ef5b498.jpg",
+    "targetAmount": 6400000,
+    "fundedAmount": 5056000,
+    "tokenPrice": 100,
+    "totalTokens": 64000,
+    "availableTokens": 13440,
+    "estimatedAnnualYield": 8.9,
+    "capitalAppreciationYield": 4.1,
+    "totalEstimatedReturn": 13,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-19961W",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1c7a4f6d",
+    "description": "À quelques minutes du centre de Montpellier, au cœur du très exclusif Domaine des Vautes, cette réalisation contemporaine de près de 1 260 m² offre une vision résolument moderne du luxe. Conçue en 2023 sur une parcelle paysagée de plus de 3 300 m², elle conjugue architecture, technologie et prestations hors normes dans un environnement totalement préservé.\n\nDès l'arrivée, le ton est donné.\n\nUne vaste cour d'honneur accueille les visiteurs avant de dévoiler une architecture aux lignes pures où chaque détail a été pensé avec une exigence absolue.\n\nL'entrée ouvre sur un spectaculaire espace de réception baigné de lumière. Les plafonds culminent à quatre mètres de hauteur, les immenses baies vitrées effacent les frontières entre intérieur et extérieur, tandis que les volumes offrent une sensation d'espace rarement rencontrée dans une résidence privée.\n\nAu cœur de la maison, la cuisine Poggenpohl séduira les plus exigeants. Entièrement réalisée sur mesure, elle intègre des équipements haut de gamme et s'ouvre naturellement sur les différents espaces de réception, pensés aussi bien pour la vie quotidienne que pour recevoir.\n\nLa propriété propose cinq véritables suites, chacune disposant de sa propre salle d'eau et de son dressing.\n\nLa suite parentale constitue à elle seule un univers à part entière. Chambre monumentale, dressings sur mesure inspirés des plus grands palaces, salles de bains raffinées, espace beauté privé et système de vidéoprojection intégré transforment cette suite en un véritable appartement privé.\n\nMais c'est probablement au niveau inférieur que cette propriété révèle toute sa singularité.\n\nPensé comme un espace entièrement dédié au bien-être et aux loisirs, il accueille une salle de cinéma privée de neuf places, une vaste salle de sport professionnelle, plusieurs espaces de détente, une salle de jeux ainsi qu'un exceptionnel espace spa.\n\nLa piscine intérieure chauffée en pierre de Bali, prolongée par un hammam et un jacuzzi, s'organise autour d'un patio végétalisé où palmiers et essences exotiques créent une atmosphère digne des plus beaux resorts internationaux.\n\nÀ l'extérieur, les prestations se poursuivent avec une élégante piscine de 18 mètres, de larges terrasses couvertes, un jardin soigneusement paysagé ainsi qu'un rooftop panoramique de plus de 550 m², offrant un point de vue unique sur la nature environnante.\n\nLa technologie est omniprésente sans jamais s'imposer. Domotique complète, système audio multiroom, éclairages d'ambiance personnalisables, sécurité de dernière génération, rideaux motorisés et ascenseur desservant les différents niveaux participent à une qualité de vie exceptionnelle.\n\nEnfin, un garage souterrain pouvant accueillir jusqu'à dix véhicules vient compléter cette propriété hors norme.\n\nPlus qu'une villa, il s'agit d'une résidence conçue pour offrir une qualité de vie incomparable, où chaque espace invite à recevoir, partager, se détendre et profiter pleinement d'un environnement privilégié.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "1260 m²",
+      "Swimming Pool",
+      "Private Grounds (3,300 m²)",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6400000,
+      "refurbishmentBudget": 320000,
+      "legalAndClosingCosts": 256000,
+      "operatingReserve": 128000,
+      "totalProjectCost": 7104000,
+      "projectedAnnualGrossRent": 683520,
+      "estimatedOperatingExpenses": 113920,
+      "projectedAnnualNetRent": 569600,
+      "estimatedNetYield": 8.9,
+      "estimatedCapitalGainYield": 4.1,
+      "totalEstimatedYield": 13
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9961W-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9961W",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9961W-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9961W-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 171,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 1260,
+    "bedrooms": 5,
+    "bathrooms": 10,
+    "amenities": [
+      "House",
+      "1260 m²",
+      "Swimming Pool",
+      "Private Grounds (3,300 m²)",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Sandrine Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "sandrine@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/a4f6dc448bcfa2804b4cf5ba70313cb6.jpg",
+      "role": "Founder & Co-CEO"
+    },
+    "ref": "KP1-9961W",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9961w/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9961w/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-9983",
+    "slug": "kp1-9983-paris",
+    "title": "Paris 16ème – Henri Martin – Appartement de réception plein Sud",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg",
+      "https://files.kretzrealestate.com/9a9a75f7256a66486785c6a40746f26.jpg",
+      "https://files.kretzrealestate.com/73e645e777de131f76918a5e7184b574.jpg",
+      "https://files.kretzrealestate.com/8feaa4e99b2a5cfdb38662797f6786f2.jpg",
+      "https://files.kretzrealestate.com/34148c789539f32561d96317dfea7c.jpg",
+      "https://files.kretzrealestate.com/2eb991a2f0922f5694c7b86b40d4cae7.jpg",
+      "https://files.kretzrealestate.com/618d4dcc1a594891d48ab36db9db2d9c.jpg",
+      "https://files.kretzrealestate.com/a3abe4f665ef8398dc63412cb51f71cf.jpg",
+      "https://files.kretzrealestate.com/d15af8ccbd6ac960a0cd956918a9447c.jpg",
+      "https://files.kretzrealestate.com/14da3f78455f61e96deb499a138b908c.jpg",
+      "https://files.kretzrealestate.com/5b3098bd1ddd04cd5487546f376b8e9.jpg",
+      "https://files.kretzrealestate.com/9727eba09c965b34b96290bd46e168c.jpg",
+      "https://files.kretzrealestate.com/b34c705d2199e2d48fd57cb36bf33c.jpg",
+      "https://files.kretzrealestate.com/ba836a28e4e93c7777dfd63bdda1bb.jpg",
+      "https://files.kretzrealestate.com/5c357471312bf1652b8d331465a2339.jpg",
+      "https://files.kretzrealestate.com/eeec1ea73544de89882123b32aa66de0.jpg",
+      "https://files.kretzrealestate.com/bcd2c33a645c255363cac981f356b44.jpg",
+      "https://files.kretzrealestate.com/e4459c4ee37b75cb83bae84ab5de2a.jpg",
+      "https://files.kretzrealestate.com/5b88b68a2f8fade295835e962b7247.jpg",
+      "https://files.kretzrealestate.com/5074e79f721ee8ea47f743ace754eb2.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg",
+    "targetAmount": 6000000,
+    "fundedAmount": 5880000,
+    "tokenPrice": 100,
+    "totalTokens": 60000,
+    "availableTokens": 1200,
+    "estimatedAnnualYield": 12.6,
+    "capitalAppreciationYield": 6.4,
+    "totalEstimatedReturn": 19,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-P19983",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1d23da34",
+    "description": "Paris 16ème – Henri Martin – Appartement de réception plein Sud\n\nSituated in the prestigious setting of Paris (Paris), this exceptional apartment encompasses approximately 246 m² of refined living space, complemented by 8 magnificent rooms including 5 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "246 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6000000,
+      "refurbishmentBudget": 300000,
+      "legalAndClosingCosts": 240000,
+      "operatingReserve": 120000,
+      "totalProjectCost": 6660000,
+      "projectedAnnualGrossRent": 907200,
+      "estimatedOperatingExpenses": 151200,
+      "projectedAnnualNetRent": 756000,
+      "estimatedNetYield": 12.6,
+      "estimatedCapitalGainYield": 6.4,
+      "totalEstimatedYield": 19
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-9983-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-9983",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-9983-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-9983-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 184,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 246,
+    "bedrooms": 5,
+    "bathrooms": 4,
+    "amenities": [
+      "Apartment",
+      "246 m²",
+      "Elevator Access",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-9983",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-9983/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-9983/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-10310",
+    "slug": "kp1-10310-nice",
+    "title": "Villa Pieds dans l'eau Cap de Nice",
+    "location": "Nice, Nice",
+    "city": "Nice",
+    "country": "France",
+    "type": "Villa",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/1fc4ecec45cb559c65167a9a6dbd6d3.jpg",
+      "https://files.kretzrealestate.com/d88612751fe9beda1cf96a5610497f4.jpg",
+      "https://files.kretzrealestate.com/84eba621e5ef4a21f7ad3afe58a39c.jpg",
+      "https://files.kretzrealestate.com/786dc203471bae3273c137e27c99995.jpg",
+      "https://files.kretzrealestate.com/61bc32fd1519934499e7e1362cd7698.jpg",
+      "https://files.kretzrealestate.com/e0b62bc03dc66466b55c7ff222f4d5.jpg",
+      "https://files.kretzrealestate.com/ffd786741d95f349601ad067ba4d37dd.jpg",
+      "https://files.kretzrealestate.com/13ac0cd5d8a56d7219ca4bd1f4f.jpg",
+      "https://files.kretzrealestate.com/1b89992e76367d3644f62d8b4c74b16.jpg",
+      "https://files.kretzrealestate.com/8b418e3a19599e570998466a630f4a0.jpg",
+      "https://files.kretzrealestate.com/95235356d1e6244c3368ae4cf25c763.jpg",
+      "https://files.kretzrealestate.com/726c1a5d34dd9a8ad057e3e2242c7a6a.jpg",
+      "https://files.kretzrealestate.com/356a6b8d70eccefa80a5787254f6d72d.jpg",
+      "https://files.kretzrealestate.com/3a40cc873c283963651df525aa9f46e.jpg",
+      "https://files.kretzrealestate.com/704f48734b80a1ff9cb12e7fb7b563dc.jpg",
+      "https://files.kretzrealestate.com/5113154a37b22c8bb0b5fd2238f13aa7.jpg",
+      "https://files.kretzrealestate.com/78a27ecd23b7dd4aca19a359a5fad76.jpg",
+      "https://files.kretzrealestate.com/29b6c464eccae5f4bb89ef9862d3de86.jpg",
+      "https://files.kretzrealestate.com/9951f7be729653ceccf89717327e6d2b.jpg",
+      "https://files.kretzrealestate.com/82b4fc1e79bd49addd5fc862d48448a.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/1fc4ecec45cb559c65167a9a6dbd6d3.jpg",
+    "targetAmount": 6780000,
+    "fundedAmount": 5152800,
+    "tokenPrice": 100,
+    "totalTokens": 67800,
+    "availableTokens": 16272,
+    "estimatedAnnualYield": 10.8,
+    "capitalAppreciationYield": 4.7,
+    "totalEstimatedReturn": 15.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-110310",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1dcd64fb",
+    "description": "Nestling at the tip of the Cap de Nice, this exceptional villa with its cubic architecture rises majestically on high stilts, facing the sea with direct access to the sea via a wicket gate, offering a total connection with the Mediterranean.\n\nEntirely renovated with top-of-the-range fixtures and fittings, it offers volumes bathed in light, with sea views from every room.\n\nThe 1st floor features a vast living area with reception room, dining room and fully-equipped contemporary kitchen, as well as a bedroom with en suite shower room.\n\nOn the ground floor, the master suite includes a dressing room and bathroom with shower. Two further bedrooms, each with its own shower room, complete this floor. All seem to be suspended above the sea, offering a unique and spectacular perspective. This floor also houses a gym and sauna.\n\nOutside, there is an infinity pool that merges with the sea, bordered by terraces, a lounge area and a summer kitchen.\n\nAn exceptional, privileged location, just a few minutes from amenities and Nice city centre.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "260 m²",
+      "Swimming Pool",
+      "Terrace (585 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6780000,
+      "refurbishmentBudget": 339000,
+      "legalAndClosingCosts": 271200,
+      "operatingReserve": 135600,
+      "totalProjectCost": 7525800,
+      "projectedAnnualGrossRent": 878688,
+      "estimatedOperatingExpenses": 146448,
+      "projectedAnnualNetRent": 732240,
+      "estimatedNetYield": 10.8,
+      "estimatedCapitalGainYield": 4.7,
+      "totalEstimatedYield": 15.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10310-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10310",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10310-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10310-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 197,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 260,
+    "bedrooms": 4,
+    "bathrooms": 4,
+    "amenities": [
+      "Villa",
+      "260 m²",
+      "Swimming Pool",
+      "Terrace (585 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-10310",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10310/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10310/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-10369",
+    "slug": "kp1-10369-paris",
+    "title": "Paris 16th – Trocadéro – Duplex apartment on the top floors",
+    "location": "Paris, Paris",
+    "city": "Paris",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/292b12457f5dea6736f8fb8e92c1022.jpg",
+      "https://files.kretzrealestate.com/ce668e725ddc11adc029dbb97e59a3.jpg",
+      "https://files.kretzrealestate.com/8835c5c35d49f97118dac36afc89c03.jpg",
+      "https://files.kretzrealestate.com/cff93e9bdf5b745ff8118413b42c64b.jpg",
+      "https://files.kretzrealestate.com/cf5ffe6accb3d3c16b93c6c42e5f87e.jpg",
+      "https://files.kretzrealestate.com/6ac397d51acc6a137a410d98cca3e76.jpg",
+      "https://files.kretzrealestate.com/bf83ae35a2b7235599655bbbcdfe8d.jpg",
+      "https://files.kretzrealestate.com/b89869c4f78f459648b2515e7aad5ca.jpg",
+      "https://files.kretzrealestate.com/7ed082a5c86120c1ff8f4633b17258.jpg",
+      "https://files.kretzrealestate.com/af8e2087bfc2ef8411bcb386dd25b7.jpg",
+      "https://files.kretzrealestate.com/22c9afd991cb26c6527822c47ccd1928.jpg",
+      "https://files.kretzrealestate.com/bd894403713a98f7187bc71ef249fa.jpg",
+      "https://files.kretzrealestate.com/6d1d66efa52fe4fb37762e2b7f4c4bc.jpg",
+      "https://files.kretzrealestate.com/9d15fcbdd2bc4b212c89b56bac5787d9.jpg",
+      "https://files.kretzrealestate.com/1cb9a9e57749b3c12674db4855b6092.jpg",
+      "https://files.kretzrealestate.com/fee65b1175f89c418f864c9866bbb2f.jpg",
+      "https://files.kretzrealestate.com/ca62a083e2ca87bf6864368de7f703e.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/292b12457f5dea6736f8fb8e92c1022.jpg",
+    "targetAmount": 5300000,
+    "fundedAmount": 5035000,
+    "tokenPrice": 100,
+    "totalTokens": 53000,
+    "availableTokens": 2650,
+    "estimatedAnnualYield": 9,
+    "capitalAppreciationYield": 7,
+    "totalEstimatedReturn": 16,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-110369",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1e76efc2",
+    "description": "Paris 16th – Steps from Trocadéro. Located on the fifth and sixth floors of a period building, fully renovated duplex apartment.\nEntrance gallery. Double reception room with high ceilings. Dining room. Separate fully equipped kitchen.\nPrimary suite with dressing room and bathroom.\n3 additional suites with dressing rooms and shower rooms.\n1 additional studio.\nImmediate access to schools, shops and gardens.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "235 m²",
+      "Elevator Access"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5300000,
+      "refurbishmentBudget": 265000,
+      "legalAndClosingCosts": 212000,
+      "operatingReserve": 106000,
+      "totalProjectCost": 5883000,
+      "projectedAnnualGrossRent": 572400,
+      "estimatedOperatingExpenses": 95400,
+      "projectedAnnualNetRent": 477000,
+      "estimatedNetYield": 9,
+      "estimatedCapitalGainYield": 7,
+      "totalEstimatedYield": 16
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10369-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10369",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10369-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10369-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 210,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 235,
+    "bedrooms": 4,
+    "bathrooms": 3,
+    "amenities": [
+      "Apartment",
+      "235 m²",
+      "Elevator Access"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-10369",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10369/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10369/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-10429",
+    "slug": "kp1-10429-croissy-sur-seine",
+    "title": "Exclusive Property",
+    "location": "Croissy Sur Seine, Yvelines",
+    "city": "Croissy Sur Seine",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/58fa798e6ba72ecc148dddfb9cb07751.jpg",
+      "https://files.kretzrealestate.com/9c4e20b0987df491777066b18248dfa2.jpg",
+      "https://files.kretzrealestate.com/373c4ca1665f5b9115c946011ff6e26.jpg",
+      "https://files.kretzrealestate.com/38be3c2a98b0c212be5020bf15f3f86.jpg",
+      "https://files.kretzrealestate.com/d7bb5f8455bdb9545499a57fafea5f78.jpg",
+      "https://files.kretzrealestate.com/fc43ec4eb5e79e5bdca1d5bdccc15e8c.jpg",
+      "https://files.kretzrealestate.com/d744b734cb379ee17de81cbb7715ac.jpg",
+      "https://files.kretzrealestate.com/f244db44a7aba294fedeed9cae67f0.jpg",
+      "https://files.kretzrealestate.com/72f029275fe0b9d24e3ad29f1af0b88.jpg",
+      "https://files.kretzrealestate.com/1b94e97314a9486196341f5c59cac48d.jpg",
+      "https://files.kretzrealestate.com/589e8259f95e50467af8eb56212ffd3.jpg",
+      "https://files.kretzrealestate.com/6b72e18ea32bb4e991e49f7bdaf40.jpg",
+      "https://files.kretzrealestate.com/d4f9fa99a812cc76d13c078845da436.jpg",
+      "https://files.kretzrealestate.com/3385d4162042c1fbbe2cf288101c9617.jpg",
+      "https://files.kretzrealestate.com/c72862256177f5ccbe3ebe73a42a9fe3.jpg",
+      "https://files.kretzrealestate.com/54fbd25b1a62e35cb599a96324519bf2.jpg",
+      "https://files.kretzrealestate.com/8e78b35147f12f3e87b21db3bc93f95.jpg",
+      "https://files.kretzrealestate.com/17c0459436092b9ecb1db3298a41ccb.jpg",
+      "https://files.kretzrealestate.com/8f98e4cd66894fae3b48bc36b36e3fc1.jpg",
+      "https://files.kretzrealestate.com/c1e377d68371ccb0f74ae55fef3b4f29.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/58fa798e6ba72ecc148dddfb9cb07751.jpg",
+    "targetAmount": 9250000,
+    "fundedAmount": 6752500,
+    "tokenPrice": 100,
+    "totalTokens": 92500,
+    "availableTokens": 24975,
+    "estimatedAnnualYield": 12.7,
+    "capitalAppreciationYield": 5.3,
+    "totalEstimatedReturn": 18,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-110429",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1f207a89",
+    "description": "Exclusive Property\n\nSituated in the prestigious setting of Croissy Sur Seine (Yvelines), this exceptional house encompasses approximately 850 m² of refined living space, complemented by 15 magnificent rooms including 9 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "850 m²",
+      "Private Grounds (5,633 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 9250000,
+      "refurbishmentBudget": 462500,
+      "legalAndClosingCosts": 370000,
+      "operatingReserve": 185000,
+      "totalProjectCost": 10267500,
+      "projectedAnnualGrossRent": 1409700,
+      "estimatedOperatingExpenses": 234950,
+      "projectedAnnualNetRent": 1174750,
+      "estimatedNetYield": 12.7,
+      "estimatedCapitalGainYield": 5.3,
+      "totalEstimatedYield": 18
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10429-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10429",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10429-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10429-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 223,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 850,
+    "bedrooms": 9,
+    "bathrooms": 8,
+    "amenities": [
+      "House",
+      "850 m²",
+      "Private Grounds (5,633 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Valentin Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "valentin@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Partner & Director"
+    },
+    "ref": "KP1-10429",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10429/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10429/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-10458g",
+    "slug": "kp1-10458g-les-issambres",
+    "title": "Longue vue",
+    "location": "Les Issambres, St-tropez",
+    "city": "Les Issambres",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/d117bf4cacb4bca7267c9dcc372297b9.jpg",
+      "https://files.kretzrealestate.com/cfda58a34489de7675379c553ea6f8e2.jpg",
+      "https://files.kretzrealestate.com/623fe56e358c12e47bf8c08648258664.jpg",
+      "https://files.kretzrealestate.com/5a18d311cbf3b5c21f43de58f4f0c3ff.jpg",
+      "https://files.kretzrealestate.com/254ecdd721158f34a4d73e58ad6c4d1.jpg",
+      "https://files.kretzrealestate.com/b7f19265d851f1672c859457cafb1b.jpg",
+      "https://files.kretzrealestate.com/eb2e46dbc9ef21e6a118ea3ecadb5252.jpg",
+      "https://files.kretzrealestate.com/372a22f31121ac6a337dd2ff2267ba6.jpg",
+      "https://files.kretzrealestate.com/ca23bbbca1d6c2fcda2b2c226de67aa.jpg",
+      "https://files.kretzrealestate.com/e96ef9be98215bc1564ac3b15eda8cd8.jpg",
+      "https://files.kretzrealestate.com/9aeeba1a62e1b9ce4edc3afedd0f98f.jpg",
+      "https://files.kretzrealestate.com/7ea3802cfb526c5925c899e1a93c322.jpg",
+      "https://files.kretzrealestate.com/df9fd8868135b70549faf6323143e83.jpg",
+      "https://files.kretzrealestate.com/a59ccbff814faf631dd7347a115fd1.jpg",
+      "https://files.kretzrealestate.com/4a8cc18355ffe6287a53e4c60eae5c7.jpg",
+      "https://files.kretzrealestate.com/47af75c1b1d67e7411dae6eb6cbe5.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/d117bf4cacb4bca7267c9dcc372297b9.jpg",
+    "targetAmount": 5450000,
+    "fundedAmount": 5014000,
+    "tokenPrice": 100,
+    "totalTokens": 54500,
+    "availableTokens": 4360,
+    "estimatedAnnualYield": 10.9,
+    "capitalAppreciationYield": 3.6,
+    "totalEstimatedReturn": 14.5,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-10458G",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a1fca0550",
+    "description": "LES ISSAMBRES – VILLA CONTEMPORAINE 435 M² – VUE MER PANORAMIQUE – PLAGES À PIED\n\nAux Issambres, dans un environnement résidentiel recherché du littoral varois, à seulement quelques minutes à pied des plages et à proximité immédiate du golfe de Saint-Tropez, cette villa contemporaine d’environ 435 m² bénéficie d’une vue mer panoramique remarquable et de prestations haut de gamme.\n\nImplantée dans un cadre privilégié, la propriété a été conçue pour profiter pleinement de la Méditerranée, avec de larges ouvertures, des volumes généreux et une circulation fluide entre les espaces intérieurs et extérieurs.\n\nLe niveau principal accueille une vaste pièce de réception baignée de lumière, réunissant salon, salle à manger et cuisine ouverte dans un ensemble contemporain et convivial. Les larges baies vitrées prolongent naturellement cet espace vers une grande terrasse exposée face à la mer, offrant une perspective dégagée sur le littoral.\n\nDans le prolongement de la terrasse, la piscine extérieure à débordement s’intègre parfaitement à l’architecture de la villa et au paysage. Cet espace extérieur constitue un véritable lieu de vie, pensé aussi bien pour les moments de détente que pour recevoir famille et invités.\n\nLa partie nuit comprend cinq suites, chacune disposant de sa propre terrasse privative. Deux d’entre elles ont été aménagées en véritables master bedrooms, avec des volumes plus généreux et une organisation conçue pour préserver confort et intimité. Plusieurs chambres bénéficient directement de la vue sur la Méditerranée.\n\nLa villa se distingue également par la qualité et la diversité de ses espaces dédiés aux loisirs et au bien-être. Elle dispose notamment d’une piscine intérieure aménagée en couloir de nage, permettant une utilisation tout au long de l’année, ainsi que d’une salle de sport entièrement dédiée à l’entraînement.\n\nUne salle de cinéma complète ces prestations et offre un espace indépendant adapté aux soirées en famille ou entre amis.\n\nLes annexes ont également été pensées pour répondre aux attentes d’une résidence principale ou secondaire de standing. Un double garage d’environ 60 m² permet de stationner plusieurs véhicules, tandis que plusieurs emplacements extérieurs facilitent l’accueil des invités.\n\nLa situation de la propriété constitue l’un de ses principaux atouts. Les plages sont accessibles à pied en environ cinq minutes, tandis que les commerces, restaurants et le centre des Issambres se trouvent à proximité.\n\nSaint-Tropez est accessible en environ trente minutes en voiture selon les conditions de circulation, ou par navette maritime depuis le secteur des Issambres, permettant de rejoindre le golfe par la mer. L’aéroport international de Nice se situe à environ cinquante minutes.\n\nCette villa contemporaine réunit ainsi plusieurs critères particulièrement recherchés sur le marché immobilier haut de gamme de la Côte d’Azur : une vue mer panoramique, de vastes volumes, cinq suites, des équipements de loisirs complets, une piscine intérieure et extérieure, un grand garage et un accès rapide aux plages.\n\nUne propriété adaptée aussi bien à une résidence familiale qu’à une résidence secondaire, dans l’un des secteurs les plus appréciés entre Sainte-Maxime et le golfe de Saint-Tropez.\n\nLes atouts :\n\nVilla contemporaine d’environ 435 m²\n\nVue mer panoramique\n\nPlages accessibles à pied en environ 5 minutes\n\nGrande pièce de réception ouverte sur la terrasse\n\n5 suites avec terrasses privatives\n\n2 master bedrooms\n\nPiscine extérieure à débordement\n\nPiscine intérieure avec couloir de nage\n\nSalle de sport\n\nSalle de cinéma\n\nDouble garage d’environ 60 m²\n\nNombreux stationnements extérieurs\n\nCommerces et centre des Issambres à proximité\n\nSaint-Tropez accessible en voiture ou par navette maritime\n\nAéroport international de Nice à environ 50 minutes\n\nCharlotte Borie",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "493 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,327 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 5450000,
+      "refurbishmentBudget": 272500,
+      "legalAndClosingCosts": 218000,
+      "operatingReserve": 109000,
+      "totalProjectCost": 6049500,
+      "projectedAnnualGrossRent": 712860,
+      "estimatedOperatingExpenses": 118810,
+      "projectedAnnualNetRent": 594050,
+      "estimatedNetYield": 10.9,
+      "estimatedCapitalGainYield": 3.6,
+      "totalEstimatedYield": 14.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10458G-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10458G",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10458G-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10458G-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 236,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 493,
+    "bedrooms": 5,
+    "bathrooms": 6,
+    "amenities": [
+      "House",
+      "493 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (1,327 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-10458G",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10458g/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10458g/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-7639a",
+    "slug": "kp1-7639a-sollies-pont",
+    "title": "Castle in urban oasis",
+    "location": "Sollies Pont, Var",
+    "city": "Sollies Pont",
+    "country": "France",
+    "type": "Château",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/a3c3760a2c7dd3eda6111b3454abb.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/a3c3760a2c7dd3eda6111b3454abb.jpg",
+    "targetAmount": 4800000,
+    "fundedAmount": 3360000,
+    "tokenPrice": 100,
+    "totalTokens": 48000,
+    "availableTokens": 14400,
+    "estimatedAnnualYield": 9.1,
+    "capitalAppreciationYield": 5.9,
+    "totalEstimatedReturn": 15,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-17639A",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a20739017",
+    "description": "Castle in urban oasis\n\nSituated in the prestigious setting of Sollies Pont (Var), this exceptional château encompasses approximately 700 m² of refined living space, complemented by 15 magnificent rooms including 9 luxury bedroom suites.\n\nDesigned for sophisticated entertaining and everyday serenity, the residence features expansive open-plan reception spaces, floor-to-ceiling windows inviting abundant natural light, and bespoke high-end finishes throughout. An extraordinary opportunity presented exclusively by Kretz Family Real Estate.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Château",
+      "700 m²",
+      "Swimming Pool",
+      "Private Grounds (100,000 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 4800000,
+      "refurbishmentBudget": 240000,
+      "legalAndClosingCosts": 192000,
+      "operatingReserve": 96000,
+      "totalProjectCost": 5328000,
+      "projectedAnnualGrossRent": 524160,
+      "estimatedOperatingExpenses": 87360,
+      "projectedAnnualNetRent": 436800,
+      "estimatedNetYield": 9.1,
+      "estimatedCapitalGainYield": 5.9,
+      "totalEstimatedYield": 15
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-7639A-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-7639A",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-7639A-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-7639A-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 249,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 700,
+    "bedrooms": 9,
+    "bathrooms": 8,
+    "amenities": [
+      "Château",
+      "700 m²",
+      "Swimming Pool",
+      "Private Grounds (100,000 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-7639A",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-7639a/castle/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-7639a/castle/"
+  },
+  {
+    "id": "prop-kretz-kp1-10529",
+    "slug": "kp1-10529-cannes",
+    "title": "LE MARLY —Avec  Projet de rénovation d'exception",
+    "location": "Cannes, Cannes",
+    "city": "Cannes",
+    "country": "France",
+    "type": "Apartment",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/1aac4b47c8b54674d3b2b56cb59d14e.jpg",
+      "https://files.kretzrealestate.com/334ee4185b3c23fc6e716e4a2b6f2de8.jpg",
+      "https://files.kretzrealestate.com/4710b48d53a291b2d59783491d1360.jpg",
+      "https://files.kretzrealestate.com/86fd0a5c2c1d34ab55618a333d3d1d3.jpg",
+      "https://files.kretzrealestate.com/9d5a80fb489099cff2454cbe6fba16b0.jpg",
+      "https://files.kretzrealestate.com/ad1ea8badbf8b4663295cee2f77758.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/1aac4b47c8b54674d3b2b56cb59d14e.jpg",
+    "targetAmount": 7340000,
+    "fundedAmount": 6532600,
+    "tokenPrice": 100,
+    "totalTokens": 73400,
+    "availableTokens": 8074,
+    "estimatedAnnualYield": 12.8,
+    "capitalAppreciationYield": 4.2,
+    "totalEstimatedReturn": 17,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-110529",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a211d1ade",
+    "description": "KRETZ AND PARTNERS a le privilège de vous présenter LE MARLY, un projet de rénovation totale et sur-mesure, conçu comme une signature résidentielle d'exception au cœur de Cannes.\n\nRedessiné dans son intégralité par l'architecte d'intérieur Adrien Allongue, cet appartement de plus de 160 m² incarne une nouvelle définition du luxe contemporain, entre élégance intemporelle et raffinement des matériaux. Une pièce de vie de 61 m², baignée de lumière naturelle, orchestre un salon aux lignes épurées, une salle à manger raffinée et une cuisine américaine entièrement équipée, habillée de marbre et de bois noble. Trois suites avec salles de bains privatives, dont une suite parentale dotée d'un dressing sur-mesure, offrent un écrin d'intimité absolue et de confort. Chaque espace a été pensé dans les moindres détails : plafonds à caissons rétroéclairés, marbre veiné, bois chaleureux, dressings intégrés, sanitaires haut de gamme et finitions d'exception dignes des plus belles adresses de la Croisette.\n\nPoint d'orgue de ce projet : un rooftop privatif paysager, prolongement naturel de l'art de vivre à la française, pensé comme un jardin suspendu dédié à la réception et à la détente, agrémenté d'une pergola en bois et métal et ouvert sur un horizon dégagé, propice aux soirées d'exception entre ciel et mer.\n\nLe projet inclut également la rénovation intégrale des Studettes attenantes, unités indépendantes entièrement repensées, chambre, cuisine et salle de bain neuves, idéales pour une clientèle en quête d'un investissement locatif d'exception ou d'un pied-à-terre indépendant pour leurs proches et invités.\n\nUn bien rare, pensé du sol au plafond par une signature d'architecte reconnue, pour une clientèle exigeante en quête d'exclusivité, d'intimité et d'excellence architecturale, à deux pas du cœur de Cannes et de ses adresses mythiques.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Apartment",
+      "250 m²",
+      "Elevator Access",
+      "Terrace (340 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 7340000,
+      "refurbishmentBudget": 367000,
+      "legalAndClosingCosts": 293600,
+      "operatingReserve": 146800,
+      "totalProjectCost": 8147400,
+      "projectedAnnualGrossRent": 1127424,
+      "estimatedOperatingExpenses": 187904,
+      "projectedAnnualNetRent": 939520,
+      "estimatedNetYield": 12.8,
+      "estimatedCapitalGainYield": 4.2,
+      "totalEstimatedYield": 17
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10529-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10529",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10529-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10529-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 52,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 250,
+    "bedrooms": 5,
+    "bathrooms": 4,
+    "amenities": [
+      "Apartment",
+      "250 m²",
+      "Elevator Access",
+      "Terrace (340 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-10529",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10529/apartment/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10529/apartment/"
+  },
+  {
+    "id": "prop-kretz-kp1-10605",
+    "slug": "kp1-10605-le-vesinet",
+    "title": "Mandat exclusif - Villa Beau-Chêne • Le Vésinet • 18  Pièces  •  12  Chambres",
+    "location": "Le Vesinet, Yvelines",
+    "city": "Le Vesinet",
+    "country": "France",
+    "type": "Villa",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/ae292f448e5ea7f3b6aec9af4154e3b.jpg",
+      "https://files.kretzrealestate.com/35515ef5f4588556e12cbb0e82f58c.jpg",
+      "https://files.kretzrealestate.com/e3d75c7d4da8e14654d46eba58891112.jpg",
+      "https://files.kretzrealestate.com/1d937383ee3feec4a595fe738af21e16.jpg",
+      "https://files.kretzrealestate.com/aeaa6715a1c82311b157e89ff621829a.jpg",
+      "https://files.kretzrealestate.com/5f835e615ddfb98a7782fe5272742fc.jpg",
+      "https://files.kretzrealestate.com/af99a0a39de27748faae08f14b62371.jpg",
+      "https://files.kretzrealestate.com/214cb47424a0dd3321df227965be7.jpg",
+      "https://files.kretzrealestate.com/34b4957b70f6d9c3866e75a987b753.jpg",
+      "https://files.kretzrealestate.com/6ad16a535aade7aca296c4426bcb56f.jpg",
+      "https://files.kretzrealestate.com/733b9687828f4e747a842598ff2149.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/ae292f448e5ea7f3b6aec9af4154e3b.jpg",
+    "targetAmount": 19900000,
+    "fundedAmount": 13333000,
+    "tokenPrice": 100,
+    "totalTokens": 199000,
+    "availableTokens": 65670,
+    "estimatedAnnualYield": 11,
+    "capitalAppreciationYield": 6.5,
+    "totalEstimatedReturn": 17.5,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-110605",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a21c6a5a5",
+    "description": "Le Vésinet – Mandat exclusif – Villa Beau-Chêne.\nAu cœur d’un parc paysager de plus d’un hectare, cette demeure d’exception, ancienne résidence de Joséphine Baker, allie élégance intemporelle et charme historique.\n\nComposition de la villa principale de 528 m² + 229 m² de sous-sol aménagé :\n• Rez-de-chaussée : entrée majestueuse, quatre salons de réception lumineux avec vue dégagée sur le jardin, cuisine dinatoire entièrement équipée, terrasse, jardin d'hiver.\n• Premier étage : trois chambres, espace de vie, un bureau, trois salles d’eau, WC indépendant.\n• Deuxième étage : sept pièces polyvalentes, deux salles de bains, WC indépendant.\n• Combles aménagés : pièce lumineuse avec vue dominante.\n\nLe sous-sol de 229 m² comprend cinq pièces, une cuisine indépendante, une salle d’eau avec WC, une cave à vin et un atelier, ainsi qu’un accès à la piscine et au jardin.\n\nLa maison de gardien indépendante de 64 m² dispose d’un double séjour, d'une cuisine équipée, d’une salle d’eau avec WC indépendant, d’une chambre et d’une seconde salle d’eau.\n\nLes éléments historiques, tels que l’escalier en chêne massif, les moulures ornées de feuilles d’or et le parquet d’époque, ont été restaurés avec soin.\n\nEn option : possibilité d’acquérir également une écurie de 176 m² avec son jardin.\n\nÀ proximité immédiate des écoles, des commerces et du RER A. À seulement 20 minutes de Paris.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "826 m²",
+      "Film",
+      "Private Grounds (10,000 m²)",
+      "Terrace (14 m²)",
+      "Balcony"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 19900000,
+      "refurbishmentBudget": 995000,
+      "legalAndClosingCosts": 796000,
+      "operatingReserve": 398000,
+      "totalProjectCost": 22089000,
+      "projectedAnnualGrossRent": 2626800,
+      "estimatedOperatingExpenses": 437800,
+      "projectedAnnualNetRent": 2189000,
+      "estimatedNetYield": 11,
+      "estimatedCapitalGainYield": 6.5,
+      "totalEstimatedYield": 17.5
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10605-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10605",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10605-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10605-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 65,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 826,
+    "bedrooms": 10,
+    "bathrooms": 8,
+    "amenities": [
+      "Villa",
+      "826 m²",
+      "Film",
+      "Private Grounds (10,000 m²)",
+      "Terrace (14 m²)",
+      "Balcony"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-10605",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10605/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10605/villa/"
+  },
+  {
+    "id": "prop-kretz-kp1-10426d",
+    "slug": "kp1-10426d-saint-tropez",
+    "title": "Saint-Tropez - 5 min from the center.",
+    "location": "Saint Tropez, St-tropez",
+    "city": "Saint Tropez",
+    "country": "France",
+    "type": "House",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/d9f09f2f20ee6b9ef1ad927ad359b4f.jpg",
+      "https://files.kretzrealestate.com/25cbaa5295c5fd47a8a772b54e76a.jpg",
+      "https://files.kretzrealestate.com/8452cc3dc3ba876ec7aa676a2926c7a.jpg",
+      "https://files.kretzrealestate.com/4f7db89388c713ed80413c90e5b5241b.jpg",
+      "https://files.kretzrealestate.com/bc33534b3c8af4b1542385bc85b84641.jpg",
+      "https://files.kretzrealestate.com/055cd9fee1731a8091e4c868d8adf2.jpg",
+      "https://files.kretzrealestate.com/814ac87ead41a9754f7ad0a05d795.jpg",
+      "https://files.kretzrealestate.com/257359b878134e287486ff226a3ea182.jpg",
+      "https://files.kretzrealestate.com/57e5be96b18ae54532744df702b5243.jpg",
+      "https://files.kretzrealestate.com/c259b477404949b9852292e02ade7c10.jpg",
+      "https://files.kretzrealestate.com/5a8a437fe0e53fb28a81891da98523ed.jpg",
+      "https://files.kretzrealestate.com/1f7011c45099468df7af643ad38f30a6.jpg",
+      "https://files.kretzrealestate.com/66d5ae8d1c61c9811bd22ce8d9a2c.jpg",
+      "https://files.kretzrealestate.com/9da76c73502fb2505d1d64beb4bd41.jpg",
+      "https://files.kretzrealestate.com/403022bab4d7b8fc456fda4adafc5e8a.jpg",
+      "https://files.kretzrealestate.com/6df3513537e9eecac1a5ab5994a45950.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/d9f09f2f20ee6b9ef1ad927ad359b4f.jpg",
+    "targetAmount": 7875000,
+    "fundedAmount": 6772500,
+    "tokenPrice": 100,
+    "totalTokens": 78750,
+    "availableTokens": 11025,
+    "estimatedAnnualYield": 9.2,
+    "capitalAppreciationYield": 4.8,
+    "totalEstimatedReturn": 14,
+    "durationMonths": 48,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-10426D",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a2270306c",
+    "description": "Just a few minutes from the center of Saint-Tropez, within a secure and highly sought-after estate, this elegant villa of approximately 400 sqm offers a privileged lifestyle, combining comfort, generous volumes, and high-end features.\n\nFrom the moment you enter, the property impresses with its bright, well-designed living spaces. It offers five en-suite bedrooms, including a stunning master suite with its own private terrace, as well as a fully independent bedroom, ideal for hosting guests in complete privacy. The spacious living room, filled with natural light, opens onto a contemporary fully equipped kitchen designed for both style and conviviality.\n\nDedicated to well-being and relaxation, the villa also features a private cinema room and a massage room, creating a true at-home wellness experience.\n\nOutside, the landscaped garden of approximately 1,690 sqm, planted with Mediterranean species, provides a peaceful and refined setting. It includes a superb Balinese-style swimming pool, an elegant pool house, and a pétanque court—perfect for enjoying long summer evenings in a relaxed atmosphere.\n\nThe property is further enhanced by practical and secure amenities, including an alarm system, a double garage, and several outdoor parking spaces. A rare opportunity, ideal as both a primary or secondary residence, just moments from the vibrant life of Saint-Tropez while benefiting from a calm and exclusive environment.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "House",
+      "400 m²",
+      "Swimming Pool",
+      "Private Grounds (1,489 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 7875000,
+      "refurbishmentBudget": 393750,
+      "legalAndClosingCosts": 315000,
+      "operatingReserve": 157500,
+      "totalProjectCost": 8741250,
+      "projectedAnnualGrossRent": 869400,
+      "estimatedOperatingExpenses": 144900,
+      "projectedAnnualNetRent": 724500,
+      "estimatedNetYield": 9.2,
+      "estimatedCapitalGainYield": 4.8,
+      "totalEstimatedYield": 14
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10426D-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10426D",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10426D-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10426D-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 78,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 400,
+    "bedrooms": 5,
+    "bathrooms": 5,
+    "amenities": [
+      "House",
+      "400 m²",
+      "Swimming Pool",
+      "Private Grounds (1,489 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-10426D",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10426d/house/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10426d/house/"
+  },
+  {
+    "id": "prop-kretz-kp1-10676d",
+    "slug": "kp1-10676d-grimaud",
+    "title": "Grimaud, Stunning contemporary villa with sea view",
+    "location": "Grimaud, St-tropez",
+    "city": "Grimaud",
+    "country": "France",
+    "type": "Villa",
+    "status": "hidden",
+    "images": [
+      "https://files.kretzrealestate.com/c4fec82f733f564239902d825236e8.jpg",
+      "https://files.kretzrealestate.com/676e16b5f912842944e966043ff7fce.jpg",
+      "https://files.kretzrealestate.com/10ed15b04e9535e8d81c2b25b350b6f5.jpg",
+      "https://files.kretzrealestate.com/8f243bd09eedd1ac1f6b2fae2225b2.jpg",
+      "https://files.kretzrealestate.com/1a55c4c9a5521a0d82943df5bad67ee.jpg",
+      "https://files.kretzrealestate.com/d3d778179edfb17b8afaf53c050e728.jpg",
+      "https://files.kretzrealestate.com/9708b4ab368627698d3c6594842871.jpg",
+      "https://files.kretzrealestate.com/c126f076f8ea4ee0809354c0542e3134.jpg",
+      "https://files.kretzrealestate.com/9e37a09cd545a514b702d8b282e93a1.jpg",
+      "https://files.kretzrealestate.com/16be83637e0a48fa3c8de01d6e2f28.jpg",
+      "https://files.kretzrealestate.com/daaa1591a4b38f1d2713349982ebb8a.jpg",
+      "https://files.kretzrealestate.com/4c783337166ee024aa63cecddac8.jpg",
+      "https://files.kretzrealestate.com/ebe9b95e5ea47889a43030315325e2c4.jpg",
+      "https://files.kretzrealestate.com/3cdf72706b2536b698386bd69c9840.jpg",
+      "https://files.kretzrealestate.com/d0f01488161a84d2737e4fdc0b6d7e9.jpg",
+      "https://files.kretzrealestate.com/6705c14a7e23e56199caff530c659.jpg",
+      "https://files.kretzrealestate.com/70aaff0c7486522a5dee0d8515a78a.jpg",
+      "https://files.kretzrealestate.com/b8ce793f2fba655bb168450f0d5c.jpg",
+      "https://files.kretzrealestate.com/a3a6ff599464d3833c95545254cd4a23.jpg",
+      "https://files.kretzrealestate.com/8296a09a5142d6532ebe8c6f86b34e36.jpg"
+    ],
+    "bannerImage": "https://files.kretzrealestate.com/c4fec82f733f564239902d825236e8.jpg",
+    "targetAmount": 6360000,
+    "fundedAmount": 4070400,
+    "tokenPrice": 100,
+    "totalTokens": 63600,
+    "availableTokens": 22896,
+    "estimatedAnnualYield": 12.9,
+    "capitalAppreciationYield": 7.1,
+    "totalEstimatedReturn": 20,
+    "durationMonths": 36,
+    "minimumInvestment": 1000,
+    "distributionFrequency": "Monthly",
+    "tokenTicker": "KTZ-10676D",
+    "blockchainNetwork": "Polygon POS",
+    "tokenContractAddress": "0x7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a2319bb33",
+    "description": "Discover this architect-designed villa of approximately 350 sqm, ideally located in one of the most sought-after areas of Grimaud, in the heart of the Gulf of Saint-Tropez. Perfectly integrated into its natural surroundings between land and sea, it offers an exceptional living environment combining contemporary elegance with the Mediterranean art of living.\n\nDesigned with clean lines and high-quality materials, the property impresses with its generous volumes, natural light, and large openings facing the sea. It features five en-suite bedrooms, each enjoying sea views, including a remarkable master suite offering comfort, privacy, and high-end amenities.\n\nThe living areas, both warm and refined, open seamlessly onto the outdoors. A relaxation room and a cinema room complete the interior features, designed for optimal comfort throughout the year.\n\nSet on landscaped grounds of approximately 2,200 sqm, the villa boasts a beautifully maintained Mediterranean garden, an infinity pool with open views, and spacious terraces ideal for entertaining and relaxation.\n\nA garage of approximately 85 sqm completes the property. Alarm system, video surveillance, and automatic gate ensure security and peace of mind on a daily basis.\n\nA rare property combining a prime location, quality features, and a unique lifestyle on the French Riviera.",
+    "investmentStructure": "Tokenized Luxury SPV / Société Civile Immobilière (SCI) Participative",
+    "highlights": [
+      "Villa",
+      "350 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (2,212 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "risks": [
+      "Real estate market liquidity risk during secondary trading windows",
+      "Prime tourism seasonal occupancy variation in high-end rental yield",
+      "Macro-economic exchange rate fluctuations for international investors"
+    ],
+    "exitStrategy": "Refinancing or capital sale at market maturity with full capital gains distributed to token holders.",
+    "financialBreakdown": {
+      "propertyPrice": 6360000,
+      "refurbishmentBudget": 318000,
+      "legalAndClosingCosts": 254400,
+      "operatingReserve": 127200,
+      "totalProjectCost": 7059600,
+      "projectedAnnualGrossRent": 984528,
+      "estimatedOperatingExpenses": 164088,
+      "projectedAnnualNetRent": 820440,
+      "estimatedNetYield": 12.9,
+      "estimatedCapitalGainYield": 7.1,
+      "totalEstimatedYield": 20
+    },
+    "feeStructure": {
+      "structuringFee": "2.5% (Included in SPV capitalization)",
+      "managementFee": "8% of monthly luxury rental gross revenues",
+      "withdrawalFee": "0% for SEPA & Crypto settlements",
+      "exitFee": "0% at scheduled exit"
+    },
+    "paymentSchedule": {
+      "distributionFrequency": "Monthly",
+      "payoutDate": "1st business day of each month",
+      "annualReconciliation": "Annual audited report provided every January",
+      "maturityTerms": "100% Principal + pro-rata capital gains credited upon divestment"
+    },
+    "documents": [
+      {
+        "id": "doc-KP1-10676D-1",
+        "name": "Kretz Exclusive Mandate & Title Deed - KP1-10676D",
+        "category": "Legal",
+        "size": "3.4 MB",
+        "url": "#",
+        "updatedAt": "2026-03-01"
+      },
+      {
+        "id": "doc-KP1-10676D-2",
+        "name": "Independent Certified Valuation & Diagnostic Report",
+        "category": "Valuation",
+        "size": "5.8 MB",
+        "url": "#",
+        "updatedAt": "2026-02-15"
+      },
+      {
+        "id": "doc-KP1-10676D-3",
+        "name": "SPV Tokenization Prospectus & Yield Model",
+        "category": "Financial",
+        "size": "2.1 MB",
+        "url": "#",
+        "updatedAt": "2026-03-10"
+      }
+    ],
+    "investorCount": 91,
+    "createdAt": "2026-01-15T00:00:00Z",
+    "surfaceAreaM2": 350,
+    "bedrooms": 5,
+    "bathrooms": 5,
+    "amenities": [
+      "Villa",
+      "350 m²",
+      "Film",
+      "Swimming Pool",
+      "Private Grounds (2,212 m²)",
+      "Balcony",
+      "Security Alarm"
+    ],
+    "agent": {
+      "name": "Louis Kretz",
+      "phone": "+33 7 53 07 75 72",
+      "email": "louis@kretz.fr",
+      "photo": "https://files.kretzrealestate.com/46985a975765792df9a9228807e382d5.jpg",
+      "role": "Associate Director - French Riviera"
+    },
+    "ref": "KP1-10676D",
+    "isExclusive": false,
+    "isOffMarket": false,
+    "tourUrl": "/kretz-tour/en/annonce/kp1-10676d/villa/",
+    "externalTourUrl": "https://kretzrealestate.com/en/annonce/kp1-10676d/villa/"
+  }
+];
+
+export const INITIAL_PROPERTIES: Property[] = rawProperties.map((p, index) => {
+  const minInvestments = [750, 1000, 1500, 2000, 3000, 4500, 6000, 7500, 9000, 10000];
+  const minimumInvestment = minInvestments[index % minInvestments.length];
+  const durations = [3, 6, 9, 12, 18, 24, 30, 36, 48];
+  const durationMonths = durations[index % durations.length];
+  return {
+    ...p,
+    minimumInvestment,
+    durationMonths,
+  };
+});
+
