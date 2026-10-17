@@ -30,6 +30,7 @@ import { WealthPage } from './components/pages/WealthPage';
 import { MembershipPage } from './components/pages/MembershipPage';
 import { SuccessStoriesPage } from './components/pages/SuccessStoriesPage';
 import { BlogPage } from './components/pages/BlogPage';
+import { CompanyNewsPage } from './components/pages/CompanyNewsPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { AuthPages } from './components/pages/AuthPages';
 import { DashboardPage } from './components/pages/DashboardPage';
@@ -40,6 +41,7 @@ import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
 import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SmartsuppWidget } from './components/support/SmartsuppWidget';
+import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
 
 import { ArrowRight, ShieldCheck, UserCheck, Plus, Sparkles } from 'lucide-react';
 
@@ -239,6 +241,17 @@ function MainApp() {
           />
         );
 
+      case '/news':
+      case '/company-news':
+      case '/noticias':
+      case '/press':
+        return (
+          <CompanyNewsPage
+            onExploreProperties={() => navigateTo('/properties')}
+            onNavigateContact={() => navigateTo('/contact')}
+          />
+        );
+
       case '/investing':
         return (
           <HowItWorksPage
@@ -323,6 +336,7 @@ function MainApp() {
       case '/distributions':
       case '/wallet':
       case '/deposit':
+      case '/withdraw':
       case '/documents':
       case '/referrals':
       case '/notifications':
@@ -335,6 +349,7 @@ function MainApp() {
           '/distributions': 'distributions',
           '/wallet': 'wallet',
           '/deposit': 'deposit',
+          '/withdraw': 'withdraw',
           '/documents': 'documents',
           '/referrals': 'referrals',
           '/notifications': 'notifications',
@@ -376,11 +391,13 @@ function MainApp() {
         );
 
       case '/admin':
+      case '/admin/deposits':
+      case '/admin/withdrawals':
         return (
           <ProtectedRoute
             requireAdmin={true}
             onNavigateLogin={() => {
-              setReturnDestination('/admin');
+              setReturnDestination(basePath);
               navigateTo('/admin/login');
             }}
           >
@@ -526,6 +543,9 @@ function MainApp() {
 
       {/* Global Smartsupp Live Customer Support System */}
       <SmartsuppWidget />
+
+      {/* First-visit Cookie Consent Banner */}
+      <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />
     </div>
   );
 }

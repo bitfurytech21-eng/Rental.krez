@@ -69,8 +69,9 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
       // 3. Try calling the dedicated backend API endpoint if online
       try {
         const res = await authApi.login(cleanEmail, password);
-        if (res?.data?.token) {
-          setAuthToken(res.data.token);
+        const token = res?.token || (res as any)?.data?.token;
+        if (token) {
+          setAuthToken(token);
         }
       } catch (backendErr) {
         // Fallback gracefully in standalone or preview environments

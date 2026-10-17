@@ -4,6 +4,9 @@ import { Property } from '../types/property';
 import { Investment } from '../types/investment';
 import { INITIAL_PROPERTIES } from '../data/properties';
 import { MembershipTier, UserMembership, MembershipApplication, MembershipTierId, MembershipBillingCycle, INITIAL_MEMBERSHIP_TIERS } from '../types/membership';
+import { formatCurrency } from './utils';
+import { CompanyNewsItem } from '../types/news';
+import { INITIAL_COMPANY_NEWS } from '../data/companyNews';
 
 export interface AuditLog {
   id: string;
@@ -23,6 +26,30 @@ export interface Notification {
   type: 'info' | 'success' | 'warning' | 'financial';
   read: boolean;
   createdAt: string;
+}
+
+export type DocumentCategory = 'deposit_proof' | 'kyc_identity' | 'proof_of_address' | 'accredited_proof' | 'general';
+
+export interface VerificationDocument {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  category: DocumentCategory;
+  title: string;
+  documentType: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  uploadedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  transactionReference?: string;
+  amount?: number;
+  currency?: string;
+  notes?: string;
 }
 
 export interface CryptoNetworkConfig {
@@ -446,7 +473,7 @@ function generateTxHash(reference: string, amount: number, timestamp: string): s
   return '0x' + Math.abs(hash).toString(16).padStart(8, '0') + Math.random().toString(36).substring(2, 10);
 }
 
-// Authentic Platform Administrator (No fake investors or mock balances)
+// Authentic Platform Administrator & Demo Investor
 const DEFAULT_USERS: User[] = [
   {
     id: 'usr-admin-1',
@@ -455,23 +482,111 @@ const DEFAULT_USERS: User[] = [
     role: 'admin',
     accountType: 'admin',
     kycStatus: 'verified',
-    walletBalance: 0,
+    walletBalance: 250000,
     investedBalance: 0,
     totalEarned: 0,
     createdAt: '2026-01-01T00:00:00Z',
     country: 'Spain',
     cryptoDepositAddress: '0x71C...B3fA (Platform Treasury)'
+  },
+  {
+    id: 'usr-investor-1',
+    email: 'investor@kretz.com',
+    fullName: 'European Angel Partner',
+    role: 'investor',
+    accountType: 'individual_investor',
+    kycStatus: 'verified',
+    walletBalance: 15000,
+    investedBalance: 24000,
+    totalEarned: 2850,
+    createdAt: '2026-01-10T00:00:00Z',
+    country: 'France',
+    bankIban: 'ES9121000418450200051829',
+    cryptoDepositAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2'
   }
 ];
 
 const DEFAULT_INVESTMENTS: Investment[] = [];
-const DEFAULT_TRANSACTIONS: Transaction[] = [];
+const DEFAULT_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-dep-seed-1',
+    userId: 'usr-investor-1',
+    type: 'deposit',
+    amount: 10000,
+    currency: 'EUR',
+    status: 'pending',
+    description: 'Deposit request via SEPA Bank Wire Transfer (CaixaBank Escrow)',
+    reference: 'DEP-EUR-849201',
+    createdAt: '2026-03-15T10:30:00Z',
+    paymentMethod: 'SEPA Bank Wire Transfer',
+    balanceAfter: 15000,
+    txHash: '0xcaixa_wire_849201',
+    metadata: {
+      senderName: 'European Angel Partner',
+      bank: 'CaixaBank S.A.',
+      depositRef: 'DEP-EUR-849201'
+    }
+  },
+  {
+    id: 'tx-wd-seed-1',
+    userId: 'usr-investor-1',
+    type: 'withdrawal',
+    amount: 2500,
+    currency: 'EUR',
+    status: 'pending',
+    description: 'Withdrawal request to ES9121000418450200051829',
+    reference: 'WD-582914',
+    createdAt: '2026-03-15T09:15:00Z',
+    paymentMethod: 'SEPA Bank Wire',
+    balanceAfter: 12500,
+    metadata: {
+      bankIban: 'ES9121000418450200051829'
+    }
+  }
+];
+
+const DEFAULT_VERIFICATION_DOCUMENTS: VerificationDocument[] = [
+  {
+    id: 'doc-verify-1',
+    userId: 'usr-investor-1',
+    userName: 'European Angel Partner',
+    userEmail: 'investor@kretz.com',
+    category: 'deposit_proof',
+    title: 'CaixaBank SEPA Wire Transfer Slip (€10,000)',
+    documentType: 'Bank Wire Receipt',
+    fileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1200&auto=format&fit=crop&q=80',
+    fileName: 'caixabank_sepa_wire_transfer_10000eur.pdf',
+    fileSize: 245000,
+    uploadedAt: '2026-03-15T10:35:00Z',
+    status: 'pending',
+    transactionReference: 'DEP-EUR-849201',
+    amount: 10000,
+    currency: 'EUR',
+    notes: 'Official CaixaBank SEPA bank transfer receipt matching pending deposit reference DEP-EUR-849201.'
+  },
+  {
+    id: 'doc-verify-2',
+    userId: 'usr-investor-1',
+    userName: 'European Angel Partner',
+    userEmail: 'investor@kretz.com',
+    category: 'kyc_identity',
+    title: 'Biometric Passport Scan (AML5/6 Compliance)',
+    documentType: 'International Passport',
+    fileUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=1200&auto=format&fit=crop&q=80',
+    fileName: 'investor_passport_biometric_scan.jpg',
+    fileSize: 1250000,
+    uploadedAt: '2026-03-14T14:30:00Z',
+    status: 'pending',
+    notes: 'Biometric page scan submitted from dashboard for institutional KYC verification.'
+  }
+];
 
 class LedgerService {
   private users: User[];
   private properties: Property[];
   private investments: Investment[];
   private transactions: Transaction[];
+  private verificationDocuments: VerificationDocument[];
   private auditLogs: AuditLog[];
   private notifications: Notification[];
   private paymentConfig: PaymentConfig;
@@ -479,19 +594,45 @@ class LedgerService {
   private membershipTiers: MembershipTier[];
   private memberships: UserMembership[];
   private membershipApplications: MembershipApplication[];
+  private companyNews: CompanyNewsItem[];
 
   constructor() {
     this.users = getStorage('users', DEFAULT_USERS);
+    // Ensure investor account exists in users list
+    if (!this.users.some(u => u.email === 'investor@kretz.com')) {
+      this.users.push(DEFAULT_USERS[1]);
+      setStorage('users', this.users);
+    }
     const storedProps = getStorage<Property[]>('properties', []);
     const hasValidProps = Array.isArray(storedProps) && storedProps.length === INITIAL_PROPERTIES.length && storedProps.some(p => p.id.startsWith('prop-kretz-'));
     this.properties = hasValidProps ? storedProps : [...INITIAL_PROPERTIES];
     setStorage('properties', this.properties);
     this.investments = getStorage('investments', DEFAULT_INVESTMENTS);
     this.transactions = getStorage('transactions', DEFAULT_TRANSACTIONS);
+    // Ensure at least one pending deposit request is available for testing if empty
+    if (!this.transactions.some(t => t.type === 'deposit' && t.status === 'pending')) {
+      this.transactions.unshift(DEFAULT_TRANSACTIONS[0]);
+      setStorage('transactions', this.transactions);
+    }
+    this.verificationDocuments = getStorage('verificationDocuments', DEFAULT_VERIFICATION_DOCUMENTS);
     this.paymentConfig = getStorage('paymentConfig', DEFAULT_PAYMENT_CONFIG);
     this.membershipTiers = getStorage('membershipTiers', INITIAL_MEMBERSHIP_TIERS);
     this.memberships = getStorage('memberships', []);
     this.membershipApplications = getStorage('membershipApplications', []);
+    const storedNews = getStorage<CompanyNewsItem[]>('companyNews', []);
+    // Ensure all initial authentic YouTube news videos exist
+    if (!Array.isArray(storedNews) || storedNews.length === 0) {
+      this.companyNews = [...INITIAL_COMPANY_NEWS];
+      setStorage('companyNews', this.companyNews);
+    } else {
+      // Merge any missing initial news items by youtubeId
+      const existingIds = new Set(storedNews.map(n => n.youtubeId));
+      const missing = INITIAL_COMPANY_NEWS.filter(n => !existingIds.has(n.youtubeId));
+      this.companyNews = [...storedNews, ...missing];
+      if (missing.length > 0) {
+        setStorage('companyNews', this.companyNews);
+      }
+    }
     this.auditLogs = getStorage('auditLogs', [
       {
         id: 'audit-1',
@@ -510,12 +651,14 @@ class LedgerService {
     setStorage('properties', this.properties);
     setStorage('investments', this.investments);
     setStorage('transactions', this.transactions);
+    setStorage('verificationDocuments', this.verificationDocuments);
     setStorage('auditLogs', this.auditLogs);
     setStorage('notifications', this.notifications);
     setStorage('paymentConfig', this.paymentConfig);
     setStorage('membershipTiers', this.membershipTiers);
     setStorage('memberships', this.memberships);
     setStorage('membershipApplications', this.membershipApplications);
+    setStorage('companyNews', this.companyNews);
   }
 
   public getPaymentConfig(): PaymentConfig {
@@ -650,7 +793,98 @@ class LedgerService {
   }
 
   public getUserByEmail(email: string): User | undefined {
-    return this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    let found = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!found && email.toLowerCase() === 'investor@kretz.com') {
+      found = {
+        id: 'usr-investor-1',
+        email: 'investor@kretz.com',
+        fullName: 'European Angel Partner',
+        role: 'investor',
+        accountType: 'individual_investor',
+        kycStatus: 'verified',
+        walletBalance: 15000,
+        investedBalance: 24000,
+        totalEarned: 2850,
+        createdAt: '2026-01-10T00:00:00Z',
+        country: 'France',
+        bankIban: 'ES9121000418450200051829',
+        cryptoDepositAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2'
+      };
+      this.users.push(found);
+      this.saveState();
+    }
+    return found;
+  }
+
+  public createSamplePendingDeposit(amount: number = 5000, userId?: string): Transaction {
+    const targetUser = userId ? this.getUserById(userId) : (this.getUserByEmail('investor@kretz.com') || this.users[0]);
+    if (!targetUser) throw new Error('Target investor not found.');
+
+    const timestamp = new Date().toISOString();
+    const reference = `DEP-EUR-${Math.floor(100000 + Math.random() * 900000)}`;
+    const tx: Transaction = {
+      id: 'tx-dep-' + Math.random().toString(36).substring(2, 9),
+      userId: targetUser.id,
+      type: 'deposit',
+      amount: amount,
+      currency: 'EUR',
+      status: 'pending',
+      description: 'Deposit request via SEPA Bank Wire (CaixaBank Escrow)',
+      reference: reference,
+      createdAt: timestamp,
+      paymentMethod: 'SEPA Bank Wire Transfer',
+      balanceAfter: targetUser.walletBalance,
+      txHash: '0xcaixa_' + reference.toLowerCase(),
+      metadata: {
+        senderName: targetUser.fullName,
+        bank: 'CaixaBank S.A.',
+        depositRef: reference
+      }
+    };
+
+    this.transactions.unshift(tx);
+    this.createNotification(
+      targetUser.id,
+      'Deposit Request Received',
+      `Deposit request for €${amount.toFixed(2)} (${reference}) is awaiting administrator review.`,
+      'info'
+    );
+    this.saveState();
+    return tx;
+  }
+
+  public createSamplePendingWithdrawal(amount: number = 1000, userId?: string): Transaction {
+    const targetUser = userId ? this.getUserById(userId) : (this.getUserByEmail('investor@kretz.com') || this.users[0]);
+    if (!targetUser) throw new Error('Target investor not found.');
+
+    const timestamp = new Date().toISOString();
+    const reference = `WD-${Math.floor(100000 + Math.random() * 900000)}`;
+    const tx: Transaction = {
+      id: 'tx-wd-' + Math.random().toString(36).substring(2, 9),
+      userId: targetUser.id,
+      type: 'withdrawal',
+      amount: amount,
+      currency: 'EUR',
+      status: 'pending',
+      description: `Withdrawal request to ${targetUser.bankIban || 'ES9121000418450200051829'}`,
+      reference: reference,
+      createdAt: timestamp,
+      paymentMethod: 'SEPA Bank Wire',
+      balanceAfter: targetUser.walletBalance,
+      metadata: {
+        bankIban: targetUser.bankIban || 'ES9121000418450200051829'
+      }
+    };
+
+    this.transactions.unshift(tx);
+    this.createNotification(
+      targetUser.id,
+      'Withdrawal Request Received',
+      `Withdrawal request for €${amount.toFixed(2)} (${reference}) is pending administrator approval.`,
+      'info'
+    );
+    this.saveState();
+    return tx;
   }
 
   public createUser(userData: { email: string; fullName: string; role?: UserRole; accountType?: AccountType }): User {
@@ -814,6 +1048,29 @@ class LedgerService {
       };
 
       this.transactions.unshift(tx);
+
+      // If user uploaded a deposit receipt / payment proof, automatically register it in verification documents
+      if (metadata?.receiptUrl || metadata?.receiptFile) {
+        this.verificationDocuments.unshift({
+          id: 'doc-' + Math.random().toString(36).substring(2, 10),
+          userId: user.id,
+          userName: user.fullName,
+          userEmail: user.email,
+          category: 'deposit_proof',
+          title: `Deposit Proof: ${paymentMethod} (${formatCurrency(amount)})`,
+          documentType: paymentMethod.includes('Crypto') ? 'Crypto Tx Proof' : 'Bank Wire Receipt',
+          fileUrl: metadata.receiptUrl || metadata.receiptFile,
+          fileName: metadata.receiptFileName || 'deposit_transfer_receipt.pdf',
+          fileSize: metadata.receiptFileSize || 150000,
+          uploadedAt: timestamp,
+          status: 'pending',
+          transactionReference: reference,
+          amount: amount,
+          currency: currency,
+          notes: metadata.notes || `Uploaded proof for deposit request ${reference}`
+        });
+      }
+
       this.createNotification(user.id, 'Deposit Submitted', `Your deposit request for €${amount.toFixed(2)} is pending administrative review and approval.`, 'info');
       this.logAudit(user.id, user.email, 'DEPOSIT_REQUESTED', `User requested €${amount.toFixed(2)} deposit via ${paymentMethod}`);
       this.saveState();
@@ -930,16 +1187,150 @@ class LedgerService {
       tx.balanceAfter = user.walletBalance;
       this.createNotification(user.id, 'Deposit Approved & Credited', `Your deposit of €${tx.amount.toFixed(2)} has been approved by admin and credited to your wallet balance.`, 'success');
       this.logAudit('usr-admin-1', 'admin@kretz.com', 'DEPOSIT_APPROVED', `Approved deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
+
+      // Also mark any attached verification document as approved
+      const linkedDoc = this.verificationDocuments.find(d => d.transactionReference === tx.reference);
+      if (linkedDoc) {
+        linkedDoc.status = 'approved';
+        linkedDoc.reviewedAt = new Date().toISOString();
+        linkedDoc.reviewedBy = 'admin@kretz.com';
+      }
     } else {
       tx.status = 'rejected';
       if (!tx.metadata) tx.metadata = {};
       tx.metadata.rejectionReason = reason || 'Deposit bank wire transfer reference or receipt could not be verified.';
       this.createNotification(user.id, 'Deposit Rejected', `Your deposit request for €${tx.amount.toFixed(2)} was declined: ${tx.metadata.rejectionReason}.`, 'warning');
       this.logAudit('usr-admin-1', 'admin@kretz.com', 'DEPOSIT_REJECTED', `Rejected deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
+
+      const linkedDoc = this.verificationDocuments.find(d => d.transactionReference === tx.reference);
+      if (linkedDoc) {
+        linkedDoc.status = 'rejected';
+        linkedDoc.rejectionReason = tx.metadata.rejectionReason;
+        linkedDoc.reviewedAt = new Date().toISOString();
+      }
     }
 
     this.saveState();
     return tx;
+  }
+
+  // --- Document Upload & Verification Vault Methods ---
+
+  public getVerificationDocuments(userId?: string): VerificationDocument[] {
+    if (userId) {
+      return this.verificationDocuments.filter(d => d.userId === userId);
+    }
+    return [...this.verificationDocuments];
+  }
+
+  public getVerificationDocumentById(id: string): VerificationDocument | undefined {
+    return this.verificationDocuments.find(d => d.id === id);
+  }
+
+  public uploadVerificationDocument(doc: Omit<VerificationDocument, 'id' | 'uploadedAt' | 'status'>): VerificationDocument {
+    const newDoc: VerificationDocument = {
+      ...doc,
+      id: 'doc-' + Math.random().toString(36).substring(2, 10),
+      uploadedAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    this.verificationDocuments.unshift(newDoc);
+    this.createNotification(
+      newDoc.userId,
+      'Document Submitted for Verification',
+      `Your document "${newDoc.title}" was submitted to the compliance vault. Awaiting administrative confirmation.`,
+      'info'
+    );
+    this.logAudit(
+      newDoc.userId,
+      newDoc.userEmail,
+      'DOCUMENT_UPLOADED',
+      `Uploaded ${newDoc.category} document "${newDoc.title}" (${newDoc.fileName})`
+    );
+    this.saveState();
+    return newDoc;
+  }
+
+  public reviewVerificationDocument(docId: string, approved: boolean, reason?: string, adminEmail: string = 'admin@kretz.com'): VerificationDocument {
+    const doc = this.verificationDocuments.find(d => d.id === docId);
+    if (!doc) throw new Error('Verification document not found.');
+
+    doc.status = approved ? 'approved' : 'rejected';
+    doc.reviewedAt = new Date().toISOString();
+    doc.reviewedBy = adminEmail;
+    if (!approved && reason) {
+      doc.rejectionReason = reason;
+    }
+
+    const user = this.getUserById(doc.userId);
+    if (user) {
+      if (approved) {
+        // If KYC Identity, verify user account
+        if (doc.category === 'kyc_identity') {
+          user.kycStatus = 'verified';
+          user.kycDocumentType = doc.documentType;
+        }
+
+        // If Deposit Proof with linked reference, auto-credit matching deposit if pending
+        if (doc.category === 'deposit_proof' && doc.transactionReference) {
+          const matchingTx = this.transactions.find(
+            t => t.reference === doc.transactionReference && t.type === 'deposit' && t.status === 'pending'
+          );
+          if (matchingTx) {
+            matchingTx.status = 'completed';
+            user.walletBalance = Number((user.walletBalance + matchingTx.amount).toFixed(2));
+            matchingTx.balanceAfter = user.walletBalance;
+            this.createNotification(
+              user.id,
+              'Deposit Confirmed & Credited',
+              `Payment receipt confirmed! €${matchingTx.amount.toFixed(2)} has been credited to your available wallet balance.`,
+              'success'
+            );
+          }
+        }
+
+        this.createNotification(
+          user.id,
+          'Document Confirmed & Approved',
+          `Your document "${doc.title}" has been reviewed and approved by the platform compliance officer.`,
+          'success'
+        );
+        this.logAudit(
+          'usr-admin-1',
+          adminEmail,
+          'DOCUMENT_APPROVED',
+          `Approved ${doc.category} document "${doc.title}" for investor ${doc.userEmail}`
+        );
+      } else {
+        if (doc.category === 'kyc_identity') {
+          user.kycStatus = 'rejected';
+        }
+        this.createNotification(
+          user.id,
+          'Document Verification Declined',
+          `Your document "${doc.title}" was declined: ${reason || 'Document resolution or details could not be validated. Please re-upload.'}`,
+          'warning'
+        );
+        this.logAudit(
+          'usr-admin-1',
+          adminEmail,
+          'DOCUMENT_REJECTED',
+          `Declined document "${doc.title}" for investor ${doc.userEmail}. Reason: ${reason || 'Incomplete'}`
+        );
+      }
+    }
+
+    this.saveState();
+    return doc;
+  }
+
+  public deleteVerificationDocument(docId: string): void {
+    const index = this.verificationDocuments.findIndex(d => d.id === docId);
+    if (index >= 0) {
+      this.verificationDocuments.splice(index, 1);
+      this.saveState();
+    }
   }
 
   public updateUserAvatar(userId: string, avatarUrl: string): User {
@@ -1307,6 +1698,85 @@ class LedgerService {
       this.logAudit('usr-admin-1', adminEmail, 'MEMBERSHIP_APPLICATION_REVIEWED', `Application ${id} (${app.email}) marked as ${status}`);
       this.saveState();
     }
+  }
+
+  // ==========================================
+  // COMPANY NEWS & YOUTUBE VIDEO MANAGEMENT
+  // ==========================================
+  public getNews(): CompanyNewsItem[] {
+    return JSON.parse(JSON.stringify(this.companyNews));
+  }
+
+  public getPublishedNews(): CompanyNewsItem[] {
+    return JSON.parse(JSON.stringify(this.companyNews.filter(n => n.status === 'published')));
+  }
+
+  public getNewsById(id: string): CompanyNewsItem | undefined {
+    const item = this.companyNews.find(n => n.id === id);
+    return item ? JSON.parse(JSON.stringify(item)) : undefined;
+  }
+
+  public addNews(item: Omit<CompanyNewsItem, 'id' | 'createdAt'>): CompanyNewsItem {
+    if (item.isFeatured) {
+      this.companyNews.forEach(n => { n.isFeatured = false; });
+    }
+    const newItem: CompanyNewsItem = {
+      ...item,
+      id: 'news-' + Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+    };
+    this.companyNews.unshift(newItem);
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_CREATED', `Added company news video: "${newItem.title}" (${newItem.youtubeId})`);
+    this.saveState();
+    return JSON.parse(JSON.stringify(newItem));
+  }
+
+  public updateNews(id: string, updates: Partial<CompanyNewsItem>): CompanyNewsItem | undefined {
+    const index = this.companyNews.findIndex(n => n.id === id);
+    if (index === -1) return undefined;
+    if (updates.isFeatured) {
+      this.companyNews.forEach(n => { n.isFeatured = false; });
+    }
+    this.companyNews[index] = {
+      ...this.companyNews[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_UPDATED', `Updated company news video: ${id}`);
+    this.saveState();
+    return JSON.parse(JSON.stringify(this.companyNews[index]));
+  }
+
+  public deleteNews(id: string): boolean {
+    const prevLen = this.companyNews.length;
+    const target = this.companyNews.find(n => n.id === id);
+    this.companyNews = this.companyNews.filter(n => n.id !== id);
+    if (this.companyNews.length !== prevLen) {
+      this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_DELETED', `Deleted company news video: ${id} (${target?.title || 'Unknown'})`);
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  public setFeaturedNews(id: string): void {
+    this.companyNews.forEach(n => {
+      n.isFeatured = n.id === id;
+    });
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_FEATURED', `Set news video as featured: ${id}`);
+    this.saveState();
+  }
+
+  public toggleNewsStatus(id: string): CompanyNewsItem | undefined {
+    const item = this.companyNews.find(n => n.id === id);
+    if (item) {
+      item.status = item.status === 'published' ? 'draft' : 'published';
+      item.updatedAt = new Date().toISOString();
+      this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_STATUS_TOGGLED', `News video ${id} status set to ${item.status}`);
+      this.saveState();
+      return JSON.parse(JSON.stringify(item));
+    }
+    return undefined;
   }
 
   private logAudit(adminId: string, adminEmail: string, action: string, details: string) {

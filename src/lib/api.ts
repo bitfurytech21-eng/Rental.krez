@@ -239,13 +239,13 @@ export const api = {
 // ============================================================================
 
 /**
- * Authentication Endpoints
+ * Authentication Endpoints with Cloudflare Turnstile bot verification
  */
 export const authApi = {
-  login: (email: string, pass: string) =>
-    api.post<{ user: any; token: string }>('/auth/login', { email, pass }, { skipAuth: true }),
+  login: (email: string, pass: string, turnstileToken?: string) =>
+    api.post<{ user: any; token: string }>('/auth/login', { email, pass, turnstileToken }, { skipAuth: true }),
 
-  register: (payload: { email: string; pass: string; fullName: string; role?: string }) =>
+  register: (payload: { email: string; pass: string; fullName: string; role?: string; turnstileToken?: string }) =>
     api.post<{ user: any; token: string }>('/auth/register', payload, { skipAuth: true }),
 
   getMe: () =>
@@ -257,11 +257,27 @@ export const authApi = {
   logout: () =>
     api.post<{ success: boolean }>('/auth/logout'),
 
-  sendPasswordReset: (email: string) =>
-    api.post<{ success: boolean; message: string }>('/auth/password/forgot', { email }, { skipAuth: true }),
+  sendPasswordReset: (email: string, turnstileToken?: string) =>
+    api.post<{ success: boolean; message: string }>('/auth/password/forgot', { email, turnstileToken }, { skipAuth: true }),
 
   updatePassword: (password: string, token?: string) =>
     api.post<{ success: boolean; message: string }>('/auth/password/reset', { newPassword: password, token }),
+};
+
+/**
+ * Direct Investor Desk & Contact API
+ */
+export const contactApi = {
+  submit: (payload: { fullName: string; email: string; topic?: string; message: string; turnstileToken?: string }) =>
+    api.post<{ success: boolean; message: string }>('/contact', payload),
+};
+
+/**
+ * Security & Human Verification API
+ */
+export const securityApi = {
+  verifyTurnstile: (turnstileToken: string) =>
+    api.post<{ success: boolean; message: string; challengeTs?: string; hostname?: string }>('/security/verify-turnstile', { turnstileToken }),
 };
 
 /**

@@ -1057,9 +1057,16 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                     <button
                       onClick={handleConfirmInvestment}
                       disabled={isSubmitting}
-                      className="btn btn-primary w-full text-sm font-bold"
+                      className="btn btn-primary w-full text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                     >
-                      {isSubmitting ? 'Confirming On-Chain...' : `Confirm Acquisition of ${formatCurrency(totalCost)}`}
+                      {isSubmitting ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Processing investment...</span>
+                        </>
+                      ) : (
+                        `Confirm Acquisition of ${formatCurrency(totalCost)}`
+                      )}
                     </button>
                   )}
 

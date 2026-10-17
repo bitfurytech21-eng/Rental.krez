@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
 import { isValidEmail } from '../../lib/validation';
+import { TurnstileWidget } from '../security/TurnstileWidget';
+import { contactApi } from '../../lib/api';
 
 export const ContactPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [topic, setTopic] = useState('Investor Inquiries');
   const [message, setMessage] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -22,8 +26,27 @@ export const ContactPage: React.FC = () => {
       setError('Please provide a descriptive inquiry message (min 10 characters).');
       return;
     }
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare Turnstile human security verification check.');
+      return;
+    }
 
-    setSubmitted(true);
+    setLoading(true);
+    try {
+      await contactApi.submit({
+        fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        topic,
+        message: message.trim(),
+        turnstileToken,
+      });
+      setSubmitted(true);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to submit inquiry. Please complete the security check again.');
+      setTurnstileToken(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -150,9 +173,36 @@ export const ContactPage: React.FC = () => {
                   </div>
                 )}
 
-                <button type="submit" className="btn btn-primary text-xs font-bold px-8">
-                  <Send className="w-4 h-4 mr-1.5" />
-                  Submit Inquiry
+                {/* Cloudflare Turnstile Human Verification Widget */}
+                <div className="pt-2">
+                  <TurnstileWidget
+                    onVerify={(token) => {
+                      setTurnstileToken(token);
+                      setError(null);
+                    }}
+                    onExpire={() => setTurnstileToken(null)}
+                    onError={(msg) => setError(msg)}
+                    action="contact"
+                    theme="light"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !turnstileToken}
+                  className="btn btn-primary text-xs font-bold px-8 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Validating Security & Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Submit Inquiry</span>
+                    </>
+                  )}
                 </button>
               </form>
             ) : (

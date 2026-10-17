@@ -6,13 +6,15 @@ import { PortfolioOverview } from '../dashboard/PortfolioOverview';
 import { TransactionTable } from '../dashboard/TransactionTable';
 import { DistributionsView } from '../dashboard/DistributionsView';
 import { WithdrawalModal } from '../dashboard/WithdrawalModal';
+import { DepositModal } from '../dashboard/DepositModal';
 import { DocumentViewerModal } from '../dashboard/DocumentViewerModal';
+import { DocumentUploadVault } from '../dashboard/DocumentUploadVault';
 import { ProfilePage } from './ProfilePage';
 import { PropertyCard } from '../properties/PropertyCard';
 import { 
   ArrowRight, Bell, Building2, TrendingUp, Wallet, ShieldCheck, History, 
   PieChart, ArrowDownLeft, ArrowUpRight, HelpCircle, User, FileText, LayoutDashboard, Coins,
-  Share2, Award, CheckCircle2, AlertCircle, ExternalLink, Copy, Check, Menu, X
+  Share2, Award, CheckCircle2, AlertCircle, ExternalLink, Copy, Check, Menu, X, UploadCloud
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
@@ -37,11 +39,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 }) => {
   const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
-  const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isDepositOpen, setIsDepositOpen] = useState(defaultTab === 'deposit');
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(defaultTab === 'withdraw');
   const [selectedDocInvestment, setSelectedDocInvestment] = useState<any | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (defaultTab === 'deposit') {
+      setActiveTab('wallet');
+      setIsDepositOpen(true);
+    } else if (defaultTab === 'withdraw') {
+      setActiveTab('wallet');
+      setIsWithdrawOpen(true);
+    } else if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab]);
 
   if (!user) {
     return (
@@ -55,6 +69,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const transactions = ledger.getTransactions(user.id);
   const notifications = ledger.getNotifications(user.id);
   const properties = ledger.getProperties();
+  const verificationDocs = ledger.getVerificationDocuments(user.id);
+  const pendingDocsCount = verificationDocs.filter(d => d.status === 'pending').length;
 
   const handleWithdrawalSuccess = () => {
     refreshUser();
@@ -75,6 +91,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { id: 'transactions', label: 'Transactions', icon: History, count: transactions.length },
     { id: 'distributions', label: 'Distributions', icon: Coins },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
+    { id: 'verification', label: 'Upload & Compliance', icon: UploadCloud, count: pendingDocsCount || undefined },
     { id: 'documents', label: 'Documents', icon: FileText, count: investments.length },
     { id: 'referrals', label: 'Referrals', icon: Share2 },
     { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.length },
@@ -148,11 +165,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           })}
         </nav>
 
-        {/* Sidebar Footer / Deposit Button */}
+        {/* Sidebar Footer / Deposit & Withdraw Buttons */}
         <div className="p-4 border-t border-[#1E332E] space-y-2 bg-[#142421]">
           <button
+            onClick={() => setIsDepositOpen(true)}
+            className="w-full btn btn-accent text-xs font-bold justify-center shadow-md py-2.5 cursor-pointer"
+          >
+            <ArrowDownLeft className="w-3.5 h-3.5 mr-1.5" /> Deposit Funds
+          </button>
+          <button
             onClick={() => setIsWithdrawOpen(true)}
-            className="w-full btn btn-secondary text-xs font-semibold justify-center bg-transparent text-white border-[#2D4540] hover:bg-[#1E332E]"
+            className="w-full btn btn-secondary text-xs font-semibold justify-center bg-transparent text-white border-[#2D4540] hover:bg-[#1E332E] py-2 cursor-pointer"
           >
             <ArrowUpRight className="w-3.5 h-3.5 mr-1.5" /> Withdraw
           </button>
@@ -377,10 +400,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* 6. WALLET TAB */}
             {activeTab === 'wallet' && (
               <div className="space-y-6 animate-in fade-in duration-200 max-w-4xl mx-auto">
-                <div className="bg-white p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-black text-[#18211F]">Investor Wallet & Balances</h2>
-                    <p className="text-xs text-[#69736F]">Manage your liquidity, SEPA bank transfers, and automated dividend deposits.</p>
+                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-2xl font-black text-[#18211F]">Investor Wallet & Treasury</h2>
+                      <p className="text-xs text-[#69736F]">Manage your liquidity, SEPA bank transfers, and automated dividend deposits.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5" /> CaixaBank Escrow
+                      </span>
+                    </div>
                   </div>
 
                   <BalanceCard
@@ -389,12 +419,129 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onWithdraw={() => setIsWithdrawOpen(true)}
                   />
 
-                  <div className="p-6 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-3">
-                    <button onClick={() => setIsWithdrawOpen(true)} className="btn btn-secondary btn-sm text-xs font-bold w-full">
-                      Withdraw
-                    </button>
+                  {/* Action Cards: Deposit, Withdrawal & Document Upload */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Deposit Action Card */}
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-[#F6F8F5] to-emerald-50/40 border border-[#DCE4DA] flex flex-col justify-between space-y-4 text-left">
+                      <div className="space-y-2">
+                        <div className="w-10 h-10 rounded-xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shadow-xs">
+                          <ArrowDownLeft className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-base font-bold text-[#18211F]">Deposit Capital</h3>
+                        <p className="text-xs text-[#69736F] leading-relaxed">
+                          Add funds via SEPA wire transfer (CaixaBank Escrow) or crypto stablecoins (USDT, USDC, ETH). Deposits are verified and credited through administrator review.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setIsDepositOpen(true)}
+                        className="btn btn-primary text-xs font-bold py-3 px-5 flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                      >
+                        <ArrowDownLeft className="w-4 h-4 text-[#B7E36A]" />
+                        <span>Deposit Funds</span>
+                      </button>
+                    </div>
+
+                    {/* Withdrawal Action Card */}
+                    <div className="p-6 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between space-y-4 text-left">
+                      <div className="space-y-2">
+                        <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center font-bold">
+                          <ArrowUpRight className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-base font-bold text-[#18211F]">Withdraw Funds</h3>
+                        <p className="text-xs text-[#69736F] leading-relaxed">
+                          Redeem your uninvested liquid capital directly to your verified European bank IBAN or external crypto wallet address. Subject to standard AML/KYC review.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setIsWithdrawOpen(true)}
+                        className="btn btn-secondary text-xs font-bold py-3 px-5 border-[#CBD5E1] bg-white hover:bg-slate-50 text-[#18211F] flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                      >
+                        <ArrowUpRight className="w-4 h-4 text-[#27845D]" />
+                        <span>Request Withdrawal</span>
+                      </button>
+                    </div>
+
+                    {/* Upload Proof / Compliance Card */}
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-[#F6F8F5] to-blue-50/40 border border-blue-200/80 flex flex-col justify-between space-y-4 text-left">
+                      <div className="space-y-2">
+                        <div className="w-10 h-10 rounded-xl bg-blue-900 text-blue-200 flex items-center justify-center font-bold shadow-xs">
+                          <UploadCloud className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-base font-bold text-[#18211F]">Upload Proof & KYC</h3>
+                        <p className="text-xs text-[#69736F] leading-relaxed">
+                          Upload wire transfer confirmation slips, crypto screenshots, or AML identity documents directly to the compliance vault for admin confirmation and approval.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('verification')}
+                        className="btn btn-secondary text-xs font-bold py-3 px-5 border-blue-300 bg-white hover:bg-blue-50 text-blue-950 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                      >
+                        <UploadCloud className="w-4 h-4 text-blue-700" />
+                        <span>Upload Documents ({verificationDocs.length})</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Pending Transactions Section */}
+                  {transactions.filter(t => t.status === 'pending').length > 0 && (
+                    <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3 text-left">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                          <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                            Pending Treasury Requests ({transactions.filter(t => t.status === 'pending').length})
+                          </h4>
+                        </div>
+                        <a
+                          href="/admin#deposits"
+                          className="text-xs font-bold text-amber-900 hover:text-amber-950 underline flex items-center gap-1"
+                        >
+                          Review in Admin Panel <ArrowRight className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+
+                      <div className="space-y-2">
+                        {transactions.filter(t => t.status === 'pending').map(tx => (
+                          <div key={tx.id} className="p-3.5 bg-white rounded-xl border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  tx.type === 'deposit' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {tx.type === 'deposit' ? 'Deposit Request' : 'Withdrawal Request'}
+                                </span>
+                                <span className="font-mono font-bold text-[#18211F]">{tx.reference}</span>
+                              </div>
+                              <p className="text-[11px] text-[#69736F]">{tx.paymentMethod} · {formatDate(tx.createdAt)}</p>
+                              {tx.metadata?.receiptFileName && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
+                                  📎 Proof attached: {tx.metadata.receiptFileName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-left sm:text-right">
+                              <span className="font-black text-[#18211F] text-sm block">
+                                {formatCurrency(tx.amount)} {tx.currency}
+                              </span>
+                              <span className="text-[10px] text-amber-800 font-bold">Awaiting Admin Approval</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
+              </div>
+            )}
+
+            {/* TAB: UPLOAD & VERIFICATION VAULT */}
+            {activeTab === 'verification' && (
+              <div className="animate-in fade-in duration-200">
+                <DocumentUploadVault
+                  onNavigateAdmin={() => window.location.href = '/admin#deposits'}
+                  onNavigateWallet={() => setActiveTab('wallet')}
+                />
               </div>
             )}
 
@@ -687,6 +834,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Deposit Modal */}
+      <DepositModal
+        isOpen={isDepositOpen}
+        onClose={() => setIsDepositOpen(false)}
+        onSuccess={() => {
+          refreshUser();
+        }}
+        onNavigateAdmin={() => {
+          window.location.hash = '/admin#deposits';
+        }}
+        onNavigateTransactions={() => setActiveTab('transactions')}
+      />
 
       {/* Withdrawal Modal */}
       <WithdrawalModal

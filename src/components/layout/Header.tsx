@@ -6,7 +6,8 @@ import {
   Building2, Menu, X, User as UserIcon, Shield, LogOut, 
   Wallet, Crown, ChevronDown, ChevronRight, Coins, 
   BookOpen, HelpCircle, PhoneCall, Layers, Trophy, 
-  TrendingUp, Compass, ArrowRight
+  TrendingUp, Compass, ArrowRight, ArrowDownLeft, ArrowUpRight,
+  Tv
 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 
@@ -49,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
     { label: 'Marketplace', path: '/properties', badge: 'Live', badgeColor: 'bg-emerald-100 text-emerald-800' },
     { label: 'Success Stories', path: '/casos-de-exito', badge: '15.4% IRR', badgeColor: 'bg-emerald-100 text-emerald-800' },
     { label: 'The Agency', path: '/agency' },
+    { label: 'Company News', path: '/news' },
     { label: 'Membership Club', path: '/club', icon: Crown, iconColor: 'text-[#D4AF37]' },
     { label: 'Wealth Advisory', path: '/wealth' },
     { label: 'Blog', path: '/blog' },
@@ -56,6 +58,12 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
 
   // Secondary items cleanly grouped in the "More" dropdown for standard screens
   const secondaryLinks = [
+    { 
+      label: 'Company News & Media', 
+      path: '/news', 
+      description: 'Official announcements, YouTube broadcasts & press interviews',
+      icon: Tv
+    },
     { 
       label: 'How It Works', 
       path: '/investing', 
@@ -258,6 +266,28 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
 
                   <button
                     onClick={() => {
+                      handleNavClick('/deposit');
+                      setUserDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
+                  >
+                    <ArrowDownLeft className="w-4 h-4 text-[#27845D]" />
+                    <span>Deposit Funds</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      handleNavClick('/wallet');
+                      setUserDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
+                  >
+                    <ArrowUpRight className="w-4 h-4 text-[#69736F]" />
+                    <span>Withdraw Funds</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
                       handleNavClick('/portfolio');
                       setUserDropdownOpen(false);
                     }}
@@ -290,16 +320,29 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                   </button>
 
                   {isAdmin && (
-                    <button
-                      onClick={() => {
-                        handleNavClick('/admin');
-                        setUserDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-xs font-bold text-[#182D2A] bg-emerald-50 hover:bg-emerald-100 flex items-center gap-2 cursor-pointer"
-                    >
-                      <Shield className="w-4 h-4 text-[#27845D]" />
-                      Admin Control Panel
-                    </button>
+                    <>
+                      <button
+                        onClick={() => {
+                          handleNavClick('/admin#deposits');
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 flex items-center gap-2 cursor-pointer"
+                      >
+                        <ArrowDownLeft className="w-4 h-4 text-amber-700" />
+                        <span>Deposit Approvals</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleNavClick('/admin');
+                          setUserDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-bold text-[#182D2A] bg-emerald-50 hover:bg-emerald-100 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Shield className="w-4 h-4 text-[#27845D]" />
+                        Admin Control Panel
+                      </button>
+                    </>
                   )}
 
                   <div className="border-t border-[#E3E8E3] my-1" />
@@ -389,6 +432,21 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               }`}
             >
               <span>The Agency</span>
+            </button>
+
+            {/* Company News */}
+            <button
+              onClick={() => handleNavClick('/news')}
+              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
+                currentPath === '/news' || currentPath === '/company-news' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span>Company News</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+                  Broadcasts
+                </span>
+              </div>
             </button>
 
             {/* 5. Membership Club */}

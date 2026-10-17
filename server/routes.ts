@@ -12,9 +12,24 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin } from './middleware';
 import { logger } from './logger';
+import { verifyTurnstileToken, requireTurnstile } from './turnstile';
 import crypto from 'crypto';
 
 const router = Router();
+
+const contactLimiter = rateLimiter({
+  windowMs: 60 * 1000,
+  max: 5,
+  category: 'security',
+  message: 'Too many contact inquiries from this IP address. Please wait 1 minute.'
+});
+
+const securityLimiter = rateLimiter({
+  windowMs: 60 * 1000,
+  max: 10,
+  category: 'security',
+  message: 'Too many security checks. Please wait 1 minute.'
+});
 
 // In-memory data store for server-authoritative state
 // (Production Note: Easily backed by PostgreSQL / Cloud SQL via Drizzle / Supabase)
@@ -173,7 +188,7 @@ const authLimiter = rateLimiter({
 /**
  * POST /api/v1/auth/login
  */
-router.post('/auth/login', authLimiter, (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
   const { email, password, pass } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
   const inputPass = password || pass;
@@ -369,13 +384,13 @@ const handleAdminLogin = (req: AuthenticatedRequest, res: Response) => {
   });
 };
 
-router.post('/admin/login', authLimiter, handleAdminLogin);
-router.post('/auth/admin/login', authLimiter, handleAdminLogin);
+router.post('/admin/login', authLimiter, requireTurnstile, handleAdminLogin);
+router.post('/auth/admin/login', authLimiter, requireTurnstile, handleAdminLogin);
 
 /**
  * POST /api/v1/auth/register
  */
-router.post('/auth/register', authLimiter, (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/register', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
   const { email, fullName, password, pass, role } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
 
@@ -480,7 +495,7 @@ router.post('/auth/logout', (req: AuthenticatedRequest, res: Response) => {
 /**
  * POST /api/v1/auth/password/forgot
  */
-router.post('/auth/password/forgot', authLimiter, (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/password/forgot', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
   const { email } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
 
@@ -502,6 +517,70 @@ router.post('/auth/password/forgot', authLimiter, (req: AuthenticatedRequest, re
     success: true,
     message: 'If an account exists with this email, recovery instructions have been sent.',
     requestId: req.id
+  });
+});
+
+/**
+ * POST /api/v1/contact
+ * Enforces Turnstile human verification and rate limiting on investor inquiries
+ */
+router.post('/contact', contactLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
+  const { fullName, email, topic, message } = req.body || {};
+  const normalizedEmail = (email || '').toLowerCase().trim();
+
+  if (!fullName || !normalizedEmail || !message) {
+    return res.status(400).json({
+      success: false,
+      error: 'Full name, valid email address, and inquiry message are required.',
+      code: 'MISSING_FIELDS',
+      requestId: req.id,
+    });
+  }
+
+  logger.log({
+    level: 'info',
+    category: 'system',
+    requestId: req.id || 'req-contact',
+    method: 'POST',
+    route: '/api/v1/contact',
+    statusCode: 200,
+    eventType: 'CONTACT_INQUIRY_RECEIVED',
+    outcome: 'success',
+    message: `Direct investor desk inquiry received from ${fullName} (${normalizedEmail})`,
+    metadata: { email: normalizedEmail, topic: topic || 'Investor Inquiries' }
+  });
+
+  return res.json({
+    success: true,
+    message: 'Your inquiry has been successfully received by the Kretz Investor Relations Desk.',
+    requestId: req.id,
+  });
+});
+
+/**
+ * POST /api/v1/security/verify-turnstile
+ * Standalone verification endpoint for testing and client verification checks
+ */
+router.post('/security/verify-turnstile', securityLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  const token = req.body?.turnstileToken || req.headers['x-turnstile-token'] || req.body?.['cf-turnstile-response'];
+  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+  const result = await verifyTurnstileToken(token, ip);
+  if (!result.success) {
+    return res.status(403).json({
+      success: false,
+      error: result.error,
+      code: result.code,
+      requestId: req.id,
+    });
+  }
+
+  return res.json({
+    success: true,
+    message: 'Turnstile human verification succeeded.',
+    challengeTs: result.challengeTs,
+    hostname: result.hostname,
+    requestId: req.id,
   });
 });
 

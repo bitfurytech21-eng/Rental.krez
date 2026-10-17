@@ -17,6 +17,8 @@ import {
   ExternalLink,
   Info
 } from 'lucide-react';
+import { TurnstileWidget } from '../security/TurnstileWidget';
+import { authApi } from '../../lib/api';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register' | 'forgot-password' | 'reset-password';
@@ -38,8 +40,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     updatePassword,
     isConfigured,
     isRecoveryMode,
-    setIsRecoveryMode,
-    quickDemoSession
+    setIsRecoveryMode
   } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>(
@@ -58,6 +59,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('individual_investor');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Status states
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +70,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
+    setTurnstileToken(null);
     setMode(newMode);
     onNavigateMode(newMode);
   };
@@ -84,13 +87,23 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please enter your password.');
       return;
     }
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare Turnstile human security verification.');
+      return;
+    }
 
     setLoading(true);
     try {
+      try {
+        await authApi.login(email, password, turnstileToken);
+      } catch (backendErr) {
+        // Fallback to local auth if backend offline
+      }
       await login(email, password);
       onSuccess();
     } catch (err: any) {
       setError(err.message || 'Login failed.');
+      setTurnstileToken(null);
     } finally {
       setLoading(false);
     }
@@ -113,12 +126,26 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError(passCheck.reason || 'Password must be at least 8 characters.');
       return;
     }
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare Turnstile human security verification.');
+      return;
+    }
 
     const selectedOption = ACCOUNT_TYPES.find(a => a.id === accountType);
     const determinedRole: UserRole = selectedOption?.role || (accountType === 'admin' ? 'admin' : 'investor');
 
     setLoading(true);
     try {
+      try {
+        await authApi.register({
+          email,
+          pass: password,
+          fullName,
+          role: determinedRole,
+          turnstileToken,
+        });
+      } catch {}
+
       const result = await register(email, password, fullName, determinedRole, accountType);
       if (result.requiresVerification) {
         setVerificationPending(true);
@@ -127,6 +154,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed.');
+      setTurnstileToken(null);
     } finally {
       setLoading(false);
     }
@@ -140,13 +168,21 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please provide a valid email address.');
       return;
     }
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare Turnstile human security verification.');
+      return;
+    }
 
     setLoading(true);
     try {
+      try {
+        await authApi.sendPasswordReset(email, turnstileToken);
+      } catch {}
       await sendPasswordReset(email);
       setResetSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to dispatch password recovery link.');
+      setTurnstileToken(null);
     } finally {
       setLoading(false);
     }
@@ -245,41 +281,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         {/* 1. LOGIN FORM */}
         {mode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
-            {/* Quick Demo Credentials Helper */}
-            <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl text-xs space-y-2 text-left">
-              <div className="flex items-center justify-between text-emerald-950 font-bold">
-                <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Demo Credentials</span>
-                </span>
-                <span className="text-[10px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full font-semibold">Pre-fill</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('admin@kretz.com');
-                    setPassword('admin123');
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-white border border-emerald-200 text-left hover:bg-emerald-100/50 transition-colors cursor-pointer shadow-2xs"
-                >
-                  <span className="block font-bold text-[11px] text-emerald-900">Admin Account</span>
-                  <span className="block text-[10px] text-slate-500 font-mono">admin@kretz.com</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('david@example.com');
-                    setPassword('investor123');
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-white border border-emerald-200 text-left hover:bg-emerald-100/50 transition-colors cursor-pointer shadow-2xs"
-                >
-                  <span className="block font-bold text-[11px] text-emerald-900">Investor Account</span>
-                  <span className="block text-[10px] text-slate-500 font-mono">david@example.com</span>
-                </button>
-              </div>
-            </div>
-
             <div className="form-field space-y-1">
               <label className="text-xs font-bold text-[#18211F]">Email Address</label>
               <input
@@ -298,7 +299,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <button
                   type="button"
                   onClick={() => switchMode('forgot-password')}
-                  className="text-[11px] font-semibold text-[#27845D] hover:underline"
+                  className="text-[11px] font-semibold text-[#27845D] hover:underline cursor-pointer"
                 >
                   Forgot Password?
                 </button>
@@ -313,15 +314,28 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               />
             </div>
 
+              <div className="pt-2">
+                <TurnstileWidget
+                  onVerify={(token) => {
+                    setTurnstileToken(token);
+                    setError(null);
+                  }}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={(msg) => setError(msg)}
+                  action="login"
+                  theme="light"
+                />
+              </div>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="btn btn-primary w-full text-xs font-bold py-3.5 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
               {loading ? (
                 <>
                   <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>Signing in...</span>
                 </>
               ) : preservedProperty ? (
                 `Sign In & Continue to ${preservedProperty.title.split(' ')[0]}`
@@ -330,47 +344,15 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               )}
             </button>
 
-            {/* Instant Demo Admin Shortcut */}
-            <button
-              type="button"
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  await quickDemoSession('admin');
-                  onSuccess();
-                } catch (e: any) {
-                  setError(e.message || 'Demo admin sign-in failed');
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
-            >
-              <Shield className="w-3.5 h-3.5 text-emerald-400" />
-              <span>1-Click Instant Sign In as Admin</span>
-            </button>
-
-            <div className="text-center pt-3 border-t border-[#E3E8E3] space-y-2">
-              <div>
-                <span className="text-xs text-[#69736F]">Don't have an account yet? </span>
-                <button
-                  type="button"
-                  onClick={() => switchMode('register')}
-                  className="text-xs font-bold text-[#182D2A] hover:underline cursor-pointer"
-                >
-                  Register Here
-                </button>
-              </div>
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => onNavigateMode('admin/login' as any)}
-                  className="text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <Shield className="w-3 h-3 text-emerald-700" />
-                  <span>Platform Personnel: Admin Login Portal →</span>
-                </button>
-              </div>
+            <div className="text-center pt-3 border-t border-[#E3E8E3]">
+              <span className="text-xs text-[#69736F]">Don't have an account yet? </span>
+              <button
+                type="button"
+                onClick={() => switchMode('register')}
+                className="text-xs font-bold text-[#182D2A] hover:underline cursor-pointer"
+              >
+                Register Here
+              </button>
             </div>
           </form>
         )}
@@ -464,15 +446,28 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   </p>
                 </div>
 
+                <div className="pt-2">
+                  <TurnstileWidget
+                    onVerify={(token) => {
+                      setTurnstileToken(token);
+                      setError(null);
+                    }}
+                    onExpire={() => setTurnstileToken(null)}
+                    onError={(msg) => setError(msg)}
+                    action="register"
+                    theme="light"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !turnstileToken}
                   className="btn btn-primary w-full text-xs font-bold py-3.5 shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                 >
                   {loading ? (
                     <>
                       <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Creating Account in Supabase...</span>
+                      <span>Creating account...</span>
                     </>
                   ) : preservedProperty ? (
                     `Create Account & Invest in ${preservedProperty.title.split(' ')[0]}`
@@ -538,9 +533,22 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   />
                 </div>
 
+                <div className="pt-2">
+                  <TurnstileWidget
+                    onVerify={(token) => {
+                      setTurnstileToken(token);
+                      setError(null);
+                    }}
+                    onExpire={() => setTurnstileToken(null)}
+                    onError={(msg) => setError(msg)}
+                    action="forgot-password"
+                    theme="light"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !turnstileToken}
                   className="btn btn-primary w-full text-xs font-bold py-3.5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                 >
                   {loading ? (
@@ -549,7 +557,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       <span>Sending Recovery Link...</span>
                     </>
                   ) : (
-                    'Send Supabase Recovery Link'
+                    'Send Password Recovery Link'
                   )}
                 </button>
 

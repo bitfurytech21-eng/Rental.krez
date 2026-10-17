@@ -25,6 +25,12 @@ export interface Transaction {
     notes?: string;
     adminEmail?: string;
     network?: string;
+    senderName?: string;
+    bank?: string;
+    depositRef?: string;
+    treasuryAddress?: string;
+    declaredTxHash?: string;
+    [key: string]: any;
   };
 }
 
