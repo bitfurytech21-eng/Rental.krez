@@ -42,6 +42,7 @@ import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SmartsuppWidget } from './components/support/SmartsuppWidget';
 import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
+import { updatePageSeo } from './lib/seo';
 
 import { ArrowRight, ShieldCheck, UserCheck, Plus, Sparkles } from 'lucide-react';
 
@@ -90,6 +91,20 @@ function MainApp() {
       window.removeEventListener('hashchange', handleRouteSync);
     };
   }, []);
+
+  // Update dynamic SEO metadata and OpenGraph tags whenever route or selected property changes
+  useEffect(() => {
+    if (currentPath.startsWith('/property/') && selectedProperty) {
+      updatePageSeo({
+        title: `${selectedProperty.title} – Fractional Investment | Kretz Real Estate`,
+        description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected yield ${selectedProperty.estimatedAnnualYield}% p.a. Tokenized shares from €1,000.`,
+        image: selectedProperty.images[0],
+        type: 'article',
+      });
+    } else {
+      updatePageSeo();
+    }
+  }, [currentPath, selectedProperty]);
 
   const navigateTo = (path: string) => {
     const cleanPath = !path || path === '/' ? '/' : (path.startsWith('/') ? path : `/${path}`);
