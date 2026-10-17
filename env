@@ -1,4 +1,2 @@
 SUPABASE_URL=https://mpwsbepgnxvritrnchdg.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_cRqBY1Ua5JVJe6doeMK-oA_2rKT0isK
-SUPABASE_SECRET_KEY=sb_secret_KU1h56joEsZcCFHljd3iQw_ecGCWEt0
-SUPABASE_JWKS_URL=https://mpwsbepgnxvritrnchdg.supabase.co/auth/v1/.well-known/jwks.json
