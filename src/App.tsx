@@ -308,8 +308,10 @@ function MainApp() {
         return <LegalPage mode="privacy" />;
 
       case '/login':
+      case '/signin':
         return (
           <AuthPages
+            key="auth-page-login"
             initialMode="login"
             preservedProperty={pendingInvestmentProperty}
             onSuccess={handleAuthSuccess}
@@ -318,8 +320,12 @@ function MainApp() {
         );
 
       case '/register':
+      case '/signup':
+      case '/join':
+      case '/create-account':
         return (
           <AuthPages
+            key="auth-page-register"
             initialMode="register"
             preservedProperty={pendingInvestmentProperty}
             onSuccess={handleAuthSuccess}
@@ -543,6 +549,7 @@ function MainApp() {
 
   const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
+  const isHomePage = currentBasePath === '/' || currentBasePath === '';
 
   return (
     <div className={`flex flex-col bg-white ${isDashboardView ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
@@ -553,8 +560,8 @@ function MainApp() {
         {renderContent()}
       </div>
 
-      {/* Exclude public website footer on private investor dashboard, admin control panel, and admin login portal */}
-      {!isDashboardView && !isAdminView && !isAdminLoginPage && <Footer onNavigate={navigateTo} />}
+      {/* Footer is visible only on the home page */}
+      {isHomePage && <Footer onNavigate={navigateTo} />}
 
       {/* Global Smartsupp Live Customer Support System */}
       <SmartsuppWidget />

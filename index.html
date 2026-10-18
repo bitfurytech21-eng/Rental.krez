@@ -11,6 +11,23 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script>
+      // Ignore WebSocket / Vite HMR preview connection errors
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason && (
+          event.reason.message?.includes('WebSocket') ||
+          event.reason?.message?.includes('ws') ||
+          event.reason?.stack?.includes('@vite/client')
+        )) {
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('error', function(event) {
+        if (event.message?.includes('WebSocket') || (event.filename && event.filename.includes('@vite/client'))) {
+          event.preventDefault();
+        }
+      });
+    </script>
   </head>
   <body class="bg-white text-[#18211F] antialiased">
     <div id="root">

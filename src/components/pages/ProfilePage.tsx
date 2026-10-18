@@ -177,6 +177,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 {new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
             </div>
+            {user.country && (
+              <div className="p-4 rounded-2xl dash-inner border">
+                <span className="dash-muted block mb-0.5">Country of Residence</span>
+                <span className="font-bold dash-text">{user.country}</span>
+              </div>
+            )}
+            {user.phoneNumber && (
+              <div className="p-4 rounded-2xl dash-inner border">
+                <span className="dash-muted block mb-0.5">Contact Phone Number</span>
+                <span className="font-mono font-bold dash-text">{user.phoneNumber}</span>
+              </div>
+            )}
           </div>
         </div>
 

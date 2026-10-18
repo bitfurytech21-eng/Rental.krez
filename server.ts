@@ -4,6 +4,7 @@
  */
 
 import express, { Request, Response } from 'express';
+import http from 'http';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
@@ -22,6 +23,7 @@ const __dirname = dirname(__filename);
 
 async function startServer() {
   const app = express();
+  const server = http.createServer(app);
   const PORT = parseInt(process.env.APP_PORT || (process.env.PORT === '8080' ? '3000' : (process.env.PORT || '3000')), 10);
 
   // Body Parsers
@@ -76,7 +78,7 @@ async function startServer() {
         middlewareMode: true,
         host: '0.0.0.0',
         port: PORT,
-        hmr: process.env.DISABLE_HMR !== 'true',
+        hmr: process.env.DISABLE_HMR !== 'true' ? { server } : false,
         watch: process.env.DISABLE_HMR === 'true' ? null : {}
       },
       appType: 'spa',
@@ -105,7 +107,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     logger.log({
       level: 'info',
       category: 'system',

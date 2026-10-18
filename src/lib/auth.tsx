@@ -21,7 +21,15 @@ interface AuthContextType {
   isRecoveryMode: boolean;
   setIsRecoveryMode: (val: boolean) => void;
   login: (email: string, pass: string) => Promise<User>;
-  register: (email: string, pass: string, fullName: string, role?: UserRole, accountType?: AccountType) => Promise<RegisterResult>;
+  register: (
+    email: string,
+    pass: string,
+    fullName: string,
+    role?: UserRole,
+    accountType?: AccountType,
+    country?: string,
+    phoneNumber?: string
+  ) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   refreshUser: () => void;
   sendPasswordReset: (email: string) => Promise<boolean>;
@@ -219,7 +227,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     pass: string,
     fullName: string,
     role: UserRole = 'investor',
-    accountType?: AccountType
+    accountType?: AccountType,
+    country?: string,
+    phoneNumber?: string
   ): Promise<RegisterResult> => {
     const determinedAccountType: AccountType = accountType || (role as AccountType) || 'individual_investor';
     const determinedRole: UserRole = role === 'admin' || determinedAccountType === 'admin' ? 'admin' : 'investor';
@@ -234,7 +244,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: cleanEmail,
         fullName: fullName.trim() || cleanEmail.split('@')[0],
         role: determinedRole,
-        accountType: determinedAccountType
+        accountType: determinedAccountType,
+        country: country || 'France',
+        phoneNumber: phoneNumber || ''
       });
       setUser(created);
       setToken('local_sess_' + created.id);
@@ -256,6 +268,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           full_name: fullName.trim(),
           role: determinedRole,
           account_type: determinedAccountType,
+          country: country || 'France',
+          phone_number: phoneNumber || '',
         },
         emailRedirectTo: redirectUrl,
       },

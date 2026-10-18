@@ -373,7 +373,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 onClick={() => handleNavClick('/register')}
                 className="px-3.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold bg-[#182D2A] text-white hover:bg-[#24423C] rounded-full shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
               >
-                Get Started
+                Register
               </button>
             </div>
           )}
@@ -560,9 +560,9 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               </button>
               <button
                 onClick={() => handleNavClick('/register')}
-                className="text-xs text-emerald-800 font-bold py-1 hover:underline cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-full bg-[#182D2A] text-white text-xs sm:text-sm font-bold transition-all text-center shadow-xs cursor-pointer hover:bg-[#24423C]"
               >
-                Create Free Account
+                Register Account
               </button>
             </div>
           )}

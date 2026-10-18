@@ -52,31 +52,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
             </p>
           </div>
 
-          <div className="pt-2 flex flex-col gap-2.5">
+          <div className="pt-2">
             {requireAdmin ? (
-              <>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await quickDemoSession('admin');
-                  }}
-                  className="btn btn-primary w-full text-xs font-bold py-3.5 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>1-Click Sign In as Admin (admin@kretz.com)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onNavigateLogin}
-                  className="btn btn-secondary w-full text-xs font-bold py-3 flex items-center justify-center gap-2 cursor-pointer bg-slate-900 text-white hover:bg-slate-800"
-                >
-                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Open Dedicated Admin Login Portal</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={onNavigateLogin}
+                className="btn btn-primary w-full text-xs font-bold py-3.5 flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:opacity-95 transition-all"
+              >
+                <Shield className="w-4 h-4 text-[#B7E36A]" />
+                <span>Open Dedicated Admin Login Portal</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             ) : (
-              <>
+              <div className="flex flex-col gap-2.5">
                 <button
                   onClick={onNavigateLogin}
                   className="btn btn-primary w-full text-xs font-bold py-3.5 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
@@ -93,7 +81,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
                 >
                   <span>1-Click Demo Investor Sign In</span>
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>

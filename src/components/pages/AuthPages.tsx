@@ -15,10 +15,13 @@ import {
   AlertCircle,
   Lock,
   ExternalLink,
-  Info
+  Info,
+  Globe,
+  Phone
 } from 'lucide-react';
 import { TurnstileWidget } from '../security/TurnstileWidget';
 import { authApi } from '../../lib/api';
+import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from '../../data/countries';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register' | 'forgot-password' | 'reset-password';
@@ -50,12 +53,17 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   useEffect(() => {
     if (isRecoveryMode) {
       setMode('reset-password');
+    } else if (initialMode) {
+      setMode(initialMode);
     }
-  }, [isRecoveryMode]);
+  }, [initialMode, isRecoveryMode]);
 
   // Form states
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>(DEFAULT_COUNTRY.code);
+  const [phoneCountryCode, setPhoneCountryCode] = useState<string>(DEFAULT_COUNTRY.code);
+  const [phoneDigits, setPhoneDigits] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('individual_investor');
@@ -131,6 +139,24 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       return;
     }
 
+    if (!selectedCountryCode) {
+      setError('Please select your country of residence.');
+      return;
+    }
+    const cleanPhoneDigits = phoneDigits.replace(/\D/g, '');
+    if (!cleanPhoneDigits) {
+      setError('Phone number digits are required.');
+      return;
+    }
+    if (cleanPhoneDigits.length < 6 || cleanPhoneDigits.length > 15) {
+      setError('Please enter a valid phone number digit length (6 to 15 digits).');
+      return;
+    }
+
+    const currentCountry = getCountryByCode(selectedCountryCode);
+    const phoneCountry = getCountryByCode(phoneCountryCode);
+    const fullPhoneNumber = `${phoneCountry.dialCode} ${phoneDigits.trim()}`;
+
     const selectedOption = ACCOUNT_TYPES.find(a => a.id === accountType);
     const determinedRole: UserRole = selectedOption?.role || (accountType === 'admin' ? 'admin' : 'investor');
 
@@ -143,10 +169,21 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           fullName,
           role: determinedRole,
           turnstileToken,
+          country: currentCountry.name,
+          countryCode: currentCountry.code,
+          phoneNumber: fullPhoneNumber,
         });
       } catch {}
 
-      const result = await register(email, password, fullName, determinedRole, accountType);
+      const result = await register(
+        email,
+        password,
+        fullName,
+        determinedRole,
+        accountType,
+        currentCountry.name,
+        fullPhoneNumber
+      );
       if (result.requiresVerification) {
         setVerificationPending(true);
       } else {
@@ -278,6 +315,36 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           </div>
         )}
 
+        {/* Navigation Tabs: Sign In / Register Portal */}
+        {(mode === 'login' || mode === 'register') && (
+          <div className="grid grid-cols-2 p-1.5 bg-[#EEF1EC] rounded-2xl mb-6 border border-[#E3E8E3]">
+            <button
+              type="button"
+              onClick={() => switchMode('login')}
+              className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                mode === 'login'
+                  ? 'bg-white text-[#182D2A] shadow-sm'
+                  : 'text-[#69736F] hover:text-[#18211F]'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('register')}
+              className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                mode === 'register'
+                  ? 'bg-white text-[#182D2A] shadow-sm ring-1 ring-[#27845D]/30'
+                  : 'text-[#69736F] hover:text-[#18211F]'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#27845D]" />
+              <span>Register Account</span>
+            </button>
+          </div>
+        )}
+
         {/* 1. LOGIN FORM */}
         {mode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
@@ -387,6 +454,79 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   />
                 </div>
 
+                {/* Country of Residence Selection */}
+                <div className="form-field space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#18211F] flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-[#27845D]" />
+                      <span>Country of Residence</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-[#27845D] bg-[#27845D]/10 px-2 py-0.5 rounded-full">
+                      SPV Compliance
+                    </span>
+                  </div>
+                  <select
+                    value={selectedCountryCode}
+                    onChange={(e) => {
+                      const newCode = e.target.value;
+                      setSelectedCountryCode(newCode);
+                      setPhoneCountryCode(newCode);
+                    }}
+                    className="w-full text-xs bg-[#F6F7F4] border border-[#E3E8E3] rounded-xl px-3.5 py-3 font-semibold text-[#18211F] focus:outline-none focus:border-[#182D2A]"
+                  >
+                    {COUNTRIES.map((country) => (
+                      <option key={country.code} value={country.code}>
+                        {country.flag} {country.name} ({country.dialCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Country Code & Phone Number Digits */}
+                <div className="form-field space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#18211F] flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-[#27845D]" />
+                      <span>Phone Number</span>
+                    </label>
+                    <span className="text-[10px] text-[#69736F]">Country Code & Digits</span>
+                  </div>
+
+                  <div className="grid grid-cols-12 gap-2">
+                    <div className="col-span-5 sm:col-span-4">
+                      <select
+                        value={phoneCountryCode}
+                        onChange={(e) => setPhoneCountryCode(e.target.value)}
+                        className="w-full text-xs bg-[#F6F7F4] border border-[#E3E8E3] rounded-xl px-2.5 py-3 font-semibold text-[#18211F] focus:outline-none focus:border-[#182D2A] truncate"
+                        title="Select Country Dialing Code"
+                      >
+                        {COUNTRIES.map((c) => (
+                          <option key={`dial-${c.code}`} value={c.code}>
+                            {c.flag} {c.dialCode} ({c.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-span-7 sm:col-span-8">
+                      <input
+                        type="tel"
+                        required
+                        placeholder={getCountryByCode(phoneCountryCode).placeholder || 'Phone digits'}
+                        value={phoneDigits}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^\d\s-]/g, '');
+                          setPhoneDigits(val);
+                        }}
+                        className="w-full text-xs bg-[#F6F7F4] border border-[#E3E8E3] rounded-xl px-3.5 py-3 font-medium text-[#18211F] focus:outline-none focus:border-[#182D2A]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-[#69736F]">
+                    Required for 2FA security, investor distributions, and KYC notification delivery.
+                  </p>
+                </div>
+
                 <div className="form-field space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-[#18211F]">Account Type</label>
@@ -399,7 +539,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     onChange={(e) => setAccountType(e.target.value as AccountType)}
                     className="w-full text-xs bg-[#F6F7F4] border border-[#E3E8E3] rounded-xl px-3.5 py-3 font-semibold text-[#18211F] focus:outline-none focus:border-[#182D2A]"
                   >
-                    {ACCOUNT_TYPES.map((type) => (
+                    {ACCOUNT_TYPES.filter(type => type.id !== 'admin').map((type) => (
                       <option key={type.id} value={type.id}>
                         {type.label}
                       </option>

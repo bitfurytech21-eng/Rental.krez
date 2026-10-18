@@ -245,7 +245,16 @@ export const authApi = {
   login: (email: string, pass: string, turnstileToken?: string) =>
     api.post<{ user: any; token: string }>('/auth/login', { email, pass, turnstileToken }, { skipAuth: true }),
 
-  register: (payload: { email: string; pass: string; fullName: string; role?: string; turnstileToken?: string }) =>
+  register: (payload: {
+    email: string;
+    pass: string;
+    fullName: string;
+    role?: string;
+    turnstileToken?: string;
+    country?: string;
+    phoneNumber?: string;
+    countryCode?: string;
+  }) =>
     api.post<{ user: any; token: string }>('/auth/register', payload, { skipAuth: true }),
 
   getMe: () =>

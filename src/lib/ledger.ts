@@ -917,7 +917,14 @@ class LedgerService {
     return tx;
   }
 
-  public createUser(userData: { email: string; fullName: string; role?: UserRole; accountType?: AccountType }): User {
+  public createUser(userData: {
+    email: string;
+    fullName: string;
+    role?: UserRole;
+    accountType?: AccountType;
+    country?: string;
+    phoneNumber?: string;
+  }): User {
     const existing = this.getUserByEmail(userData.email);
     if (existing) {
       throw new Error('An account with this email address already exists.');
@@ -929,6 +936,8 @@ class LedgerService {
       fullName: userData.fullName,
       role: userData.role || 'investor',
       accountType: userData.accountType || (userData.role === 'admin' ? 'admin' : 'individual_investor'),
+      country: userData.country || 'France',
+      phoneNumber: userData.phoneNumber || '',
       kycStatus: 'unverified',
       walletBalance: 0,
       investedBalance: 0,
@@ -938,12 +947,20 @@ class LedgerService {
     };
 
     this.users.push(newUser);
-    this.logAudit(newUser.id, newUser.email, 'USER_REGISTERED', `New user registered with role ${newUser.role} and account type ${newUser.accountType}`);
+    this.logAudit(newUser.id, newUser.email, 'USER_REGISTERED', `New user registered with role ${newUser.role}, account type ${newUser.accountType}, country ${newUser.country}`);
     this.saveState();
     return newUser;
   }
 
-  public syncSupabaseUser(supabaseId: string, email: string, fullName: string, role: UserRole = 'investor', accountType?: AccountType): User {
+  public syncSupabaseUser(
+    supabaseId: string,
+    email: string,
+    fullName: string,
+    role: UserRole = 'investor',
+    accountType?: AccountType,
+    country?: string,
+    phoneNumber?: string
+  ): User {
     let existing = this.getUserById(supabaseId) || this.getUserByEmail(email);
     if (existing) {
       existing.id = supabaseId;
@@ -952,6 +969,12 @@ class LedgerService {
       }
       if (accountType && !existing.accountType) {
         existing.accountType = accountType;
+      }
+      if (country && !existing.country) {
+        existing.country = country;
+      }
+      if (phoneNumber && !existing.phoneNumber) {
+        existing.phoneNumber = phoneNumber;
       }
       this.saveState();
       return existing;
@@ -963,6 +986,8 @@ class LedgerService {
       fullName: fullName || email.split('@')[0] || 'Investor',
       role: role,
       accountType: accountType || (role === 'admin' ? 'admin' : 'individual_investor'),
+      country: country || 'France',
+      phoneNumber: phoneNumber || '',
       kycStatus: 'unverified',
       walletBalance: 0,
       investedBalance: 0,
