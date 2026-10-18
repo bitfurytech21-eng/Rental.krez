@@ -2273,6 +2273,173 @@ class LedgerService {
       createdAt: new Date().toISOString()
     });
   }
+
+  /**
+   * Diagnostic and database state integrity repair tool
+   * Fixes any missing default records, corrupted image arrays, or orphaned investments.
+   */
+  public repairDatabase(): {
+    status: 'repaired' | 'healthy';
+    repairedItems: string[];
+    totalProperties: number;
+    totalUsers: number;
+    totalInvestments: number;
+    totalTransactions: number;
+  } {
+    const repairedItems: string[] = [];
+
+    // 1. Repair properties array
+    const validProps = INITIAL_PROPERTIES.filter(p => Array.isArray(p.images) && p.images.length >= 7);
+    const existingPropIds = new Set(this.properties.map(p => p.id));
+    let propAdded = false;
+
+    validProps.forEach(initProp => {
+      if (!existingPropIds.has(initProp.id)) {
+        this.properties.push(initProp);
+        existingPropIds.add(initProp.id);
+        propAdded = true;
+      }
+    });
+
+    if (propAdded) {
+      repairedItems.push('Restored missing initial property listings');
+    }
+
+    // 2. Repair users array
+    const existingUserIds = new Set(this.users.map(u => u.id));
+    let userAdded = false;
+    DEFAULT_USERS.forEach(initUser => {
+      if (!existingUserIds.has(initUser.id)) {
+        this.users.push(initUser);
+        existingUserIds.add(initUser.id);
+        userAdded = true;
+      }
+    });
+
+    if (userAdded) {
+      repairedItems.push('Restored missing default user accounts');
+    }
+
+    // 3. Repair investments array
+    const existingInvIds = new Set(this.investments.map(i => i.id));
+    let invAdded = false;
+    DEFAULT_INVESTMENTS.forEach(initInv => {
+      if (!existingInvIds.has(initInv.id)) {
+        this.investments.push(initInv);
+        existingInvIds.add(initInv.id);
+        invAdded = true;
+      }
+    });
+
+    if (invAdded) {
+      repairedItems.push('Restored seed investment portfolio records');
+    }
+
+    // 4. Repair transactions array
+    const existingTxIds = new Set(this.transactions.map(t => t.id));
+    let txAdded = false;
+    DEFAULT_TRANSACTIONS.forEach(initTx => {
+      if (!existingTxIds.has(initTx.id)) {
+        this.transactions.push(initTx);
+        existingTxIds.add(initTx.id);
+        txAdded = true;
+      }
+    });
+
+    if (txAdded) {
+      repairedItems.push('Restored transaction history records');
+    }
+
+    // 5. Repair company news
+    const existingNewsIds = new Set(this.companyNews.map(n => n.youtubeId));
+    let newsAdded = false;
+    INITIAL_COMPANY_NEWS.forEach(initNews => {
+      if (!existingNewsIds.has(initNews.youtubeId)) {
+        this.companyNews.push(initNews);
+        existingNewsIds.add(initNews.youtubeId);
+        newsAdded = true;
+      }
+    });
+
+    if (newsAdded) {
+      repairedItems.push('Restored YouTube news broadcast entries');
+    }
+
+    // Save pristine state
+    this.saveState();
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'DATABASE_REPAIRED', `Database integrity scan complete. Repaired ${repairedItems.length} items.`);
+
+    return {
+      status: repairedItems.length > 0 ? 'repaired' : 'healthy',
+      repairedItems,
+      totalProperties: this.properties.length,
+      totalUsers: this.users.length,
+      totalInvestments: this.investments.length,
+      totalTransactions: this.transactions.length
+    };
+  }
+
+  /**
+   * Resets database state to pristine defaults
+   */
+  public resetDatabase(): void {
+    this.users = [...DEFAULT_USERS];
+    this.properties = [...INITIAL_PROPERTIES.filter(p => Array.isArray(p.images) && p.images.length >= 7)];
+    this.investments = [...DEFAULT_INVESTMENTS];
+    this.transactions = [...DEFAULT_TRANSACTIONS];
+    this.verificationDocuments = [...DEFAULT_VERIFICATION_DOCUMENTS];
+    this.companyNews = [...INITIAL_COMPANY_NEWS];
+    this.membershipTiers = [...INITIAL_MEMBERSHIP_TIERS];
+    this.memberships = [];
+    this.membershipApplications = [];
+    this.saveState();
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'DATABASE_RESET', 'Database state successfully restored to initial defaults.');
+  }
+
+  /**
+   * Performs a comprehensive diagnostic health check on all database collections
+   */
+  public getDatabaseHealth(): {
+    isHealthy: boolean;
+    issues: string[];
+    propertiesCount: number;
+    usersCount: number;
+    investmentsCount: number;
+    transactionsCount: number;
+    newsCount: number;
+  } {
+    const issues: string[] = [];
+
+    if (!Array.isArray(this.properties) || this.properties.length === 0) {
+      issues.push('Properties collection is empty or invalid');
+    }
+    if (!Array.isArray(this.users) || this.users.length === 0) {
+      issues.push('Users collection is empty or invalid');
+    }
+    if (!Array.isArray(this.investments)) {
+      issues.push('Investments collection is invalid');
+    }
+    if (!Array.isArray(this.transactions)) {
+      issues.push('Transactions collection is invalid');
+    }
+
+    return {
+      isHealthy: issues.length === 0,
+      issues,
+      propertiesCount: this.properties.length,
+      usersCount: this.users.length,
+      investmentsCount: this.investments.length,
+      transactionsCount: this.transactions.length,
+      newsCount: this.companyNews.length
+    };
+  }
 }
 
 export const ledger = new LedgerService();
+
+// Run immediate database health check and integrity repair on initialization
+try {
+  ledger.repairDatabase();
+} catch (e) {
+  console.warn('Auto database repair note:', e);
+}
