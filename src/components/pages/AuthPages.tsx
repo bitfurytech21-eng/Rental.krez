@@ -309,9 +309,21 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         </div>
 
         {error && (
-          <div className="p-3.5 mb-5 rounded-2xl bg-red-50 text-red-700 text-xs font-semibold border border-red-200 flex items-start gap-2">
+          <div className="p-3.5 mb-5 rounded-2xl bg-red-50 text-red-700 text-xs font-semibold border border-red-200 flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{error}</span>
+            <div className="flex-1 space-y-1.5">
+              <span className="leading-relaxed block">{error}</span>
+              {(error.toLowerCase().includes('already exists') || error.toLowerCase().includes('already registered')) && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-100/80 hover:bg-red-200/80 text-red-800 rounded-lg text-xs font-bold transition-colors cursor-pointer mt-1"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Click here to sign in with this email &rarr;</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
 

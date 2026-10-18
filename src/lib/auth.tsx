@@ -238,7 +238,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cleanEmail = email.trim().toLowerCase();
       let existing = ledger.getUserByEmail(cleanEmail);
       if (existing) {
-        throw new Error('An account with this email address already exists.');
+        const updated = ledger.updateUserProfile(existing.id, {
+          fullName: fullName.trim() || existing.fullName,
+          country: country || existing.country,
+          phoneNumber: phoneNumber || existing.phoneNumber
+        });
+        setUser(updated);
+        setToken('local_sess_' + updated.id);
+        localStorage.setItem(CURRENT_USER_KEY, updated.id);
+        return {
+          user: updated,
+          session: null,
+          requiresVerification: false
+        };
       }
       const created = ledger.createUser({
         email: cleanEmail,
@@ -277,6 +289,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       if (error.message.toLowerCase().includes('already registered')) {
+        // Attempt immediate login with the provided credentials
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: pass,
+          });
+          if (!signInError && signInData?.user && signInData?.session) {
+            const synced = ledger.syncSupabaseUser(
+              signInData.user.id,
+              signInData.user.email || email,
+              fullName.trim(),
+              role
+            );
+            setUser(synced);
+            setSession(signInData.session);
+            setToken(signInData.session.access_token);
+            localStorage.setItem(CURRENT_USER_KEY, synced.id);
+            return {
+              user: signInData.user,
+              session: signInData.session,
+              requiresVerification: false
+            };
+          }
+        } catch {
+          // fallback to error message
+        }
         throw new Error('An account with this email address already exists. Please sign in instead.');
       }
       throw new Error(error.message);

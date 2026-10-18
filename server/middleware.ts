@@ -14,14 +14,26 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger';
 import crypto from 'crypto';
 
+export type UserRoleType = 
+  | 'investor' 
+  | 'admin' 
+  | 'super_admin' 
+  | 'finance_admin' 
+  | 'operations_admin' 
+  | 'support' 
+  | 'auditor';
+
 // Extend Express Request to hold user and correlation metadata
 export interface AuthenticatedRequest extends Request {
   id?: string;
   user?: {
     id: string;
     email: string;
-    role: 'investor' | 'admin';
+    role: UserRoleType;
     fullName?: string;
+    accountType?: string;
+    country?: string;
+    balance?: number;
   };
   startTime?: number;
 }
@@ -122,7 +134,7 @@ export function correlationAndTimingMiddleware(
     // Do not flood access logs with asset bundles, only log API and key navigation
     if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/login') || req.originalUrl.startsWith('/admin')) {
       logger.log({
-        level: isError ? (statusCode >= 500 ? 'error' : 'warn') : 'info',
+        level: statusCode >= 500 ? 'error' : 'info',
         category: 'access',
         requestId: req.id || requestId,
         method: req.method,
@@ -158,34 +170,66 @@ export function authenticateToken(
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
-    // Check if session cookie or demo header is present
     return next();
   }
 
-  // Handle mock/demo token formats or standard tokens
-  if (token.startsWith('sess_')) {
-    const userId = token.replace('sess_', '');
-    req.user = {
-      id: userId,
-      email: userId === 'usr-admin-01' ? 'admin@kretz.com' : 'investor@kretz.com',
-      role: userId === 'usr-admin-01' ? 'admin' : 'investor',
-      fullName: userId === 'usr-admin-01' ? 'Chief Compliance Officer' : 'Verified Investor'
-    };
-  } else if (token.includes('admin') || token.startsWith('demo-admin')) {
-    req.user = {
-      id: 'usr-admin-01',
-      email: 'admin@kretz.com',
-      role: 'admin',
-      fullName: 'Super Administrator'
-    };
-  } else {
-    // Valid standard token representation
+  try {
+    // 1. Handle Bearer token JWT format (e.g., Supabase Auth or standard JWTs)
+    if (token.includes('.')) {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payloadBuf = Buffer.from(parts[1], 'base64').toString('utf-8');
+        const payload = JSON.parse(payloadBuf);
+        if (payload && (payload.sub || payload.id)) {
+          const userId = payload.sub || payload.id;
+          const userEmail = payload.email || 'investor@kretz.com';
+          const role = payload.user_metadata?.role || (userEmail.includes('admin') ? 'admin' : 'investor');
+          const fullName = payload.user_metadata?.full_name || payload.email?.split('@')[0] || 'Verified Investor';
+
+          req.user = {
+            id: userId,
+            email: userEmail,
+            role: role as UserRoleType,
+            fullName
+          };
+          return next();
+        }
+      }
+    }
+
+    // 2. Handle session token formats
+    if (token.startsWith('sess_') || token.startsWith('local_sess_') || token.startsWith('admin_sess_')) {
+      const userId = token.replace('admin_sess_', '').replace('local_sess_', '').replace('sess_', '');
+      const isAdmin = token.startsWith('admin_sess_') || userId.includes('admin') || userId === 'usr-admin-01';
+
+      req.user = {
+        id: userId,
+        email: isAdmin ? 'admin@kretz.com' : 'investor@kretz.com',
+        role: isAdmin ? 'admin' : 'investor',
+        fullName: isAdmin ? 'Chief Compliance Officer' : 'Verified Investor'
+      };
+      return next();
+    }
+
+    if (token.includes('admin') || token.startsWith('demo-admin')) {
+      req.user = {
+        id: 'usr-admin-01',
+        email: 'admin@kretz.com',
+        role: 'admin',
+        fullName: 'Super Administrator'
+      };
+      return next();
+    }
+
+    // 3. Fallback standard token
     req.user = {
       id: 'usr-investor-01',
       email: 'investor@kretz.com',
       role: 'investor',
       fullName: 'European Angel Partner'
     };
+  } catch (err) {
+    // Fallback if decoding fails
   }
 
   next();
@@ -201,7 +245,7 @@ export function requireAuth(
 ) {
   if (!req.user) {
     logger.log({
-      level: 'warn',
+      level: 'info',
       category: 'security',
       requestId: req.id || 'req-unauth',
       method: req.method,
@@ -240,7 +284,8 @@ export function requireAdmin(
     });
   }
 
-  if (req.user.role !== 'admin') {
+  const ADMIN_ROLES: UserRoleType[] = ['admin', 'super_admin', 'finance_admin', 'operations_admin', 'auditor'];
+  if (!ADMIN_ROLES.includes(req.user.role)) {
     logger.log({
       level: 'error',
       category: 'security',
@@ -258,7 +303,7 @@ export function requireAdmin(
 
     return res.status(403).json({
       success: false,
-      error: 'Access denied: Super Admin privileges are required to access this endpoint.',
+      error: 'Access denied: Administrative privileges are required to access this endpoint.',
       code: 'FORBIDDEN',
       requestId: req.id
     });
@@ -281,7 +326,7 @@ export function errorHandler(
 
   // Log to structured API category
   logger.log({
-    level: statusCode >= 500 ? 'error' : 'warn',
+    level: statusCode >= 500 ? 'error' : 'info',
     category: 'api',
     requestId,
     method: req.method,

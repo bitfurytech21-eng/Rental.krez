@@ -154,8 +154,6 @@ class SystemLogger {
     const jsonOutput = JSON.stringify(completeLog);
     if (completeLog.level === 'error') {
       console.error(jsonOutput);
-    } else if (completeLog.level === 'warn') {
-      console.warn(jsonOutput);
     } else {
       console.log(jsonOutput);
     }

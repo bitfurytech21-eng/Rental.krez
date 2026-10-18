@@ -11,6 +11,8 @@ import { DocumentViewerModal } from '../dashboard/DocumentViewerModal';
 import { DocumentUploadVault } from '../dashboard/DocumentUploadVault';
 import { ProfilePage } from './ProfilePage';
 import { PropertyCard } from '../properties/PropertyCard';
+import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
+import { Property } from '../../types/property';
 import { 
   ArrowRight, Bell, Building2, TrendingUp, Wallet, ShieldCheck, History, 
   PieChart, ArrowDownLeft, ArrowUpRight, HelpCircle, User, FileText, LayoutDashboard, Coins,
@@ -43,6 +45,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isDepositOpen, setIsDepositOpen] = useState(defaultTab === 'deposit');
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(defaultTab === 'withdraw');
   const [selectedDocInvestment, setSelectedDocInvestment] = useState<any | null>(null);
+  const [brochureProperty, setBrochureProperty] = useState<Property | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -553,6 +556,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       onInvest={(prop) => {
                         onSelectProperty(prop.id);
                       }}
+                      onOpenBrochure={(prop) => setBrochureProperty(prop)}
                     />
                   ))}
                 </div>
@@ -1049,6 +1053,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         isOpen={!!selectedDocInvestment}
         onClose={() => setSelectedDocInvestment(null)}
       />
+
+      {/* Remodeled Luxury Property Brochure Viewer */}
+      {brochureProperty && (
+        <PropertyDocumentViewer
+          property={brochureProperty}
+          isOpen={!!brochureProperty}
+          onClose={() => setBrochureProperty(null)}
+        />
+      )}
     </div>
   );
 };

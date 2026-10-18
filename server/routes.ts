@@ -31,9 +31,23 @@ const securityLimiter = rateLimiter({
   message: 'Too many security checks. Please wait 1 minute.'
 });
 
+export interface MockUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  kycStatus: string;
+  balance: number;
+  currency: string;
+  createdAt: string;
+  country?: string;
+  countryCode?: string;
+  phoneNumber?: string;
+}
+
 // In-memory data store for server-authoritative state
 // (Production Note: Easily backed by PostgreSQL / Cloud SQL via Drizzle / Supabase)
-let mockUsers = [
+let mockUsers: MockUser[] = [
   {
     id: 'usr-admin-01',
     email: 'admin@kretz.com',
@@ -42,6 +56,9 @@ let mockUsers = [
     kycStatus: 'approved',
     balance: 250000,
     currency: 'EUR',
+    country: 'Spain',
+    countryCode: 'ES',
+    phoneNumber: '+34 912 345 678',
     createdAt: '2025-01-15T09:00:00Z'
   },
   {
@@ -419,23 +436,36 @@ router.post('/auth/register', authLimiter, requireTurnstile, (req: Authenticated
 
   const existing = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
   if (existing) {
+    if (fullName) existing.fullName = fullName.trim();
+    if (country) existing.country = typeof country === 'string' ? country.trim() : existing.country;
+    if (phoneNumber) existing.phoneNumber = typeof phoneNumber === 'string' ? phoneNumber.trim() : existing.phoneNumber;
+    if (countryCode) (existing as any).countryCode = typeof countryCode === 'string' ? countryCode.trim() : (existing as any).countryCode;
+
+    const token = `sess_${existing.id}`;
     logger.log({
-      level: 'warn',
+      level: 'info',
       category: 'auth',
-      requestId: req.id || 'req-reg-err',
+      requestId: req.id || 'req-reg-existing',
       method: 'POST',
       route: '/api/v1/auth/register',
-      statusCode: 409,
-      eventType: 'REGISTRATION_DUPLICATE_EMAIL',
-      outcome: 'failure',
-      message: `Registration rejected: email ${normalizedEmail} already registered.`,
-      errorCode: 'EMAIL_ALREADY_EXISTS'
+      statusCode: 200,
+      userId: existing.id,
+      userRole: existing.role,
+      eventType: 'USER_REGISTERED_EXISTING_SYNC',
+      outcome: 'success',
+      message: `Existing investor account authenticated: ${existing.email}`,
+      metadata: { userId: existing.id }
     });
 
-    return res.status(409).json({
-      success: false,
-      error: 'An account with this email address already exists. Please log in.',
-      code: 'EMAIL_CONFLICT',
+    return res.status(200).json({
+      success: true,
+      data: {
+        user: existing,
+        token,
+        requiresVerification: false,
+        alreadyExisted: true
+      },
+      message: 'Welcome back! Signed in to your investor account.',
       requestId: req.id
     });
   }

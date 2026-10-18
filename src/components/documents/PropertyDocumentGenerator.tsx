@@ -317,55 +317,74 @@ export const PropertyDocumentGenerator: React.FC<PropertyDocumentGeneratorProps>
         {/* VIEW 1: PROPERTY BROCHURE (Prestige Presentation)                       */}
         {/* ======================================================================= */}
         {selectedType === 'brochure' && (
-          <div className="space-y-10">
-            {/* Hero Cover Presentation */}
-            <div className="relative aspect-[16/9] max-h-[420px] w-full rounded-3xl overflow-hidden bg-[#EEF1EC] border border-[#E3E8E3] shadow-inner">
+          <div className="space-y-8">
+            {/* Remodeled Luxury Hero Cover Presentation */}
+            <div className="relative aspect-[16/10] sm:aspect-[16/9] max-h-[440px] w-full rounded-3xl overflow-hidden bg-[#F2F5F2] border border-[#E1E6E1] shadow-inner group">
               <img
                 src={property.images[0] || property.bannerImage}
                 alt={property.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+
+              <div className="absolute top-4 right-4 sm:top-6 sm:right-6 text-right pointer-events-none">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-white/70 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                  Official Portfolio Monograph
+                </span>
+              </div>
               
-              <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="bg-[#00FF9D] text-[#031914] text-xs font-black uppercase px-3 py-1 rounded-full shadow-sm">
+              <div className="absolute bottom-5 left-5 right-5 sm:bottom-8 sm:left-8 sm:right-8 text-white space-y-2">
+                {/* Zero-Pill Unboxed Metadata with Typographic Separators */}
+                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium tracking-wide text-white/90">
+                  <span className="uppercase tracking-[0.18em] text-[#A7F3D0] font-semibold">
                     {property.type}
                   </span>
-                  <span className="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1 rounded-full">
+                  <span aria-hidden="true" className="text-white/40">·</span>
+                  <span className="text-white/95">
                     {property.city}, {property.country}
                   </span>
-                  <span className="bg-white/20 backdrop-blur-md text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
+                  {property.isExclusive && (
+                    <>
+                      <span aria-hidden="true" className="text-white/40">·</span>
+                      <span className="text-[#FCD34D] font-medium tracking-wide">
+                        Exclusive Mandate
+                      </span>
+                    </>
+                  )}
+                  <span aria-hidden="true" className="text-white/40">·</span>
+                  <span className="text-emerald-300 font-mono text-xs">
                     {property.estimatedAnnualYield}% Annual Yield
                   </span>
                 </div>
-                <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight drop-shadow-md">
+
+                <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-normal tracking-tight text-white leading-[1.15] text-balance drop-shadow-md">
                   {property.title}
                 </h2>
-                <p className="text-xs sm:text-sm text-gray-200 font-medium">
-                  {property.location}
+                <p className="text-xs sm:text-sm text-gray-200/90 font-light tracking-wide flex items-center gap-1.5 pt-0.5">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>{property.location}</span>
                 </p>
               </div>
             </div>
 
             {/* Quick Metrics KPI Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-[#69736F] block">Target Acquisition</span>
-                <span className="text-lg font-black text-[#27845D]">{formatCurrency(property.targetAmount)}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 p-4 sm:p-6 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1]">
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">Target Acquisition</span>
+                <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block tabular-nums">{formatCurrency(property.targetAmount)}</span>
               </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-[#69736F] block">Minimum Investment</span>
-                <span className="text-lg font-black text-[#18211F]">{formatCurrency(property.minimumInvestment || 750)}</span>
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">Minimum Investment</span>
+                <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block tabular-nums">{formatCurrency(property.minimumInvestment || 750)}</span>
               </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-[#69736F] block">Term Duration</span>
-                <span className="text-lg font-black text-[#18211F]">{property.durationMonths} Months</span>
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">Term Duration</span>
+                <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block">{property.durationMonths} Months</span>
               </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-[#69736F] block">Token Unit Price</span>
-                <span className="text-lg font-black text-[#18211F]">€{property.tokenPrice} / token</span>
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">Token Unit Price</span>
+                <span className="text-base sm:text-lg font-serif font-bold text-[#10B981] block tabular-nums">€{property.tokenPrice} / token</span>
               </div>
             </div>
 

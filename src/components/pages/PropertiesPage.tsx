@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
 import { PropertyCard } from '../properties/PropertyCard';
+import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency, formatPercent } from '../../lib/utils';
@@ -24,6 +25,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>(initialProperties);
   const [activeTab, setActiveTab] = useState<'all' | 'funding' | 'funded' | 'returned' | 'my_properties'>('all');
+  const [brochureProperty, setBrochureProperty] = useState<Property | null>(null);
   
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -369,12 +371,22 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                 property={property}
                 onSelect={(prop) => onSelectProperty(prop)}
                 onInvest={(prop) => onInvestProperty(prop)}
+                onOpenBrochure={(prop) => setBrochureProperty(prop)}
                 isUserOccupied={userInvestedPropertyIds.has(property.id) || (property as any).ownerId === user?.id}
               />
             ))}
           </div>
         )}
       </section>
+
+      {/* Remodeled Official Property Brochure Modal */}
+      {brochureProperty && (
+        <PropertyDocumentViewer
+          property={brochureProperty}
+          isOpen={!!brochureProperty}
+          onClose={() => setBrochureProperty(null)}
+        />
+      )}
 
     </div>
   );

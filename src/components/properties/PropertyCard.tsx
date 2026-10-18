@@ -1,7 +1,7 @@
 import React from 'react';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
-import { MapPin, TrendingUp, Users, Calendar, ArrowRight, ShieldCheck, CheckCircle2, Crown, Clock } from 'lucide-react';
+import { MapPin, TrendingUp, Users, Calendar, ArrowRight, ShieldCheck, CheckCircle2, Crown, Clock, FileText } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 
@@ -9,6 +9,7 @@ interface PropertyCardProps {
   property: Property;
   onSelect: (property: Property) => void;
   onInvest?: (property: Property) => void;
+  onOpenBrochure?: (property: Property) => void;
   userInvestmentTokens?: number;
   userInvestedAmount?: number;
   isUserOccupied?: boolean;
@@ -18,6 +19,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   property, 
   onSelect, 
   onInvest,
+  onOpenBrochure,
   userInvestmentTokens,
   userInvestedAmount,
   isUserOccupied
@@ -256,17 +258,32 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="pt-2 grid grid-cols-2 gap-2">
+        <div className="pt-2 flex items-center gap-2">
+          {onOpenBrochure && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenBrochure(property);
+              }}
+              className="px-3 py-2.5 rounded-xl border border-[#E3E8E3] hover:border-[#142421] hover:bg-[#F6F8F5] text-[#142421] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              title="Open Official Property Information Brochure"
+            >
+              <FileText className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="hidden sm:inline">Brochure</span>
+            </button>
+          )}
+
           <button
             onClick={() => onSelect(property)}
-            className="btn btn-secondary text-xs font-bold py-2.5 border border-[#E3E8E3] hover:border-[#142421] text-[#142421] rounded-xl flex items-center justify-center cursor-pointer transition-colors"
+            className="flex-1 btn btn-secondary text-xs font-bold py-2.5 border border-[#E3E8E3] hover:border-[#142421] text-[#142421] rounded-xl flex items-center justify-center cursor-pointer transition-colors"
           >
             See Details
           </button>
           
           <button
             onClick={() => onInvest ? onInvest(property) : onSelect(property)}
-            className={`btn btn-primary text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all ${
+            className={`flex-1 btn btn-primary text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all ${
               isOwnedOrOccupied
                 ? 'bg-[#27845D] hover:bg-[#1f6b4a] text-white'
                 : 'bg-[#142421] hover:bg-[#1E332E] text-white'
