@@ -10,6 +10,7 @@ import {
   Tv
 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
   currentPath: string;
@@ -21,8 +22,10 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
+  const [insightsDropdownOpen, setInsightsDropdownOpen] = useState(false);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const insightsDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -32,6 +35,9 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
       }
       if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
         setUserDropdownOpen(false);
+      }
+      if (insightsDropdownRef.current && !insightsDropdownRef.current.contains(e.target as Node)) {
+        setInsightsDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -53,11 +59,60 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
     { label: 'Company News', path: '/news' },
     { label: 'Membership Club', path: '/club', icon: Crown, iconColor: 'text-[#D4AF37]' },
     { label: 'Wealth Advisory', path: '/wealth' },
-    { label: 'Blog', path: '/blog' },
   ];
+
+  // Real Estate Insights & Dossiers Submenu Links (Immo Matin Structure)
+  const insightsSubmenuLinks = [
+    {
+      label: 'Dossiers & Investigations',
+      path: '/insights?type=dossiers',
+      description: 'In-depth multi-part market surveys and deep editorial investigations',
+      badge: 'Major Dossiers',
+      badgeColor: 'bg-[#0E1F1B] text-[#B7E36A]',
+      icon: BookOpen,
+    },
+    {
+      label: 'Market Barometer & Yields',
+      path: '/insights?category=barometre-immobilier',
+      description: 'Quarterly price-per-m² indices, cap rates & Paris/Madrid yields',
+      icon: TrendingUp,
+    },
+    {
+      label: 'PropTech & Tokenization',
+      path: '/insights?category=proptech-tokenization',
+      description: 'Smart contracts, fractional SPVs & digital title registry innovation',
+      icon: Layers,
+    },
+    {
+      label: 'Regulation & Tax Advisory',
+      path: '/insights?category=reglementation-fiscalite',
+      description: 'MiCA compliance, post-Golden Visa laws & wealth structuring',
+      icon: Shield,
+    },
+    {
+      label: 'Luxury Assets & Family Offices',
+      path: '/insights?category=patrimoine-luxe',
+      description: 'Trophy real estate, Parisian hôtels particuliers & private wealth',
+      icon: Crown,
+    },
+    {
+      label: 'Editorial Wire (All Publications)',
+      path: '/insights',
+      description: 'Browse all investigative features, whitepapers & research reports',
+      icon: Compass,
+    },
+  ];
+
+  const isInsightsActive = currentPath === '/insights' || currentPath.startsWith('/insights/');
 
   // Secondary items cleanly grouped in the "More" dropdown for standard screens
   const secondaryLinks = [
+    { 
+      label: 'Blog & Educational Guides', 
+      path: '/blog', 
+      description: 'Real estate tokenization basics & investor guides',
+      icon: BookOpen
+    },
     { 
       label: 'Company News & Media', 
       path: '/news', 
@@ -71,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
       icon: Layers
     },
     { 
-      label: 'Tokenization', 
+      label: 'Tokenization Model', 
       path: '/token', 
       description: 'Polygon ERC-20 smart contracts & secondary liquidity',
       icon: Coins
@@ -122,7 +177,100 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
         <nav className="hidden lg:flex items-center gap-1 xl:gap-2.5 2xl:gap-3 flex-1 justify-center max-w-4xl px-2">
           
           {/* Primary Links */}
-          {primaryDesktopLinks.map((link) => {
+          {primaryDesktopLinks.slice(0, 1).map((link) => {
+            const isActive = currentPath === link.path || (link.path !== '/' && currentPath.startsWith(link.path));
+            const Icon = link.icon;
+            return (
+              <button
+                key={link.path}
+                onClick={() => handleNavClick(link.path)}
+                className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  isActive
+                    ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
+                    : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F8F5]'
+                }`}
+              >
+                {Icon && <Icon className={`w-3.5 h-3.5 ${link.iconColor || ''}`} />}
+                <span>{link.label}</span>
+                {link.badge && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full leading-tight hidden xl:inline-block ${link.badgeColor}`}>
+                    {link.badge}
+                  </span>
+                )}
+                {isActive && (
+                  <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-[#182D2A] rounded-full" />
+                )}
+              </button>
+            );
+          })}
+
+          {/* Top-Level Navigation Item: Real Estate Insights & Dossiers */}
+          <div className="relative" ref={insightsDropdownRef}>
+            <button
+              onClick={() => setInsightsDropdownOpen(!insightsDropdownOpen)}
+              className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                isInsightsActive || insightsDropdownOpen
+                  ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
+                  : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F8F5]'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5 text-emerald-800" />
+              <span>Insights</span>
+              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full leading-tight hidden xl:inline-block bg-[#0E1F1B] text-[#B7E36A]">
+                Dossiers
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 text-[#69736F] transition-transform duration-200 ${insightsDropdownOpen ? 'rotate-180' : ''}`} />
+              {isInsightsActive && (
+                <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-[#182D2A] rounded-full" />
+              )}
+            </button>
+
+            {insightsDropdownOpen && (
+              <div 
+                className="absolute top-full left-0 mt-2 w-84 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-left"
+              >
+                <div className="px-3.5 py-1.5 border-b border-slate-100 mb-1 flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-900">Real Estate Insights & Dossiers</p>
+                  <span className="text-[9px] font-mono font-bold text-slate-400">Immo Matin Structure</span>
+                </div>
+                {insightsSubmenuLinks.map((item) => {
+                  const isActive = currentPath === item.path;
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => handleNavClick(item.path)}
+                      className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 hover:bg-[#F6F8F5] transition-colors cursor-pointer group ${
+                        isActive ? 'bg-[#F2F6F1]' : ''
+                      }`}
+                    >
+                      <div className={`p-1.5 rounded-lg mt-0.5 ${isActive ? 'bg-[#182D2A] text-white' : 'bg-[#EEF2EC] text-emerald-800 group-hover:bg-[#182D2A] group-hover:text-white transition-colors'}`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className={`text-xs font-bold leading-tight ${isActive ? 'text-[#182D2A]' : 'text-slate-800'}`}>
+                            {item.label}
+                          </p>
+                          {item.badge && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor}`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 leading-snug">
+                          {item.description}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Remaining Primary Links */}
+          {primaryDesktopLinks.slice(1).map((link) => {
             const isActive = currentPath === link.path || (link.path !== '/' && currentPath.startsWith(link.path));
             const Icon = link.icon;
             return (
@@ -414,6 +562,52 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               <span>Marketplace</span>
             </button>
 
+            {/* 2.5 Real Estate Insights & Dossiers (Immo Matin Structure) */}
+            <div className="py-2 px-2 border-b border-slate-100/90 space-y-1.5 text-left">
+              <button
+                onClick={() => handleNavClick('/insights')}
+                className={`w-full text-xs sm:text-sm font-bold flex items-center justify-between transition-colors ${
+                  isInsightsActive ? 'text-[#182D2A]' : 'text-[#2C3734] hover:text-[#182D2A]'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-800" />
+                  <span>Real Estate Insights</span>
+                </div>
+                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-[#0E1F1B] text-[#B7E36A]">
+                  Dossiers
+                </span>
+              </button>
+
+              <div className="pl-4 space-y-1 pt-1 border-l-2 border-emerald-700/30 text-xs">
+                <button
+                  onClick={() => handleNavClick('/insights?type=dossiers')}
+                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold flex items-center justify-between"
+                >
+                  <span>• Major Dossiers & Investigations</span>
+                  <span className="text-[9px] text-emerald-800 font-mono font-bold">New</span>
+                </button>
+                <button
+                  onClick={() => handleNavClick('/insights?category=barometre-immobilier')}
+                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold"
+                >
+                  <span>• Market Barometer & Yields</span>
+                </button>
+                <button
+                  onClick={() => handleNavClick('/insights?category=proptech-tokenization')}
+                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold"
+                >
+                  <span>• PropTech & Asset Tokenization</span>
+                </button>
+                <button
+                  onClick={() => handleNavClick('/insights?category=reglementation-fiscalite')}
+                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold"
+                >
+                  <span>• Regulation, Tax & MiCA</span>
+                </button>
+              </div>
+            </div>
+
             {/* 3. Success Stories */}
             <button
               onClick={() => handleNavClick('/casos-de-exito')}
@@ -566,6 +760,10 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               </button>
             </div>
           )}
+
+          <div className="pt-4 pb-2 border-t border-slate-100">
+            <LanguageSelector variant="mobile" />
+          </div>
 
         </div>
       )}

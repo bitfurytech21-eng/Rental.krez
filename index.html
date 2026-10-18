@@ -12,21 +12,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script>
-      // Ignore WebSocket / Vite HMR preview connection errors
+      // Suppress cross-origin "Script error." and Vite HMR WebSocket preview connection errors
       window.addEventListener('unhandledrejection', function(event) {
-        if (event.reason && (
-          event.reason.message?.includes('WebSocket') ||
+        if (!event.reason || 
+          event.reason.message === 'Script error.' ||
+          event.reason?.message?.includes('Script error') ||
+          event.reason?.message?.includes('WebSocket') ||
           event.reason?.message?.includes('ws') ||
           event.reason?.stack?.includes('@vite/client')
-        )) {
+        ) {
           event.preventDefault();
         }
       });
       window.addEventListener('error', function(event) {
-        if (event.message?.includes('WebSocket') || (event.filename && event.filename.includes('@vite/client'))) {
+        if (
+          event.message === 'Script error.' ||
+          event.message?.includes('Script error') ||
+          event.message?.includes('WebSocket') ||
+          (event.filename && event.filename.includes('@vite/client'))
+        ) {
           event.preventDefault();
+          return true;
         }
-      });
+      }, true);
+    </script>
+    <!-- Smartsupp Live Chat script -->
+    <script type="text/javascript">
+      var _smartsupp = _smartsupp || {};
+      _smartsupp.key = '61033062bd34d55a58c3546d5b618ead716fb2a3';
+      window.smartsupp||(function(d) {
+        var s,c,o=window.smartsupp=function(){ o._.push(arguments)};o._=[];
+        s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+        c.type='text/javascript';c.charset='utf-8';c.async=true;
+        c.src='https://www.smartsuppchat.com/loader.js?';if(s&&s.parentNode){s.parentNode.insertBefore(c,s);}else{d.head.appendChild(c);}
+      })(document);
     </script>
   </head>
   <body class="bg-white text-[#18211F] antialiased">
@@ -39,6 +58,6 @@
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
+    <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
   </body>
 </html>
-

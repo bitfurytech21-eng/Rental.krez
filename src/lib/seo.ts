@@ -63,6 +63,18 @@ const ROUTE_SEO_MAP: Record<string, Partial<PageSeoConfig>> = {
     description: 'Bespoke wealth structuring, tax-efficient cross-border real estate holdings, and institutional portfolio allocation for high-net-worth families.',
     image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
   },
+  '/insights': {
+    title: 'Real Estate Dossiers & Market Insights | Kretz Intelligence',
+    description: 'In-depth European real estate investigations, quarterly yield barometers, PropTech tokenization blueprints, and regulatory legal analysis.',
+    image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1200&q=80',
+    type: 'website',
+  },
+  '/insights/dossiers': {
+    title: 'Major Real Estate Dossiers & Enquêtes | Kretz Intelligence',
+    description: 'Investigative multi-chapter real estate dossiers inspired by European institutional journalism, covering cap rates, SPVs, and wealth structuring.',
+    image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1200&q=80',
+    type: 'website',
+  },
   '/blog': {
     title: 'Real Estate Insights & Tokenization Blog | Kretz',
     description: 'Expert analysis on European luxury property markets, MiCA regulations, smart contract tokenization, and passive rental yield strategies.',
@@ -161,6 +173,19 @@ export function updatePageSeo(config?: Partial<PageSeoConfig>) {
     document.head.appendChild(canonicalLink);
   }
   canonicalLink.href = window.location.origin + window.location.pathname;
+
+  // 5. Dynamic Hreflang Link Tags for SEO
+  const supportedLangs = ['en', 'fr', 'es', 'de', 'pt', 'it', 'nl', 'ar', 'zh', 'ja', 'tr', 'ru'];
+  supportedLangs.forEach((langCode) => {
+    let hrefTag = document.querySelector(`link[rel="alternate"][hreflang="${langCode}"]`) as HTMLLinkElement;
+    if (!hrefTag) {
+      hrefTag = document.createElement('link');
+      hrefTag.rel = 'alternate';
+      hrefTag.setAttribute('hreflang', langCode);
+      document.head.appendChild(hrefTag);
+    }
+    hrefTag.href = `${window.location.origin}${window.location.pathname}?lang=${langCode}`;
+  });
 
   // Schema.org JSON-LD Structured Data
   let ldScript = document.getElementById('schema-json-ld') as HTMLScriptElement;

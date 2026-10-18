@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
-import { MapPin, TrendingUp, Users, Calendar, ArrowRight, ShieldCheck, CheckCircle2, Crown, Clock, FileText } from 'lucide-react';
+import { MapPin, TrendingUp, Users, Calendar, ArrowRight, ShieldCheck, CheckCircle2, Crown, Clock, FileText, Eye } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
+import { PropertyBrochureModal } from './PropertyBrochureModal';
 
 interface PropertyCardProps {
   property: Property;
@@ -25,6 +26,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   isUserOccupied
 }) => {
   const { user } = useAuth();
+  const [isInternalBrochureOpen, setIsInternalBrochureOpen] = useState(false);
+
+  const handleOpenBrochure = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onOpenBrochure) {
+      onOpenBrochure(property);
+    } else {
+      setIsInternalBrochureOpen(true);
+    }
+  };
   
   // Check if current user has an investment in this property
   const userInvestments = user ? ledger.getInvestments(user.id) : [];
@@ -125,6 +136,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           {getStatusBadge()}
 
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleOpenBrochure}
+              className="bg-black/60 hover:bg-[#0E201C] backdrop-blur-md text-[#B7E36A] hover:text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-white/20 hover:border-[#B7E36A]/50 flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+              title="View & Download Property Brochure (PDF & ZIP)"
+            >
+              <FileText className="w-2.5 h-2.5 text-[#B7E36A]" />
+              <span>Brochure</span>
+            </button>
             {property.images && property.images.length > 1 && (
               <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
                 {property.images.length} Photos
@@ -259,20 +279,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Action Buttons */}
         <div className="pt-2 flex items-center gap-2">
-          {onOpenBrochure && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenBrochure(property);
-              }}
-              className="px-3 py-2.5 rounded-xl border border-[#E3E8E3] hover:border-[#142421] hover:bg-[#F6F8F5] text-[#142421] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-              title="Open Official Property Information Brochure"
-            >
-              <FileText className="w-3.5 h-3.5 text-emerald-700" />
-              <span className="hidden sm:inline">Brochure</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleOpenBrochure}
+            className="px-3 py-2.5 rounded-xl border border-emerald-800/30 bg-emerald-50/80 hover:bg-emerald-100 hover:border-emerald-800 text-[#142421] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-xs"
+            title="View & Download Official Property Brochure (PDF & ZIP)"
+          >
+            <FileText className="w-3.5 h-3.5 text-emerald-800" />
+            <span>Brochure</span>
+          </button>
 
           <button
             onClick={() => onSelect(property)}
@@ -294,6 +309,15 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Property Brochure Modal */}
+      {isInternalBrochureOpen && (
+        <PropertyBrochureModal
+          property={property}
+          isOpen={isInternalBrochureOpen}
+          onClose={() => setIsInternalBrochureOpen(false)}
+        />
+      )}
     </div>
   );
 };

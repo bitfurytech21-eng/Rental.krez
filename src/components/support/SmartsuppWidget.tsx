@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../lib/auth';
-import { MessageSquare, X, Send, Bot, ShieldCheck, Mail, Phone, ExternalLink, ChevronDown, CheckCircle2, Clock } from 'lucide-react';
+import { MessageSquare, X, Send, Building2, ShieldCheck, Mail, Phone, ExternalLink, ChevronDown, CheckCircle2, Clock } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -11,7 +11,7 @@ declare global {
 
 interface ChatMessage {
   id: string;
-  sender: 'bot' | 'user' | 'agent';
+  sender: 'agent' | 'user';
   text: string;
   timestamp: string;
 }
@@ -24,34 +24,53 @@ export const SmartsuppWidget: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-1',
-      sender: 'bot',
-      text: 'Hello! Welcome to Kretz Customer Support powered by Smartsupp. How can our European real estate advisors assist you today?',
+      sender: 'agent',
+      text: 'Hello! Welcome to the Kretz Client Advisory Desk. How can our European real estate specialists assist you today?',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Sync user metadata with Smartsupp SDK if loaded
+  // Inject real Smartsupp JS SDK loader and sync user metadata
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window._smartsupp = window._smartsupp || {};
-      window._smartsupp.email = 'louisaw311@gmail.com';
-      if (window.smartsupp) {
-        try {
-          window.smartsupp('account:email', 'louisaw311@gmail.com');
-          if (user) {
-            window.smartsupp('name', user.fullName);
-            window.smartsupp('email', user.email);
-            window.smartsupp('variables', {
-              accountType: user.accountType || 'individual',
-              role: user.role,
-              kycStatus: user.kycStatus,
-              smartsuppOwner: 'louisaw311@gmail.com',
-            });
-          }
-        } catch (e) {
-          console.log('Smartsupp SDK sync note:', e);
+    if (typeof window === 'undefined') return;
+
+    const smartsuppKey = (import.meta.env.VITE_SMARTSUPP_KEY as string) || (window as any)._smartsupp_key || '61033062bd34d55a58c3546d5b618ead716fb2a3';
+    window._smartsupp = window._smartsupp || {};
+    window._smartsupp.key = smartsuppKey;
+
+    if (!window.smartsupp) {
+      (function (d: Document) {
+        const s = d.getElementsByTagName('script')[0];
+        const c = d.createElement('script');
+        c.type = 'text/javascript';
+        c.charset = 'utf-8';
+        c.async = true;
+        c.onerror = () => {
+          // Suppress cross-origin error if external script host is blocked by environment
+        };
+        c.src = 'https://www.smartsuppchat.com/loader.js?';
+        if (s && s.parentNode) {
+          s.parentNode.insertBefore(c, s);
+        } else {
+          d.head.appendChild(c);
         }
+      })(document);
+    }
+
+    if (window.smartsupp) {
+      try {
+        if (user) {
+          window.smartsupp('name', user.fullName);
+          window.smartsupp('email', user.email);
+          window.smartsupp('variables', {
+            accountType: user.accountType || 'individual',
+            role: user.role,
+            kycStatus: user.kycStatus,
+          });
+        }
+      } catch (e) {
+        console.log('Smartsupp SDK sync note:', e);
       }
     }
   }, [user]);
@@ -65,11 +84,17 @@ export const SmartsuppWidget: React.FC = () => {
   const triggerOfficialSmartsupp = () => {
     if (typeof window !== 'undefined' && window.smartsupp) {
       try {
+        window.smartsupp('chat:show');
         window.smartsupp('chat:open');
       } catch {
         console.log('Smartsupp native chat open fallback');
       }
     }
+  };
+
+  const handleOpenWidget = () => {
+    setIsOpen(true);
+    triggerOfficialSmartsupp();
   };
 
   const handleSendMessage = (customText?: string) => {
@@ -129,7 +154,7 @@ export const SmartsuppWidget: React.FC = () => {
       {/* Smartsupp Floating Toggle Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={handleOpenWidget}
           className="group relative bg-[#182D2A] hover:bg-[#24423C] text-white p-3.5 sm:px-5 sm:py-3.5 rounded-full shadow-2xl border border-emerald-500/30 transition-all duration-300 flex items-center gap-3 cursor-pointer hover:scale-105"
           title="Smartsupp Customer Support (info@kretz.site)"
         >
@@ -155,7 +180,7 @@ export const SmartsuppWidget: React.FC = () => {
           <div className="bg-[#182D2A] p-4 text-white flex items-center justify-between border-b border-[#24423C]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-2xl bg-[#24423C] border border-emerald-500/30 flex items-center justify-center text-[#B7E36A] relative">
-                <Bot className="w-5 h-5" />
+                <Building2 className="w-5 h-5 text-[#B7E36A]" />
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-[#182D2A]" />
               </div>
               <div>

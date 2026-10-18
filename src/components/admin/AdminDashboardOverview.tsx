@@ -41,7 +41,7 @@ interface AdminDashboardOverviewProps {
   users: User[];
   auditLogs: AuditLog[];
   paymentConfig: PaymentConfig;
-  onNavigateTab: (tab: 'dashboard' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs') => void;
+  onNavigateTab: (tab: 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news') => void;
   onOpenNewPropertyModal: () => void;
   onRefreshAll: () => void;
   onQuickCreditSuccess: (msg: string) => void;
@@ -259,19 +259,23 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
         </div>
 
         {/* Metric 3: Liquid Investor Reserves */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/40 transition-colors">
+        <div 
+          onClick={() => onNavigateTab('users')}
+          className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/60 transition-all cursor-pointer group"
+          title="Click to view and manage registered users"
+        >
           <div className="flex items-center justify-between text-[#69736F]">
-            <span className="text-xs font-bold uppercase tracking-wider">Investor Balances</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-wider group-hover:text-emerald-800 transition-colors">Investor Balances ({users.length})</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 group-hover:bg-emerald-50 text-amber-700 group-hover:text-emerald-700 flex items-center justify-center transition-colors">
+              <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-[#18211F]">
             {formatCurrency(totalInvestorWalletBalances)}
           </div>
           <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-            <span className="text-[#69736F]">CaixaBank Escrow</span>
-            <span className="font-bold text-amber-700">1:1 Backed</span>
+            <span className="text-[#69736F]">Manage Users & Accounts</span>
+            <span className="font-bold text-emerald-700 group-hover:underline">Open Registry →</span>
           </div>
         </div>
 

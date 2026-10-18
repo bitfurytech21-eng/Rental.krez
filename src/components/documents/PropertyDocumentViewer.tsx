@@ -31,7 +31,6 @@ import {
   ChevronRight,
   Info,
   Maximize2,
-  Sparkles,
   Compass,
   Eye,
   Award,

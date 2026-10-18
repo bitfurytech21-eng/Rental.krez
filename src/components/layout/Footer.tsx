@@ -1,6 +1,7 @@
 import React from 'react';
 import { FOOTER_LINKS } from '../../data/navigation';
 import { Building2, ShieldCheck, Mail, MapPin } from 'lucide-react';
+import { LanguageSelector } from './LanguageSelector';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
@@ -92,9 +93,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         </div>
 
 
-        {/* Copyright */}
+        {/* Copyright & Regional Options */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#828D89] gap-4">
-          <p>© {new Date().getFullYear()} Kretz Real Estate S.L. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <p>© {new Date().getFullYear()} Kretz Real Estate S.L. All rights reserved.</p>
+            <LanguageSelector variant="footer" />
+          </div>
           <div className="flex items-center gap-6">
             <button onClick={() => onNavigate('/privacy')} className="hover:text-white">Privacy Policy</button>
             <button onClick={() => onNavigate('/terms')} className="hover:text-white">Terms of Use</button>

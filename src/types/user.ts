@@ -140,6 +140,8 @@ export interface User {
   city?: string;
   postalCode?: string;
   twoFactorEnabled?: boolean;
+  status?: 'active' | 'suspended';
+  suspendedReason?: string;
 }
 
 export interface AuthState {

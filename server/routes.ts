@@ -13,9 +13,13 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin } from './middleware';
 import { logger } from './logger';
 import { verifyTurnstileToken, requireTurnstile } from './turnstile';
+import { handleTranslationRequest } from './translationController';
 import crypto from 'crypto';
 
 const router = Router();
+
+// Server-side translation endpoint
+router.post('/translate', handleTranslationRequest);
 
 const contactLimiter = rateLimiter({
   windowMs: 60 * 1000,
@@ -43,6 +47,8 @@ export interface MockUser {
   country?: string;
   countryCode?: string;
   phoneNumber?: string;
+  status?: 'active' | 'suspended';
+  suspendedReason?: string;
 }
 
 // In-memory data store for server-authoritative state
@@ -59,6 +65,7 @@ let mockUsers: MockUser[] = [
     country: 'Spain',
     countryCode: 'ES',
     phoneNumber: '+34 912 345 678',
+    status: 'active',
     createdAt: '2025-01-15T09:00:00Z'
   },
   {
@@ -69,6 +76,7 @@ let mockUsers: MockUser[] = [
     kycStatus: 'approved',
     balance: 45000,
     currency: 'EUR',
+    status: 'active',
     createdAt: '2025-02-10T11:30:00Z'
   },
   {
@@ -79,6 +87,7 @@ let mockUsers: MockUser[] = [
     kycStatus: 'pending',
     balance: 15000,
     currency: 'EUR',
+    status: 'active',
     createdAt: '2025-03-01T14:20:00Z'
   }
 ];
@@ -169,7 +178,7 @@ let mockListings = [
       'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80'
     ],
     specs: { bedrooms: 8, bathrooms: 10, builtAreaM2: 1450, plotAreaM2: 8900 },
-    financials: { grossRentAnnual: 310000, netYield: 10.0, totalIrr: 16.2 }
+    financials: { grossRentAnnual: 310000, netYield: 78.0, totalIrr: 234.0 }
   }
 ];
 
@@ -919,6 +928,90 @@ router.post('/admin/users/:id/kyc', requireAdmin, (req: AuthenticatedRequest, re
     requestId: req.id
   });
 });
+
+/**
+ * PATCH /api/v1/admin/users/:id/status
+ * POST /api/v1/admin/users/:id/status
+ * Toggle user account status (active / suspended) with audit logging
+ */
+const handleUserStatusUpdate = (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { status, reason } = req.body || {};
+
+  if (!status || (status !== 'active' && status !== 'suspended')) {
+    return res.status(400).json({
+      success: false,
+      error: 'Status must be either "active" or "suspended".',
+      code: 'INVALID_STATUS',
+      requestId: req.id
+    });
+  }
+
+  const target = mockUsers.find(u => u.id === id);
+  if (!target) {
+    return res.status(404).json({
+      success: false,
+      error: 'User not found.',
+      code: 'USER_NOT_FOUND',
+      requestId: req.id
+    });
+  }
+
+  // Prevent self-suspension of administrator
+  if (req.user?.id === id && status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      error: 'Administrators cannot suspend their own active credentials.',
+      code: 'SELF_SUSPENSION_FORBIDDEN',
+      requestId: req.id
+    });
+  }
+
+  const previousStatus = target.status || 'active';
+  target.status = status;
+  target.suspendedReason = status === 'suspended' ? (reason || 'Administrative Compliance Suspension') : undefined;
+
+  const auditEntry = {
+    id: `audit-${Date.now()}`,
+    adminId: req.user?.id || 'usr-admin-01',
+    adminEmail: req.user?.email || 'admin@kretz.com',
+    action: status === 'suspended' ? 'USER_SUSPENDED' : 'USER_ACTIVATED',
+    details: `User ${target.email} (${target.fullName}) status updated from ${previousStatus.toUpperCase()} to ${status.toUpperCase()} by ${req.user?.email || 'admin@kretz.com'}.${reason ? ` Reason: ${reason}` : ''}`,
+    timestamp: new Date().toISOString()
+  };
+  mockAuditLogs.unshift(auditEntry);
+
+  logger.log({
+    level: 'info',
+    category: 'admin',
+    requestId: req.id || 'req-user-status',
+    method: req.method,
+    route: `/api/v1/admin/users/${id}/status`,
+    statusCode: 200,
+    userId: req.user?.id,
+    eventType: status === 'suspended' ? 'USER_SUSPENDED' : 'USER_ACTIVATED',
+    outcome: 'success',
+    message: `Account ${target.email} status changed to ${status.toUpperCase()}`,
+    metadata: {
+      targetUserId: id,
+      targetEmail: target.email,
+      newStatus: status,
+      previousStatus,
+      reason
+    }
+  });
+
+  return res.json({
+    success: true,
+    data: target,
+    auditLog: auditEntry,
+    message: `User status successfully updated to ${status.toUpperCase()}.`,
+    requestId: req.id
+  });
+};
+
+router.patch('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
+router.post('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
 
 /**
  * POST /api/v1/admin/users/:id/credit
@@ -1782,6 +1875,221 @@ router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, (req: Authe
   res.json({
     success: true,
     message: `Withdrawal ${withdrawalId} rejected and funds unlocked.`,
+    requestId: req.id
+  });
+});
+
+/**
+ * ============================================================================
+ * REAL ESTATE DOSSIERS & EDITORIAL INSIGHTS API ENDPOINTS
+ * ============================================================================
+ */
+
+let mockInsightArticles: any[] = [
+  {
+    id: 'art-dossier-yield-barometer-2026',
+    slug: 'barometre-rendements-immobiliers-europe-2026',
+    title: 'The 2026 Prime European Real Estate Yield Barometer: Cap Rates & Risk Premiums in Paris, Madrid, and Costa del Sol',
+    subtitle: 'An exhaustive cross-border analysis comparing net capitalization rates, rent indexation mechanics, and liquidity dynamics in the wake of European Central Bank rate stability.',
+    excerpt: 'As European benchmark interest rates stabilize, prime residential and mixed-use commercial yields have re-anchored. This comprehensive dossier evaluates net capitalization trajectories across 12 European prime sub-markets, contrasting traditional physical acquisitions with fractional SPV debt-equity models.',
+    categorySlug: 'barometre-immobilier',
+    categoryName: 'Market Barometer & Valuation',
+    isDossier: true,
+    dossierIssue: 'Dossier N° 48 — Special Report',
+    author: {
+      name: 'Dr. Alexandre Moreau',
+      role: 'Chief Real Estate Economist & Partner',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      organization: 'Kretz Wealth Advisory'
+    },
+    publishedAt: '2026-10-15T09:00:00Z',
+    status: 'published',
+    readTime: '14 min read',
+    coverImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1600&q=80',
+    coverImageAlt: 'Modern European architecture showcasing urban luxury real estate in Madrid and Paris',
+    coverImageCaption: 'Parisian boulevard meets modern European architectural capital reallocation: institutional prime yields re-anchor above 4.5% net.',
+    coverImageAttribution: 'Photo by Laurent Perrier / Kretz Editorial License',
+    isFeatured: true,
+    tags: ['Market Barometer', 'Yields', 'Paris Real Estate', 'Madrid Prime', 'SPV Tokenization', 'Cap Rates'],
+    viewsCount: 4820,
+    sharesCount: 312
+  },
+  {
+    id: 'art-dossier-tokenization-mica',
+    slug: 'tokenisation-immobiliere-cadre-juridique-spv-mica',
+    title: 'Institutional Real Estate Tokenization: Transforming Deed Registries into Liquid ERC-20 SPVs under MiCA',
+    subtitle: 'From physical notarial conveyance to digital securities: the legal architecture, smart contract custody, and cross-border settlement mechanisms behind modern property tokenization.',
+    excerpt: 'How does a physical luxury villa in Marbella transform into a liquid, audited digital financial asset? We deconstruct the exact French and Spanish SPV legal structuring, segregated trustee custody, and compliant Polygon smart contracts powering fractional real estate.',
+    categorySlug: 'proptech-tokenization',
+    categoryName: 'PropTech & Asset Tokenization',
+    isDossier: true,
+    dossierIssue: 'Dossier N° 47 — Legal & Tech Analysis',
+    author: {
+      name: 'Maitre Hélène de Saint-Germain',
+      role: 'Head of Legal & Regulatory Compliance',
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+      organization: 'Kretz Legal Counsel'
+    },
+    publishedAt: '2026-10-10T11:15:00Z',
+    status: 'published',
+    readTime: '16 min read',
+    coverImage: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1600&q=80',
+    coverImageAlt: 'Abstract blockchain digital tokens intersecting with luxury architectural blueprints',
+    coverImageCaption: 'Digital tokenization bridges centuries-old notarial deeds with cryptographic settlement: an immutable bridge to liquidity.',
+    coverImageAttribution: 'Photo by Kretz Blockchain Laboratory',
+    isFeatured: false,
+    tags: ['Tokenization', 'PropTech', 'Smart Contracts', 'MiCA', 'SPV Custody', 'Blockchain'],
+    viewsCount: 3940,
+    sharesCount: 245
+  }
+];
+
+// GET /api/v1/insights - List public published articles
+router.get('/insights', (req, res) => {
+  const { category, search, isDossier } = req.query;
+  let filtered = mockInsightArticles.filter(a => a.status === 'published');
+
+  if (category && category !== 'all') {
+    filtered = filtered.filter(a => a.categorySlug === category);
+  }
+  if (isDossier !== undefined) {
+    filtered = filtered.filter(a => String(a.isDossier) === String(isDossier));
+  }
+  if (search && typeof search === 'string') {
+    const q = search.toLowerCase().trim();
+    filtered = filtered.filter(a => 
+      a.title.toLowerCase().includes(q) || 
+      a.excerpt.toLowerCase().includes(q) || 
+      a.tags.some((t: string) => t.toLowerCase().includes(q))
+    );
+  }
+
+  res.json({
+    success: true,
+    data: filtered,
+    total: filtered.length,
+    requestId: (req as any).id
+  });
+});
+
+// GET /api/v1/insights/:slug - Get single published article
+router.get('/insights/:slug', (req, res) => {
+  const { slug } = req.params;
+  const article = mockInsightArticles.find(a => a.slug === slug || a.id === slug);
+  if (!article) {
+    return res.status(404).json({
+      success: false,
+      error: 'Insight article not found',
+      requestId: (req as any).id
+    });
+  }
+  article.viewsCount = (article.viewsCount || 0) + 1;
+  res.json({
+    success: true,
+    data: article,
+    requestId: (req as any).id
+  });
+});
+
+// Admin endpoints
+router.get('/admin/insights', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: mockInsightArticles,
+    requestId: req.id
+  });
+});
+
+router.post('/admin/insights', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const body = req.body || {};
+  if (!body.title || !body.slug) {
+    return res.status(400).json({
+      success: false,
+      error: 'Article title and slug are required.',
+      requestId: req.id
+    });
+  }
+
+  const newArticle = {
+    ...body,
+    id: `art-dossier-${Date.now()}`,
+    viewsCount: 0,
+    sharesCount: 0,
+    publishedAt: body.publishedAt || new Date().toISOString()
+  };
+
+  mockInsightArticles.unshift(newArticle);
+
+  mockAuditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    adminId: req.user?.id || 'usr-admin-01',
+    adminEmail: req.user?.email || 'admin@kretz.com',
+    action: 'INSIGHT_ARTICLE_CREATED',
+    details: `Created editorial article "${newArticle.title}" (ID: ${newArticle.id})`,
+    timestamp: new Date().toISOString()
+  });
+
+  res.status(201).json({
+    success: true,
+    data: newArticle,
+    requestId: req.id
+  });
+});
+
+router.patch('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const target = mockInsightArticles.find(a => a.id === id);
+  if (!target) {
+    return res.status(404).json({
+      success: false,
+      error: 'Article not found',
+      requestId: req.id
+    });
+  }
+
+  Object.assign(target, req.body, { updatedAt: new Date().toISOString() });
+
+  mockAuditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    adminId: req.user?.id || 'usr-admin-01',
+    adminEmail: req.user?.email || 'admin@kretz.com',
+    action: 'INSIGHT_ARTICLE_UPDATED',
+    details: `Updated editorial article "${target.title}" (ID: ${target.id})`,
+    timestamp: new Date().toISOString()
+  });
+
+  res.json({
+    success: true,
+    data: target,
+    requestId: req.id
+  });
+});
+
+router.delete('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const targetIndex = mockInsightArticles.findIndex(a => a.id === id);
+  if (targetIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: 'Article not found',
+      requestId: req.id
+    });
+  }
+
+  const removed = mockInsightArticles.splice(targetIndex, 1)[0];
+
+  mockAuditLogs.unshift({
+    id: `audit-${Date.now()}`,
+    adminId: req.user?.id || 'usr-admin-01',
+    adminEmail: req.user?.email || 'admin@kretz.com',
+    action: 'INSIGHT_ARTICLE_DELETED',
+    details: `Deleted editorial article "${removed.title}" (ID: ${id})`,
+    timestamp: new Date().toISOString()
+  });
+
+  res.json({
+    success: true,
+    message: `Article ${id} deleted successfully.`,
     requestId: req.id
   });
 });

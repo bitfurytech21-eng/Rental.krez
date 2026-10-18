@@ -284,7 +284,7 @@ export function requireAdmin(
     });
   }
 
-  const ADMIN_ROLES: UserRoleType[] = ['admin', 'super_admin', 'finance_admin', 'operations_admin', 'auditor'];
+  const ADMIN_ROLES: UserRoleType[] = ['admin', 'super_admin', 'finance_admin', 'operations_admin', 'support', 'auditor'];
   if (!ADMIN_ROLES.includes(req.user.role)) {
     logger.log({
       level: 'error',
@@ -310,6 +310,50 @@ export function requireAdmin(
   }
 
   next();
+}
+
+/**
+ * Require Specific Least-Privilege Administrative Roles
+ */
+export function requireRole(...allowedRoles: UserRoleType[]) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required before accessing this administrative endpoint.',
+        code: 'UNAUTHORIZED',
+        requestId: req.id
+      });
+    }
+
+    // super_admin and admin have universal administrative access; otherwise check specific role
+    const effectiveRoles: UserRoleType[] = ['admin', 'super_admin', ...allowedRoles];
+    if (!effectiveRoles.includes(req.user.role)) {
+      logger.log({
+        level: 'warn',
+        category: 'security',
+        requestId: req.id || 'req-rbac-forbidden',
+        method: req.method,
+        route: req.path,
+        statusCode: 403,
+        userId: req.user.id,
+        userRole: req.user.role,
+        eventType: 'LEAST_PRIVILEGE_ACCESS_DENIED',
+        outcome: 'failure',
+        message: `User ${req.user.email} (${req.user.role}) denied access to ${req.path}. Required: ${allowedRoles.join(', ')}`,
+        errorCode: 'FORBIDDEN_ROLE'
+      });
+
+      return res.status(403).json({
+        success: false,
+        error: `Access denied: This operation requires one of the following administrative roles: ${allowedRoles.join(', ')}.`,
+        code: 'FORBIDDEN_LEAST_PRIVILEGE',
+        requestId: req.id
+      });
+    }
+
+    next();
+  };
 }
 
 /**

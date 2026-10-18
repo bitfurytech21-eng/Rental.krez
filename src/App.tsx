@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/auth';
+import { LanguageProvider } from './context/LanguageContext';
 import { ledger } from './lib/ledger';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
@@ -16,6 +17,7 @@ import { AgencyDisciplineSection } from './components/home/AgencyDisciplineSecti
 import { DreamDestinationsSection } from './components/home/DreamDestinationsSection';
 import { ClubTeaserSection } from './components/home/ClubTeaserSection';
 import { CasosDeExitoTeaser } from './components/home/CasosDeExitoTeaser';
+import { InsightsTeaserSection } from './components/home/InsightsTeaserSection';
 
 // Dedicated Pages
 import { PropertiesPage } from './components/pages/PropertiesPage';
@@ -41,10 +43,13 @@ import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
 import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SmartsuppWidget } from './components/support/SmartsuppWidget';
+import { LanguageSelector } from './components/layout/LanguageSelector';
 import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
 import { updatePageSeo } from './lib/seo';
+import { InsightsEditorialHome } from './components/insights/InsightsEditorialHome';
+import { InsightArticleDetail } from './components/insights/InsightArticleDetail';
 
-import { ArrowRight, ShieldCheck, UserCheck, Plus, Sparkles } from 'lucide-react';
+import { ArrowRight, ShieldCheck, UserCheck, Plus } from 'lucide-react';
 
 function MainApp() {
   const { user, isConfigured, quickDemoSession } = useAuth();
@@ -196,6 +201,19 @@ function MainApp() {
       }
     }
 
+    // Individual Insight Article / Dossier view
+    if (basePath.startsWith('/insights/') && basePath !== '/insights/dossiers') {
+      const articleSlug = basePath.replace('/insights/', '');
+      return (
+        <InsightArticleDetail
+          slug={articleSlug}
+          onNavigateBack={() => navigateTo('/insights')}
+          onSelectArticle={(newSlug) => navigateTo(`/insights/${newSlug}`)}
+          onSelectCategory={(catSlug) => navigateTo(`/insights?category=${catSlug}`)}
+        />
+      );
+    }
+
     switch (basePath) {
       case '/properties':
         return (
@@ -205,6 +223,23 @@ function MainApp() {
             onInvestProperty={handleInvestProperty}
           />
         );
+
+      case '/insights':
+      case '/insights/dossiers': {
+        const queryParams = typeof window !== 'undefined' 
+          ? new URLSearchParams(window.location.search || (currentPath.includes('?') ? currentPath.substring(currentPath.indexOf('?')) : ''))
+          : new URLSearchParams();
+        const initialCategory = queryParams.get('category') || 'all';
+        const initialType = (basePath === '/insights/dossiers' || queryParams.get('type') === 'dossiers') ? 'dossiers' : undefined;
+        return (
+          <InsightsEditorialHome
+            initialCategory={initialCategory}
+            initialType={initialType}
+            onSelectArticle={(slug) => navigateTo(`/insights/${slug}`)}
+            onSelectCategory={(catSlug) => navigateTo(`/insights?category=${catSlug}`)}
+          />
+        );
+      }
 
       case '/team':
       case '/agency':
@@ -248,7 +283,6 @@ function MainApp() {
       case '/blog':
       case '/en/blog':
       case '/es/blog':
-      case '/insights':
         return (
           <BlogPage
             onExploreProperties={() => navigateTo('/properties')}
@@ -518,6 +552,12 @@ function MainApp() {
               onNavigateProperties={() => navigateTo('/properties')}
             />
 
+            <InsightsTeaserSection
+              onNavigateInsights={() => navigateTo('/insights')}
+              onNavigateDossier={(slug) => navigateTo(`/insights/${slug}`)}
+              onNavigateCategory={(cat) => navigateTo(`/insights?category=${cat}`)}
+            />
+
             <Benefits />
 
             <ClubTeaserSection
@@ -563,7 +603,8 @@ function MainApp() {
       {/* Footer is visible only on the home page */}
       {isHomePage && <Footer onNavigate={navigateTo} />}
 
-      {/* Global Smartsupp Live Customer Support System */}
+      {/* Global Floating Language Widget & Support System */}
+      <LanguageSelector variant="floating" />
       <SmartsuppWidget />
 
       {/* First-visit Cookie Consent Banner */}
@@ -605,7 +646,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <MainApp />
+        <LanguageProvider>
+          <MainApp />
+        </LanguageProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

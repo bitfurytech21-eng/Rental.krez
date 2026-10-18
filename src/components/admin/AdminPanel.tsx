@@ -29,15 +29,18 @@ import {
   Filter,
   FileCheck,
   Tv,
-  RotateCcw
+  RotateCcw,
+  BookOpen
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
 import { AdminMonitoringView } from './AdminMonitoringView';
 import { AdminDashboardOverview } from './AdminDashboardOverview';
 import { AdminNewsManager } from './AdminNewsManager';
+import { AdminUserManagement } from './AdminUserManagement';
+import { AdminInsightsCMS } from './AdminInsightsCMS';
 
-export type AdminTabType = 'dashboard' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news';
+export type AdminTabType = 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights';
 
 export const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -52,7 +55,7 @@ export const AdminPanel: React.FC = () => {
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights'];
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
@@ -88,7 +91,7 @@ export const AdminPanel: React.FC = () => {
   React.useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news'];
       if (valid.includes(hash as any)) {
         setActiveTab(hash as any);
       }
@@ -535,6 +538,21 @@ export const AdminPanel: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('users')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'users' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <Users className="w-4 h-4 text-[#27845D]" />
+            <span>User Management ({users.length})</span>
+            {users.filter(u => u.status === 'suspended').length > 0 && (
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">
+                {users.filter(u => u.status === 'suspended').length} suspended
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('deposits')}
             className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
               activeTab === 'deposits' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
@@ -633,6 +651,16 @@ export const AdminPanel: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('insights')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'insights' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 text-emerald-800" />
+            <span>Dossiers & Editorial CMS</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('audit')}
             className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
               activeTab === 'audit' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
@@ -670,6 +698,27 @@ export const AdminPanel: React.FC = () => {
               setTimeout(() => setActionSuccess(null), 3000);
             }}
             onTogglePropertyStatus={handleTogglePropertyStatus}
+          />
+        )}
+
+        {/* Tab 0.5: User Management View */}
+        {activeTab === 'users' && (
+          <AdminUserManagement
+            users={users}
+            currentAdminEmail={user.email}
+            onRefreshAll={refreshAll}
+            onQuickSuccess={(msg) => {
+              setActionSuccess(msg);
+              setTimeout(() => setActionSuccess(null), 4000);
+            }}
+            onQuickError={(msg) => {
+              setActionError(msg);
+              setTimeout(() => setActionError(null), 4000);
+            }}
+            onNavigateToManualCredit={(targetId) => {
+              setSelectedUserId(targetId);
+              setActiveTab('manual-payment');
+            }}
           />
         )}
 
@@ -1930,6 +1979,21 @@ export const AdminPanel: React.FC = () => {
         {activeTab === 'news' && (
           <div className="animate-in fade-in duration-200">
             <AdminNewsManager />
+          </div>
+        )}
+
+        {/* Tab: Real Estate Dossiers & Editorial CMS (Immo Matin Structure) */}
+        {activeTab === 'insights' && (
+          <div className="animate-in fade-in duration-200">
+            <AdminInsightsCMS
+              currentAdminEmail={user.email}
+              onViewLiveArticle={(slug) => {
+                if (typeof window !== 'undefined') {
+                  window.location.hash = `/insights/${slug}`;
+                }
+              }}
+              onRefreshAll={refreshAll}
+            />
           </div>
         )}
 

@@ -78,6 +78,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const totalCost = tokenCount * property.tokenPrice;
   const monthlyRate = property.monthlyTargetRate || 6.0;
   const projectedMonthlyDividend = Number(((totalCost * monthlyRate) / 100).toFixed(2));
+  const annualTarget = Number((projectedMonthlyDividend * 12).toFixed(2));
   const durationMonths = property.durationMonths || 25;
   const netMonthlyTarget = Number((projectedMonthlyDividend * durationMonths).toFixed(2));
   const totalWithPrincipal = Number((totalCost + netMonthlyTarget).toFixed(2));
@@ -1024,16 +1025,49 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                     </button>
                   </div>
 
-                  {/* Summary of this order */}
-                  <div className="p-2.5 rounded-xl bg-[#EEF1EC] border border-[#E3E8E3] space-y-1 text-xs">
-                    <div className="flex justify-between text-[#69736F] text-[11px]">
-                      <span>Total Acquisition Cost:</span>
-                      <span className="font-bold text-[#18211F] text-xs">{formatCurrency(totalCost)}</span>
+                  {/* Investment Projection Grid */}
+                  <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-[#EEF1EC] border border-[#E3E8E3] text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                        Target Monthly Pay ({monthlyRate}% Projected)
+                      </span>
+                      <span className="text-sm font-black text-[#27845D] block mt-0.5 tabular-nums">
+                        +{formatCurrency(projectedMonthlyDividend)}/mo
+                      </span>
                     </div>
-                    <div className="flex justify-between text-[#69736F] text-[11px]">
-                      <span>Est. Monthly Rental Dividend:</span>
-                      <span className="font-bold text-[#27845D] text-xs">{formatCurrency(projectedMonthlyDividend)} /mo</span>
+
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                        Annual Target Return
+                      </span>
+                      <span className="text-sm font-black text-[#142421] block mt-0.5 tabular-nums">
+                        +{formatCurrency(annualTarget)}
+                      </span>
                     </div>
+
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                        Net-Monthly Target ({durationMonths} Mo)
+                      </span>
+                      <span className="text-xs font-bold text-[#27845D] block mt-0.5 tabular-nums">
+                        +{formatCurrency(netMonthlyTarget)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                        Total Acquisition Cost
+                      </span>
+                      <span className="text-xs font-bold text-[#142421] block mt-0.5 tabular-nums">
+                        {formatCurrency(totalCost)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Principal Repayment Projection */}
+                  <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200/90 text-[11px] text-emerald-950 flex items-center justify-between font-semibold">
+                    <span className="text-[#52605C]">Total incl. separately returned principal (Projected):</span>
+                    <span className="font-black text-[#27845D] text-xs tabular-nums">{formatCurrency(totalWithPrincipal)}</span>
                   </div>
                 </div>
 

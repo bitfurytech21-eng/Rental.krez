@@ -146,6 +146,23 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
                 <span className="text-sm font-black text-[#142421] block mt-0.5">{formatCurrency(investment.totalDividendsReceived)}</span>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+              <div className="p-3 bg-white rounded-xl border border-[#E3E8E3]">
+                <span className="text-[10px] uppercase font-bold text-[#69736F] block">Monthly Target Pay</span>
+                <span className="text-sm font-black text-[#27845D] block mt-0.5">+{formatCurrency(investment.projectedMonthlyIncome)}/mo</span>
+              </div>
+
+              <div className="p-3 bg-white rounded-xl border border-[#E3E8E3]">
+                <span className="text-[10px] uppercase font-bold text-[#69736F] block">Net-Monthly Target ({durationMonths} Mo)</span>
+                <span className="text-sm font-black text-[#27845D] block mt-0.5">+{formatCurrency(Number((investment.projectedMonthlyIncome * durationMonths).toFixed(2)))}</span>
+              </div>
+
+              <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 col-span-2 sm:col-span-1">
+                <span className="text-[10px] uppercase font-bold text-[#52605C] block">Total With Principal</span>
+                <span className="text-sm font-black text-[#27845D] block mt-0.5">{formatCurrency(Number((investment.totalAmountInvested + (investment.projectedMonthlyIncome * durationMonths)).toFixed(2)))}</span>
+              </div>
+            </div>
           </div>
 
           {/* Certificate & Blockchain Details */}
