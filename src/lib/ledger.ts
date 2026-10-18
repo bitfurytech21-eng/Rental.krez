@@ -507,7 +507,56 @@ const DEFAULT_USERS: User[] = [
   }
 ];
 
-const DEFAULT_INVESTMENTS: Investment[] = [];
+const DEFAULT_INVESTMENTS: Investment[] = [
+  {
+    id: 'inv-seed-01',
+    userId: 'usr-investor-1',
+    propertyId: 'prop-kretz-kp1-102',
+    propertyTitle: 'ROQUEBRUNE-CAP-MARTIN - Ramingao - Golf Bleu',
+    propertyLocation: 'Roquebrune Cap Martin, France',
+    propertyImage: 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
+    tokensPurchased: 150,
+    tokenPrice: 364,
+    totalAmountInvested: 54600,
+    purchasedAt: '2025-11-15T10:00:00Z',
+    startDate: '2025-11-15T10:00:00Z',
+    maturityDate: '2028-11-15T10:00:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 7.5,
+    projectedMonthlyIncome: 354.90,
+    totalDividendsReceived: 843.75,
+    currentValuation: 57800,
+    unrealizedProfitLoss: 3200,
+    status: 'active',
+    transactionHash: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2_inv1',
+    certificateId: 'KZ-CERT-KP1102-8491',
+    fundingSource: 'wallet'
+  },
+  {
+    id: 'inv-seed-02',
+    userId: 'usr-investor-1',
+    propertyId: 'prop-kretz-kp1-103',
+    propertyTitle: 'PARIS 16th - Private Mansion Victor Hugo',
+    propertyLocation: 'Paris 16th, France',
+    propertyImage: 'https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg',
+    tokensPurchased: 90,
+    tokenPrice: 364,
+    totalAmountInvested: 9000,
+    purchasedAt: '2026-02-01T10:00:00Z',
+    startDate: '2026-02-01T10:00:00Z',
+    maturityDate: '2029-02-01T10:00:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 8.2,
+    projectedMonthlyIncome: 63.96,
+    totalDividendsReceived: 492.00,
+    currentValuation: 9450,
+    unrealizedProfitLoss: 450,
+    status: 'active',
+    transactionHash: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2_inv2',
+    certificateId: 'KZ-CERT-PAR16-2049',
+    fundingSource: 'wallet'
+  }
+];
 const DEFAULT_TRANSACTIONS: Transaction[] = [
   {
     id: 'tx-dep-seed-1',
@@ -606,12 +655,30 @@ class LedgerService {
     }
     const storedProps = getStorage<Property[]>('properties', []);
     const hasValidProps = Array.isArray(storedProps) && storedProps.length > 0;
-    this.properties = hasValidProps ? storedProps : [...INITIAL_PROPERTIES];
+    const rawList = hasValidProps ? storedProps : [...INITIAL_PROPERTIES];
+    this.properties = rawList.filter(p => Array.isArray(p.images) && p.images.length >= 7);
     const existingPropIds = new Set(this.properties.map(p => p.id));
-    const missingProps = INITIAL_PROPERTIES.filter(p => !existingPropIds.has(p.id));
+    const missingProps = INITIAL_PROPERTIES.filter(p => !existingPropIds.has(p.id) && Array.isArray(p.images) && p.images.length >= 7);
     if (missingProps.length > 0) {
       this.properties = [...this.properties, ...missingProps];
     }
+    
+    // Always sync latest INITIAL_PROPERTIES monthlyTargetRate and yield metrics onto property state
+    const initialMap = new Map(INITIAL_PROPERTIES.map(p => [p.id, p]));
+    this.properties = this.properties.map(p => {
+      const init = initialMap.get(p.id);
+      if (init) {
+        return {
+          ...p,
+          monthlyTargetRate: init.monthlyTargetRate,
+          estimatedAnnualYield: init.estimatedAnnualYield,
+          totalEstimatedReturn: init.totalEstimatedReturn,
+          tokenPrice: init.tokenPrice,
+          durationMonths: init.durationMonths,
+        };
+      }
+      return p;
+    });
     setStorage('properties', this.properties);
     this.investments = getStorage('investments', DEFAULT_INVESTMENTS);
     this.transactions = getStorage('transactions', DEFAULT_TRANSACTIONS);
@@ -1041,11 +1108,39 @@ class LedgerService {
 
   // --- Properties Management ---
   public getProperties(): Property[] {
-    return [...this.properties];
+    const initialMap = new Map(INITIAL_PROPERTIES.map(p => [p.id, p]));
+    return this.properties
+      .filter(p => Array.isArray(p.images) && p.images.length >= 7)
+      .map(p => {
+        const init = initialMap.get(p.id);
+        if (init) {
+          return {
+            ...p,
+            monthlyTargetRate: init.monthlyTargetRate,
+            estimatedAnnualYield: init.estimatedAnnualYield,
+            totalEstimatedReturn: init.totalEstimatedReturn,
+            tokenPrice: init.tokenPrice,
+          };
+        }
+        return p;
+      });
   }
 
   public getPropertyById(id: string): Property | undefined {
-    return this.properties.find(p => p.id === id || p.slug === id);
+    const p = this.properties.find(prop => (prop.id === id || prop.slug === id) && Array.isArray(prop.images) && prop.images.length >= 7);
+    if (p) {
+      const init = INITIAL_PROPERTIES.find(item => item.id === p.id || item.slug === p.slug);
+      if (init) {
+        return {
+          ...p,
+          monthlyTargetRate: init.monthlyTargetRate,
+          estimatedAnnualYield: init.estimatedAnnualYield,
+          totalEstimatedReturn: init.totalEstimatedReturn,
+          tokenPrice: init.tokenPrice,
+        };
+      }
+    }
+    return p;
   }
 
   public saveProperty(property: Property): Property {
@@ -1061,7 +1156,7 @@ class LedgerService {
   }
 
   public restoreDefaults(): { success: boolean; message: string } {
-    this.properties = [...INITIAL_PROPERTIES];
+    this.properties = INITIAL_PROPERTIES.filter(p => Array.isArray(p.images) && p.images.length >= 7);
     this.companyNews = [...INITIAL_COMPANY_NEWS];
     setStorage('properties', this.properties);
     setStorage('companyNews', this.companyNews);
@@ -1458,8 +1553,16 @@ class LedgerService {
       }
       property.investorCount += 1;
 
-      // Calculate projected monthly income
-      const projectedMonthlyIncome = Number(((totalCost * (property.estimatedAnnualYield / 100)) / 12).toFixed(2));
+      // Calculate projected monthly income = investment cost × monthly percentage ÷ 100
+      const monthlyRate = property.monthlyTargetRate || 6.0;
+      const projectedMonthlyIncome = Number(((totalCost * monthlyRate) / 100).toFixed(2));
+
+      // Calculate start and maturity dates based on property term
+      const startDate = timestamp;
+      const durationMonths = property.durationMonths || 36;
+      const matDateObj = new Date(timestamp);
+      matDateObj.setMonth(matDateObj.getMonth() + durationMonths);
+      const maturityDate = matDateObj.toISOString();
 
       // Create Investment record
       const investment: Investment = {
@@ -1473,12 +1576,18 @@ class LedgerService {
         tokenPrice: property.tokenPrice,
         totalAmountInvested: totalCost,
         purchasedAt: timestamp,
+        startDate: startDate,
+        maturityDate: maturityDate,
+        durationMonths: durationMonths,
         estimatedAnnualYield: property.estimatedAnnualYield,
         projectedMonthlyIncome: projectedMonthlyIncome,
         totalDividendsReceived: 0,
+        currentValuation: totalCost,
+        unrealizedProfitLoss: 0,
         status: 'active',
         transactionHash: txHash,
-        certificateId: certificateId
+        certificateId: certificateId,
+        fundingSource: 'wallet'
       };
 
       this.investments.unshift(investment);

@@ -76,9 +76,11 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
     Math.round((property.fundedAmount / property.targetAmount) * 100)
   );
   const totalCost = tokenCount * property.tokenPrice;
-  const projectedMonthlyDividend = Number(
-    ((totalCost * (property.estimatedAnnualYield / 100)) / 12).toFixed(2)
-  );
+  const monthlyRate = property.monthlyTargetRate || 6.0;
+  const projectedMonthlyDividend = Number(((totalCost * monthlyRate) / 100).toFixed(2));
+  const durationMonths = property.durationMonths || 25;
+  const netMonthlyTarget = Number((projectedMonthlyDividend * durationMonths).toFixed(2));
+  const totalWithPrincipal = Number((totalCost + netMonthlyTarget).toFixed(2));
 
   const handleStartInvest = (prefillAmount?: number) => {
     // Requirement 7: direct signed-out users to Login or Register and preserve selected property
@@ -323,9 +325,9 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
               {/* Key Quick Facts */}
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-[#E3E8E3] mb-6">
                 <div>
-                  <span className="text-xs text-[#69736F] block">Projected Net Yield*</span>
+                  <span className="text-xs text-[#69736F] block">Monthly Target Rate*</span>
                   <span className="text-xl font-black text-[#27845D]">
-                    {formatPercent(property.estimatedAnnualYield)}
+                    {formatPercent(monthlyRate)}/mo
                   </span>
                 </div>
                 <div>
@@ -343,7 +345,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 <div>
                   <span className="text-xs text-[#69736F] block">Investment Horizon</span>
                   <span className="text-sm font-semibold text-[#18211F]">
-                    {property.durationMonths} Months
+                    {durationMonths} Months Term
                   </span>
                 </div>
                 <div>
@@ -353,7 +355,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="text-xs text-[#69736F] block">Total ROI (Term)*</span>
+                  <span className="text-xs text-[#69736F] block">Net Target ({durationMonths} Mo)*</span>
                   <span className="text-sm font-bold text-[#27845D]">
                     {formatPercent(property.totalEstimatedReturn)}
                   </span>

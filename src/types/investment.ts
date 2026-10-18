@@ -9,12 +9,20 @@ export interface Investment {
   tokenPrice: number;
   totalAmountInvested: number;
   purchasedAt: string;
+  startDate: string;
+  maturityDate: string;
+  durationMonths: number;
+  durationDays?: number;
   estimatedAnnualYield: number;
   projectedMonthlyIncome: number;
   totalDividendsReceived: number;
-  status: 'active' | 'completed' | 'liquidated';
+  currentValuation?: number;
+  unrealizedProfitLoss?: number;
+  status: 'active' | 'matured' | 'cancelled' | 'pending' | 'completed' | 'liquidated';
   transactionHash: string;
   certificateId: string;
+  fundingSource?: 'wallet' | 'reinvestment';
+  reinvestedFromId?: string;
 }
 
 export interface InvestmentPlan {
@@ -24,3 +32,4 @@ export interface InvestmentPlan {
   projectedMonthlyYield: number;
   projectedTotal3YearYield: number;
 }
+

@@ -338,7 +338,7 @@ export const AdminPanel: React.FC = () => {
 
   const handleCreateProperty = (e: React.FormEvent) => {
     e.preventDefault();
-    const tokenPrice = 100;
+    const tokenPrice = 364;
     const totalTokens = Math.floor(newTarget / tokenPrice);
     const slug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 

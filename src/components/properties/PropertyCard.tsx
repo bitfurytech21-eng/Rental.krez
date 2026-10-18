@@ -204,29 +204,29 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
         {/* Signature Reental 4-Box Financial Metrics Grid */}
         <div className="grid grid-cols-2 gap-2.5 py-1">
-          {/* 1. Annual Yield / APY */}
+          {/* 1. Monthly Target Percentage */}
           <div className="p-3 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
             <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-              Annual Return (APY)
+              Monthly Target Rate
             </span>
             <span className="text-lg font-black text-[#27845D] block tabular-nums mt-0.5">
-              {formatPercent(property.estimatedAnnualYield)}
+              {formatPercent(property.monthlyTargetRate || 6.0)}/mo
             </span>
             <span className="text-[10px] text-[#69736F] font-medium block">
-              Paid Monthly
+              Projected Monthly Pay
             </span>
           </div>
 
           {/* 2. Total Estimated Return */}
           <div className="p-3 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
             <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-              Total Target Return
+              {property.durationMonths || 25}-Mo Target Return
             </span>
             <span className="text-lg font-black text-[#142421] block tabular-nums mt-0.5">
               {formatPercent(property.totalEstimatedReturn)}
             </span>
             <span className="text-[10px] text-[#69736F] font-medium block">
-              {property.durationMonths} Mo. Term
+              {property.durationMonths || 25} Mo. Term (Projected)
             </span>
           </div>
 

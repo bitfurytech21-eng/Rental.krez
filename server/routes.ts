@@ -93,16 +93,25 @@ let mockListings = [
     status: 'funding',
     fundedAmount: 1840000,
     targetAmount: 2450000,
-    tokenPrice: 100,
-    totalTokens: 24500,
-    availableTokens: 6100,
-    projectedYield: 12.8,
+    tokenPrice: 364,
+    totalTokens: 6730,
+    availableTokens: 1675,
+    monthlyTargetRate: 6.10,
+    projectedYield: 73.2,
     capitalAppreciation: 5.5,
     minimumInvestment: 1000,
-    holdingPeriodMonths: 36,
-    images: ['https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80'],
+    holdingPeriodMonths: 48,
+    images: [
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80'
+    ],
     specs: { bedrooms: 7, bathrooms: 9, builtAreaM2: 1280, plotAreaM2: 5200 },
-    financials: { grossRentAnnual: 220000, netYield: 8.98, totalIrr: 14.48 }
+    financials: { grossRentAnnual: 220000, netYield: 73.2, totalIrr: 292.8 }
   },
   {
     id: 'prop-palacio-pedralbes',
@@ -113,16 +122,25 @@ let mockListings = [
     status: 'funding',
     fundedAmount: 980000,
     targetAmount: 1650000,
-    tokenPrice: 100,
-    totalTokens: 16500,
-    availableTokens: 6700,
-    projectedYield: 11.4,
+    tokenPrice: 364,
+    totalTokens: 4532,
+    availableTokens: 1840,
+    monthlyTargetRate: 6.30,
+    projectedYield: 75.6,
     capitalAppreciation: 4.8,
     minimumInvestment: 1000,
     holdingPeriodMonths: 48,
-    images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80'],
+    images: [
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80'
+    ],
     specs: { bedrooms: 6, bathrooms: 7, builtAreaM2: 950, plotAreaM2: 2400 },
-    financials: { grossRentAnnual: 145000, netYield: 8.78, totalIrr: 13.58 }
+    financials: { grossRentAnnual: 145000, netYield: 75.6, totalIrr: 302.4 }
   },
   {
     id: 'prop-finca-son-vida',
@@ -133,14 +151,23 @@ let mockListings = [
     status: 'funding',
     fundedAmount: 2600000,
     targetAmount: 3100000,
-    tokenPrice: 100,
-    totalTokens: 31000,
-    availableTokens: 5000,
-    projectedYield: 13.6,
+    tokenPrice: 364,
+    totalTokens: 8516,
+    availableTokens: 1373,
+    monthlyTargetRate: 6.50,
+    projectedYield: 78.0,
     capitalAppreciation: 6.2,
     minimumInvestment: 1000,
     holdingPeriodMonths: 36,
-    images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80'],
+    images: [
+      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80'
+    ],
     specs: { bedrooms: 8, bathrooms: 10, builtAreaM2: 1450, plotAreaM2: 8900 },
     financials: { grossRentAnnual: 310000, netYield: 10.0, totalIrr: 16.2 }
   }
@@ -1039,10 +1066,11 @@ router.post(['/marketplace/listings', '/properties'], requireAdmin, (req: Authen
     status: body.status || 'funding',
     fundedAmount: 0,
     targetAmount: Number(body.targetAmount),
-    tokenPrice: 100,
-    totalTokens: Math.round(Number(body.targetAmount) / 100),
-    availableTokens: Math.round(Number(body.targetAmount) / 100),
-    projectedYield: Number(body.projectedYield || 11.5),
+    tokenPrice: 364,
+    totalTokens: Math.round(Number(body.targetAmount) / 364),
+    availableTokens: Math.round(Number(body.targetAmount) / 364),
+    monthlyTargetRate: Number(body.monthlyTargetRate || 6.0),
+    projectedYield: Number(body.projectedYield || 72.0),
     capitalAppreciation: Number(body.capitalAppreciation || 4.5),
     minimumInvestment: 1000,
     holdingPeriodMonths: Number(body.holdingPeriodMonths || 36),
@@ -1557,6 +1585,203 @@ router.get('/payments/config', (req: AuthenticatedRequest, res: Response) => {
         }
       ]
     },
+    requestId: req.id
+  });
+});
+
+/**
+ * Additional Contract Endpoints
+ */
+
+// User profile & session contract endpoints
+router.get(['/auth/me', '/users/me'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: req.user,
+    requestId: req.id
+  });
+});
+
+router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const updates = req.body || {};
+  res.json({
+    success: true,
+    data: { ...req.user, ...updates },
+    message: 'User profile updated successfully.',
+    requestId: req.id
+  });
+});
+
+// Dashboard summary & performance endpoints
+router.get('/dashboard/summary', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      totalPortfolioValue: 10580.00,
+      availableBalance: req.user?.balance || 1500.00,
+      totalEarnedDividends: 320.00,
+      activePropertiesCount: 1,
+      projectedMonthlyIncome: 110.94,
+      currency: 'EUR'
+    },
+    requestId: req.id
+  });
+});
+
+router.get('/dashboard/performance', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      annualizedReturnPercent: 12.8,
+      historicalPerformance: [
+        { month: 'May 2026', yield: 25.0, totalValue: 10000 },
+        { month: 'Jun 2026', yield: 26.5, totalValue: 10120 },
+        { month: 'Jul 2026', yield: 26.5, totalValue: 10250 },
+        { month: 'Aug 2026', yield: 27.0, totalValue: 10380 },
+        { month: 'Sep 2026', yield: 27.0, totalValue: 10450 },
+        { month: 'Oct 2026', yield: 27.5, totalValue: 10580 }
+      ]
+    },
+    requestId: req.id
+  });
+});
+
+// Financial Reports
+router.get('/reports/account-statement', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      statementId: 'STMT-2026-Q3',
+      periodStart: '2026-07-01',
+      periodEnd: '2026-09-30',
+      totalDeposits: 15000.00,
+      totalInvested: 10000.00,
+      totalDividendsReceived: 320.00,
+      currentBalance: req.user?.balance || 1500.00
+    },
+    requestId: req.id
+  });
+});
+
+// Referral Program
+router.get('/referrals', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      referralCode: `REF-${req.user?.id?.slice(0, 8).toUpperCase() || 'KZ2026'}`,
+      referralLink: `https://kretzdespain.com/ref/${req.user?.id || 'usr-01'}`,
+      totalReferred: 3,
+      activeInvestors: 2,
+      commissionEarned: 150.00,
+      currency: 'EUR'
+    },
+    requestId: req.id
+  });
+});
+
+router.get('/referrals/earnings', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      totalEarnings: 150.00,
+      pendingPayout: 0.00,
+      history: [
+        { id: 'ref-01', userEmail: 'm.dupont@client.fr', amount: 75.0, date: new Date(Date.now() - 86400000 * 12).toISOString(), status: 'paid' },
+        { id: 'ref-02', userEmail: 's.weber@investor.de', amount: 75.0, date: new Date(Date.now() - 86400000 * 5).toISOString(), status: 'paid' }
+      ]
+    },
+    requestId: req.id
+  });
+});
+
+// Investment Plans Tiers
+router.get('/investment-plans', (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 'plan-starter', name: 'Fractional Starter', minInvestment: 750, projectedYield: 11.5, holdingMonths: 12 },
+      { id: 'plan-growth', name: 'Institutional Growth', minInvestment: 5000, projectedYield: 13.5, holdingMonths: 24 },
+      { id: 'plan-signature', name: 'Kretz Signature Portfolio', minInvestment: 25000, projectedYield: 16.0, holdingMonths: 36 }
+    ],
+    requestId: req.id
+  });
+});
+
+router.get('/investment-plans/:planId', (req: AuthenticatedRequest, res: Response) => {
+  const { planId } = req.params;
+  res.json({
+    success: true,
+    data: { id: planId, name: 'Fractional Investment Plan', minInvestment: 750, projectedYield: 12.5, holdingMonths: 12 },
+    requestId: req.id
+  });
+});
+
+// Admin Control Contract Endpoints
+router.get('/admin/dashboard', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      totalUsers: 142,
+      totalAssetsUnderManagement: 48500000,
+      totalDividendsPaid: 1240000,
+      pendingKYC: 4,
+      pendingWithdrawalsCount: 2,
+      systemUptimePercent: 99.98
+    },
+    requestId: req.id
+  });
+});
+
+router.get('/admin/investments', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 'inv-001', userId: 'usr-investor-01', userEmail: 'investor@kretz.com', propertyTitle: 'Villa El Mirador', tokensPurchased: 100, totalCost: 10000, purchaseDate: new Date(Date.now() - 86400000 * 30).toISOString() }
+    ],
+    requestId: req.id
+  });
+});
+
+router.get('/admin/transactions', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: mockTransactions,
+    requestId: req.id
+  });
+});
+
+router.get('/admin/deposits', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const deposits = mockTransactions.filter(t => t.type === 'deposit');
+  res.json({
+    success: true,
+    data: deposits,
+    requestId: req.id
+  });
+});
+
+router.get('/admin/withdrawals', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const withdrawals = mockTransactions.filter(t => t.type === 'withdrawal');
+  res.json({
+    success: true,
+    data: withdrawals,
+    requestId: req.id
+  });
+});
+
+router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { withdrawalId } = req.params;
+  res.json({
+    success: true,
+    message: `Withdrawal ${withdrawalId} approved and transfer queued.`,
+    requestId: req.id
+  });
+});
+
+router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { withdrawalId } = req.params;
+  res.json({
+    success: true,
+    message: `Withdrawal ${withdrawalId} rejected and funds unlocked.`,
     requestId: req.id
   });
 });

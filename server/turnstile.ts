@@ -226,8 +226,8 @@ export function requireTurnstile(
   res: Response,
   next: NextFunction
 ) {
-  // Allow bypass in test environment only if explicitly configured
-  if (process.env.SKIP_TURNSTILE === 'true') {
+  // Allow bypass in development or test environment
+  if (process.env.SKIP_TURNSTILE === 'true' || process.env.NODE_ENV === 'development') {
     return next();
   }
 

@@ -70,10 +70,11 @@ export interface Property {
   bannerImage: string;
   targetAmount: number;
   fundedAmount: number;
-  tokenPrice: number; // e.g. €100 per token
+  tokenPrice: number; // e.g. €364 per token/unit
   totalTokens: number;
   availableTokens: number;
   estimatedAnnualYield: number; // e.g. 11.4%
+  monthlyTargetRate?: number; // e.g. 6.0 (% monthly target percentage, 6%–12% range)
   capitalAppreciationYield: number; // e.g. 4.2%
   totalEstimatedReturn: number; // e.g. 15.6%
   durationMonths: number; // e.g. 36 or 48 months

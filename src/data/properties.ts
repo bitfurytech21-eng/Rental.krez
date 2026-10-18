@@ -7027,15 +7027,45 @@ const rawProperties: Property[] = [
   }
 ];
 
-export const INITIAL_PROPERTIES: Property[] = rawProperties.map((p, index) => {
-  const minInvestments = [750, 1000, 1500, 2000, 3000, 4500, 6000, 7500, 9000, 10000];
-  const minimumInvestment = minInvestments[index % minInvestments.length];
-  const durations = [3, 6, 9, 12, 18, 24, 30, 36, 48];
-  const durationMonths = durations[index % durations.length];
-  return {
-    ...p,
-    minimumInvestment,
-    durationMonths,
-  };
-});
+export const INITIAL_PROPERTIES: Property[] = rawProperties
+  .filter((p) => Array.isArray(p.images) && p.images.length >= 7)
+  .map((p, index) => {
+    const minInvestments = [750, 1000, 1500, 2000, 3000, 4500, 6000, 7500, 9000, 10000];
+    const minimumInvestment = minInvestments[index % minInvestments.length];
+    // Odd-number duration terms from 5 to 57 months for net monthly target calculations
+    const oddMonthDurations = [
+      5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43,
+      45, 47, 49, 51, 53, 55, 57, 9, 15, 21, 27, 33, 39, 45, 51, 57, 17, 29
+    ];
+    const durationMonths = oddMonthDurations[index % oddMonthDurations.length];
+
+    // Distinct, stable monthly target percentages strictly in odd-numbered percentage increments between 6% and 12% for all 38 properties
+    const distinctMonthlyTargetRates = [
+      6.10, 6.30, 6.50, 6.70, 6.90, 7.10, 7.30, 7.50, 7.70, 7.90,
+      8.10, 8.30, 8.50, 8.70, 8.90, 9.10, 9.30, 9.50, 9.70, 9.90,
+      10.10, 10.30, 10.50, 10.70, 10.90, 11.10, 11.30, 11.50, 11.70, 11.90,
+      6.15, 6.35, 6.55, 6.75, 6.95, 7.15, 7.35, 7.55
+    ];
+    const monthlyTargetRate = distinctMonthlyTargetRates[index % distinctMonthlyTargetRates.length];
+    const estimatedAnnualYield = Number((monthlyTargetRate * 12).toFixed(2));
+    const totalEstimatedReturn = Number((monthlyTargetRate * durationMonths).toFixed(2));
+
+    const unitPrice = 364;
+    const target = p.targetAmount || 1000000;
+    const funded = p.fundedAmount || 0;
+    const totalTokens = Math.floor(target / unitPrice);
+    const availableTokens = Math.max(0, Math.floor((target - funded) / unitPrice));
+
+    return {
+      ...p,
+      tokenPrice: unitPrice,
+      totalTokens: totalTokens > 0 ? totalTokens : p.totalTokens,
+      availableTokens: availableTokens > 0 ? availableTokens : p.availableTokens,
+      monthlyTargetRate,
+      estimatedAnnualYield,
+      totalEstimatedReturn,
+      minimumInvestment,
+      durationMonths,
+    };
+  });
 

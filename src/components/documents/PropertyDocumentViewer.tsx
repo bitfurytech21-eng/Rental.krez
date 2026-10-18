@@ -439,7 +439,7 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
                 {formatCurrency(effectivePrice)}
               </span>
               <span className="text-[11px] text-emerald-700 font-medium block">
-                Token Unit: €{property.tokenPrice || 100}
+                Token Unit: €{property.tokenPrice || 364}
               </span>
             </div>
 

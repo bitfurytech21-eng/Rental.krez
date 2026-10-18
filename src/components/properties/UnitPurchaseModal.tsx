@@ -1,0 +1,512 @@
+import React, { useState, useEffect } from 'react';
+import { Property } from '../../types/property';
+import { formatCurrency, formatPercent } from '../../lib/utils';
+import { X, ShieldCheck, AlertCircle, ArrowRight, Wallet, RefreshCw, CheckCircle2, Building2, Crown, Sparkles, Plus, Minus } from 'lucide-react';
+import { useAuth } from '../../lib/auth';
+import { ledger } from '../../lib/ledger';
+
+interface UnitPurchaseModalProps {
+  property: Property;
+  allProperties?: Property[];
+  isOpen: boolean;
+  onClose: () => void;
+  mode?: 'purchase' | 'reinvest';
+  onSuccess?: () => void;
+  onOpenDeposit?: () => void;
+}
+
+export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
+  property: initialProperty,
+  allProperties = [],
+  isOpen,
+  onClose,
+  mode = 'purchase',
+  onSuccess,
+  onOpenDeposit
+}) => {
+  const { user, refreshUser } = useAuth();
+  
+  const [selectedProperty, setSelectedProperty] = useState<Property>(initialProperty);
+  const [tokenCount, setTokenCount] = useState<number>(
+    Math.ceil((initialProperty.minimumInvestment || 750) / initialProperty.tokenPrice)
+  );
+  const [isConfirmStep, setIsConfirmStep] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successResult, setSuccessResult] = useState<any | null>(null);
+
+  // Sync selected property when initialProperty changes
+  useEffect(() => {
+    if (initialProperty) {
+      setSelectedProperty(initialProperty);
+      setTokenCount(Math.ceil((initialProperty.minimumInvestment || 750) / initialProperty.tokenPrice));
+    }
+    setIsConfirmStep(false);
+    setError(null);
+    setSuccessResult(null);
+  }, [initialProperty, isOpen]);
+
+  if (!isOpen || !selectedProperty) return null;
+
+  const userBalance = user?.walletBalance ?? 0;
+  const tokenPrice = selectedProperty.tokenPrice || 364;
+  const totalCost = tokenCount * tokenPrice;
+  const structuringFee = 0; // Included in target capitalization as per prospectus
+  const totalPayable = totalCost + structuringFee;
+  const remainingBalance = userBalance - totalPayable;
+  const isInsufficient = userBalance < totalPayable || userBalance === 0;
+
+  const minTokensRequired = Math.ceil((selectedProperty.minimumInvestment || 750) / tokenPrice);
+  const maxAvailable = selectedProperty.availableTokens || 0;
+
+  const monthlyTargetPercentage = selectedProperty.monthlyTargetRate || 6.1;
+  const durationMonths = selectedProperty.durationMonths || 25;
+  // monthly target = investment cost × monthly percentage ÷ 100
+  const monthlyTarget = Number(((totalCost * monthlyTargetPercentage) / 100).toFixed(2));
+  // annual target = monthly target × 12
+  const annualTarget = Number((monthlyTarget * 12).toFixed(2));
+  // net monthly target = monthly target × durationMonths (odd term 5 to 57 months)
+  const netMonthlyTarget = Number((monthlyTarget * durationMonths).toFixed(2));
+  // total including separately returned principal = investment cost + net monthly target
+  const totalWithPrincipal = Number((totalCost + netMonthlyTarget).toFixed(2));
+
+  const handleUnitChange = (val: number) => {
+    setError(null);
+    if (isNaN(val) || val < 1) {
+      setTokenCount(1);
+    } else {
+      setTokenCount(Math.min(val, maxAvailable));
+    }
+  };
+
+  const handleProceedToConfirm = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (tokenCount < minTokensRequired) {
+      setError(`Minimum purchase for ${selectedProperty.title} is ${minTokensRequired} units (${formatCurrency(selectedProperty.minimumInvestment)}).`);
+      return;
+    }
+
+    if (tokenCount > maxAvailable) {
+      setError(`Only ${maxAvailable} units remain available in this property allocation.`);
+      return;
+    }
+
+    if (isInsufficient) {
+      setError(`Insufficient available balance. You have ${formatCurrency(userBalance)}, but need ${formatCurrency(totalPayable)}.`);
+      return;
+    }
+
+    setIsConfirmStep(true);
+  };
+
+  const handleExecuteOrder = async () => {
+    if (!user) {
+      setError('Authentication required to execute property unit orders.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Execute atomic transaction via ledger service (and backend POST /api/v1/investments)
+      const investment = await ledger.executeInvestment(
+        user.id,
+        selectedProperty.id,
+        tokenCount
+      );
+
+      // Refresh user balance and state
+      if (refreshUser) {
+        await refreshUser();
+      }
+
+      setSuccessResult(investment);
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.error('Unit purchase error:', err);
+      setError(err.message || 'An unexpected transaction error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fadeIn">
+      <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-[#E3E8E3] overflow-hidden my-8">
+        
+        {/* Header Bar */}
+        <div className="p-5 sm:p-6 bg-[#142421] text-white flex items-center justify-between border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-2xl ${mode === 'reinvest' ? 'bg-[#B7E36A]/20 text-[#B7E36A]' : 'bg-[#27845D]/30 text-emerald-400'}`}>
+              {mode === 'reinvest' ? <RefreshCw className="w-5 h-5 animate-spin-slow" /> : <Building2 className="w-5 h-5" />}
+            </div>
+            <div>
+              <h2 className="text-lg font-black leading-tight text-white">
+                {mode === 'reinvest' ? 'Reinvest Account Balance' : 'Buy Property Fractional Units'}
+              </h2>
+              <p className="text-xs text-emerald-200/80 font-medium">
+                {selectedProperty.tokenTicker} • {selectedProperty.title}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+
+          {/* Success State Screen */}
+          {successResult ? (
+            <div className="py-6 text-center space-y-4">
+              <div className="w-16 h-16 bg-emerald-100 text-[#27845D] rounded-full flex items-center justify-center mx-auto shadow-md">
+                <CheckCircle2 className="w-10 h-10" />
+              </div>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-[#142421]">Transaction Confirmed!</h3>
+                <p className="text-sm text-[#52605C]">
+                  You have successfully acquired <strong className="text-[#142421]">{tokenCount} units</strong> in {selectedProperty.title}.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] text-left text-xs space-y-2 max-w-md mx-auto">
+                <div className="flex justify-between">
+                  <span className="text-[#69736F] font-medium">Certificate ID:</span>
+                  <span className="font-mono font-bold text-[#142421]">{successResult.certificateId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#69736F] font-medium">Total Invested:</span>
+                  <span className="font-black text-[#27845D]">{formatCurrency(totalCost)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#69736F] font-medium">Projected Monthly Yield:</span>
+                  <span className="font-bold text-[#142421]">{formatCurrency(monthlyTarget)}/mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#69736F] font-medium">New Wallet Balance:</span>
+                  <span className="font-bold text-[#142421]">{formatCurrency(userBalance)}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="w-full py-3.5 bg-[#142421] hover:bg-[#1E332E] text-white font-bold text-sm rounded-xl transition-all cursor-pointer shadow-md"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          ) : isConfirmStep ? (
+            /* Step 2: Final Order Confirmation */
+            <div className="space-y-5 animate-fadeIn">
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium space-y-1">
+                <div className="flex items-center gap-2 font-bold text-amber-950 text-sm">
+                  <ShieldCheck className="w-4 h-4 text-amber-700" />
+                  <span>Review & Confirm Order</span>
+                </div>
+                <p>Please review your purchase details before final execution. All property units are ring-fenced within an SPV contract.</p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] space-y-3.5 text-xs">
+                <div className="flex justify-between items-center pb-2.5 border-b border-[#E3E8E3]">
+                  <span className="text-[#69736F] font-semibold">Selected Property:</span>
+                  <span className="font-black text-[#142421] text-sm">{selectedProperty.title}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#69736F] font-medium">Units Purchased:</span>
+                  <span className="font-extrabold text-[#142421]">{tokenCount} Shares (@ {formatCurrency(tokenPrice)}/unit)</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#69736F] font-medium">Total Unit Purchase Cost:</span>
+                  <span className="font-extrabold text-[#142421]">{formatCurrency(totalCost)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#69736F] font-medium">Structuring & Closing Fees:</span>
+                  <span className="font-extrabold text-emerald-700">€0.00 (0% Included)</span>
+                </div>
+
+                <div className="flex justify-between items-center pt-2.5 border-t border-[#E3E8E3] text-sm">
+                  <span className="font-bold text-[#142421]">Total Amount Payable:</span>
+                  <span className="font-black text-[#27845D] text-base">{formatCurrency(totalPayable)}</span>
+                </div>
+
+                <div className="flex justify-between items-center text-xs text-[#52605C] pt-1">
+                  <span>Current Available Balance:</span>
+                  <span className="font-bold">{formatCurrency(userBalance)}</span>
+                </div>
+
+                <div className="flex justify-between items-center text-xs text-[#52605C]">
+                  <span>Remaining Balance After Purchase:</span>
+                  <span className={`font-black ${remainingBalance >= 0 ? 'text-[#27845D]' : 'text-red-600'}`}>
+                    {formatCurrency(remainingBalance)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Confirmation Actions */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmStep(false)}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F8F5] text-[#142421] text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  Back
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExecuteOrder}
+                  disabled={loading}
+                  className="flex-[2] py-3 bg-[#27845D] hover:bg-[#1f6b4a] text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>Confirm & Execute Investment</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Step 1: Unit Calculator & Balance Validation */
+            <form onSubmit={handleProceedToConfirm} className="space-y-5">
+              
+              {/* Property Summary Banner */}
+              <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+                <img
+                  src={selectedProperty.images[0] || selectedProperty.bannerImage}
+                  alt={selectedProperty.title}
+                  className="w-16 h-16 rounded-xl object-cover shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-black text-[#142421] truncate">{selectedProperty.title}</h4>
+                  <p className="text-xs text-[#52605C] truncate">{selectedProperty.location}</p>
+                  <div className="flex items-center gap-3 text-[11px] font-bold text-[#27845D] mt-1">
+                    <span>{formatPercent(selectedProperty.estimatedAnnualYield)} APY</span>
+                    <span className="text-[#BCC5BD]">•</span>
+                    <span>{selectedProperty.durationMonths} Months Term</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Balance Card */}
+              <div className="p-4 rounded-2xl bg-[#142421] text-white flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-white/10 text-[#B7E36A]">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-emerald-200/80 tracking-wide block">
+                      Your Available Balance
+                    </span>
+                    <span className="text-lg font-black text-white tabular-nums">
+                      {formatCurrency(userBalance)}
+                    </span>
+                  </div>
+                </div>
+
+                {mode === 'reinvest' && (
+                  <span className="text-[10px] bg-[#B7E36A]/20 text-[#B7E36A] font-bold px-2.5 py-1 rounded-full border border-[#B7E36A]/30">
+                    Reinvestment Eligible
+                  </span>
+                )}
+              </div>
+
+              {/* Insufficient Funds Banner */}
+              {isInsufficient && (
+                <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 space-y-2.5 animate-fadeIn">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div className="text-xs space-y-1">
+                      <p className="font-extrabold text-red-950">Insufficient Account Funds</p>
+                      <p className="text-red-800 leading-relaxed">
+                        Your available balance is <strong className="font-black text-red-950">{formatCurrency(userBalance)}</strong>, but you need <strong className="font-black text-red-950">{formatCurrency(totalPayable)}</strong> to complete this investment. Please fund your account to continue.
+                      </p>
+                    </div>
+                  </div>
+
+                  {onOpenDeposit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenDeposit();
+                      }}
+                      className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Fund Account Now</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Property Selector for Reinvest Mode */}
+              {mode === 'reinvest' && allProperties.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#142421] block">
+                    Select Target Property to Reinvest Into
+                  </label>
+                  <select
+                    value={selectedProperty.id}
+                    onChange={(e) => {
+                      const found = allProperties.find(p => p.id === e.target.value);
+                      if (found) setSelectedProperty(found);
+                    }}
+                    className="w-full p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F8F5] text-xs font-bold text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
+                  >
+                    {allProperties.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} ({formatPercent(p.estimatedAnnualYield)} APY - {formatCurrency(p.tokenPrice)}/unit)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Units Input Section */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <label className="font-bold text-[#142421]">
+                    Number of Property Investment Units
+                  </label>
+                  <span className="text-[#69736F] font-medium">
+                    {maxAvailable} units remaining
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleUnitChange(tokenCount - 1)}
+                    disabled={tokenCount <= minTokensRequired}
+                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F8F5] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min={minTokensRequired}
+                      max={maxAvailable}
+                      value={tokenCount}
+                      onChange={(e) => handleUnitChange(parseInt(e.target.value) || 0)}
+                      className="w-full py-3 px-4 rounded-xl border border-[#E3E8E3] text-center text-lg font-black text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#69736F]">
+                      Units
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUnitChange(tokenCount + 1)}
+                    disabled={tokenCount >= maxAvailable}
+                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F8F5] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex justify-between text-[11px] text-[#69736F] font-medium px-1">
+                  <span>Price per unit: <strong>{formatCurrency(tokenPrice)}</strong></span>
+                  <span>Minimum purchase: <strong>{minTokensRequired} units ({formatCurrency(selectedProperty.minimumInvestment)})</strong></span>
+                </div>
+              </div>
+
+              {/* Investment Projection Grid */}
+              <div className="grid grid-cols-2 gap-2.5 p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                    Target Monthly Pay ({monthlyTargetPercentage}% Projected)
+                  </span>
+                  <span className="text-base font-black text-[#27845D] block mt-0.5 tabular-nums">
+                    +{formatCurrency(monthlyTarget)}/mo
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                    Annual Target Return
+                  </span>
+                  <span className="text-base font-black text-[#142421] block mt-0.5 tabular-nums">
+                    +{formatCurrency(annualTarget)}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                    Net-Monthly Target ({durationMonths} Mo)
+                  </span>
+                  <span className="text-xs font-bold text-[#27845D] block mt-0.5 tabular-nums">
+                    +{formatCurrency(netMonthlyTarget)}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+                    Total Investment Cost
+                  </span>
+                  <span className="text-xs font-bold text-[#142421] block mt-0.5 tabular-nums">
+                    {formatCurrency(totalCost)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Principal Repayment Notice */}
+              <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-emerald-950 flex items-center justify-between font-semibold">
+                <span className="text-[#52605C]">Total including separately returned principal (Projected):</span>
+                <span className="font-black text-[#27845D] text-xs tabular-nums">{formatCurrency(totalWithPrincipal)}</span>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Proceed Button */}
+              <button
+                type="submit"
+                disabled={isInsufficient || tokenCount < minTokensRequired}
+                className="w-full py-3.5 bg-[#142421] hover:bg-[#1E332E] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+              >
+                <span>{isInsufficient ? 'Insufficient Funds' : 'Proceed to Confirmation'}</span>
+                {!isInsufficient && <ArrowRight className="w-4 h-4" />}
+              </button>
+            </form>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+};

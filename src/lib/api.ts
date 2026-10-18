@@ -345,6 +345,9 @@ export const investmentsApi = {
 
   executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; idempotencyKey?: string }) =>
     api.post<any>('/investments', payload),
+
+  reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
+    api.post<any>('/investments', { ...payload, paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
 };
 
 /**

@@ -3,6 +3,8 @@ import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 import { BalanceCard } from '../dashboard/BalanceCard';
 import { PortfolioOverview } from '../dashboard/PortfolioOverview';
+import { MyPropertyInvestments } from '../dashboard/MyPropertyInvestments';
+import { UnitPurchaseModal } from '../properties/UnitPurchaseModal';
 import { TransactionTable } from '../dashboard/TransactionTable';
 import { DistributionsView } from '../dashboard/DistributionsView';
 import { WithdrawalModal } from '../dashboard/WithdrawalModal';
@@ -46,6 +48,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(defaultTab === 'withdraw');
   const [selectedDocInvestment, setSelectedDocInvestment] = useState<any | null>(null);
   const [brochureProperty, setBrochureProperty] = useState<Property | null>(null);
+  const [buyModalProperty, setBuyModalProperty] = useState<Property | null>(null);
+  const [buyModalMode, setBuyModalMode] = useState<'purchase' | 'reinvest'>('purchase');
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -517,19 +522,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* 2. MY PORTFOLIO TAB */}
             {activeTab === 'portfolio' && (
               <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs space-y-3.5 animate-in fade-in duration-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-[#18211F]">My Real Estate Portfolio</h2>
-                    <p className="text-[10.5px] sm:text-xs text-[#69736F]">Holdings, tokenized shares, and certified SPV agreements.</p>
+                    <h2 className="text-base sm:text-lg font-bold text-[#18211F]">My Property Investments</h2>
+                    <p className="text-[10.5px] sm:text-xs text-[#69736F]">Owned fractional property units, live circular investment tracking, and yields.</p>
                   </div>
-                  <button onClick={() => setActiveTab('properties')} className="btn btn-primary btn-sm text-xs font-semibold py-1.5 px-3">
-                    Browse Marketplace (€1,000+)
+                  <button onClick={() => setActiveTab('properties')} className="btn btn-primary btn-sm text-xs font-semibold py-1.5 px-3 cursor-pointer">
+                    Browse Real Estate
                   </button>
                 </div>
-                <PortfolioOverview
+
+                <MyPropertyInvestments
                   investments={investments}
-                  onSelectProperty={onSelectProperty}
-                  onExploreMore={() => setActiveTab('properties')}
+                  allProperties={properties}
+                  onOpenBuyModal={(prop, mode) => {
+                    const targetProp = prop || properties[0];
+                    if (targetProp) {
+                      setBuyModalProperty(targetProp);
+                      setBuyModalMode(mode || 'purchase');
+                      setIsBuyModalOpen(true);
+                    }
+                  }}
+                  onExploreProperties={() => setActiveTab('properties')}
                 />
               </div>
             )}
@@ -540,7 +554,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4.5 rounded-2xl border border-[#E3E8E3] shadow-xs">
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-[#18211F]">Explore Investment Opportunities</h2>
-                    <p className="text-[10.5px] sm:text-xs text-[#69736F]">Institutional-grade European real estate tokenized from €1,000.</p>
+                    <p className="text-[10.5px] sm:text-xs text-[#69736F]">Institutional-grade European real estate tokenized from €100/unit.</p>
                   </div>
                   <button onClick={onExploreProperties} className="btn btn-secondary btn-sm text-xs font-semibold py-1.5 px-3">
                     Open Full Marketplace View
@@ -554,7 +568,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       property={property}
                       onSelect={(prop) => onSelectProperty(prop.id)}
                       onInvest={(prop) => {
-                        onSelectProperty(prop.id);
+                        setBuyModalProperty(prop);
+                        setBuyModalMode('purchase');
+                        setIsBuyModalOpen(true);
                       }}
                       onOpenBrochure={(prop) => setBrochureProperty(prop)}
                     />
@@ -1060,6 +1076,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           property={brochureProperty}
           isOpen={!!brochureProperty}
           onClose={() => setBrochureProperty(null)}
+        />
+      )}
+
+      {/* Unit Purchase & Reinvestment Modal */}
+      {buyModalProperty && (
+        <UnitPurchaseModal
+          property={buyModalProperty}
+          allProperties={properties}
+          isOpen={isBuyModalOpen}
+          mode={buyModalMode}
+          onClose={() => setIsBuyModalOpen(false)}
+          onSuccess={() => refreshUser()}
+          onOpenDeposit={() => {
+            setIsBuyModalOpen(false);
+            setActiveTab('wallet');
+            setIsDepositOpen(true);
+          }}
         />
       )}
     </div>
