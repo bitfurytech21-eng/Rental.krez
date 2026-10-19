@@ -82,7 +82,7 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
       </div>
 
       {/* Filter Tabs & Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#F6F8F5] p-3 rounded-2xl border border-[#E3E8E3]">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#F6F7F4] p-3 rounded-2xl border border-[#E3E8E3]">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {[
             { id: 'all', label: 'All Investments' },
@@ -119,7 +119,7 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
       {/* Empty State */}
       {filteredInvestments.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-[#E3E8E3] space-y-4">
-          <div className="w-16 h-16 bg-[#F6F8F5] text-[#27845D] rounded-2xl flex items-center justify-center mx-auto border border-[#E3E8E3]">
+          <div className="w-16 h-16 bg-[#F6F7F4] text-[#27845D] rounded-2xl flex items-center justify-center mx-auto border border-[#E3E8E3]">
             <Building2 className="w-8 h-8" />
           </div>
 
@@ -193,7 +193,7 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
                   </div>
 
                   {/* Circular Investment Period Progress Ring */}
-                  <div className="p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+                  <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
                     <CircularProgressRing
                       startDate={startDate}
                       maturityDate={maturityDate}
@@ -223,7 +223,7 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
                 </div>
 
                 {/* Card Actions Footer */}
-                <div className="p-4 bg-[#F6F8F5] border-t border-[#E3E8E3] flex items-center gap-2">
+                <div className="p-4 bg-[#F6F7F4] border-t border-[#E3E8E3] flex items-center gap-2">
                   <button
                     onClick={() => setSelectedInvestment(inv)}
                     className="flex-1 py-2.5 px-3 bg-white hover:bg-[#E3E8E3] border border-[#E3E8E3] text-[#142421] font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"

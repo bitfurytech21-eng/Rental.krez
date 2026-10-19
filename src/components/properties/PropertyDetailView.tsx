@@ -131,7 +131,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   };
 
   return (
-    <div className="bg-[#F6F7F4] min-h-screen py-8">
+    <div className="bg-[#DFF0FC] min-h-screen py-8">
       <div className="container">
         {/* Navigation Breadcrumb */}
         <button
@@ -326,7 +326,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
               {/* Key Quick Facts */}
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-[#E3E8E3] mb-6">
                 <div>
-                  <span className="text-xs text-[#69736F] block">Monthly Target Rate*</span>
+                  <span className="text-xs text-[#69736F] block">Monthly Target Rate</span>
                   <span className="text-xl font-black text-[#27845D]">
                     {formatPercent(monthlyRate)}/mo
                   </span>
@@ -356,7 +356,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="text-xs text-[#69736F] block">Net Target ({durationMonths} Mo)*</span>
+                  <span className="text-xs text-[#69736F] block">Net Target ({durationMonths} Mo)</span>
                   <span className="text-sm font-bold text-[#27845D]">
                     {formatPercent(property.totalEstimatedReturn)}
                   </span>

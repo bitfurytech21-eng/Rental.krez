@@ -83,7 +83,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFEFC] text-[#142421]">
+    <div className="min-h-screen bg-[#DFF0FC] text-[#142421]">
       {/* Editorial Luxury Agency Hero */}
       <section className="relative overflow-hidden bg-[#0A1613] text-white pt-24 pb-20 border-b border-[#1E332E]">
         <div className="absolute inset-0 z-0 opacity-25 mix-blend-luminosity">
@@ -164,18 +164,18 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
 
               {/* Pillars Bento */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-                <div className="p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+                <div className="p-4 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5]">
                   <Heart className="w-5 h-5 text-[#27845D] mb-2" />
                   <h4 className="font-bold text-sm text-[#142421]">Family Spirit</h4>
                   <p className="text-xs text-[#69736F] mt-1">Direct communication with family principals on every flagship asset.</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+                <div className="p-4 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5]">
                   <ShieldCheck className="w-5 h-5 text-[#27845D] mb-2" />
                   <h4 className="font-bold text-sm text-[#142421]">Total Discretion</h4>
                   <p className="text-xs text-[#69736F] mt-1">Confidential off-market sales for discerning personalities & family offices.</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
-                  <Sparkles className="w-5 h-5 text-[#27845D] mb-2" />
+                <div className="p-4 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5]">
+                  <ShieldCheck className="w-5 h-5 text-[#27845D] mb-2" />
                   <h4 className="font-bold text-sm text-[#142421]">Tokenized Access</h4>
                   <p className="text-xs text-[#69736F] mt-1">Fractional liquidity and instant monthly yields starting from €1,000.</p>
                 </div>
@@ -356,7 +356,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
       </section>
 
       {/* The Kretz Private Club & Property Owner Mandates */}
-      <section className="py-20 bg-[#F6F8F5] border-t border-[#E3E8E3]">
+      <section className="py-20 bg-[#DFF0FC] border-t border-[#C8E1F5]">
         <div className="container max-w-[1240px] mx-auto px-4">
           <div className="bg-[#0A1613] text-white rounded-3xl p-8 sm:p-14 relative overflow-hidden border border-[#1E332E] shadow-2xl">
             <div className="max-w-2xl space-y-6 relative z-10 text-left">

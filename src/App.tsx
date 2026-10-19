@@ -473,7 +473,7 @@ function MainApp() {
             <PlatformStats />
 
             {/* Dedicated Marketplace Gateway Section */}
-            <section className="py-14 sm:py-20 bg-[#F6F7F4] border-b border-[#E3E8E3]">
+            <section className="py-14 sm:py-20 bg-[#DFF0FC] border-b border-[#C8E1F5]">
               <div className="container">
                 <div className="bg-white rounded-2xl border border-[#E3E8E3] p-8 sm:p-12 shadow-xs">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -592,7 +592,7 @@ function MainApp() {
   const isHomePage = currentBasePath === '/' || currentBasePath === '';
 
   return (
-    <div className={`flex flex-col bg-white ${isDashboardView ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
+    <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#DFF0FC] min-h-screen'}`}>
 
       {!isDashboardView && !isAdminLoginPage && <Header currentPath={currentPath} onNavigate={navigateTo} />}
 
@@ -624,7 +624,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-[#F6F7F4]">
+        <div className="min-h-screen flex items-center justify-center p-6 bg-[#DFF0FC]">
           <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-[#E3E8E3] shadow-lg text-center space-y-4">
             <h2 className="text-xl font-bold text-[#18211F]">Application Error</h2>
             <p className="text-xs text-[#69736F]">{this.state.error?.message || 'An unexpected error occurred while rendering the interface.'}</p>

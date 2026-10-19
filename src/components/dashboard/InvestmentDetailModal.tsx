@@ -70,7 +70,7 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           
           {/* Property Banner & Key Metrics */}
-          <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+          <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
             <img
               src={investment.propertyImage}
               alt={investment.propertyTitle}
@@ -119,7 +119,7 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
           </div>
 
           {/* SECTION B: Financial Performance & Dividends */}
-          <div className="p-5 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] space-y-3">
+          <div className="p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-3">
             <h4 className="text-xs uppercase font-extrabold text-[#142421] tracking-wider flex items-center gap-2">
               <Wallet className="w-4 h-4 text-emerald-700" />
               <span>Verified Financial Performance</span>
@@ -199,7 +199,7 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
           <div className="flex gap-3 pt-2">
             <button
               onClick={onClose}
-              className="flex-1 py-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F8F5] text-[#142421] text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              className="flex-1 py-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F7F4] text-[#142421] text-xs font-bold rounded-xl transition-colors cursor-pointer"
             >
               Close Window
             </button>

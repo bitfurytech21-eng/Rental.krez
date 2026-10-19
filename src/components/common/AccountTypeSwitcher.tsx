@@ -117,7 +117,7 @@ export const AccountTypeSwitcher: React.FC<AccountTypeSwitcherProps> = ({ user, 
         {/* Relevant Fields based on Selected Account Type */}
         <div className="p-5 rounded-2xl dash-inner border border-inherit/30 space-y-4">
           <h4 className="text-xs font-bold dash-text uppercase tracking-wider flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             Specific Details for {getAccountTypeLabel(selectedType)}
           </h4>
 

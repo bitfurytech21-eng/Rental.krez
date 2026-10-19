@@ -66,7 +66,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
   const [formDossierIssue, setFormDossierIssue] = useState('Dossier N° 49');
   const [formAuthorName, setFormAuthorName] = useState('Dr. Alexandre Moreau');
   const [formAuthorRole, setFormAuthorRole] = useState('Chief Real Estate Economist');
-  const [formAuthorAvatar, setFormAuthorAvatar] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80');
+  const [formAuthorAvatar, setFormAuthorAvatar] = useState('/assets/aistudio/IMG_7164_23f4c8e0.jpeg');
   const [formStatus, setFormStatus] = useState<InsightArticleStatus>('published');
   const [formScheduledDate, setFormScheduledDate] = useState('');
   const [formReadTime, setFormReadTime] = useState('12 min read');
@@ -117,7 +117,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
     setFormDossierIssue(`Dossier N° ${articles.filter(a => a.isDossier).length + 45}`);
     setFormAuthorName('Dr. Alexandre Moreau');
     setFormAuthorRole('Chief Real Estate Economist');
-    setFormAuthorAvatar('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80');
+    setFormAuthorAvatar('/assets/aistudio/IMG_7164_23f4c8e0.jpeg');
     setFormStatus('published');
     setFormScheduledDate('');
     setFormReadTime('12 min read');
@@ -783,7 +783,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
                   </div>
 
                   {/* Row 6: Cover Image & Photography Metadata */}
-                  <div className="space-y-2 p-4 rounded-2xl bg-[#F6F8F5] border border-slate-200">
+                  <div className="space-y-2 p-4 rounded-2xl bg-[#F6F7F4] border border-slate-200">
                     <span className="font-bold text-slate-800 block text-xs uppercase tracking-wider">
                       Cover Photography & Rights Attribution
                     </span>

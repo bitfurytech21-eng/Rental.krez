@@ -21,7 +21,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
   if (!leadDossier) return null;
 
   return (
-    <section className="py-20 sm:py-28 bg-white border-b border-[#E3E8E3] text-[#18211F] text-left">
+    <section className="py-20 sm:py-28 bg-[#DFF0FC] border-b border-[#C8E1F5] text-[#18211F] text-left">
       <div className="container max-w-[1280px] mx-auto px-4">
         
         {/* Section Header with Immo Matin Editorial Brand Accents */}
@@ -128,7 +128,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
             {secondaryInsights.map((article) => (
               <div
                 key={article.id}
-                className="bg-[#F6F7F4] rounded-3xl p-6 border border-[#E3E8E3] hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
+                className="bg-[#E8F4FD] rounded-3xl p-6 border border-[#C8E1F5] hover:border-emerald-300 hover:shadow-md transition-all flex flex-col justify-between space-y-4 group cursor-pointer"
                 onClick={() => onNavigateDossier(article.slug)}
               >
                 <div className="space-y-3">

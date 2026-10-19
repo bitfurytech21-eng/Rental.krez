@@ -117,7 +117,7 @@ export const HouseBackgroundAnimation: React.FC = () => {
         <img
           src={heroEstateImg}
           alt="European Luxury Coastal Architectural Estate"
-          className="w-full h-full object-cover object-[72%_center] lg:object-[60%_center] brightness-[0.72] contrast-[1.08] saturate-[1.1]"
+          className="w-full h-full object-cover object-[72%_center] lg:object-[60%_center] opacity-30 brightness-[1.05] contrast-[1.0] saturate-[0.9]"
           loading="eager"
           fetchPriority="high"
         />
@@ -209,17 +209,17 @@ export const HouseBackgroundAnimation: React.FC = () => {
       </div>
 
       {/* High-Legibility Scrim Overlays - Crucial for Mobile and Desktop readability */}
-      {/* 1. Mobile-specific dark radial/directional contrast scrim ensuring text is 100% crisp */}
-      <div className="absolute inset-0 bg-[#031512]/65 sm:hidden" />
+      {/* 1. Mobile-specific contrast scrim ensuring text is 100% crisp on navy */}
+      <div className="absolute inset-0 bg-[#06284B]/85 sm:hidden" />
       
-      {/* 2. Left-to-Right directional gradient (strong dark base behind text, opening up to villa on right) */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#031411] via-[#031411]/92 sm:via-[#031411]/85 lg:via-[#031411]/75 to-[#031411]/45 w-full pointer-events-none" />
+      {/* 2. Left-to-Right directional gradient (strong #06284B base behind text, opening up to villa on right) */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#06284B] via-[#06284B]/92 sm:via-[#06284B]/85 lg:via-[#06284B]/75 to-[#06284B]/40 w-full pointer-events-none" />
 
       {/* 3. Top subtle vignette for header bar separation */}
-      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[#031411]/90 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[#06284B] to-transparent pointer-events-none" />
 
       {/* 4. Bottom seamless blend into next page section */}
-      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-[#071714] via-[#071714]/85 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-[#06284B] to-transparent pointer-events-none" />
     </div>
   );
 };

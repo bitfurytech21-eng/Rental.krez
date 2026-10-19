@@ -180,7 +180,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] text-left text-xs space-y-2 max-w-md mx-auto">
+              <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] text-left text-xs space-y-2 max-w-md mx-auto">
                 <div className="flex justify-between">
                   <span className="text-[#69736F] font-medium">Certificate ID:</span>
                   <span className="font-mono font-bold text-[#142421]">{successResult.certificateId}</span>
@@ -217,7 +217,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                 <p>Please review your purchase details before final execution. All property units are ring-fenced within an SPV contract.</p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] space-y-3.5 text-xs">
+              <div className="p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-3.5 text-xs">
                 <div className="flex justify-between items-center pb-2.5 border-b border-[#E3E8E3]">
                   <span className="text-[#69736F] font-semibold">Selected Property:</span>
                   <span className="font-black text-[#142421] text-sm">{selectedProperty.title}</span>
@@ -270,7 +270,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                   type="button"
                   onClick={() => setIsConfirmStep(false)}
                   disabled={loading}
-                  className="flex-1 py-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F8F5] text-[#142421] text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  className="flex-1 py-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F7F4] text-[#142421] text-xs font-bold rounded-xl transition-colors cursor-pointer"
                 >
                   Back
                 </button>
@@ -297,7 +297,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
             <form onSubmit={handleProceedToConfirm} className="space-y-5">
               
               {/* Property Summary Banner */}
-              <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+              <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
                 <img
                   src={selectedProperty.images[0] || selectedProperty.bannerImage}
                   alt={selectedProperty.title}
@@ -378,7 +378,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                       const found = allProperties.find(p => p.id === e.target.value);
                       if (found) setSelectedProperty(found);
                     }}
-                    className="w-full p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F8F5] text-xs font-bold text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
+                    className="w-full p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] text-xs font-bold text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
                   >
                     {allProperties.map(p => (
                       <option key={p.id} value={p.id}>
@@ -405,7 +405,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                     type="button"
                     onClick={() => handleUnitChange(tokenCount - 1)}
                     disabled={tokenCount <= minTokensRequired}
-                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F8F5] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
+                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
@@ -428,7 +428,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                     type="button"
                     onClick={() => handleUnitChange(tokenCount + 1)}
                     disabled={tokenCount >= maxAvailable}
-                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F8F5] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
+                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -441,7 +441,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
               </div>
 
               {/* Investment Projection Grid */}
-              <div className="grid grid-cols-2 gap-2.5 p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] text-xs">
+              <div className="grid grid-cols-2 gap-2.5 p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
                     Target Monthly Pay ({monthlyTargetPercentage}% Projected)

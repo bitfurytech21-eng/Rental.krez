@@ -141,7 +141,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
     : destinations.filter(d => d.country.toLowerCase() === activeFilter.toLowerCase());
 
   return (
-    <section className="py-20 sm:py-28 bg-[#F6F7F4] text-[#18211F] border-b border-[#E3E8E3] relative overflow-hidden">
+    <section className="py-20 sm:py-28 bg-[#DFF0FC] text-[#18211F] border-b border-[#C8E1F5] relative overflow-hidden">
       
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
@@ -347,7 +347,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
                 {selectedDestination.description}
               </p>
 
-              <div className="bg-[#F6F7F4] p-4 rounded-2xl border border-[#E3E8E3] space-y-2 text-xs">
+              <div className="bg-[#DFF0FC] p-4 rounded-2xl border border-[#C8E1F5] space-y-2 text-xs">
                 <div>
                   <span className="font-bold text-[#18211F]">Signature Formats: </span>
                   <span className="text-[#69736F]">{selectedDestination.propertyTypes}</span>
@@ -374,7 +374,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
                     setSelectedDestination(null);
                     onExploreProperties();
                   }}
-                  className="btn btn-secondary flex-1 py-3 text-xs font-bold border border-[#D5DDD5] text-[#18211F] hover:bg-[#F6F7F4] rounded-xl cursor-pointer"
+                  className="btn btn-secondary flex-1 py-3 text-xs font-bold border border-[#D5DDD5] text-[#18211F] hover:bg-[#DFF0FC] rounded-xl cursor-pointer"
                 >
                   <span>Explore Assets</span>
                 </button>

@@ -4,9 +4,9 @@
   --color-primary: #182D2A;
   --color-primary-hover: #24423C;
   --color-accent: #B7E36A;
-  --color-background: #FFFFFF;
-  --color-background-soft: #E8EEED;
-  --color-background-muted: #EEF1EC;
+  --color-background: #DFF0FC;
+  --color-background-soft: #DFF0FC;
+  --color-background-muted: #E8F4FD;
   --color-surface: #FFFFFF;
   --color-surface-dark: #142421;
   --color-text: #18211F;
@@ -265,12 +265,16 @@ p {
   margin-inline: auto;
 }
 
+html, body, #root {
+  background-color: #DFF0FC;
+}
+
 .site-header {
   position: sticky;
   top: 0;
   z-index: 1000;
   min-height: var(--header-height);
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(223, 240, 252, 0.98);
   border-bottom: 1px solid var(--color-border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);

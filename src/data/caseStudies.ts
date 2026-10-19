@@ -70,9 +70,9 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Sevilla',
     country: 'Spain',
     strategy: 'Rent & Capital Gain',
-    image: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?auto=format&fit=crop&w=1200&q=85',
+    image: '/assets/aistudio/IMG_7162_db83e4b3.jpeg',
     gallery: [
-      'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?auto=format&fit=crop&w=1200&q=85',
+      '/assets/aistudio/IMG_7162_db83e4b3.jpeg',
       'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=85',
       'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=85'
     ],
@@ -254,7 +254,7 @@ export const CASE_STUDIES: CaseStudy[] = [
     gallery: [
       'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=85',
       '/src/assets/images/prop_valencia_apt_1791998371242.jpg',
-      'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?auto=format&fit=crop&w=1200&q=85'
+      '/assets/aistudio/IMG_7162_db83e4b3.jpeg'
     ],
     realTIR: 16.85,
     capitalGain: 15.20,
@@ -494,7 +494,7 @@ export const INVESTOR_TESTIMONIALS: InvestorTestimonial[] = [
     name: 'Vanesa Gómez',
     role: 'SME Financial Consultant & Mother',
     location: 'Valencia, Spain',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+    avatar: '/assets/aistudio/IMG_7163_8f4b2c74.png',
     quote: 'Geographical diversification was critical for me. I can hold fractions of prime vacation rentals in the Balearics and urban flats in Valencia without managing tenants, repairs, or late payments.',
     portfolioSize: '€27,500',
     investedProjectsCount: 8,

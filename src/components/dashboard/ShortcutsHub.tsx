@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Sparkles, 
+  Zap, 
   Calculator, 
   RefreshCw, 
   FileSpreadsheet, 
@@ -134,7 +134,7 @@ export const ShortcutsHub: React.FC<ShortcutsHubProps> = ({
           <div className="px-3.5 py-2.5 bg-gradient-to-r from-[#0d221d] to-[#13302a] text-white flex items-center justify-between border-b border-[#1E3E37]">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-lg bg-[#10B981] text-[#0A1614] flex items-center justify-center font-black shrink-0 shadow-xs">
-                <Sparkles className="w-3.5 h-3.5" />
+                <Zap className="w-3.5 h-3.5" />
               </div>
               <div>
                 <h3 className="font-bold text-xs text-white flex items-center gap-1.5 leading-tight">
@@ -297,7 +297,7 @@ export const ToolModalContainer: React.FC<{
         /* Minimized Docked Bar at bottom edge */
         <div className="dash-card border shadow-2xl rounded-2xl px-3.5 py-2 flex items-center gap-2.5 text-xs">
           <div className="w-5 h-5 rounded-md bg-[#10B981] text-[#0A1614] flex items-center justify-center font-black shrink-0 shadow-xs">
-            <Sparkles className="w-3 h-3" />
+            <Zap className="w-3 h-3" />
           </div>
           <div className="min-w-0 pr-1">
             <span className="font-bold dash-text block text-[11px] leading-tight truncate max-w-[150px]">

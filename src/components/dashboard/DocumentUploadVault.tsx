@@ -681,7 +681,7 @@ export const DocumentUploadVault: React.FC<DocumentUploadVaultProps> = () => {
 
         <div className="space-y-3">
           {/* 2FA Toggle Item */}
-          <div className="p-3.5 rounded-xl border border-[#DCE4DA] bg-[#F6F8F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-3.5 rounded-xl border border-[#DCE4DA] bg-[#F6F7F4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-[#182D2A] text-[#B7E36A] flex items-center justify-center shrink-0">
                 <Smartphone className="w-4 h-4" />

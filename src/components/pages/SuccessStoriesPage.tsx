@@ -51,7 +51,7 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFEFC] text-[#18211F]">
+    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
       
       {/* Header Banner */}
       <section className="relative overflow-hidden bg-[#0A1613] text-white pt-24 pb-20 border-b border-[#1E332E]">
@@ -128,7 +128,7 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
       </section>
 
       {/* Main Case Studies Section */}
-      <section className="py-14 sm:py-20 bg-[#F6F7F4] border-b border-[#E3E8E3]">
+      <section className="py-14 sm:py-20 bg-[#DFF0FC] border-b border-[#C8E1F5]">
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Filter & Search Bar */}

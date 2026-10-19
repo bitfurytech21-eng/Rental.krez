@@ -94,7 +94,7 @@ export const CompanyNewsPage: React.FC<CompanyNewsPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFA] text-[#18211F]">
+    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
       {/* Editorial Header Section */}
       <section className="relative pt-12 pb-14 border-b border-[#E3E8E3] bg-gradient-to-b from-[#F2F5F0] to-[#FBFBFA]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

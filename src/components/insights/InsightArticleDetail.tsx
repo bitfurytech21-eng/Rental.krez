@@ -87,7 +87,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
 
   if (!article) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 bg-[#F6F7F4] text-center space-y-4">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 bg-[#DFF0FC] text-center space-y-4">
         <BookOpen className="w-12 h-12 text-slate-400" />
         <h2 className="text-xl font-bold text-[#18211F]">Article or Dossier Not Found</h2>
         <p className="text-xs text-[#69736F] max-w-md">
@@ -144,7 +144,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFEFC] text-[#18211F]">
+    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
       
       {/* 1. Dynamic Reading Scroll Progress Bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-slate-200 z-50">
@@ -389,7 +389,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
             if (trimmed.startsWith('> ')) {
               const quoteLines = trimmed.split('\n').map(l => l.replace(/^>\s*/, '')).join(' ');
               return (
-                <blockquote key={idx} className="my-6 p-6 rounded-2xl bg-[#F6F8F5] border-l-4 border-emerald-700 italic text-sm sm:text-base text-[#1E332E]">
+                <blockquote key={idx} className="my-6 p-6 rounded-2xl bg-[#F6F7F4] border-l-4 border-emerald-700 italic text-sm sm:text-base text-[#1E332E]">
                   {quoteLines}
                 </blockquote>
               );
@@ -532,7 +532,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
         </div>
 
         {/* 7. Author Bio Card */}
-        <section className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#F6F8F5] border border-[#DCE4DA] flex flex-col sm:flex-row items-center sm:items-start gap-6 text-left">
+        <section className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#F6F7F4] border border-[#DCE4DA] flex flex-col sm:flex-row items-center sm:items-start gap-6 text-left">
           <img
             src={article.author.avatar}
             alt={article.author.name}
@@ -595,7 +595,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
 
       {/* 9. Related Articles Grid */}
       {relatedArticles.length > 0 && (
-        <section className="py-14 px-4 sm:px-6 bg-[#F6F7F4] border-t border-[#E3E8E3]">
+        <section className="py-14 px-4 sm:px-6 bg-[#DFF0FC] border-t border-[#C8E1F5]">
           <div className="max-w-[1240px] mx-auto text-left space-y-6">
             <div className="flex items-center justify-between">
               <div>

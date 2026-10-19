@@ -1146,25 +1146,15 @@ class LedgerService {
   }
 
   public getUserByEmail(email: string): User | undefined {
-    let found = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!found && email.toLowerCase() === 'investor@kretz.com') {
-      found = {
-        id: 'usr-investor-1',
-        email: 'investor@kretz.com',
-        fullName: 'European Angel Partner',
-        role: 'investor',
-        accountType: 'individual_investor',
-        kycStatus: 'verified',
-        walletBalance: 15000,
-        investedBalance: 24000,
-        totalEarned: 2850,
-        createdAt: '2026-01-10T00:00:00Z',
-        country: 'France',
-        bankIban: 'ES9121000418450200051829',
-        cryptoDepositAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2'
-      };
-      this.users.push(found);
-      this.saveState();
+    const clean = (email || '').trim().toLowerCase();
+    let found = this.users.find(u => u.email.toLowerCase() === clean);
+    if (!found) {
+      const match = DEFAULT_USERS.find(du => du.email.toLowerCase() === clean);
+      if (match) {
+        found = { ...match };
+        this.users.push(found);
+        this.saveState();
+      }
     }
     return found;
   }

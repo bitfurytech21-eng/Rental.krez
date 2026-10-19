@@ -36,7 +36,7 @@ export const Benefits: React.FC = () => {
   ];
 
   return (
-    <section className="section bg-white">
+    <section className="section bg-[#DFF0FC]">
       <div className="container">
         <div className="section-heading">
           <div className="text-xs font-semibold text-emerald-800 tracking-wider uppercase mb-2">

@@ -187,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   isActive
                     ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
-                    : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F8F5]'
+                    : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
                 }`}
               >
                 {Icon && <Icon className={`w-3.5 h-3.5 ${link.iconColor || ''}`} />}
@@ -211,7 +211,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 isInsightsActive || insightsDropdownOpen
                   ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
-                  : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F8F5]'
+                  : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5 text-emerald-800" />
@@ -240,7 +240,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                     <button
                       key={item.path}
                       onClick={() => handleNavClick(item.path)}
-                      className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 hover:bg-[#F6F8F5] transition-colors cursor-pointer group ${
+                      className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 hover:bg-[#F6F7F4] transition-colors cursor-pointer group ${
                         isActive ? 'bg-[#F2F6F1]' : ''
                       }`}
                     >
@@ -280,7 +280,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   isActive
                     ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
-                    : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F8F5]'
+                    : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
                 }`}
               >
                 {Icon && <Icon className={`w-3.5 h-3.5 ${link.iconColor || ''}`} />}
@@ -304,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
                 isSecondaryActive || moreDropdownOpen
                   ? 'text-[#182D2A] bg-[#EEF2EC] font-bold'
-                  : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F8F5]'
+                  : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
               }`}
             >
               <span>Platform & Legal</span>
@@ -328,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                     <button
                       key={item.path}
                       onClick={() => handleNavClick(item.path)}
-                      className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 hover:bg-[#F6F8F5] transition-colors cursor-pointer group ${
+                      className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 hover:bg-[#F6F7F4] transition-colors cursor-pointer group ${
                         isActive ? 'bg-[#F2F6F1]' : ''
                       }`}
                     >
@@ -513,7 +513,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={() => handleNavClick('/login')}
-                className="hidden sm:inline-flex px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-bold text-[#182D2A] hover:bg-[#F6F8F5] rounded-full transition-all cursor-pointer whitespace-nowrap"
+                className="hidden sm:inline-flex px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-bold text-[#182D2A] hover:bg-[#F6F7F4] rounded-full transition-all cursor-pointer whitespace-nowrap"
               >
                 Log In
               </button>
@@ -539,7 +539,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
 
       {/* Mobile Drawer (Compact, sleek single-column list format matching IMG_7053.jpeg) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b border-[#E3E8E3] px-4 sm:px-6 py-3 flex flex-col shadow-2xl animate-in slide-in-from-top duration-200 max-h-[85vh] overflow-y-auto text-left">
+        <div className="lg:hidden bg-[#F6F7F4] border-b border-[#E3E8E3] px-4 sm:px-6 py-3 flex flex-col shadow-2xl animate-in slide-in-from-top duration-200 max-h-[85vh] overflow-y-auto text-left">
           
           <div className="flex flex-col">
             {/* 1. Home */}

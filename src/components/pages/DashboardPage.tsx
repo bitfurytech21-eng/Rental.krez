@@ -627,7 +627,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   {/* Action Cards: Deposit, Withdrawal & Document Upload */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Deposit Action Card */}
-                    <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-[#F6F8F5] to-emerald-50/40 border border-[#DCE4DA] flex flex-col justify-between space-y-3 text-left">
+                    <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-[#F6F7F4] to-emerald-50/40 border border-[#DCE4DA] flex flex-col justify-between space-y-3 text-left">
                       <div className="space-y-1.5">
                         <div className="w-8 h-8 rounded-lg bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shadow-2xs">
                           <ArrowDownLeft className="w-4 h-4" />
@@ -667,7 +667,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </div>
 
                     {/* Profile Settings Card */}
-                    <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-[#F6F8F5] to-emerald-50/40 border border-[#DCE4DA] flex flex-col justify-between space-y-3 text-left">
+                    <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-[#F6F7F4] to-emerald-50/40 border border-[#DCE4DA] flex flex-col justify-between space-y-3 text-left">
                       <div className="space-y-1.5">
                         <div className="w-8 h-8 rounded-lg bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shadow-2xs">
                           <User className="w-4 h-4" />

@@ -8,47 +8,47 @@ interface FinalCTAProps {
 
 export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => {
   return (
-    <section className="relative overflow-hidden py-16 bg-[#071714] text-white border-t border-emerald-900/40">
+    <section className="relative overflow-hidden py-16 bg-[#F5C400] text-[#18211F] border-t border-[#DFB100]">
       <div className="container max-w-[1240px] mx-auto px-4 relative z-10">
         <div className="max-w-3xl mx-auto text-center space-y-5">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 tracking-wide uppercase">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <div className="inline-flex items-center gap-2 text-xs font-semibold text-amber-950 tracking-wide uppercase px-3.5 py-1.5 rounded-full bg-amber-300/60 border border-amber-600/30 shadow-xs">
+            <ShieldCheck className="w-4 h-4 text-amber-950" />
             <span>Regulated European SPV Custody · Transparent Participation</span>
           </div>
 
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-[#18211F] tracking-tight leading-tight">
             Build a Diversified Real Estate Portfolio with Monthly Cashflow
           </h2>
 
-          <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto font-normal">
+          <p className="text-sm sm:text-base text-stone-800 max-w-xl mx-auto font-normal">
             Review vetted European residential and commercial offerings, examine independent RICS appraisals, and access automated monthly rental settlements.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <button
               onClick={onRegister}
-              className="px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-colors cursor-pointer shadow-sm flex items-center gap-2"
+              className="px-6 py-3.5 rounded-lg bg-[#182D2A] hover:bg-[#24423C] text-white font-semibold text-sm transition-colors cursor-pointer shadow-sm hover:shadow-md flex items-center gap-2"
             >
               <span>Create Investor Account</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={onExplore}
-              className="px-5 py-3 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-200 font-medium text-sm transition-colors cursor-pointer"
+              className="px-5 py-3.5 rounded-lg bg-white hover:bg-slate-50 border border-amber-400 text-slate-800 font-semibold text-sm transition-colors cursor-pointer shadow-2xs"
             >
               View Active Offerings
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 pt-6 border-t border-emerald-900/50">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-stone-800 font-medium pt-6 border-t border-amber-400/60">
             <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-emerald-400" /> Minimum Investment from €750
+              <Check className="w-4 h-4 text-amber-950" /> Minimum Investment from €750
             </span>
             <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-emerald-400" /> Ring-Fenced SPV Legal Custody
+              <Check className="w-4 h-4 text-amber-950" /> Ring-Fenced SPV Legal Custody
             </span>
             <span className="flex items-center gap-1.5">
-              <Check className="w-4 h-4 text-emerald-400" /> Direct Monthly Distributions
+              <Check className="w-4 h-4 text-amber-950" /> Direct Monthly Distributions
             </span>
           </div>
         </div>

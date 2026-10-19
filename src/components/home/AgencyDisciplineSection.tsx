@@ -65,25 +65,21 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
   ];
 
   return (
-    <section className="relative py-20 sm:py-28 bg-[#0C1715] text-white overflow-hidden max-w-full border-t border-b border-[#1A2E2A]">
-      {/* Subtle Background Watermark / Accent Glow */}
-      <div className="absolute top-0 right-1/4 w-72 sm:w-[600px] h-72 sm:h-[600px] max-w-full bg-[#B7E36A]/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 sm:left-10 w-72 sm:w-[500px] h-72 sm:h-[500px] max-w-full bg-emerald-950/40 rounded-full blur-3xl pointer-events-none" />
-
+    <section className="relative py-20 sm:py-28 bg-[#DFF0FC] text-[#18211F] overflow-hidden max-w-full border-t border-b border-[#C8E1F5]">
       <div className="container max-w-[1240px] mx-auto px-4 relative z-10">
         
         {/* Section Pill & Header */}
         <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-16 sm:mb-20 space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#162723] border border-[#233F39] text-[#B7E36A] text-xs font-semibold uppercase tracking-widest shadow-xs">
-            <Compass className="w-3.5 h-3.5 text-[#B7E36A]" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold uppercase tracking-widest shadow-xs">
+            <Compass className="w-3.5 h-3.5 text-emerald-700" />
             <span>Our Discipline & Philosophy</span>
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            A Fresh Perspective on <span className="text-[#B7E36A]">Luxury Real Estate</span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#18211F] tracking-tight leading-tight">
+            A Fresh Perspective on <span className="text-emerald-700">Luxury Real Estate</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#9DB2AE] leading-relaxed">
+          <p className="text-base sm:text-lg text-[#69736F] leading-relaxed">
             Founded on family values and institutional rigor, Kretz Agency combines cutting-edge marketing, 
             absolute off-market discretion, and an expanded family network across France and prime international markets.
           </p>

@@ -9,7 +9,7 @@ export const INSIGHT_CATEGORIES: InsightCategory[] = [
     description: 'In-depth investigative reports, multi-chapter market surveys, and deep strategic analyses of European real estate transformations.',
     accentColor: '#10B981',
     icon: 'BookOpen',
-    heroImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1600&q=80',
+    heroImage: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
     featuredOrder: 1,
   },
   {
@@ -99,7 +99,7 @@ export const INITIAL_INSIGHT_ARTICLES: InsightArticle[] = [
     author: {
       name: 'Dr. Alexandre Moreau',
       role: 'Chief Real Estate Economist & Partner',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      avatar: '/assets/aistudio/IMG_7164_23f4c8e0.jpeg',
       bio: 'Former RICS advisory board member and quantitative real estate econometrician with over 18 years evaluating European prime residential portfolios.',
       organization: 'Kretz Wealth Advisory'
     },
@@ -107,7 +107,7 @@ export const INITIAL_INSIGHT_ARTICLES: InsightArticle[] = [
     updatedAt: '2026-10-17T14:30:00Z',
     status: 'published',
     readTime: '14 min read',
-    coverImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1600&q=80',
+    coverImage: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
     coverImageAlt: 'Modern European architecture showcasing urban luxury real estate in Madrid and Paris',
     coverImageCaption: 'Parisian boulevard meets modern European architectural capital reallocation: institutional prime yields re-anchor above 4.5% net.',
     coverImageAttribution: 'Photo by Laurent Perrier / Kretz Editorial License',
@@ -243,7 +243,7 @@ For the remainder of the decade, the Kretz research committee recommends a balan
     author: {
       name: 'Maitre Hélène de Saint-Germain',
       role: 'Head of Legal & Regulatory Compliance',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+      avatar: '/assets/aistudio/IMG_7163_8f4b2c74.png',
       bio: 'Senior corporate attorney specialized in cross-border European financial securities, fintech tokenization, and private equity SPV structuring.',
       organization: 'Kretz Legal Counsel'
     },
@@ -394,7 +394,7 @@ Platforms operating under registered CASP licenses benefit from **European passp
     author: {
       name: 'Carlos Mendoza y Ruiz',
       role: 'Senior International Tax Counsel',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+      avatar: '/assets/aistudio/IMG_6431_1483cb7e.jpeg',
       bio: 'Madrid Bar Association specialist advising multi-jurisdictional family offices on European tax treaties, expatriate regimes, and real estate SPV governance.',
       organization: 'Kretz Wealth Advisory'
     },

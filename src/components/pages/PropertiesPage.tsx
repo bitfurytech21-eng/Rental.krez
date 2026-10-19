@@ -113,7 +113,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
 
 
   return (
-    <div className="min-h-screen bg-[#FDFEFC] text-[#142421]">
+    <div className="min-h-screen bg-[#DFF0FC] text-[#142421]">
       {/* Reental-style Top Announcement & Metrics Ribbon */}
       <section className="bg-[#0A1613] text-white py-14 border-b border-[#1E332E] relative overflow-hidden max-w-full">
         <div className="absolute top-0 right-0 w-72 sm:w-[500px] h-72 sm:h-[500px] max-w-full bg-[#B7E36A]/10 rounded-full blur-[140px] pointer-events-none" />

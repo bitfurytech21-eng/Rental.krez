@@ -136,7 +136,6 @@ export const UserMembershipCard: React.FC<UserMembershipCardProps> = ({
                 onClick={() => setShowPerksModal(true)}
                 className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#B7E36A]" />
                 <span>View Member Perquisites</span>
               </button>
 
@@ -210,7 +209,7 @@ export const UserMembershipCard: React.FC<UserMembershipCardProps> = ({
               <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-2">
                 <p className="font-bold text-[#18211F] text-xs">Bespoke Concierge Contact</p>
                 <p className="text-slate-600 text-[11px]">
-                  Quote your member ID <strong>#{membership.memberNumber}</strong> for priority requests, private Madrid salon bookings, or off-market property dossiers.
+                  Quote your member ID <strong>{membership.memberNumber}</strong> for priority requests, private Madrid salon bookings, or off-market property dossiers.
                 </p>
                 <div className="flex items-center gap-3 pt-1 text-emerald-800 font-bold">
                   <span>Tel: +34 91 000 81 22</span>

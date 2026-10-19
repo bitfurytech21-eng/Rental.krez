@@ -63,7 +63,7 @@ Investors can withdraw their capital via instant SEPA wire transfers or reinvest
     author: {
       name: 'Elena Rostova',
       role: 'Senior Portfolio Strategist',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+      avatar: '/assets/aistudio/IMG_7163_8f4b2c74.png',
     },
     content: `
 When analyzing real estate investments, novice investors often focus solely on annual gross rental yield. However, professional institutional funds rely on the **Internal Rate of Return (TIR / IRR)** and **Capital Appreciation (Plusvalía)** to evaluate true asset performance.
@@ -96,7 +96,7 @@ Plusvalía represents the positive difference between the acquisition cost and t
     author: {
       name: 'Carlos Menéndez',
       role: 'Chief Compliance & Legal Counsel',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+      avatar: '/assets/aistudio/IMG_6431_1483cb7e.jpeg',
     },
     content: `
 The entry into force of the **Markets in Crypto-Assets (MiCA)** regulation marks a watershed moment for digital finance in the European Union. While unbacked speculative tokens face strict constraints, Real World Assets (RWA)—specifically tokenized real estate—benefit immensely from legal certainty.
@@ -156,7 +156,7 @@ Spain’s real estate market offers two fundamentally distinct strategies for fr
     author: {
       name: 'Elena Rostova',
       role: 'Senior Portfolio Strategist',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+      avatar: '/assets/aistudio/IMG_7163_8f4b2c74.png',
     },
     content: `
 For decades, European investors looking for real estate exposure without managing properties relied on SOCIMIs (Sociedades Cotizadas de Inversión en el Mercado Inmobiliario), the Spanish equivalent of REITs. While useful, tokenization addresses key limitations of traditional listed real estate vehicles:
@@ -183,7 +183,7 @@ For decades, European investors looking for real estate exposure without managin
     author: {
       name: 'Carlos Menéndez',
       role: 'Chief Compliance & Legal Counsel',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+      avatar: '/assets/aistudio/IMG_6431_1483cb7e.jpeg',
     },
     content: `
 Family offices manage generational wealth with a strict dual mandate: capital preservation first, and inflation-beating yield second. In an era of sovereign debt uncertainty and volatile public equities, short-duration asset-backed tokens provide a compelling treasury instrument.
@@ -211,7 +211,7 @@ By deploying €100,000 to €500,000 tickets across 10 to 20 vetted residential
     author: {
       name: 'Carlos Menéndez',
       role: 'Chief Compliance & Legal Counsel',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+      avatar: '/assets/aistudio/IMG_6431_1483cb7e.jpeg',
     },
     content: `
 Navigating tax obligations is a fundamental requirement for every serious real estate investor. Because tokenized real estate in Spain is governed by **Participatory Loans (Préstamos Participativos)** issued by registered SPVs, its fiscal treatment differs fundamentally from holding physical real estate or trading speculative crypto.
@@ -245,7 +245,7 @@ Because our tokens represent participatory claims against a Spanish legal entity
     author: {
       name: 'Elena Rostova',
       role: 'Senior Portfolio Strategist',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+      avatar: '/assets/aistudio/IMG_7163_8f4b2c74.png',
     },
     content: `
 Traditional real estate requires months of listing, brokerage commissions (often 3% to 5%), notary appointments, and lengthy mortgage underwriting before an owner can liquidate. Tokenization introduces instant secondary market liquidity without disrupting the underlying property.

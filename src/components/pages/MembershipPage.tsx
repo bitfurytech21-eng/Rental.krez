@@ -49,12 +49,12 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
   const handleSuccess = (newMembership: UserMembership) => {
     setUserMembership(newMembership);
     setIsModalOpen(false);
-    setSuccessToast(`Welcome to Kretz Club Privé! Your ${newMembership.tierName} membership card #${newMembership.memberNumber} has been issued.`);
+    setSuccessToast(`Welcome to Kretz Club Privé! Your ${newMembership.tierName} membership card ${newMembership.memberNumber} has been issued.`);
     setTimeout(() => setSuccessToast(null), 6000);
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFEFC] text-[#18211F]">
+    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
       
       {/* Toast Notification */}
       {successToast && (
@@ -141,12 +141,11 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       )}
 
       {/* Main Section: Tiers & Pricing Configurator */}
-      <section className="py-20 sm:py-28 bg-[#F6F7F4] border-b border-[#E3E8E3] relative">
+      <section className="py-20 sm:py-28 bg-[#DFF0FC] border-b border-[#C8E1F5] relative">
         <div className="container max-w-[1240px] mx-auto px-4 text-center">
           
           <div className="max-w-2xl mx-auto mb-14 space-y-4">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-[#D5DDD5] text-emerald-900 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
               <span>Tailored Membership Tiers</span>
             </div>
 
@@ -369,7 +368,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       </section>
 
       {/* Frequently Asked Questions */}
-      <section className="py-20 bg-[#F6F7F4]">
+      <section className="py-20 bg-[#DFF0FC]">
         <div className="container max-w-[900px] mx-auto px-4 text-left">
           <div className="text-center mb-12 space-y-2">
             <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Common Questions</span>

@@ -99,7 +99,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFEFC] text-[#18211F]">
+    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
       
       {/* 1. Immo Matin Inspired Editorial Masthead & Financial Ticker */}
       <section className="border-b border-[#E3E8E3] bg-[#0E1F1B] text-white pt-10 pb-8 px-4 sm:px-6">
@@ -145,7 +145,6 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="space-y-3 max-w-3xl text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#18332D] text-[#B7E36A] border border-[#234A42] text-xs font-bold uppercase tracking-widest">
-                <Sparkles className="w-3.5 h-3.5" />
                 <span>The Independent Real Estate Review</span>
               </div>
               
@@ -317,7 +316,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
 
                   {/* Key Takeaways Preview */}
                   {featuredCover.keyTakeaways && featuredCover.keyTakeaways.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3] space-y-2">
+                    <div className="p-4 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5] space-y-2">
                       <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900 block">
                         Dossier Key Findings:
                       </span>
@@ -429,7 +428,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
       )}
 
       {/* 5. Main Content Grid: Articles Feed & Editorial Sidebar */}
-      <section className="py-12 px-4 sm:px-6 bg-[#F6F7F4] border-t border-[#E3E8E3]">
+      <section className="py-12 px-4 sm:px-6 bg-[#DFF0FC] border-t border-[#C8E1F5]">
         <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
           
           {/* Left Column: Articles Stream (8 cols) */}

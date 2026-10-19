@@ -538,7 +538,7 @@ export const AdminNewsManager: React.FC = () => {
                   </button>
                 </div>
                 {formYoutubeUrl && extractYouTubeId(formYoutubeUrl) && (
-                  <div className="mt-2 flex items-center gap-3 p-2 bg-[#F6F8F5] rounded-lg border border-[#DCE4DC]">
+                  <div className="mt-2 flex items-center gap-3 p-2 bg-[#F6F7F4] rounded-lg border border-[#DCE4DC]">
                     <img
                       src={`https://i.ytimg.com/vi/${extractYouTubeId(formYoutubeUrl)}/hqdefault.jpg`}
                       alt="Thumbnail preview"

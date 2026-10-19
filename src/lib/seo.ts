@@ -66,13 +66,13 @@ const ROUTE_SEO_MAP: Record<string, Partial<PageSeoConfig>> = {
   '/insights': {
     title: 'Real Estate Dossiers & Market Insights | Kretz Intelligence',
     description: 'In-depth European real estate investigations, quarterly yield barometers, PropTech tokenization blueprints, and regulatory legal analysis.',
-    image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1200&q=80',
+    image: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
     type: 'website',
   },
   '/insights/dossiers': {
     title: 'Major Real Estate Dossiers & Enquêtes | Kretz Intelligence',
     description: 'Investigative multi-chapter real estate dossiers inspired by European institutional journalism, covering cap rates, SPVs, and wealth structuring.',
-    image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1200&q=80',
+    image: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
     type: 'website',
   },
   '/blog': {

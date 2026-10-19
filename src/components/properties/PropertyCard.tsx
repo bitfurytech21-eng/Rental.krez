@@ -201,7 +201,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         {/* Reental-style Funding Progress Indicator */}
-        <div className="space-y-1.5 bg-[#F6F8F5] p-3 rounded-2xl border border-[#E3E8E3]">
+        <div className="space-y-1.5 bg-[#F6F7F4] p-3 rounded-2xl border border-[#E3E8E3]">
           <div className="flex justify-between items-center text-xs">
             <span className="font-semibold text-[#52605C]">
               Funded: <strong className="text-[#142421]">{formatCurrency(property.fundedAmount)}</strong>
@@ -225,7 +225,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         {/* Signature Reental 4-Box Financial Metrics Grid */}
         <div className="grid grid-cols-2 gap-2.5 py-1">
           {/* 1. Monthly Target Percentage */}
-          <div className="p-3 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
             <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
               Monthly Target Rate
             </span>
@@ -238,7 +238,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
 
           {/* 2. Total Estimated Return */}
-          <div className="p-3 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
             <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
               {property.durationMonths || 25}-Mo Target Return
             </span>
@@ -251,7 +251,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
 
           {/* 3. Token Price */}
-          <div className="p-3 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
             <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
               Token Price
             </span>
@@ -264,7 +264,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
 
           {/* 4. Minimum Investment */}
-          <div className="p-3 rounded-2xl bg-[#F6F8F5] border border-[#E3E8E3]">
+          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
             <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
               Min. Investment
             </span>

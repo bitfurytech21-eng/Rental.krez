@@ -7,7 +7,7 @@ interface LegalPageProps {
 
 export const LegalPage: React.FC<LegalPageProps> = ({ mode }) => {
   return (
-    <div className="bg-[#F6F7F4] min-h-screen py-12">
+    <div className="bg-[#DFF0FC] min-h-screen py-12">
       <div className="container max-w-4xl bg-white p-8 sm:p-12 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-8">
         {mode === 'terms' ? (
           <div className="space-y-6 text-xs text-[#69736F] leading-relaxed">

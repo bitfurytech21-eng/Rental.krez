@@ -212,7 +212,7 @@ export const MembershipApplicationModal: React.FC<MembershipApplicationModalProp
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Full Legal Name *</label>
+                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Full Legal Name</label>
                 <input
                   type="text"
                   required
@@ -224,7 +224,7 @@ export const MembershipApplicationModal: React.FC<MembershipApplicationModalProp
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Email Address *</label>
+                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Email Address</label>
                 <input
                   type="email"
                   required
@@ -322,7 +322,7 @@ export const MembershipApplicationModal: React.FC<MembershipApplicationModalProp
                     : 'border-slate-200 text-slate-600 hover:border-slate-300'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-emerald-800 mb-1" />
+                <ShieldCheck className="w-4 h-4 text-emerald-800 mb-1" />
                 <p className="text-xs">Invite Code</p>
                 <p className="text-[10px] text-slate-500 font-normal">VIP Pass</p>
               </button>
