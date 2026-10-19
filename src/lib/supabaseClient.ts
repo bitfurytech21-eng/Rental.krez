@@ -9,14 +9,16 @@ const cleanEnvVal = (val: any): string => {
 
 const rawUrl = cleanEnvVal(
   import.meta.env.VITE_SUPABASE_URL ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_URL
+  import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+  'https://uuufesveaoaqmhxocgqn.supabase.co'
 );
 
 const rawKey = cleanEnvVal(
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  'sb_publishable__K86ojef-oJSrGmSrUvqpQ_jhxIcAZF'
 );
 
 export const isSupabaseConfigured = (): boolean => {
