@@ -55,6 +55,20 @@ export interface MockUser {
 // (Production Note: Easily backed by PostgreSQL / Cloud SQL via Drizzle / Supabase)
 let mockUsers: MockUser[] = [
   {
+    id: 'usr-admin-kretz-site',
+    email: 'info@kretz.site',
+    fullName: 'Kretz Executive Admin',
+    role: 'admin',
+    kycStatus: 'approved',
+    balance: 500000,
+    currency: 'EUR',
+    country: 'Spain',
+    countryCode: 'ES',
+    phoneNumber: '+34 912 345 678',
+    status: 'active',
+    createdAt: '2025-01-01T09:00:00Z'
+  },
+  {
     id: 'usr-admin-01',
     email: 'admin@kretz.com',
     fullName: 'Chief Compliance Officer',

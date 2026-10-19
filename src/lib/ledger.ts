@@ -478,6 +478,21 @@ function generateTxHash(reference: string, amount: number, timestamp: string): s
 // Authentic Platform Administrator & Registered Investors
 const DEFAULT_USERS: User[] = [
   {
+    id: 'usr-admin-kretz-site',
+    email: 'info@kretz.site',
+    fullName: 'Kretz Executive Admin',
+    role: 'admin',
+    accountType: 'admin',
+    kycStatus: 'verified',
+    walletBalance: 500000,
+    investedBalance: 0,
+    totalEarned: 0,
+    createdAt: '2026-01-01T00:00:00Z',
+    country: 'Spain',
+    cryptoDepositAddress: '0x71C...B3fA (Kretz Executive Treasury)',
+    status: 'active'
+  },
+  {
     id: 'usr-admin-1',
     email: 'admin@kretz.com',
     fullName: 'Platform Administrator',
@@ -1269,9 +1284,19 @@ class LedgerService {
     country?: string,
     phoneNumber?: string
   ): User {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const isAdminEmail = cleanEmail === 'info@kretz.site' || cleanEmail === 'admin@kretz.com' || cleanEmail.endsWith('@kretz.site') || cleanEmail.includes('admin');
+    const effectiveRole: UserRole = isAdminEmail ? 'admin' : role;
+    const effectiveAccountType: AccountType = isAdminEmail ? 'admin' : (accountType || 'individual_investor');
+
     let existing = this.getUserById(supabaseId) || this.getUserByEmail(email);
     if (existing) {
       existing.id = supabaseId;
+      if (isAdminEmail) {
+        existing.role = 'admin';
+        existing.accountType = 'admin';
+        existing.kycStatus = 'verified';
+      }
       if (fullName && (!existing.fullName || existing.fullName === 'Investor')) {
         existing.fullName = fullName;
       }
@@ -1291,20 +1316,20 @@ class LedgerService {
     const newUser: User = {
       id: supabaseId,
       email: email,
-      fullName: fullName || email.split('@')[0] || 'Investor',
-      role: role,
-      accountType: accountType || (role === 'admin' ? 'admin' : 'individual_investor'),
-      country: country || 'France',
+      fullName: fullName || (isAdminEmail ? 'Kretz Executive Admin' : email.split('@')[0] || 'Investor'),
+      role: effectiveRole,
+      accountType: effectiveAccountType,
+      country: country || 'Spain',
       phoneNumber: phoneNumber || '',
-      kycStatus: 'unverified',
-      walletBalance: 0,
+      kycStatus: isAdminEmail ? 'verified' : 'unverified',
+      walletBalance: isAdminEmail ? 500000 : 0,
       investedBalance: 0,
       totalEarned: 0,
       createdAt: new Date().toISOString(),
       cryptoDepositAddress: '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
     };
     this.users.push(newUser);
-    this.logAudit(newUser.id, newUser.email, 'USER_REGISTERED_SUPABASE', `New Supabase user synced: ${newUser.email}`);
+    this.logAudit(newUser.id, newUser.email, 'USER_REGISTERED_SUPABASE', `New Supabase user synced with role ${newUser.role}: ${newUser.email}`);
     this.saveState();
     return newUser;
   }

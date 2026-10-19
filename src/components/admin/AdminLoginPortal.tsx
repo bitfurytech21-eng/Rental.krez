@@ -29,12 +29,14 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   onNavigateCustomerLogin,
   onNavigateHome,
 }) => {
-  const { login, quickDemoSession, isConfigured } = useAuth();
+  const { login, quickDemoSession, verifyMfaCode } = useAuth();
   
-  const [email, setEmail] = useState('admin@kretz.com');
+  const [email, setEmail] = useState('info@kretz.site');
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [totpToken, setTotpToken] = useState('');
+  const [mfaStep, setMfaStep] = useState<'login' | 'verify'>('login');
+  const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionBound, setSessionBound] = useState(true);
@@ -74,13 +76,34 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
           setAuthToken(token);
         }
       } catch (backendErr) {
-        // Fallback gracefully in standalone or preview environments
         console.log('Backend auth sync notice:', backendErr);
       }
 
-      onLoginSuccess();
+      // Transition to Step 2: Verification Code step for administrative access
+      setMfaStep('verify');
     } catch (err: any) {
       setError(err?.message || 'Administrative authentication failed. Please verify credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Verify Administrative Code (TOTP / OTP)
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!verificationCode || verificationCode.trim().length < 6) {
+      setError('Please enter a valid 6-digit verification code.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifyMfaCode('default_factor', 'challenge_admin', verificationCode);
+      onLoginSuccess();
+    } catch (err: any) {
+      setError(err?.message || 'Verification code invalid or expired. Please check and try again.');
     } finally {
       setLoading(false);
     }
@@ -174,26 +197,29 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
             </div>
             
             <div className="grid grid-cols-2 gap-2 text-left">
-              <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px]">
-                <span className="text-slate-500 block text-[9px] uppercase font-bold">Email</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('info@kretz.site');
+                  setPassword('admin123');
+                }}
+                className="p-2 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-emerald-500/40 text-[11px] text-left transition-colors cursor-pointer"
+              >
+                <span className="text-emerald-400 block text-[9px] uppercase font-bold">Executive Board</span>
+                <span className="font-mono text-white font-semibold block truncate">info@kretz.site</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@kretz.com');
+                  setPassword('admin123');
+                }}
+                className="p-2 rounded-xl bg-slate-950/80 hover:bg-slate-900 border border-slate-800 text-[11px] text-left transition-colors cursor-pointer"
+              >
+                <span className="text-slate-400 block text-[9px] uppercase font-bold">Compliance Desk</span>
                 <span className="font-mono text-slate-200 font-semibold block truncate">admin@kretz.com</span>
-              </div>
-              <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px]">
-                <span className="text-slate-500 block text-[9px] uppercase font-bold">Default Key</span>
-                <span className="font-mono text-slate-200 font-semibold block truncate">admin123</span>
-              </div>
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('admin@kretz.com');
-                setPassword('admin123');
-              }}
-              className="w-full text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors text-center block pt-0.5 cursor-pointer"
-            >
-              Click to autofill credentials
-            </button>
           </div>
 
           {error && (
@@ -204,21 +230,74 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
           )}
 
           {/* Form */}
-          <form onSubmit={handleAdminLogin} className="space-y-4 text-left">
-            
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-300 block">Administrator Account Email</label>
-              <div className="relative">
+          {mfaStep === 'verify' ? (
+            <form onSubmit={handleVerifyCode} className="space-y-4 text-left animate-in fade-in">
+              <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-left space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                  <Fingerprint className="w-4 h-4 text-emerald-400" />
+                  <span>2-Step Administrative Verification</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Enter the 6-digit verification code sent to <strong className="text-white font-mono">{email}</strong> or generated by your Authenticator App.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 block">6-Digit Verification Code</label>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@kretz.com"
-                  className="w-full px-3.5 py-3 rounded-xl bg-slate-950/90 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
+                  autoFocus
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="123456"
+                  className="w-full px-3.5 py-3 rounded-xl bg-slate-950/90 border border-emerald-500/50 text-emerald-300 text-center text-lg font-mono tracking-[0.3em] font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:tracking-normal placeholder:text-slate-700"
                 />
               </div>
-            </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-950/50 disabled:opacity-50 mt-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verifying Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-emerald-200" />
+                    <span>Verify Code & Authorize Console</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMfaStep('login')}
+                className="w-full text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center pt-2 cursor-pointer"
+              >
+                ← Return to Password Sign In
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleAdminLogin} className="space-y-4 text-left">
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300 block">Administrator Account Email</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="info@kretz.site"
+                    className="w-full px-3.5 py-3 rounded-xl bg-slate-950/90 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -308,6 +387,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
               <span>1-Click Instant Demo Admin Access</span>
             </button>
           </form>
+        )}
 
           {/* Compliance & Audit Footnote */}
           <div className="pt-4 border-t border-slate-800/80 text-center space-y-1">

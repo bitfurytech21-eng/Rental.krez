@@ -39,8 +39,9 @@ import { AdminDashboardOverview } from './AdminDashboardOverview';
 import { AdminNewsManager } from './AdminNewsManager';
 import { AdminUserManagement } from './AdminUserManagement';
 import { AdminInsightsCMS } from './AdminInsightsCMS';
+import { AdminAccountSettings } from './AdminAccountSettings';
 
-export type AdminTabType = 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights';
+export type AdminTabType = 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security';
 
 export const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -55,7 +56,7 @@ export const AdminPanel: React.FC = () => {
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security'];
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
@@ -679,6 +680,16 @@ export const AdminPanel: React.FC = () => {
             <Activity className="w-4 h-4 text-emerald-600" />
             <span>API Logs & System Monitoring</span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('admin-security')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'admin-security' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <Shield className="w-4 h-4 text-emerald-800" />
+            <span>Admin Security & Passphrase</span>
           </button>
         </div>
 
@@ -2019,6 +2030,9 @@ export const AdminPanel: React.FC = () => {
 
         {/* Tab 7: API Logs & System Monitoring */}
         {activeTab === 'logs' && <AdminMonitoringView />}
+
+        {/* Tab 8: Admin Security & Passphrase Settings */}
+        {activeTab === 'admin-security' && <AdminAccountSettings />}
       </div>
 
       {/* New Property Modal */}

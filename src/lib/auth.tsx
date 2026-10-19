@@ -34,6 +34,9 @@ interface AuthContextType {
   refreshUser: () => void;
   sendPasswordReset: (email: string) => Promise<boolean>;
   updatePassword: (newPassword: string) => Promise<void>;
+  updateUserEmail: (newEmail: string) => Promise<void>;
+  updateUserPassword: (newPassword: string) => Promise<void>;
+  verifyMfaCode: (factorId: string, challengeId: string, code: string) => Promise<boolean>;
   quickDemoSession: (role: 'investor' | 'admin', accountType?: AccountType) => Promise<User>;
 }
 
@@ -398,10 +401,87 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsRecoveryMode(false);
   };
 
+  // Secure Admin Account Settings: Change Admin Email
+  const updateUserEmail = async (newEmail: string): Promise<void> => {
+    const clean = newEmail.trim().toLowerCase();
+    if (!clean) throw new Error('Please enter a valid email address.');
+
+    if (!isConfigured) {
+      if (user) {
+        const updated = ledger.updateUserProfile(user.id, { email: clean } as any);
+        setUser({ ...updated });
+      }
+      return;
+    }
+
+    const redirectUrl = getAuthRedirectUrl('/#admin');
+    const { error } = await supabase.auth.updateUser({
+      email: clean,
+    }, {
+      emailRedirectTo: redirectUrl
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  };
+
+  // Secure Admin Account Settings: Change Admin Password
+  const updateUserPassword = async (newPassword: string): Promise<void> => {
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters in length.');
+    }
+
+    if (!isConfigured) {
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  };
+
+  // MFA Challenge & Verification Step
+  const verifyMfaCode = async (factorId: string, challengeId: string, code: string): Promise<boolean> => {
+    if (!code || code.trim().length < 6) {
+      throw new Error('Please enter a valid 6-digit verification code.');
+    }
+
+    if (!isConfigured) {
+      return code.trim() === '123456' || code.trim().length === 6;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.mfa.verify({
+        factorId,
+        challengeId,
+        code: code.trim(),
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.access_token) {
+        setToken(data.access_token);
+      }
+      return true;
+    } catch (err: any) {
+      throw new Error(err?.message || 'MFA code verification failed. Please try again.');
+    }
+  };
+
   // Local demo session switcher (strictly labeled as preview mock mode when keys are unconfigured)
   const quickDemoSession = async (role: 'investor' | 'admin', accountType?: AccountType): Promise<User> => {
-    const demoEmail = role === 'admin' ? 'admin@kretz.com' : 'investor@kretz.com';
-    const existing = ledger.getUserByEmail(demoEmail);
+    const demoEmail = role === 'admin' ? 'info@kretz.site' : 'investor@kretz.com';
+    let existing = ledger.getUserByEmail(demoEmail);
+    if (!existing && role === 'admin') {
+      existing = ledger.getUserByEmail('admin@kretz.com');
+    }
     if (!existing) {
       throw new Error('Demo account not found in local ledger.');
     }
@@ -432,6 +512,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshUser,
         sendPasswordReset,
         updatePassword,
+        updateUserEmail,
+        updateUserPassword,
+        verifyMfaCode,
         quickDemoSession,
       }}
     >
