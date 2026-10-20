@@ -10,7 +10,6 @@ import {
   Tv
 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
-import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
   currentPath: string;
@@ -760,10 +759,6 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               </button>
             </div>
           )}
-
-          <div className="pt-4 pb-2 border-t border-slate-100">
-            <LanguageSelector variant="mobile" />
-          </div>
 
         </div>
       )}

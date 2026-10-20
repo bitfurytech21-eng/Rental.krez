@@ -77,7 +77,7 @@ export const PropertyDocumentGenerator: React.FC<PropertyDocumentGeneratorProps>
   const [buyerEmail, setBuyerEmail] = useState(buyerInfo?.buyerEmail || docRecord.customization?.buyerEmail || 'investor@kretz.com');
   const [buyerPhone, setBuyerPhone] = useState(buyerInfo?.buyerPhone || docRecord.customization?.buyerPhone || '+34 612 345 678');
   const [buyerNationality, setBuyerNationality] = useState(buyerInfo?.buyerNationality || docRecord.customization?.buyerNationality || 'Spanish / EU');
-  const [buyerAddress, setBuyerAddress] = useState(buyerInfo?.buyerAddress || docRecord.customization?.buyerAddress || 'Paseo de la Castellana 45, Madrid');
+  const [buyerAddress, setBuyerAddress] = useState(buyerInfo?.buyerAddress || docRecord.customization?.buyerAddress || 'Avinguda Diagonal 450, Barcelona');
   const [buyerPassport, setBuyerPassport] = useState(buyerInfo?.buyerPassportNumber || docRecord.customization?.buyerPassportNumber || 'ESP94820184A');
   const [depositPercent, setDepositPercent] = useState<number>(docRecord.paymentSchedule?.depositPercent || 10);
   const [specialConditions, setSpecialConditions] = useState(docRecord.customization?.specialConditions || 'Subject to clean title report and standard 14-day statutory reflection period.');

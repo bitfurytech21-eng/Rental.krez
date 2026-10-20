@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { useNavigation } from '../../context/NavigationContext';
 import { ledger } from '../../lib/ledger';
 import { KYCStatus, getAccountTypeLabel, getAccountTypeBadge } from '../../types/user';
 import { ShieldCheck, User as UserIcon, Building2, UploadCloud, CheckCircle2, Clock, XCircle, AlertCircle, Palette, Check, Sparkles, Crown } from 'lucide-react';
@@ -34,6 +35,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onSelectTheme
 }) => {
   const { user, refreshUser } = useAuth();
+  const { navigateTo } = useNavigation();
   const [docType, setDocType] = useState('Passport');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -210,12 +212,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     </p>
                   </div>
                 </div>
-                <a
-                  href="#/club"
-                  className="px-3.5 py-1.5 rounded-xl border border-inherit/30 text-xs font-semibold hover:bg-white/10 transition-colors"
+                <button
+                  onClick={() => navigateTo('/club')}
+                  className="px-3.5 py-1.5 rounded-xl border border-inherit/30 text-xs font-semibold hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   Club Portal →
-                </a>
+                </button>
               </div>
 
               {userMem ? (
@@ -223,7 +225,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   membership={userMem}
                   tiers={tiers}
                   onRefresh={refreshUser}
-                  onUpgradeClick={() => { window.location.hash = '/club'; }}
+                  onUpgradeClick={() => navigateTo('/club')}
                 />
               ) : (
                 <div className="p-6 rounded-2xl dash-inner border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

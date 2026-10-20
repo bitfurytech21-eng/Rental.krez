@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { useNavigation } from '../../context/NavigationContext';
 import { ledger, CryptoNetworkConfig, VerificationDocument } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
@@ -45,6 +46,7 @@ export type AdminTabType = 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 
 
 export const AdminPanel: React.FC = () => {
   const { user } = useAuth();
+  const { navigateTo } = useNavigation();
   if (!user) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center p-8 bg-[#F6F7F4]">
@@ -1999,9 +2001,7 @@ export const AdminPanel: React.FC = () => {
             <AdminInsightsCMS
               currentAdminEmail={user.email}
               onViewLiveArticle={(slug) => {
-                if (typeof window !== 'undefined') {
-                  window.location.hash = `/insights/${slug}`;
-                }
+                navigateTo(`/insights/${slug}`);
               }}
               onRefreshAll={refreshAll}
             />

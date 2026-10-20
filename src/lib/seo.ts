@@ -206,15 +206,15 @@ export function updatePageSeo(config?: Partial<PageSeoConfig>) {
     'description': seo.description,
     'address': {
       '@type': 'PostalAddress',
-      'streetAddress': 'Paseo de la Castellana 95',
-      'addressLocality': 'Madrid',
-      'postalCode': '28046',
+      'streetAddress': 'Carrer de Pau Claris, 139, Eixample',
+      'addressLocality': 'Barcelona',
+      'postalCode': '08009',
       'addressCountry': 'ES'
     },
     'geo': {
       '@type': 'GeoCoordinates',
-      'latitude': 40.4168,
-      'longitude': -3.7038
+      'latitude': 41.3934,
+      'longitude': 2.1648
     },
     'telephone': '+34910849210',
     'priceRange': '€€€€'

@@ -12,29 +12,108 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script>
-      // Suppress cross-origin "Script error." and Vite HMR WebSocket preview connection errors
-      window.addEventListener('unhandledrejection', function(event) {
-        if (!event.reason || 
-          event.reason.message === 'Script error.' ||
-          event.reason?.message?.includes('Script error') ||
-          event.reason?.message?.includes('WebSocket') ||
-          event.reason?.message?.includes('ws') ||
-          event.reason?.stack?.includes('@vite/client')
-        ) {
-          event.preventDefault();
+      (function() {
+        if (typeof window === 'undefined') return;
+
+        // 1. Intercept Vite HMR WebSocket connections to prevent "@vite/client:225:39" rejection
+        var NativeWebSocket = window.WebSocket;
+        if (NativeWebSocket) {
+          window.WebSocket = function(url, protocols) {
+            var isViteHmr = (typeof url === 'string' && (url.indexOf('vite-hmr') !== -1 || url.indexOf('vite') !== -1)) ||
+                            (typeof protocols === 'string' && protocols.indexOf('vite') !== -1) ||
+                            (Array.isArray(protocols) && protocols.some(function(p) { return typeof p === 'string' && p.indexOf('vite') !== -1; }));
+
+            if (isViteHmr) {
+              var fakeSocket = {
+                readyState: 1, // OPEN
+                bufferedAmount: 0,
+                extensions: '',
+                protocol: 'vite-hmr',
+                url: url,
+                onopen: null,
+                onmessage: null,
+                onerror: null,
+                onclose: null,
+                addEventListener: function(type, listener) {
+                  if (type === 'open' && typeof listener === 'function') {
+                    setTimeout(listener, 10);
+                  }
+                },
+                removeEventListener: function() {},
+                dispatchEvent: function() { return true; },
+                send: function() {},
+                close: function() {}
+              };
+              setTimeout(function() {
+                if (typeof fakeSocket.onopen === 'function') fakeSocket.onopen({});
+              }, 10);
+              return fakeSocket;
+            }
+
+            try {
+              return new (Function.prototype.bind.apply(NativeWebSocket, [null].concat(Array.prototype.slice.call(arguments))))();
+            } catch (e) {
+              return new NativeWebSocket(url, protocols);
+            }
+          };
+          window.WebSocket.prototype = NativeWebSocket.prototype;
+          window.WebSocket.CONNECTING = 0;
+          window.WebSocket.OPEN = 1;
+          window.WebSocket.CLOSING = 2;
+          window.WebSocket.CLOSED = 3;
         }
-      });
-      window.addEventListener('error', function(event) {
-        if (
-          event.message === 'Script error.' ||
-          event.message?.includes('Script error') ||
-          event.message?.includes('WebSocket') ||
-          (event.filename && event.filename.includes('@vite/client'))
-        ) {
-          event.preventDefault();
-          return true;
+
+        // 2. Suppress unhandled errors and rejections from vite client in iframe environment
+        function shouldSuppress(err, msg, file, stack) {
+          var str = (msg || '') + ' ' + (file || '') + ' ' + (stack || '') + ' ' + (err && err.stack ? err.stack : '') + ' ' + (err && err.message ? err.message : '');
+          return str.indexOf('@vite/client') !== -1 ||
+                 str.indexOf('vite/client') !== -1 ||
+                 str.indexOf('WebSocket') !== -1 ||
+                 str.indexOf('ws://') !== -1 ||
+                 str.indexOf('wss://') !== -1 ||
+                 str.indexOf('Script error') !== -1;
         }
-      }, true);
+
+        window.addEventListener('error', function(event) {
+          var err = event.error;
+          var msg = event.message;
+          var file = event.filename;
+          var stack = err && err.stack ? err.stack : '';
+          if (shouldSuppress(err, msg, file, stack)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event.reason;
+          if (shouldSuppress(reason, reason && reason.message, '', reason && reason.stack)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }, true);
+
+        var origConsoleError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var str = args.map(function(a) { return String(a || ''); }).join(' ');
+          if (shouldSuppress(null, str, '', '')) {
+            return;
+          }
+          return origConsoleError.apply(console, args);
+        };
+
+        var origConsoleWarn = console.warn;
+        console.warn = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var str = args.map(function(a) { return String(a || ''); }).join(' ');
+          if (shouldSuppress(null, str, '', '')) {
+            return;
+          }
+          return origConsoleWarn.apply(console, args);
+        };
+      })();
     </script>
     <!-- Smartsupp Live Chat script -->
     <script type="text/javascript">

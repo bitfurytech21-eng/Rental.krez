@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/auth';
 import { LanguageProvider } from './context/LanguageContext';
+import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ledger } from './lib/ledger';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
@@ -43,7 +44,6 @@ import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
 import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { SmartsuppWidget } from './components/support/SmartsuppWidget';
-import { LanguageSelector } from './components/layout/LanguageSelector';
 import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
 import { updatePageSeo } from './lib/seo';
 import { InsightsEditorialHome } from './components/insights/InsightsEditorialHome';
@@ -53,49 +53,21 @@ import { ArrowRight, ShieldCheck, UserCheck, Plus } from 'lucide-react';
 
 function MainApp() {
   const { user, isConfigured, quickDemoSession } = useAuth();
-  // Resolve initial path from location pathname or hash
-  const getPathFromLocation = (): string => {
-    if (typeof window === 'undefined') return '/';
-    const rawHash = window.location.hash.replace('#', '').trim();
-    if (rawHash && rawHash !== '/') {
-      return rawHash.startsWith('/') ? rawHash : `/${rawHash}`;
-    }
-    const path = window.location.pathname || '/';
-    return path;
-  };
-
-  const [currentPath, setCurrentPath] = useState<string>(getPathFromLocation);
+  const { currentPath, navigateTo } = useNavigation();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [pendingInvestmentProperty, setPendingInvestmentProperty] = useState<Property | null>(null);
   const [returnDestination, setReturnDestination] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>(ledger.getProperties());
 
-  // Listen to popstate and hashchange navigation
+  // Synchronize selectedProperty whenever route changes to a property page
   useEffect(() => {
-    const handleRouteSync = () => {
-      const p = getPathFromLocation();
-      if (p.includes('type=recovery') || p.startsWith('reset-password') || p.startsWith('/reset-password')) {
-        setCurrentPath('/reset-password');
-        return;
-      }
-      if (p.startsWith('/property/')) {
-        const slug = p.replace('/property/', '');
-        const currentList = ledger.getProperties();
-        const found = currentList.find(prop => prop.slug === slug || prop.id === slug);
-        if (found) setSelectedProperty(found);
-      }
-      setCurrentPath(p);
-    };
-
-    window.addEventListener('popstate', handleRouteSync);
-    window.addEventListener('hashchange', handleRouteSync);
-    handleRouteSync();
-
-    return () => {
-      window.removeEventListener('popstate', handleRouteSync);
-      window.removeEventListener('hashchange', handleRouteSync);
-    };
-  }, []);
+    if (currentPath.startsWith('/property/')) {
+      const slug = currentPath.replace('/property/', '');
+      const currentList = ledger.getProperties();
+      const found = currentList.find(prop => prop.slug === slug || prop.id === slug);
+      if (found) setSelectedProperty(found);
+    }
+  }, [currentPath]);
 
   // Update dynamic SEO metadata and OpenGraph tags whenever route or selected property changes
   useEffect(() => {
@@ -110,20 +82,6 @@ function MainApp() {
       updatePageSeo();
     }
   }, [currentPath, selectedProperty]);
-
-  const navigateTo = (path: string) => {
-    const cleanPath = !path || path === '/' ? '/' : (path.startsWith('/') ? path : `/${path}`);
-    setCurrentPath(cleanPath);
-    if (window.location.hash || window.location.hash === '') {
-      window.location.hash = cleanPath;
-    }
-    try {
-      window.history.pushState({}, '', cleanPath);
-    } catch {
-      // safe fallback
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   const handleSelectProperty = (property: Property) => {
     setSelectedProperty(property);
@@ -603,8 +561,7 @@ function MainApp() {
       {/* Footer is visible only on the home page */}
       {isHomePage && <Footer onNavigate={navigateTo} />}
 
-      {/* Global Floating Language Widget & Support System */}
-      <LanguageSelector variant="floating" />
+      {/* Support System */}
       <SmartsuppWidget />
 
       {/* First-visit Cookie Consent Banner */}
@@ -647,7 +604,9 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <LanguageProvider>
-          <MainApp />
+          <NavigationProvider>
+            <MainApp />
+          </NavigationProvider>
         </LanguageProvider>
       </AuthProvider>
     </ErrorBoundary>

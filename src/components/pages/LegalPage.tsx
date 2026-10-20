@@ -74,7 +74,7 @@ export const LegalPage: React.FC<LegalPageProps> = ({ mode }) => {
             <section className="space-y-2">
               <h3 className="text-sm font-bold text-[#18211F]">1. Data Controller</h3>
               <p>
-                Kretz Real Estate S.L., with registered address at Paseo de la Castellana 95, 28046 Madrid, Spain, is the data controller responsible for the processing of your personal data.
+                Kretz Real Estate S.L., with registered address at Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain, is the data controller responsible for the processing of your personal data.
               </p>
             </section>
 

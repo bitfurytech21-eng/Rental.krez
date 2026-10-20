@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Loader2, ExternalLink } from 'lucide-react';
 import { isValidEmail } from '../../lib/validation';
 import { TurnstileWidget } from '../security/TurnstileWidget';
 import { contactApi } from '../../lib/api';
@@ -80,8 +80,17 @@ export const ContactPage: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#B7E36A] shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold block text-white">Madrid Office</span>
-                    <span>Paseo de la Castellana 95, 28046 Madrid, Spain</span>
+                    <span className="font-bold block text-white">Spain Office (Barcelona)</span>
+                    <span className="text-[#EEF1EC] block">Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain</span>
+                    <a
+                      href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x12a4a3069490fcf7:0x3a4797b32e1a90ce?entry=s&sa=X&ved=2ahUKEwjuy4P6jcmXAxXyZkEAHSLXJk8Q4kB6BAgVEAA&hl=en"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[11px] text-[#B7E36A] font-bold hover:underline mt-1.5"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>View Live Location on Google Maps</span>
+                    </a>
                   </div>
                 </div>
 
@@ -225,6 +234,46 @@ export const ContactPage: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Live Spain Office Google Map Card */}
+        <div className="mt-10 bg-white rounded-3xl border border-[#E3E8E3] shadow-sm overflow-hidden">
+          <div className="p-6 sm:p-8 border-b border-[#E3E8E3] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center shrink-0 shadow-xs">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[#18211F]">Kretz Spain Office · Barcelona</h3>
+                  <span className="text-[10px] font-bold bg-[#EEF2EC] text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Live Location
+                  </span>
+                </div>
+                <p className="text-xs text-[#69736F] mt-0.5">
+                  Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain
+                </p>
+              </div>
+            </div>
+            <a
+              href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x12a4a3069490fcf7:0x3a4797b32e1a90ce?entry=s&sa=X&ved=2ahUKEwjuy4P6jcmXAxXyZkEAHSLXJk8Q4kB6BAgVEAA&hl=en"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0"
+            >
+              <span>Open in Google Maps</span>
+              <ExternalLink className="w-3.5 h-3.5 text-[#B7E36A]" />
+            </a>
+          </div>
+          <div className="w-full h-80 sm:h-96 relative bg-slate-100">
+            <iframe
+              title="Kretz Spain Office Location"
+              src="https://maps.google.com/maps?q=Carrer+de+Pau+Claris,+139,+08009+Barcelona,+Spain&t=&z=16&ie=UTF8&iwloc=&output=embed"
+              className="w-full h-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
         </div>
       </div>

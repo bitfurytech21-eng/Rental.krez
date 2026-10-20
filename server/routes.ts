@@ -10,16 +10,24 @@
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin } from './middleware';
+import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
 import { verifyTurnstileToken, requireTurnstile } from './turnstile';
-import { handleTranslationRequest } from './translationController';
+import {
+  handleTranslationRequest,
+  handleGetProviders,
+  handleSwitchProvider,
+  handleTestTranslation,
+} from './translationController';
 import crypto from 'crypto';
 
 const router = Router();
 
-// Server-side translation endpoint
+// Server-side Switch Translation API endpoints (independent multi-provider translation engine)
 router.post('/translate', handleTranslationRequest);
+router.get('/translate/providers', handleGetProviders);
+router.post('/translate/switch', handleSwitchProvider);
+router.post('/translate/test', handleTestTranslation);
 
 const contactLimiter = rateLimiter({
   windowMs: 60 * 1000,
@@ -850,7 +858,7 @@ router.get('/admin/settings', requireAdmin, (req: AuthenticatedRequest, res: Res
  * GET /api/v1/admin/logs
  * Query & Filter Structured Server Logs
  */
-router.get('/admin/logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/logs', requireAdminOrLogSecret, (req: AuthenticatedRequest, res: Response) => {
   const { category, level, route, search, requestId, since, limit, offset } = req.query;
 
   const result = logger.getLogs({
@@ -876,7 +884,7 @@ router.get('/admin/logs', requireAdmin, (req: AuthenticatedRequest, res: Respons
 /**
  * GET /api/v1/admin/logs/export
  */
-router.get('/admin/logs/export', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/logs/export', requireAdminOrLogSecret, (req: AuthenticatedRequest, res: Response) => {
   const format = req.query.format === 'csv' ? 'csv' : 'json';
   const exported = logger.exportSanitized(format);
 

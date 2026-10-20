@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
-import { X, ShieldCheck, AlertCircle, ArrowRight, Wallet, RefreshCw, CheckCircle2, Building2, Crown, Sparkles, Plus, Minus } from 'lucide-react';
+import { X, ShieldCheck, AlertCircle, ArrowRight, Wallet, RefreshCw, CheckCircle2, Building2, Crown, Sparkles, Plus, Minus, Printer, Download, FileText, Loader2, Award } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
+import { 
+  buildInvestmentAgreementData, 
+  downloadAgreementPdf, 
+  printAgreementDocument 
+} from '../../lib/investmentAgreementService';
+import { InvestmentAgreementModal } from '../agreements/InvestmentAgreementModal';
 
 interface UnitPurchaseModalProps {
   property: Property;
@@ -34,6 +40,35 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successResult, setSuccessResult] = useState<any | null>(null);
+  const [showAgreementModal, setShowAgreementModal] = useState<boolean>(false);
+  const [isPrintingAgreement, setIsPrintingAgreement] = useState<boolean>(false);
+  const [isDownloadingAgreement, setIsDownloadingAgreement] = useState<boolean>(false);
+
+  const handleImmediatePrint = async () => {
+    if (!successResult) return;
+    try {
+      setIsPrintingAgreement(true);
+      const data = await buildInvestmentAgreementData(successResult, selectedProperty, user);
+      printAgreementDocument(data);
+    } catch (err) {
+      console.error('Failed to print investment agreement:', err);
+    } finally {
+      setTimeout(() => setIsPrintingAgreement(false), 1200);
+    }
+  };
+
+  const handleImmediateDownload = async () => {
+    if (!successResult) return;
+    try {
+      setIsDownloadingAgreement(true);
+      const data = await buildInvestmentAgreementData(successResult, selectedProperty, user);
+      await downloadAgreementPdf(data);
+    } catch (err) {
+      console.error('Failed to download agreement PDF:', err);
+    } finally {
+      setIsDownloadingAgreement(false);
+    }
+  };
 
   // Sync selected property when initialProperty changes
   useEffect(() => {
@@ -168,43 +203,101 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
 
           {/* Success State Screen */}
           {successResult ? (
-            <div className="py-6 text-center space-y-4">
-              <div className="w-16 h-16 bg-emerald-100 text-[#27845D] rounded-full flex items-center justify-center mx-auto shadow-md">
-                <CheckCircle2 className="w-10 h-10" />
+            <div className="py-4 text-center space-y-4">
+              <div className="w-14 h-14 bg-emerald-100 text-[#27845D] rounded-full flex items-center justify-center mx-auto shadow-md">
+                <CheckCircle2 className="w-9 h-9" />
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-xl font-black text-[#142421]">Transaction Confirmed!</h3>
-                <p className="text-sm text-[#52605C]">
-                  You have successfully acquired <strong className="text-[#142421]">{tokenCount} units</strong> in {selectedProperty.title}.
+                <h3 className="text-xl font-black text-[#142421]">Investment Successfully Executed!</h3>
+                <p className="text-xs sm:text-sm text-[#52605C]">
+                  You have successfully acquired <strong className="text-[#142421]">{tokenCount} fractional units</strong> in {selectedProperty.title}.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] text-left text-xs space-y-2 max-w-md mx-auto">
-                <div className="flex justify-between">
-                  <span className="text-[#69736F] font-medium">Certificate ID:</span>
+              {/* Order Transaction Details */}
+              <div className="p-3.5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] text-left text-xs space-y-2 max-w-lg mx-auto">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#69736F] font-medium">Certificate Ref:</span>
                   <span className="font-mono font-bold text-[#142421]">{successResult.certificateId}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-[#69736F] font-medium">Total Invested:</span>
-                  <span className="font-black text-[#27845D]">{formatCurrency(totalCost)}</span>
+                  <span className="font-black text-[#27845D] text-sm">{formatCurrency(totalCost)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-[#69736F] font-medium">Projected Monthly Yield:</span>
-                  <span className="font-bold text-[#142421]">{formatCurrency(monthlyTarget)}/mo</span>
+                  <span className="font-bold text-[#142421]">+{formatCurrency(monthlyTarget)} / month</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-[#69736F] font-medium">New Wallet Balance:</span>
                   <span className="font-bold text-[#142421]">{formatCurrency(userBalance)}</span>
                 </div>
               </div>
 
-              <button
-                onClick={onClose}
-                className="w-full py-3.5 bg-[#142421] hover:bg-[#1E332E] text-white font-bold text-sm rounded-xl transition-all cursor-pointer shadow-md"
-              >
-                Return to Dashboard
-              </button>
+              {/* Prominent Legal Agreement & Instant Print Section */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-[#142421] text-white text-left space-y-3 shadow-xl border border-[#27845D]/40 max-w-lg mx-auto">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-[#B7E36A] shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black uppercase text-white tracking-wide">
+                        Legally Signed Investment Agreement
+                      </h4>
+                      <p className="text-[10px] text-emerald-200/80">
+                        SPV Participatory Deed · eIDAS QES Digital Signature
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#27845D]/40 text-[#B7E36A] border border-[#B7E36A]/30 shrink-0">
+                    Signed & Sealed
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-200 leading-relaxed">
+                  Your legal agreement has been formally executed with qualified signatures by <strong className="text-white">Valentin Kretz</strong> (Managing Partner) under Spanish Commercial Registry jurisdiction. Print your signed agreement immediately for your records or save the official certified PDF.
+                </p>
+
+                {/* Primary Immediate Print and Download Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={handleImmediatePrint}
+                    disabled={isPrintingAgreement}
+                    className="w-full py-2.5 px-3 rounded-xl bg-white text-[#142421] hover:bg-slate-100 font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Printer className="w-4 h-4 text-[#27845D]" />
+                    <span>{isPrintingAgreement ? 'Preparing Print...' : 'Print Agreement Now'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleImmediateDownload}
+                    disabled={isDownloadingAgreement}
+                    className="w-full py-2.5 px-3 rounded-xl bg-[#27845D] hover:bg-[#1E6849] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isDownloadingAgreement ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-[#B7E36A]" />}
+                    <span>{isDownloadingAgreement ? 'Generating PDF...' : 'Download Signed PDF'}</span>
+                  </button>
+                </div>
+
+                <div className="pt-1 text-center">
+                  <button
+                    onClick={() => setShowAgreementModal(true)}
+                    className="text-xs text-[#B7E36A] hover:underline font-bold inline-flex items-center gap-1.5 cursor-pointer py-1"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>View Full Signed Legal Contract On Screen</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2 max-w-lg mx-auto">
+                <button
+                  onClick={onClose}
+                  className="w-full py-3 bg-[#F6F7F4] hover:bg-[#EEF2EC] border border-[#E3E8E3] text-[#142421] font-bold text-xs rounded-xl transition-all cursor-pointer"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
             </div>
           ) : isConfirmStep ? (
             /* Step 2: Final Order Confirmation */
@@ -507,6 +600,17 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
 
         </div>
       </div>
+
+      {/* Full Screen Interactive Investment Agreement Modal */}
+      {successResult && (
+        <InvestmentAgreementModal
+          isOpen={showAgreementModal}
+          onClose={() => setShowAgreementModal(false)}
+          investment={successResult}
+          property={selectedProperty}
+          user={user}
+        />
+      )}
     </div>
   );
 };

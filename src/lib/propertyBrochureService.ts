@@ -186,7 +186,7 @@ export class PropertyBrochureService {
     const agency = {
       name: 'Kretz Spain & International Real Estate',
       brand: 'Kretz Real Estate',
-      address: 'Paseo de la Castellana 95, 28046 Madrid, Spain',
+      address: 'Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain',
       phone: '+34 910 849 210',
       email: 'info@kretz.site',
       website: 'https://kretzdespain.com'
@@ -917,10 +917,22 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
   }
 
   /**
-   * Generates a print-ready PDF using jsPDF with 4-page A4 layout
+  /**
+   * Generates a print-ready PDF using jsPDF with selective page-range support (Pages 1–4).
+   * Ensures zero blank pages, accurate page numbering per selected range, and faithful typography.
    */
-  public static async generatePdfBlob(data: BrochureData): Promise<Blob> {
+  public static async generatePdfBlob(
+    data: BrochureData,
+    pagesToInclude: number[] = [1, 2, 3, 4]
+  ): Promise<Blob> {
     const { property, reference, publicUrl, qrCodeDataUrl, verifiedSpecs, verifiedFinancials, amenities, images, agent, agency } = data;
+
+    // Filter and sanitize pages to include
+    const validPages = (pagesToInclude && pagesToInclude.length > 0)
+      ? pagesToInclude.filter(p => p >= 1 && p <= 4)
+      : [1, 2, 3, 4];
+    const targetPages = validPages.length > 0 ? Array.from(new Set(validPages)).sort((a, b) => a - b) : [1, 2, 3, 4];
+    const totalSelectedPages = targetPages.length;
 
     // Create A4 portrait PDF: 210mm x 297mm
     const doc = new jsPDF({
@@ -935,13 +947,14 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
     const margin = 14;
     const contentWidth = pageWidth - margin * 2;
 
-    // Fetch primary cover image as base64
+    // Fetch primary images as base64 asynchronously
     const coverBase64 = images[0] ? await getBase64ImageFromUrl(images[0]) : null;
     const galleryBase64_1 = images[1] ? await getBase64ImageFromUrl(images[1]) : null;
     const galleryBase64_2 = images[2] ? await getBase64ImageFromUrl(images[2]) : null;
+    const galleryBase64_3 = images[3] ? await getBase64ImageFromUrl(images[3]) : coverBase64;
 
-    // Helper: Header on pages 2-4
-    const drawPageHeader = (pageNumber: number, pageTitle: string) => {
+    // Helper: Header on inner pages (Pages 2+)
+    const drawPageHeader = (docPageIndex: number, total: number, pageTitle: string) => {
       doc.setFillColor(14, 32, 28); // #0E201C
       doc.rect(margin, margin, contentWidth, 1.5, 'F');
 
@@ -962,14 +975,14 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
-      doc.text(`Page ${pageNumber} / 4`, pageWidth - margin, margin + 11, { align: 'right' });
+      doc.text(`Page ${docPageIndex} of ${total}`, pageWidth - margin, margin + 11, { align: 'right' });
 
       doc.setDrawColor(226, 232, 240);
       doc.line(margin, margin + 14, pageWidth - margin, margin + 14);
     };
 
     // Helper: Footer on all pages
-    const drawPageFooter = (pageNumber: number) => {
+    const drawPageFooter = (docPageIndex: number, total: number) => {
       const footerY = pageHeight - margin + 3;
       doc.setDrawColor(226, 232, 240);
       doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
@@ -978,357 +991,383 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
       doc.setFontSize(7.5);
       doc.setTextColor(100, 116, 139);
       doc.text(`${agency.brand} · ${agency.address} · ${agency.website}`, margin, footerY);
-      doc.text(`Page ${pageNumber} of 4 · Confidential Property Brochure`, pageWidth - margin, footerY, { align: 'right' });
+      doc.text(`Page ${docPageIndex} of ${total} · Confidential Property Brochure`, pageWidth - margin, footerY, { align: 'right' });
     };
 
     // ==========================================
     // PAGE 1: COVER PAGE
     // ==========================================
-    // Top Brand Zone
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(14, 32, 28);
-    doc.text('KRETZ REAL ESTATE', margin, margin + 6);
+    const renderPage1 = (docPageIndex: number, total: number) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(14, 32, 28);
+      doc.text('KRETZ REAL ESTATE', margin, margin + 6);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(16, 185, 129);
-    doc.text('SPAIN & INTERNATIONAL LUXURY BROKERAGE', margin, margin + 10.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(16, 185, 129);
+      doc.text('SPAIN & INTERNATIONAL LUXURY BROKERAGE', margin, margin + 10.5);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(14, 32, 28);
-    doc.setFillColor(241, 245, 249);
-    doc.roundedRect(pageWidth - margin - 32, margin + 2, 32, 8, 2, 2, 'F');
-    doc.text(`REF: ${reference}`, pageWidth - margin - 16, margin + 7.5, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(14, 32, 28);
+      doc.setFillColor(241, 245, 249);
+      doc.roundedRect(pageWidth - margin - 32, margin + 2, 32, 8, 2, 2, 'F');
+      doc.text(`REF: ${reference}`, pageWidth - margin - 16, margin + 7.5, { align: 'center' });
 
-    // Hero Image
-    const heroY = margin + 16;
-    const heroHeight = 120;
-    if (coverBase64) {
-      try {
-        doc.addImage(coverBase64, 'JPEG', margin, heroY, contentWidth, heroHeight);
-      } catch {
+      // Hero Image
+      const heroY = margin + 16;
+      const heroHeight = 120;
+      if (coverBase64) {
+        try {
+          doc.addImage(coverBase64, 'JPEG', margin, heroY, contentWidth, heroHeight);
+        } catch {
+          doc.setFillColor(241, 245, 249);
+          doc.rect(margin, heroY, contentWidth, heroHeight, 'F');
+        }
+      } else {
         doc.setFillColor(241, 245, 249);
         doc.rect(margin, heroY, contentWidth, heroHeight, 'F');
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(10);
+        doc.setTextColor(148, 163, 184);
+        doc.text('Authorized Property Image Asset', margin + contentWidth / 2, heroY + heroHeight / 2, { align: 'center' });
       }
-    } else {
-      doc.setFillColor(241, 245, 249);
-      doc.rect(margin, heroY, contentWidth, heroHeight, 'F');
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(10);
-      doc.setTextColor(148, 163, 184);
-      doc.text('Authorized Property Image Asset', margin + contentWidth / 2, heroY + heroHeight / 2, { align: 'center' });
-    }
 
-    // Badge over Hero
-    doc.setFillColor(14, 32, 28);
-    doc.roundedRect(margin + 6, heroY + 6, 42, 6.5, 2, 2, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(183, 227, 106);
-    doc.text('PRESTIGE PORTFOLIO', margin + 27, heroY + 10.5, { align: 'center' });
-
-    // Title & Location
-    let curY = heroY + heroHeight + 12;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.setTextColor(14, 32, 28);
-    const titleLines = doc.splitTextToSize(property.title, contentWidth);
-    doc.text(titleLines, margin, curY);
-    curY += titleLines.length * 7.5;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Location: ${property.location}, ${property.city}, ${property.country} | Type: ${property.type}`, margin, curY);
-    curY += 10;
-
-    // 4 Key Metric Boxes
-    const boxWidth = (contentWidth - 9) / 4;
-    const boxHeight = 22;
-    const metrics = [
-      { label: 'PRICE / VALUATION', value: formatCurrency(property.targetAmount || 0) },
-      { label: 'ANNUAL YIELD', value: formatPercent(property.estimatedAnnualYield || 11.4) },
-      { label: 'HABITABLE AREA', value: property.surfaceAreaM2 ? `${property.surfaceAreaM2} m²` : 'Bespoke' },
-      { label: 'MIN. INVESTMENT', value: formatCurrency(property.minimumInvestment || 750) }
-    ];
-
-    metrics.forEach((m, idx) => {
-      const bx = margin + idx * (boxWidth + 3);
-      doc.setFillColor(248, 250, 247);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(bx, curY, boxWidth, boxHeight, 2, 2, 'FD');
-
+      // Badge over Hero
+      doc.setFillColor(14, 32, 28);
+      doc.roundedRect(margin + 6, heroY + 6, 42, 6.5, 2, 2, 'F');
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text(m.label, bx + 3, curY + 6);
+      doc.setFontSize(7.5);
+      doc.setTextColor(183, 227, 106);
+      doc.text('PRESTIGE PORTFOLIO', margin + 27, heroY + 10.5, { align: 'center' });
 
+      // Title & Location
+      let curY = heroY + heroHeight + 12;
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
+      doc.setFontSize(20);
       doc.setTextColor(14, 32, 28);
-      doc.text(m.value, bx + 3, curY + 15);
-    });
+      const titleLines = doc.splitTextToSize(property.title, contentWidth);
+      doc.text(titleLines, margin, curY);
+      curY += titleLines.length * 7.5;
 
-    // Executive Intro Snippet
-    curY += boxHeight + 10;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(71, 85, 105);
-    const excerpt = property.description
-      ? property.description.slice(0, 260) + '...'
-      : 'Institutional-grade European luxury property structured through a dedicated legal SPV with verified cadastral registration.';
-    const excerptLines = doc.splitTextToSize(excerpt, contentWidth);
-    doc.text(excerptLines, margin, curY);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Location: ${property.location}, ${property.city}, ${property.country} | Type: ${property.type}`, margin, curY);
+      curY += 10;
 
-    drawPageFooter(1);
+      // 4 Key Metric Boxes
+      const boxWidth = (contentWidth - 9) / 4;
+      const boxHeight = 22;
+      const metrics = [
+        { label: 'PRICE / VALUATION', value: formatCurrency(property.targetAmount || 0) },
+        { label: 'ANNUAL YIELD', value: formatPercent(property.estimatedAnnualYield || 11.4) },
+        { label: 'HABITABLE AREA', value: property.surfaceAreaM2 ? `${property.surfaceAreaM2} m²` : 'Bespoke' },
+        { label: 'MIN. INVESTMENT', value: formatCurrency(property.minimumInvestment || 750) }
+      ];
+
+      metrics.forEach((m, idx) => {
+        const bx = margin + idx * (boxWidth + 3);
+        doc.setFillColor(248, 250, 247);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(bx, curY, boxWidth, boxHeight, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(m.label, bx + 3, curY + 6);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10.5);
+        doc.setTextColor(14, 32, 28);
+        doc.text(m.value, bx + 3, curY + 15);
+      });
+
+      // Executive Intro Snippet
+      curY += boxHeight + 10;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(71, 85, 105);
+      const excerpt = property.description
+        ? property.description.slice(0, 260) + '...'
+        : 'Institutional-grade European luxury property structured through a dedicated legal SPV with verified cadastral registration.';
+      const excerptLines = doc.splitTextToSize(excerpt, contentWidth);
+      doc.text(excerptLines, margin, curY);
+
+      drawPageFooter(docPageIndex, total);
+    };
 
     // ==========================================
     // PAGE 2: ARCHITECTURAL SPECIFICATIONS
     // ==========================================
-    doc.addPage();
-    drawPageHeader(2, 'Architectural Specifications & Due Diligence');
+    const renderPage2 = (docPageIndex: number, total: number) => {
+      drawPageHeader(docPageIndex, total, 'Architectural Specifications & Due Diligence');
 
-    let p2Y = margin + 22;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(14, 32, 28);
-    doc.text('PROPERTY CONCEPT & CURATED NARRATIVE', margin, p2Y);
-    p2Y += 5;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(71, 85, 105);
-    const descText = property.description || 'Prestige European real estate asset under prime management.';
-    const descLines = doc.splitTextToSize(descText, contentWidth).slice(0, 16);
-    doc.text(descLines, margin, p2Y);
-    p2Y += descLines.length * 4.4 + 10;
-
-    // Specs Table
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(14, 32, 28);
-    doc.text('VERIFIED TECHNICAL & LEGAL SPECIFICATIONS', margin, p2Y);
-    p2Y += 5;
-
-    verifiedSpecs.forEach((spec, i) => {
-      const rowY = p2Y + i * 7.5;
-      if (i % 2 === 0) {
-        doc.setFillColor(248, 250, 247);
-        doc.rect(margin, rowY - 4.5, contentWidth, 7.5, 'F');
-      }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(71, 85, 105);
-      doc.text(spec.label, margin + 3, rowY);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(14, 32, 28);
-      doc.text(spec.value, margin + 80, rowY);
-    });
-
-    p2Y += verifiedSpecs.length * 7.5 + 10;
-
-    // Amenities
-    if (amenities.length > 0) {
+      let p2Y = margin + 22;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(14, 32, 28);
-      doc.text('REGISTERED AMENITIES & FEATURES', margin, p2Y);
-      p2Y += 6;
+      doc.text('PROPERTY CONCEPT & CURATED NARRATIVE', margin, p2Y);
+      p2Y += 5;
 
-      const colW = contentWidth / 2;
-      amenities.slice(0, 8).forEach((am, idx) => {
-        const col = idx % 2;
-        const row = Math.floor(idx / 2);
-        const amX = margin + col * colW;
-        const amY = p2Y + row * 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(71, 85, 105);
+      const descText = property.description || 'Prestige European real estate asset under prime management.';
+      const descLines = doc.splitTextToSize(descText, contentWidth).slice(0, 16);
+      doc.text(descLines, margin, p2Y);
+      p2Y += descLines.length * 4.4 + 10;
 
-        doc.setFillColor(16, 185, 129);
-        doc.circle(amX + 2, amY - 1, 1, 'F');
+      // Specs Table
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(14, 32, 28);
+      doc.text('VERIFIED TECHNICAL & LEGAL SPECIFICATIONS', margin, p2Y);
+      p2Y += 5;
+
+      verifiedSpecs.forEach((spec, i) => {
+        const rowY = p2Y + i * 7.5;
+        if (i % 2 === 0) {
+          doc.setFillColor(248, 250, 247);
+          doc.rect(margin, rowY - 4.5, contentWidth, 7.5, 'F');
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text(spec.label, margin + 3, rowY);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.setTextColor(30, 41, 59);
-        doc.text(am, amX + 6, amY);
+        doc.setTextColor(14, 32, 28);
+        doc.text(spec.value, margin + 80, rowY);
       });
-    }
 
-    drawPageFooter(2);
+      p2Y += verifiedSpecs.length * 7.5 + 10;
+
+      // Amenities
+      if (amenities.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(14, 32, 28);
+        doc.text('REGISTERED AMENITIES & FEATURES', margin, p2Y);
+        p2Y += 6;
+
+        const colW = contentWidth / 2;
+        amenities.slice(0, 8).forEach((am, idx) => {
+          const col = idx % 2;
+          const row = Math.floor(idx / 2);
+          const amX = margin + col * colW;
+          const amY = p2Y + row * 6;
+
+          doc.setFillColor(16, 185, 129);
+          doc.circle(amX + 2, amY - 1, 1, 'F');
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(30, 41, 59);
+          doc.text(am, amX + 6, amY);
+        });
+      }
+
+      drawPageFooter(docPageIndex, total);
+    };
 
     // ==========================================
     // PAGE 3: PHOTOGRAPHIC GALLERY
     // ==========================================
-    doc.addPage();
-    drawPageHeader(3, 'Curated Photographic Showcase');
+    const renderPage3 = (docPageIndex: number, total: number) => {
+      drawPageHeader(docPageIndex, total, 'Curated Photographic Showcase');
 
-    let p3Y = margin + 22;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(14, 32, 28);
-    doc.text('AUTHORIZED HIGH-RESOLUTION PERSPECTIVES', margin, p3Y);
-    p3Y += 6;
+      let p3Y = margin + 22;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(14, 32, 28);
+      doc.text('AUTHORIZED HIGH-RESOLUTION PERSPECTIVES', margin, p3Y);
+      p3Y += 6;
 
-    const imgBoxW = (contentWidth - 6) / 2;
-    const imgBoxH = 80;
+      const imgBoxW = (contentWidth - 6) / 2;
+      const imgBoxH = 80;
 
-    if (galleryBase64_1) {
-      try {
-        doc.addImage(galleryBase64_1, 'JPEG', margin, p3Y, imgBoxW, imgBoxH);
-      } catch {
+      if (galleryBase64_1) {
+        try {
+          doc.addImage(galleryBase64_1, 'JPEG', margin, p3Y, imgBoxW, imgBoxH);
+        } catch {
+          doc.setFillColor(241, 245, 249);
+          doc.rect(margin, p3Y, imgBoxW, imgBoxH, 'F');
+        }
+      } else {
         doc.setFillColor(241, 245, 249);
         doc.rect(margin, p3Y, imgBoxW, imgBoxH, 'F');
       }
-    } else {
-      doc.setFillColor(241, 245, 249);
-      doc.rect(margin, p3Y, imgBoxW, imgBoxH, 'F');
-    }
 
-    if (galleryBase64_2) {
-      try {
-        doc.addImage(galleryBase64_2, 'JPEG', margin + imgBoxW + 6, p3Y, imgBoxW, imgBoxH);
-      } catch {
+      if (galleryBase64_2) {
+        try {
+          doc.addImage(galleryBase64_2, 'JPEG', margin + imgBoxW + 6, p3Y, imgBoxW, imgBoxH);
+        } catch {
+          doc.setFillColor(241, 245, 249);
+          doc.rect(margin + imgBoxW + 6, p3Y, imgBoxW, imgBoxH, 'F');
+        }
+      } else {
         doc.setFillColor(241, 245, 249);
         doc.rect(margin + imgBoxW + 6, p3Y, imgBoxW, imgBoxH, 'F');
       }
-    } else {
-      doc.setFillColor(241, 245, 249);
-      doc.rect(margin + imgBoxW + 6, p3Y, imgBoxW, imgBoxH, 'F');
-    }
 
-    p3Y += imgBoxH + 12;
+      p3Y += imgBoxH + 12;
 
-    // If there is a 3rd/4th image
-    const galleryBase64_3 = images[3] ? await getBase64ImageFromUrl(images[3]) : coverBase64;
-    if (galleryBase64_3) {
-      try {
-        doc.addImage(galleryBase64_3, 'JPEG', margin, p3Y, contentWidth, 90);
-      } catch {
-        doc.setFillColor(241, 245, 249);
-        doc.rect(margin, p3Y, contentWidth, 90, 'F');
+      // If there is a 3rd/4th image
+      if (galleryBase64_3) {
+        try {
+          doc.addImage(galleryBase64_3, 'JPEG', margin, p3Y, contentWidth, 90);
+        } catch {
+          doc.setFillColor(241, 245, 249);
+          doc.rect(margin, p3Y, contentWidth, 90, 'F');
+        }
       }
-    }
 
-    p3Y += 96;
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7.5);
-    doc.setTextColor(148, 163, 184);
-    doc.text('All photographs represent the actual asset or verified architectural specifications under mandate.', margin, p3Y);
+      p3Y += 96;
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('All photographs represent the actual asset or verified architectural specifications under mandate.', margin, p3Y);
 
-    drawPageFooter(3);
+      drawPageFooter(docPageIndex, total);
+    };
 
     // ==========================================
     // PAGE 4: SPV CUSTODY & ADVISORY CONTACT
     // ==========================================
-    doc.addPage();
-    drawPageHeader(4, 'SPV Custody, Pro-Forma & Private Advisory Desk');
+    const renderPage4 = (docPageIndex: number, total: number) => {
+      drawPageHeader(docPageIndex, total, 'SPV Custody, Pro-Forma & Private Advisory Desk');
 
-    let p4Y = margin + 22;
+      let p4Y = margin + 22;
 
-    // SPV Legal Box
-    doc.setFillColor(14, 32, 28);
-    doc.roundedRect(margin, p4Y, contentWidth, 34, 3, 3, 'F');
+      // SPV Legal Box
+      doc.setFillColor(14, 32, 28);
+      doc.roundedRect(margin, p4Y, contentWidth, 34, 3, 3, 'F');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(183, 227, 106);
-    doc.text('RING-FENCED SPV LEGAL STRUCTURE & NOTARIAL CUSTODY', margin + 6, p4Y + 8);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(203, 213, 225);
-    const spvNote = 'This asset is held in an isolated, ring-fenced Special Purpose Vehicle (Sociedad Limitada) in full compliance with European real estate title registries. Dividends, rent disbursements, and capital gains are remitted via regulated notary escrow.';
-    doc.text(doc.splitTextToSize(spvNote, contentWidth - 12), margin + 6, p4Y + 15);
-
-    p4Y += 42;
-
-    // Pro-Forma Financial Summary
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(14, 32, 28);
-    doc.text('PRO-FORMA FINANCIAL SUMMARY', margin, p4Y);
-    p4Y += 5;
-
-    verifiedFinancials.forEach((f, idx) => {
-      const rowY = p4Y + idx * 7.5;
-      if (idx % 2 === 0) {
-        doc.setFillColor(248, 250, 247);
-        doc.rect(margin, rowY - 4.5, contentWidth, 7.5, 'F');
-      }
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(71, 85, 105);
-      doc.text(f.label, margin + 3, rowY);
+      doc.setFontSize(9.5);
+      doc.setTextColor(183, 227, 106);
+      doc.text('RING-FENCED SPV LEGAL STRUCTURE & NOTARIAL CUSTODY', margin + 6, p4Y + 8);
 
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(203, 213, 225);
+      const spvNote = 'This asset is held in an isolated, ring-fenced Special Purpose Vehicle (Sociedad Limitada) in full compliance with European real estate title registries. Dividends, rent disbursements, and capital gains are remitted via regulated notary escrow.';
+      doc.text(doc.splitTextToSize(spvNote, contentWidth - 12), margin + 6, p4Y + 15);
+
+      p4Y += 42;
+
+      // Pro-Forma Financial Summary
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
       doc.setTextColor(14, 32, 28);
-      doc.text(f.value, margin + 90, rowY);
-    });
+      doc.text('PRO-FORMA FINANCIAL SUMMARY', margin, p4Y);
+      p4Y += 5;
 
-    p4Y += verifiedFinancials.length * 7.5 + 12;
-
-    // Agent & Agency Contact Card
-    doc.setFillColor(248, 250, 247);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, p4Y, contentWidth, 42, 3, 3, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(14, 32, 28);
-    doc.text(agent.name, margin + 6, p4Y + 10);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`${agent.role} · ${agency.brand}`, margin + 6, p4Y + 16);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(14, 32, 28);
-    doc.text(`Direct: ${agent.phone} | Email: ${agent.email}`, margin + 6, p4Y + 23);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Headquarters: ${agency.address}`, margin + 6, p4Y + 30);
-    doc.text(`Official Web Portal: ${agency.website}`, margin + 6, p4Y + 36);
-
-    // QR Code on right side of card
-    if (qrCodeDataUrl) {
-      try {
-        const qrSize = 28;
-        doc.addImage(qrCodeDataUrl, 'PNG', pageWidth - margin - qrSize - 6, p4Y + 7, qrSize, qrSize);
+      verifiedFinancials.forEach((f, idx) => {
+        const rowY = p4Y + idx * 7.5;
+        if (idx % 2 === 0) {
+          doc.setFillColor(248, 250, 247);
+          doc.rect(margin, rowY - 4.5, contentWidth, 7.5, 'F');
+        }
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.5);
-        doc.setTextColor(100, 116, 139);
-        doc.text('SCAN FOR LIVE PORTAL', pageWidth - margin - 20, p4Y + 38, { align: 'center' });
-      } catch {
-        // Safe fallback
-      }
-    }
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text(f.label, margin + 3, rowY);
 
-    drawPageFooter(4);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(14, 32, 28);
+        doc.text(f.value, margin + 90, rowY);
+      });
+
+      p4Y += verifiedFinancials.length * 7.5 + 12;
+
+      // Agent & Agency Contact Card
+      doc.setFillColor(248, 250, 247);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(margin, p4Y, contentWidth, 42, 3, 3, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(14, 32, 28);
+      doc.text(agent.name, margin + 6, p4Y + 10);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`${agent.role} · ${agency.brand}`, margin + 6, p4Y + 16);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(14, 32, 28);
+      doc.text(`Direct: ${agent.phone} | Email: ${agent.email}`, margin + 6, p4Y + 23);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Headquarters: ${agency.address}`, margin + 6, p4Y + 30);
+      doc.text(`Official Web Portal: ${agency.website}`, margin + 6, p4Y + 36);
+
+      // QR Code on right side of card
+      if (qrCodeDataUrl) {
+        try {
+          const qrSize = 28;
+          doc.addImage(qrCodeDataUrl, 'PNG', pageWidth - margin - qrSize - 6, p4Y + 7, qrSize, qrSize);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(6.5);
+          doc.setTextColor(100, 116, 139);
+          doc.text('SCAN FOR LIVE PORTAL', pageWidth - margin - 20, p4Y + 38, { align: 'center' });
+        } catch {
+          // Safe fallback
+        }
+      }
+
+      drawPageFooter(docPageIndex, total);
+    };
+
+    // Dispatcher mapping for pages
+    const pageRenderers: Record<number, (docPageIndex: number, total: number) => void> = {
+      1: renderPage1,
+      2: renderPage2,
+      3: renderPage3,
+      4: renderPage4,
+    };
+
+    // Render each selected page sequentially without phantom leading or trailing pages
+    targetPages.forEach((pNum, index) => {
+      if (index > 0) {
+        doc.addPage();
+      }
+      const renderer = pageRenderers[pNum];
+      if (renderer) {
+        renderer(index + 1, totalSelectedPages);
+      }
+    });
 
     return doc.output('blob');
   }
 
   /**
    * Generates and triggers download of the complete ZIP bundle containing:
-   * 1. [sanitized].pdf
+   * 1. [sanitized].pdf (respecting selected page range)
    * 2. [sanitized]-brochure.html
    * 3. README.txt
    * 4. images/ directory
    */
   public static async generateAndDownloadZip(
     data: BrochureData,
-    onProgress?: (status: string) => void
+    onProgress?: (status: string) => void,
+    pagesToInclude?: number[]
   ): Promise<void> {
     const zip = new JSZip();
 
     if (onProgress) onProgress('Compiling verified high-res PDF brochure...');
-    const pdfBlob = await this.generatePdfBlob(data);
-    zip.file(`${data.sanitizedFilename}.pdf`, pdfBlob);
+    const pdfBlob = await this.generatePdfBlob(data, pagesToInclude);
+    const suffix = pagesToInclude && pagesToInclude.length > 0 && pagesToInclude.length < 4
+      ? `-pages-${pagesToInclude.join('-')}`
+      : '';
+    zip.file(`${data.sanitizedFilename}${suffix}.pdf`, pdfBlob);
 
     if (onProgress) onProgress('Generating standalone responsive HTML brochure...');
     const htmlContent = this.generateStandaloneHtml(data);
@@ -1351,7 +1390,6 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
             imagesFolder.file(`property-photo-0${i + 1}.jpg`, blob);
           }
         } catch {
-          // If direct CORS fails, fallback to metadata placeholder
           imagesFolder.file(
             `property-photo-0${i + 1}-info.txt`,
             `High-Resolution Property Photograph ${i + 1}\nLicensed Asset URL: ${imgUrl}\nRights: Verified Under Institutional Brokerage Agreement`
@@ -1366,7 +1404,7 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
     // Trigger download
     const link = document.createElement('a');
     link.href = URL.createObjectURL(zipBlob);
-    link.download = `${data.sanitizedFilename}-brochure.zip`;
+    link.download = `${data.sanitizedFilename}${suffix}-brochure.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1374,13 +1412,16 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
   }
 
   /**
-   * Generates and triggers download of the PDF brochure directly
+   * Generates and triggers download of the PDF brochure directly respecting selected page range
    */
-  public static async downloadPdf(data: BrochureData): Promise<void> {
-    const pdfBlob = await this.generatePdfBlob(data);
+  public static async downloadPdf(data: BrochureData, pagesToInclude?: number[]): Promise<void> {
+    const pdfBlob = await this.generatePdfBlob(data, pagesToInclude);
     const link = document.createElement('a');
     link.href = URL.createObjectURL(pdfBlob);
-    link.download = `${data.sanitizedFilename}.pdf`;
+    const suffix = pagesToInclude && pagesToInclude.length > 0 && pagesToInclude.length < 4
+      ? `-pages-${pagesToInclude.join('-')}`
+      : '';
+    link.download = `${data.sanitizedFilename}${suffix}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

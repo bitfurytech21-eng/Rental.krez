@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { Investment } from '../../types/investment';
-import { ShieldCheck, X, FileText, Download, Award, ArrowDown, Maximize2 } from 'lucide-react';
+import { ShieldCheck, X, FileText, Download, Award, ArrowDown, Maximize2, Printer, Loader2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { 
+  buildInvestmentAgreementData, 
+  downloadAgreementPdf, 
+  printAgreementDocument 
+} from '../../lib/investmentAgreementService';
+import { useAuth } from '../../lib/auth';
 
 interface DocumentViewerModalProps {
   investment: Investment | null;
@@ -14,14 +20,48 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { user } = useAuth();
   const [downloadMsg, setDownloadMsg] = useState<string | null>(null);
   const [isDocked, setIsDocked] = useState<boolean>(false);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
   if (!isOpen || !investment) return null;
 
-  const handleDownloadDoc = (docName: string) => {
-    setDownloadMsg(`Downloading ${docName}...`);
-    setTimeout(() => setDownloadMsg(null), 2500);
+  const handleDownloadDoc = async (docType: 'spv' | 'valuation' | 'deed') => {
+    try {
+      setIsGenerating(true);
+      setDownloadMsg('Preparing official notarized PDF document...');
+      const data = await buildInvestmentAgreementData(investment, null, user);
+      
+      let outName = `SPV_Certificate_${data.certificateId}.pdf`;
+      if (docType === 'valuation') {
+        outName = `RICS_Valuation_${data.property.tokenTicker}_${data.certificateId}.pdf`;
+      } else if (docType === 'deed') {
+        outName = `Notarized_SPV_Deed_${data.property.tokenTicker}_${data.certificateId}.pdf`;
+      }
+
+      await downloadAgreementPdf(data, outName);
+      setDownloadMsg(`Downloaded ${outName}`);
+      setTimeout(() => setDownloadMsg(null), 3000);
+    } catch (err) {
+      console.error('Document download failed:', err);
+      setDownloadMsg('Download failed. Please try again.');
+      setTimeout(() => setDownloadMsg(null), 3000);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handlePrintDoc = async () => {
+    try {
+      setIsGenerating(true);
+      const data = await buildInvestmentAgreementData(investment, null, user);
+      printAgreementDocument(data);
+    } catch (err) {
+      console.error('Document printing failed:', err);
+    } finally {
+      setTimeout(() => setIsGenerating(false), 1000);
+    }
   };
 
   return (
@@ -141,16 +181,27 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
               <div className="flex items-center gap-2 min-w-0 pr-2">
                 <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div className="min-w-0">
-                  <span className="text-[11px] font-bold dash-text truncate block">SPV Shareholder Certificate</span>
-                  <span className="text-[9px] dash-muted">PDF · Notary Certified</span>
+                  <span className="text-[11px] font-bold dash-text truncate block">SPV Investment Agreement</span>
+                  <span className="text-[9px] dash-muted">PDF · eIDAS Notary Certified</span>
                 </div>
               </div>
-              <button
-                onClick={() => handleDownloadDoc('SPV_Certificate_' + investment.certificateId + '.pdf')}
-                className="btn btn-secondary btn-sm text-[10px] font-semibold py-1 px-2.5 shrink-0"
-              >
-                <Download className="w-3 h-3 mr-1" /> PDF
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={handlePrintDoc}
+                  disabled={isGenerating}
+                  className="btn btn-secondary btn-sm text-[10px] font-semibold py-1 px-2 shrink-0 cursor-pointer disabled:opacity-50"
+                  title="Print official signed agreement"
+                >
+                  <Printer className="w-3 h-3 text-emerald-400" />
+                </button>
+                <button
+                  onClick={() => handleDownloadDoc('spv')}
+                  disabled={isGenerating}
+                  className="btn btn-secondary btn-sm text-[10px] font-semibold py-1 px-2.5 shrink-0 cursor-pointer disabled:opacity-50"
+                >
+                  {isGenerating ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Download className="w-3 h-3 mr-1" />} PDF
+                </button>
+              </div>
             </div>
 
             <div className="p-2.5 rounded-xl border flex items-center justify-between dash-inner hover:opacity-90 transition-all">
@@ -158,12 +209,13 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div className="min-w-0">
                   <span className="text-[11px] font-bold dash-text truncate block">RICS Property Valuation</span>
-                  <span className="text-[9px] dash-muted">PDF · Jan 2026</span>
+                  <span className="text-[9px] dash-muted">PDF · Audited Appraisal</span>
                 </div>
               </div>
               <button
-                onClick={() => handleDownloadDoc('RICS_Valuation_' + investment.propertyId + '.pdf')}
-                className="btn btn-secondary btn-sm text-[10px] font-semibold py-1 px-2.5 shrink-0"
+                onClick={() => handleDownloadDoc('valuation')}
+                disabled={isGenerating}
+                className="btn btn-secondary btn-sm text-[10px] font-semibold py-1 px-2.5 shrink-0 cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-3 h-3 mr-1" /> PDF
               </button>
@@ -178,8 +230,9 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => handleDownloadDoc('Notarized_Deed_' + investment.propertyId + '.pdf')}
-                className="btn btn-secondary btn-sm text-[10px] font-semibold py-1 px-2.5 shrink-0"
+                onClick={() => handleDownloadDoc('deed')}
+                disabled={isGenerating}
+                className="btn btn-secondary btn-sm text-[10px] font-semibold py-1 px-2.5 shrink-0 cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-3 h-3 mr-1" /> PDF
               </button>
@@ -187,7 +240,21 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           </div>
         </div>
 
-        <div className="pt-1 flex justify-end">
+        {downloadMsg && (
+          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-semibold text-center animate-in fade-in">
+            {downloadMsg}
+          </div>
+        )}
+
+        <div className="pt-1 flex items-center justify-between">
+          <button
+            onClick={handlePrintDoc}
+            disabled={isGenerating}
+            className="text-[10px] font-bold text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <Printer className="w-3 h-3" />
+            <span>Print Full Agreement</span>
+          </button>
           <button onClick={onClose} className="btn btn-primary text-[10px] font-bold py-1 px-4 cursor-pointer">
             Close
           </button>

@@ -1,7 +1,8 @@
-import { LanguageCode, SUPPORTED_LANGUAGES, TranslationResponse } from '../types/language';
+import { LanguageCode, SUPPORTED_LANGUAGES, TranslationResponse, TranslationProviderId, TranslationProviderInfo } from '../types/language';
 
 const CACHE_KEY = 'kretz_translation_cache_v2';
 const SELECTED_LANG_KEY = 'kretz_selected_language';
+const PROVIDER_KEY = 'kretz_translation_provider';
 
 // Persistent client-side cache mapping: `${lang}:${text}` -> `translatedText`
 let memoryCache: Record<string, string> = {};
@@ -16,6 +17,27 @@ try {
   }
 } catch (e) {
   console.warn('Failed to load translation cache from localStorage:', e);
+}
+
+type TranslationListener = () => void;
+const translationListeners: TranslationListener[] = [];
+
+export function subscribeTranslationUpdates(fn: TranslationListener) {
+  translationListeners.push(fn);
+  return () => {
+    const idx = translationListeners.indexOf(fn);
+    if (idx !== -1) translationListeners.splice(idx, 1);
+  };
+}
+
+export function notifyTranslationUpdates() {
+  translationListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (e) {
+      // Ignore listener errors
+    }
+  });
 }
 
 function saveCacheToStorage() {
@@ -465,16 +487,130 @@ export class TranslationService {
   }
 
   /**
+   * Detects initial translation provider from localStorage or defaults to 'mymemory'
+   */
+  public static getInitialProvider(): TranslationProviderId {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = window.localStorage.getItem(PROVIDER_KEY) as TranslationProviderId;
+      if (saved && ['mymemory', 'libretranslate', 'deepl', 'dictionary', 'auto'].includes(saved)) {
+        return saved;
+      }
+    }
+    return 'mymemory';
+  }
+
+  /**
+   * Persists selected translation provider
+   */
+  public static saveSelectedProvider(provider: TranslationProviderId): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(PROVIDER_KEY, provider);
+    }
+  }
+
+  /**
+   * Fetch current provider statuses and list from backend
+   */
+  public static async fetchProviders(): Promise<{
+    activeProvider: TranslationProviderId;
+    providers: TranslationProviderInfo[];
+  }> {
+    try {
+      const res = await fetch('/api/v1/translate/providers');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn('Failed to fetch translation providers:', err);
+    }
+    return {
+      activeProvider: 'mymemory',
+      providers: [
+        {
+          id: 'mymemory',
+          name: 'MyMemory Neural Translation API',
+          description: 'Independent global machine and human translation memory. Zero Google dependencies.',
+          isAvailable: true,
+          requiresKey: false,
+          type: 'free',
+        },
+        {
+          id: 'libretranslate',
+          name: 'LibreTranslate Open API',
+          description: 'Open-source, self-hosted machine translation engine.',
+          isAvailable: true,
+          requiresKey: false,
+          type: 'free',
+        },
+        {
+          id: 'deepl',
+          name: 'DeepL Pro / Free API',
+          description: 'Neural translation with exceptional nuances for European languages.',
+          isAvailable: false,
+          requiresKey: true,
+          type: 'freemium',
+        },
+        {
+          id: 'dictionary',
+          name: 'Kretz Prime Real Estate Terminology Engine',
+          description: 'High-speed deterministic luxury real estate and financial dictionary.',
+          isAvailable: true,
+          requiresKey: false,
+          type: 'local',
+        },
+        {
+          id: 'auto',
+          name: 'Smart Auto-Switch & Failover',
+          description: 'Automatically switches between providers with transparent fault tolerance.',
+          isAvailable: true,
+          requiresKey: false,
+          type: 'hybrid',
+        },
+      ],
+    };
+  }
+
+  /**
+   * Switches server-side and client-side active translation engine
+   */
+  public static async switchProvider(newProvider: TranslationProviderId): Promise<boolean> {
+    this.saveSelectedProvider(newProvider);
+    try {
+      const res = await fetch('/api/v1/translate/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: newProvider }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('Failed to notify server of provider switch:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Clears translation memory cache
+   */
+  public static clearCache(): void {
+    memoryCache = {};
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(CACHE_KEY);
+    }
+  }
+
+  /**
    * Asynchronous server API translation for dynamic strings and paragraphs
    */
   public static async translateBatch(
     texts: string[],
-    targetLang: LanguageCode
+    targetLang: LanguageCode,
+    provider?: TranslationProviderId
   ): Promise<string[]> {
     if (!texts || texts.length === 0 || targetLang === 'en') {
       return texts;
     }
 
+    const currentProvider = provider || this.getInitialProvider();
     const results: string[] = [...texts];
     const missingIndices: number[] = [];
     const missingTexts: string[] = [];
@@ -503,6 +639,7 @@ export class TranslationService {
           texts: missingTexts,
           targetLanguage: targetLang,
           sourceLanguage: 'en',
+          provider: currentProvider,
         }),
       });
 
@@ -521,6 +658,7 @@ export class TranslationService {
             }
           });
           saveCacheToStorage();
+          notifyTranslationUpdates();
         }
       }
     } catch (err) {

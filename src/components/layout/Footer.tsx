@@ -1,7 +1,7 @@
 import React from 'react';
 import { FOOTER_LINKS } from '../../data/navigation';
-import { Building2, ShieldCheck, Mail, MapPin } from 'lucide-react';
-import { LanguageSelector } from './LanguageSelector';
+import { Building2, ShieldCheck, Mail, MapPin, ExternalLink } from 'lucide-react';
+import { HeaderLanguageButton } from './HeaderLanguageButton';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
@@ -81,8 +81,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 </div>
               ))}
               <div className="flex items-start gap-2.5 pt-2">
-                <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-1" />
-                <span>Paseo de la Castellana 95, 28046 Madrid, Spain</span>
+                <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                <a
+                  href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x12a4a3069490fcf7:0x3a4797b32e1a90ce?entry=s&sa=X&ved=2ahUKEwjuy4P6jcmXAxXyZkEAHSLXJk8Q4kB6BAgVEAA&hl=en"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-emerald-700 transition-colors text-xs leading-relaxed group"
+                  title="Open live location in Google Maps"
+                >
+                  <span className="hover:underline">Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain</span>
+                  <ExternalLink className="w-3 h-3 inline-block ml-1 text-emerald-700 opacity-70 group-hover:opacity-100" />
+                </a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-emerald-700 shrink-0" />
@@ -96,17 +105,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         {/* Copyright & Regional Options */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#69736F] gap-4">
           <div className="flex items-center gap-4">
-            <p>© {new Date().getFullYear()} Kretz Real Estate S.L. All rights reserved.</p>
-            <LanguageSelector variant="footer" />
+            <p>© 2021 Kretz Real Estate S.L. All rights reserved.</p>
+            <HeaderLanguageButton />
           </div>
           <div className="flex items-center gap-6">
             <button onClick={() => onNavigate('/privacy')} className="hover:text-[#18211F]">Privacy Policy</button>
             <button onClick={() => onNavigate('/terms')} className="hover:text-[#18211F]">Terms of Use</button>
             <button onClick={() => onNavigate('/contact')} className="hover:text-[#18211F]">Direct Support</button>
-            <button onClick={() => onNavigate('/admin')} className="hover:text-emerald-700 flex items-center gap-1 opacity-80 hover:opacity-100 transition-opacity">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Admin Portal</span>
-            </button>
           </div>
         </div>
       </div>

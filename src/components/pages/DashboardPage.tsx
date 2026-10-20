@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { useNavigation } from '../../context/NavigationContext';
 import { ledger } from '../../lib/ledger';
 import { BalanceCard } from '../dashboard/BalanceCard';
 import { PortfolioOverview } from '../dashboard/PortfolioOverview';
@@ -43,6 +44,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onNavigateHome,
 }) => {
   const { user, refreshUser, logout } = useAuth();
+  const { navigateTo } = useNavigation();
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [isDepositOpen, setIsDepositOpen] = useState(defaultTab === 'deposit');
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(defaultTab === 'withdraw');
@@ -746,7 +748,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {activeTab === 'verification' && (
               <div className="animate-in fade-in duration-200">
                 <DocumentUploadVault
-                  onNavigateAdmin={() => window.location.href = '/admin#deposits'}
+                  onNavigateAdmin={() => navigateTo('/admin#deposits')}
                   onNavigateWallet={() => setActiveTab('wallet')}
                 />
               </div>
@@ -1050,7 +1052,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           refreshUser();
         }}
         onNavigateAdmin={() => {
-          window.location.hash = '/admin#deposits';
+          navigateTo('/admin#deposits');
         }}
         onNavigateTransactions={() => setActiveTab('transactions')}
       />

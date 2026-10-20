@@ -4,7 +4,12 @@ import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
 import { CircularProgressRing } from '../common/CircularProgressRing';
 import { InvestmentDetailModal } from './InvestmentDetailModal';
-import { Building2, Crown, Calendar, TrendingUp, RefreshCw, Eye, ArrowUpRight, Plus, Filter, ShieldCheck } from 'lucide-react';
+import { Building2, Crown, Calendar, TrendingUp, RefreshCw, Eye, ArrowUpRight, Plus, Filter, ShieldCheck, Printer } from 'lucide-react';
+import { useAuth } from '../../lib/auth';
+import { 
+  buildInvestmentAgreementData, 
+  printAgreementDocument 
+} from '../../lib/investmentAgreementService';
 
 interface MyPropertyInvestmentsProps {
   investments: Investment[];
@@ -19,6 +24,7 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
   onOpenBuyModal,
   onExploreProperties
 }) => {
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
 
@@ -229,7 +235,19 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
                     className="flex-1 py-2.5 px-3 bg-white hover:bg-[#E3E8E3] border border-[#E3E8E3] text-[#142421] font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>View Certificate</span>
+                    <span>View Agreement</span>
+                  </button>
+
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const data = await buildInvestmentAgreementData(inv, matchingProp, user);
+                      printAgreementDocument(data);
+                    }}
+                    className="py-2.5 px-3 bg-white hover:bg-[#EEF2EC] border border-[#E3E8E3] text-[#27845D] font-bold text-xs rounded-xl transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                    title="Print legally signed SPV agreement"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
                   </button>
 
                   {onOpenBuyModal && (

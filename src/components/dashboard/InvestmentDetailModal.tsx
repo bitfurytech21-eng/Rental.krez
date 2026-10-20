@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Investment } from '../../types/investment';
 import { formatCurrency, formatPercent } from '../../lib/utils';
 import { CircularProgressRing } from '../common/CircularProgressRing';
-import { X, ShieldCheck, Crown, ExternalLink, Calendar, Building2, Wallet, ArrowUpRight, CheckCircle2, Copy } from 'lucide-react';
+import { X, ShieldCheck, Crown, ExternalLink, Calendar, Building2, Wallet, ArrowUpRight, CheckCircle2, Copy, Printer, Download, FileText, Loader2 } from 'lucide-react';
+import { useAuth } from '../../lib/auth';
+import { 
+  buildInvestmentAgreementData, 
+  downloadAgreementPdf, 
+  printAgreementDocument 
+} from '../../lib/investmentAgreementService';
+import { InvestmentAgreementModal } from '../agreements/InvestmentAgreementModal';
 
 interface InvestmentDetailModalProps {
   investment: Investment;
@@ -17,7 +24,36 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
   onClose,
   onReinvest
 }) => {
+  const { user } = useAuth();
+  const [showAgreementModal, setShowAgreementModal] = useState<boolean>(false);
+  const [isPrinting, setIsPrinting] = useState<boolean>(false);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+
   if (!isOpen || !investment) return null;
+
+  const handlePrintAgreement = async () => {
+    try {
+      setIsPrinting(true);
+      const data = await buildInvestmentAgreementData(investment, null, user);
+      printAgreementDocument(data);
+    } catch (err) {
+      console.error('Print agreement failed:', err);
+    } finally {
+      setTimeout(() => setIsPrinting(false), 1200);
+    }
+  };
+
+  const handleDownloadAgreement = async () => {
+    try {
+      setIsDownloading(true);
+      const data = await buildInvestmentAgreementData(investment, null, user);
+      await downloadAgreementPdf(data);
+    } catch (err) {
+      console.error('Download agreement failed:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const startDate = investment.startDate || investment.purchasedAt;
   const durationMonths = investment.durationMonths || 36;
@@ -195,8 +231,57 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Legally Signed SPV Agreement Bar */}
+          <div className="p-3.5 rounded-2xl bg-[#142421] text-white border border-[#27845D]/40 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#B7E36A]" />
+                <span className="text-xs font-black uppercase tracking-wide text-white">
+                  Legally Signed SPV Agreement
+                </span>
+              </div>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#27845D]/40 text-[#B7E36A]">
+                eIDAS Validated
+              </span>
+            </div>
+            
+            <p className="text-[11px] text-slate-300">
+              Notarized under Spanish SOCIMI Act 11/2009. Includes full beneficial SPV participatory title and executive director signature.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <button
+                onClick={handlePrintAgreement}
+                disabled={isPrinting}
+                className="py-2 px-3 rounded-xl bg-white text-[#142421] hover:bg-slate-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Printer className="w-3.5 h-3.5 text-[#27845D]" />
+                <span>{isPrinting ? 'Preparing...' : 'Print Agreement'}</span>
+              </button>
+
+              <button
+                onClick={handleDownloadAgreement}
+                disabled={isDownloading}
+                className="py-2 px-3 rounded-xl bg-[#27845D] hover:bg-[#1E6849] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-[#B7E36A]" />}
+                <span>{isDownloading ? 'Generating...' : 'Download PDF'}</span>
+              </button>
+            </div>
+
+            <div className="text-center pt-0.5">
+              <button
+                onClick={() => setShowAgreementModal(true)}
+                className="text-[11px] text-[#B7E36A] hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
+              >
+                <FileText className="w-3 h-3" />
+                <span>View Full Contract Clauses & Articles</span>
+              </button>
+            </div>
+          </div>
+
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <button
               onClick={onClose}
               className="flex-1 py-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F7F4] text-[#142421] text-xs font-bold rounded-xl transition-colors cursor-pointer"
@@ -220,6 +305,14 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
 
         </div>
       </div>
+
+      {/* Full Agreement Modal */}
+      <InvestmentAgreementModal
+        isOpen={showAgreementModal}
+        onClose={() => setShowAgreementModal(false)}
+        investment={investment}
+        user={user}
+      />
     </div>
   );
 };

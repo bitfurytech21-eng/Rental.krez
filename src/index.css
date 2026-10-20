@@ -946,3 +946,34 @@ html, body, #root {
   }
 }
 
+/* ========================================================================= */
+/* Global 5-Second Page Transition Loader (Pure Black, Staggered Blue Dots)  */
+/* ========================================================================= */
+@keyframes globalLoaderPulse {
+  0%, 100% {
+    opacity: 0.22;
+    transform: scale(0.82);
+    box-shadow: 0 0 0px rgba(49, 95, 234, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.26);
+    box-shadow: 0 0 16px #315FEA, 0 0 32px rgba(49, 95, 234, 0.55);
+  }
+}
+
+.global-loader-dot {
+  animation: globalLoaderPulse 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity, box-shadow;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-loader-dot {
+    animation: none !important;
+    opacity: 0.85 !important;
+    transform: none !important;
+    box-shadow: 0 0 10px rgba(49, 95, 234, 0.6) !important;
+  }
+}
+
+
