@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { ledger, CryptoNetworkConfig } from '../../lib/ledger';
 import { formatCurrency } from '../../lib/utils';
+import { ButtonLoader } from '../common/ButtonLoader';
 import {
   ArrowDownLeft,
   CheckCircle2,
@@ -619,7 +620,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     className="w-full py-2.5 px-4 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all disabled:opacity-50"
                   >
                     {isSubmitting ? (
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <ButtonLoader text="Processing Deposit..." />
                     ) : (
                       <>
                         <ArrowDownLeft className="w-3.5 h-3.5 text-[#B7E36A]" />

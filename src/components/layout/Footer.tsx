@@ -1,6 +1,6 @@
 import React from 'react';
 import { FOOTER_LINKS } from '../../data/navigation';
-import { Building2, ShieldCheck, Mail, MapPin, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Mail, MapPin, ExternalLink } from 'lucide-react';
 import { HeaderLanguageButton } from './HeaderLanguageButton';
 
 interface FooterProps {
@@ -16,9 +16,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Brand & About */}
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-emerald-700 border border-[#E3E8E3] shadow-2xs">
-                <Building2 className="w-5 h-5" />
-              </div>
+              <img 
+                src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
+                alt="Kretz Logo" 
+                className="w-9 h-9 rounded-lg object-cover shadow-xs border border-[#C8E1F5]"
+                style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
+              />
               <span className="text-xl font-black tracking-tight text-[#18211F]">
                 Kretz<span className="text-emerald-700">.</span>
               </span>

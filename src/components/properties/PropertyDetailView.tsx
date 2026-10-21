@@ -3,7 +3,13 @@ import { Property } from '../../types/property';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency, formatPercent, formatShortHash } from '../../lib/utils';
+import { calculateInvestmentProjection, generateTokenPurchaseQuote, formatEUR } from '../../lib/financialService';
 import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
+import { PropertyEvidenceRoom } from '../documents/PropertyEvidenceRoom';
+import { PropertyLegalDocumentModal } from '../documents/PropertyLegalDocumentModal';
+import { SensitivityAnalysisCard } from './SensitivityAnalysisCard';
+import { InvestmentTermsAndExitPolicy } from './InvestmentTermsAndExitPolicy';
+import { RiskAndTermsAcknowledgementModal } from './RiskAndTermsAcknowledgementModal';
 import {
   MapPin,
   Calendar,
@@ -53,11 +59,12 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [inspectingDoc, setInspectingDoc] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'financials' | 'structure' | 'fees' | 'schedule' | 'documents' | 'tokenization'
+    'overview' | 'financials' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization'
   >('overview');
 
   // Investment Modal State
   const [isInvestModalOpen, setIsInvestModalOpen] = useState<boolean>(false);
+  const [isRiskModalOpen, setIsRiskModalOpen] = useState<boolean>(false);
   const minTokens = Math.max(1, Math.ceil(property.minimumInvestment / property.tokenPrice));
   const [tokenCount, setTokenCount] = useState<number>(minTokens);
   const [investError, setInvestError] = useState<string | null>(null);
@@ -77,11 +84,28 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   );
   const totalCost = tokenCount * property.tokenPrice;
   const monthlyRate = property.monthlyTargetRate || 6.0;
-  const projectedMonthlyDividend = Number(((totalCost * monthlyRate) / 100).toFixed(2));
-  const annualTarget = Number((projectedMonthlyDividend * 12).toFixed(2));
-  const durationMonths = property.durationMonths || 25;
-  const netMonthlyTarget = Number((projectedMonthlyDividend * durationMonths).toFixed(2));
-  const totalWithPrincipal = Number((totalCost + netMonthlyTarget).toFixed(2));
+  const durationMonths = property.durationMonths || 36;
+
+  const projection = calculateInvestmentProjection({
+    investmentAmountEUR: totalCost,
+    tokenPriceEUR: property.tokenPrice,
+    monthlyTargetRatePercent: monthlyRate,
+    durationMonths: durationMonths,
+    capitalAppreciationYieldPercent: property.capitalAppreciationYield || 0,
+  });
+
+  const purchaseQuote = generateTokenPurchaseQuote({
+    requestedAmountEUR: totalCost,
+    tokenPriceEUR: property.tokenPrice,
+    minimumInvestmentEUR: property.minimumInvestment,
+    targetAmountEUR: property.targetAmount,
+    fundedAmountEUR: property.fundedAmount,
+  });
+
+  const projectedMonthlyDividend = projection.monthlyDistributionEUR;
+  const annualTarget = projection.monthlyDistributionEUR * 12;
+  const netMonthlyTarget = projection.totalMonthlyDistributionsEUR;
+  const totalWithPrincipal = projection.totalProceedsAtExitEUR;
 
   const handleStartInvest = (prefillAmount?: number) => {
     // Requirement 7: direct signed-out users to Login or Register and preserve selected property
@@ -182,7 +206,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             <button
               onClick={() => setIsDocViewerOpen(true)}
               className="px-5 py-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-white text-[#18211F] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
-              title="Generate, Preview and Download Official 7-Document Package"
+              title="Generate, Preview and Inspect Official 7-Document Package"
             >
               <FileText className="w-4 h-4 text-[#27845D]" />
               <span>Official Documents & Brochure</span>
@@ -367,14 +391,14 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             <div>
               <button
                 onClick={() => handleStartInvest()}
-                disabled={property.status !== 'funding'}
-                className="btn btn-primary w-full text-xs font-bold py-3.5 mb-2.5"
+                disabled={property.isFullyFunded || property.status === 'funded' || property.availableTokens <= 0}
+                className="btn btn-primary w-full text-xs font-bold py-3.5 mb-2.5 disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed"
               >
-                {property.status === 'funding'
-                  ? user
-                    ? `Invest Now (From ${formatCurrency(property.minimumInvestment)})`
-                    : `Sign In to Invest (From ${formatCurrency(property.minimumInvestment)})`
-                  : 'Offering 100% Funded'}
+                {property.isFullyFunded || property.status === 'funded' || property.availableTokens <= 0
+                  ? 'Offering 100% Fully Funded'
+                  : user
+                  ? `Invest Now (From ${formatCurrency(property.minimumInvestment)})`
+                  : `Sign In to Invest (From ${formatCurrency(property.minimumInvestment)})`}
               </button>
               <p className="text-[11px] text-[#828D89] text-center leading-tight">
                 *Pro-forma financial terms verified via independent RICS appraisal. Estimates, not guarantees.
@@ -449,11 +473,14 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
         <div className="flex flex-wrap border-b border-[#E3E8E3] mb-6 gap-3 sm:gap-6 text-xs sm:text-sm font-bold">
           {[
             { id: 'overview', label: 'Description & Highlights' },
-            { id: 'structure', label: 'Investment Structure' },
             { id: 'financials', label: 'Financial Terms & Pro-Forma' },
+            { id: 'sensitivity', label: 'Sensitivity Analysis' },
+            { id: 'evidence', label: 'Evidence Room' },
+            { id: 'structure', label: 'Investment Structure' },
+            { id: 'exit_policy', label: 'Exit Policy & Terms' },
             { id: 'fees', label: 'Fees & Costs' },
             { id: 'schedule', label: 'Payment Schedule' },
-            { id: 'documents', label: 'Documents & Due Diligence' },
+            { id: 'documents', label: 'Official Documents' },
             { id: 'tokenization', label: 'Smart Contract' },
           ].map((tab) => (
             <button
@@ -760,6 +787,21 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             </div>
           )}
 
+          {/* TAB: Sensitivity Analysis */}
+          {activeTab === 'sensitivity' && (
+            <SensitivityAnalysisCard property={property} />
+          )}
+
+          {/* TAB: Property Evidence Room */}
+          {activeTab === 'evidence' && (
+            <PropertyEvidenceRoom property={property} />
+          )}
+
+          {/* TAB: Exit Policy & Terms */}
+          {activeTab === 'exit_policy' && (
+            <InvestmentTermsAndExitPolicy property={property} />
+          )}
+
           {/* TAB 4: Fees (Requirement 6) */}
           {activeTab === 'fees' && (
             <div className="bg-white p-7 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
@@ -844,7 +886,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
               <div>
                 <h3 className="text-xl font-bold text-[#18211F] mb-1">Official Legal Documents</h3>
                 <p className="text-xs text-[#69736F]">
-                  Download and review independent notary deeds, certified RICS appraisals, and structural engineering reports.
+                  Inspect and review independent notary deeds, certified RICS appraisals, and structural engineering reports.
                 </p>
               </div>
 
@@ -877,20 +919,10 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setInspectingDoc(doc)}
-                        className="btn btn-secondary btn-sm text-xs font-semibold cursor-pointer"
+                        className="btn btn-primary btn-sm text-xs font-bold cursor-pointer"
                       >
-                        <FileText className="w-3.5 h-3.5 mr-1 text-[#27845D]" />
-                        Inspect
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDocNotification(`Document prepared: ${doc.name}. Cryptographic SPV notary deed hash verified.`);
-                          setTimeout(() => setDocNotification(null), 4000);
-                        }}
-                        className="btn btn-primary btn-sm text-xs font-semibold cursor-pointer"
-                      >
-                        <Download className="w-3.5 h-3.5 mr-1" />
-                        Download PDF
+                        <FileText className="w-3.5 h-3.5 mr-1 text-[#B7E36A]" />
+                        Inspect Document
                       </button>
                     </div>
                   </div>
@@ -1092,7 +1124,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                     </div>
                   ) : (
                     <button
-                      onClick={handleConfirmInvestment}
+                      onClick={() => setIsRiskModalOpen(true)}
                       disabled={isSubmitting}
                       className="btn btn-primary w-full text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                     >
@@ -1102,7 +1134,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                           <span>Processing investment...</span>
                         </>
                       ) : (
-                        `Confirm Acquisition of ${formatCurrency(totalCost)}`
+                        `Review Terms & Acquire ${formatCurrency(totalCost)}`
                       )}
                     </button>
                   )}
@@ -1163,88 +1195,11 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
       )}
       {/* Document Inspection & Verification Modal */}
       {inspectingDoc && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl border border-[#E3E8E3] relative space-y-5 text-left">
-            <button
-              onClick={() => setInspectingDoc(null)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#F6F7F4] hover:bg-[#EEF1EC] text-[#69736F] flex items-center justify-center cursor-pointer transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-[#27845D] flex items-center justify-center shrink-0">
-                <FileText className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#27845D]">
-                  {inspectingDoc.category} Document Verification
-                </span>
-                <h3 className="text-lg font-bold text-[#18211F] leading-tight">
-                  {inspectingDoc.name}
-                </h3>
-              </div>
-            </div>
-
-            <div className="bg-[#F6F7F4] p-4 rounded-2xl border border-[#E3E8E3] space-y-2.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-[#69736F]">Asset Underwriting:</span>
-                <span className="font-semibold text-[#18211F]">{property.title}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#69736F]">Auditing Body:</span>
-                <span className="font-semibold text-[#18211F]">
-                  {inspectingDoc.category === 'Valuation'
-                    ? 'Savills / Tinsa Official Appraisal'
-                    : inspectingDoc.category === 'Legal'
-                    ? 'Spanish Notary Public & Commercial Registry'
-                    : 'Certified Independent Engineering Auditor'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#69736F]">Digital File Size:</span>
-                <span className="font-semibold text-[#18211F]">{inspectingDoc.size}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#69736F]">Notarization Date:</span>
-                <span className="font-semibold text-[#18211F]">{inspectingDoc.updatedAt}</span>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t border-[#E3E8E3]">
-                <span className="text-[#69736F]">Cryptographic Hash:</span>
-                <span className="font-mono text-[11px] font-bold text-[#27845D] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  SHA-256 Verified
-                </span>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-[11px] text-emerald-900 leading-relaxed flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#27845D] shrink-0 mt-0.5" />
-              <span>
-                This legal instrument is ring-fenced under the dedicated Spanish/US SPV bylaws and stored immutably for tokenholder due diligence.
-              </span>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setDocNotification(`Download complete: ${inspectingDoc.name}`);
-                  setInspectingDoc(null);
-                  setTimeout(() => setDocNotification(null), 4000);
-                }}
-                className="btn btn-primary flex-1 text-xs font-bold"
-              >
-                <Download className="w-3.5 h-3.5 mr-1.5" />
-                Download Certified Copy
-              </button>
-              <button
-                onClick={() => setInspectingDoc(null)}
-                className="btn btn-secondary text-xs font-semibold px-5"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <PropertyLegalDocumentModal
+          property={property}
+          document={inspectingDoc}
+          onClose={() => setInspectingDoc(null)}
+        />
       )}
 
       {/* Fullscreen Photo Lightbox Modal */}
@@ -1337,6 +1292,21 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
         isOpen={isDocViewerOpen}
         onClose={() => setIsDocViewerOpen(false)}
       />
+
+      {/* Pre-Subscription Risk & Terms Consent Modal */}
+      {isRiskModalOpen && (
+        <RiskAndTermsAcknowledgementModal
+          property={property}
+          investmentAmountEUR={totalCost}
+          tokensCount={tokenCount}
+          isSubmitting={isSubmitting}
+          onConfirm={() => {
+            setIsRiskModalOpen(false);
+            handleConfirmInvestment();
+          }}
+          onCancel={() => setIsRiskModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

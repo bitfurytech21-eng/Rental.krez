@@ -5,7 +5,6 @@ import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
 import { AccountType, ACCOUNT_TYPES, UserRole } from '../../types/user';
 import {
-  Building2,
   Shield,
   ShieldCheck,
   ArrowRight,
@@ -291,9 +290,12 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center mx-auto mb-3 shadow-sm">
-            <Building2 className="w-6 h-6" />
-          </div>
+          <img 
+            src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
+            alt="Kretz Logo" 
+            className="w-12 h-12 rounded-2xl object-cover mx-auto mb-3 shadow-md border border-slate-300"
+            style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
+          />
           <h2 className="text-2xl font-black text-[#18211F]">
             {mode === 'login' && (preservedProperty ? 'Sign In to Complete Investment' : 'Welcome to Rental·log')}
             {mode === 'register' && (preservedProperty ? 'Register to Invest in Asset' : 'Create Supabase Account')}

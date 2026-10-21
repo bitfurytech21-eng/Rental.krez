@@ -20,6 +20,11 @@ export interface PropertyDocument {
   size: string;
   url: string;
   updatedAt: string;
+  verificationStatus?: 'verified' | 'pending_verification' | 'unverified';
+  issuer?: string;
+  issueDate?: string;
+  reviewDate?: string;
+  version?: string;
 }
 
 export interface FinancialBreakdown {
@@ -118,5 +123,18 @@ export interface Property {
   isOffMarket?: boolean;
   tourUrl?: string;
   externalTourUrl?: string;
+  isFullyFunded?: boolean;
+  verificationStatus?: 'verified' | 'under_review' | 'unverified';
+  valuationBasis?: string;
+  legalOwnerEntity?: string;
+  spvEntityName?: string;
+  spvJurisdiction?: string;
+  spvRegistrationNumber?: string;
+  sensitivityAnalysis?: {
+    baseCaseYield: number;
+    downsideCaseYield: number;
+    stressTestYield: number;
+    vacancyAssumption: string;
+  };
 }
 

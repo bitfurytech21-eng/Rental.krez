@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/auth';
 import { LanguageProvider } from './context/LanguageContext';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
+import { ToastProvider } from './context/ToastContext';
 import { ledger } from './lib/ledger';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
@@ -605,7 +606,9 @@ export default function App() {
       <AuthProvider>
         <LanguageProvider>
           <NavigationProvider>
-            <MainApp />
+            <ToastProvider>
+              <MainApp />
+            </ToastProvider>
           </NavigationProvider>
         </LanguageProvider>
       </AuthProvider>

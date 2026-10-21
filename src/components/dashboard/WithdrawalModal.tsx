@@ -3,6 +3,7 @@ import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency } from '../../lib/utils';
 import { isValidIBAN } from '../../lib/validation';
+import { ButtonLoader } from '../common/ButtonLoader';
 import { ArrowUpRight, ShieldAlert, CheckCircle2, Building2, Coins, Sparkles, AlertCircle } from 'lucide-react';
 
 interface WithdrawalModalProps {
@@ -303,9 +304,13 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || user.walletBalance <= 0 || amount <= 0 || amount > user.walletBalance}
-                className="btn btn-primary text-xs font-bold w-full py-2.5 cursor-pointer disabled:opacity-50"
+                className="btn btn-primary text-xs font-bold w-full py-2.5 flex items-center justify-center cursor-pointer disabled:opacity-50"
               >
-                {isSubmitting ? 'Submitting...' : `Confirm Withdrawal of ${formatCurrency(amount)}`}
+                {isSubmitting ? (
+                  <ButtonLoader text="Processing Withdrawal..." />
+                ) : (
+                  `Confirm Withdrawal of ${formatCurrency(amount)}`
+                )}
               </button>
               <button 
                 type="button" 

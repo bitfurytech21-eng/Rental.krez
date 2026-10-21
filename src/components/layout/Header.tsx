@@ -159,9 +159,12 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
           className="brand hover:opacity-90 transition-opacity flex items-center gap-2.5 text-left cursor-pointer whitespace-nowrap shrink-0 group"
           style={{ background: 'none', border: 'none', padding: 0 }}
         >
-          <div className="w-9 h-9 rounded-xl bg-[#0F172A] flex items-center justify-center text-[#10B981] shadow-xs border border-slate-700/60 group-hover:border-emerald-500/50 transition-colors">
-            <Building2 className="w-4 h-4" />
-          </div>
+          <img 
+            src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
+            alt="Kretz Logo" 
+            className="w-9 h-9 rounded-xl object-cover shadow-xs border border-slate-700/60 group-hover:border-emerald-500/50 transition-colors"
+            style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
+          />
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight text-[#0F172A] leading-none">
               Kretz<span className="text-[#059669]">.</span>
@@ -540,6 +543,32 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#F6F7F4] border-b border-[#E3E8E3] px-4 sm:px-6 py-3 flex flex-col shadow-2xl animate-in slide-in-from-top duration-200 max-h-[85vh] overflow-y-auto text-left">
           
+          {/* Mobile Drawer Brand Header */}
+          <div className="pb-3 mb-2 border-b border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <img 
+                src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
+                alt="Kretz Logo" 
+                className="w-8 h-8 rounded-xl object-cover shadow-xs border border-slate-300"
+                style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-black tracking-tight text-[#0F172A] leading-none">
+                  Kretz<span className="text-[#059669]">.</span>
+                </span>
+                <span className="text-[8px] uppercase tracking-wider font-extrabold text-[#69736F] mt-0.5">
+                  Spain & International
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-200/50 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
           <div className="flex flex-col">
             {/* 1. Home */}
             <button

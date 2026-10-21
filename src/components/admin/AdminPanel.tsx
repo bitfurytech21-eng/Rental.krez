@@ -31,7 +31,8 @@ import {
   FileCheck,
   Tv,
   RotateCcw,
-  BookOpen
+  BookOpen,
+  Scale
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
@@ -41,8 +42,9 @@ import { AdminNewsManager } from './AdminNewsManager';
 import { AdminUserManagement } from './AdminUserManagement';
 import { AdminInsightsCMS } from './AdminInsightsCMS';
 import { AdminAccountSettings } from './AdminAccountSettings';
+import { AdminReconciliationView } from './AdminReconciliationView';
 
-export type AdminTabType = 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security';
+export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security';
 
 export const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -641,6 +643,16 @@ export const AdminPanel: React.FC = () => {
           >
             <FileText className="w-4 h-4 text-[#27845D]" />
             Property Documents ({properties.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('reconciliation')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'reconciliation' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <Scale className="w-4 h-4 text-[#27845D]" />
+            <span>Reconciliation & Controls</span>
           </button>
 
           <button
@@ -1985,6 +1997,13 @@ export const AdminPanel: React.FC = () => {
         {activeTab === 'property-documents' && (
           <div className="animate-in fade-in duration-200">
             <PropertyDocumentsHub properties={properties} />
+          </div>
+        )}
+
+        {/* Tab: Ledger Reconciliation & Dual-Approval Controls */}
+        {activeTab === 'reconciliation' && (
+          <div className="animate-in fade-in duration-200">
+            <AdminReconciliationView />
           </div>
         )}
 

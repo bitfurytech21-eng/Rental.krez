@@ -16,6 +16,7 @@ import { ProfilePage } from './ProfilePage';
 import { PropertyCard } from '../properties/PropertyCard';
 import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
 import { Property } from '../../types/property';
+import { ButtonLoader } from '../common/ButtonLoader';
 import { 
   ArrowRight, Bell, Building2, TrendingUp, Wallet, ShieldCheck, History, 
   PieChart, ArrowDownLeft, ArrowUpRight, HelpCircle, User, FileText, LayoutDashboard, Coins,
@@ -58,6 +59,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileHeaderMenuOpen, setMobileHeaderMenuOpen] = useState(false);
+  const [exploringLoading, setExploringLoading] = useState(false);
+  const [notifRefresh, setNotifRefresh] = useState(0);
 
   React.useEffect(() => {
     if (defaultTab === 'deposit') {
@@ -82,6 +85,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const investments = ledger.getInvestments(user.id);
   const transactions = ledger.getTransactions(user.id);
   const notifications = ledger.getNotifications(user.id);
+  void notifRefresh;
   const properties = ledger.getProperties();
   const verificationDocs = ledger.getVerificationDocuments(user.id);
   const pendingDocsCount = verificationDocs.filter(d => d.status === 'pending').length;
@@ -108,7 +112,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { id: 'verification', label: 'Profile Settings', icon: User },
     { id: 'documents', label: 'Documents', icon: FileText, count: investments.length },
     { id: 'referrals', label: 'Referrals', icon: Share2 },
-    { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.length },
+    { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter(n => !n.read).length },
     { id: 'support', label: 'Help & Support', icon: HelpCircle },
   ];
 
@@ -121,9 +125,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           onClick={onNavigateHome}
           className="p-3.5 border-b border-[#1E332E] flex items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <div className="w-8 h-8 rounded-xl bg-[#B7E36A] text-[#182D2A] flex items-center justify-center font-black text-xs shadow-xs">
-            KZ
-          </div>
+          <img 
+            src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
+            alt="Kretz Logo" 
+            className="w-8 h-8 rounded-xl object-cover shadow-xs border border-emerald-500/30"
+            style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
+          />
           <div>
             <h2 className="font-bold text-xs text-white tracking-tight leading-tight">Kretz Real Estate</h2>
             <p className="text-[9px] text-[#A0A8A5] leading-tight">Prestige & Tokenized Assets</p>
@@ -223,9 +230,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               style={{ background: 'none', border: 'none', padding: 0 }}
               title="Return to Home"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#132A4A] flex items-center justify-center text-[#D6A15D] shadow-md border border-slate-700/60 group-hover:border-[#D6A15D]/60 transition-colors shrink-0">
-                <Building2 className="w-5 h-5 text-[#D6A15D]" />
-              </div>
+              <img 
+                src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
+                alt="Kretz Logo" 
+                className="w-10 h-10 rounded-xl object-cover shadow-md border border-slate-700/60 group-hover:border-[#D6A15D]/60 transition-colors shrink-0"
+                style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
+              />
               <div className="flex flex-col">
                 <span className="text-base sm:text-lg font-black tracking-tight text-white leading-tight">
                   Kretz<span className="text-[#D6A15D]">.</span>
@@ -293,9 +303,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
-              {notifications.length > 0 && (
+              {notifications.filter(n => !n.read).length > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#D6A15D] text-[#0B1B30] text-[9px] font-black rounded-full flex items-center justify-center shadow-xs">
-                  {notifications.length}
+                  {notifications.filter(n => !n.read).length}
                 </span>
               )}
             </button>
@@ -380,7 +390,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               { id: 'portfolio', label: 'Portfolio', icon: Building2 },
               { id: 'wallet', label: 'Wallet', icon: Wallet },
               { id: 'verification', label: 'Profile Settings', icon: User },
-              { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.length },
+              { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter(n => !n.read).length },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -449,30 +459,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                   <div className="flex items-center gap-2 z-10 shrink-0">
                     <button
-                      onClick={() => setActiveTab('properties')}
-                      className="bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+                      onClick={() => {
+                        setExploringLoading(true);
+                        setTimeout(() => {
+                          setExploringLoading(false);
+                          setActiveTab('properties');
+                        }, 1200);
+                      }}
+                      disabled={exploringLoading}
+                      className="bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-semibold px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer disabled:opacity-80"
                     >
-                      Explore Properties
+                      {exploringLoading ? <ButtonLoader text="Loading..." size="sm" /> : 'Explore Properties'}
                     </button>
                   </div>
                 </div>
 
-                {notifications.length > 0 && (
-                  <div className="bg-[#EEF1EC] border border-[#E3E8E3] px-3.5 py-2 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-6 h-6 rounded-lg bg-white text-[#27845D] flex items-center justify-center shrink-0 shadow-2xs">
-                        <Bell className="w-3.5 h-3.5" />
+                {notifications.filter(n => !n.read).length > 0 && (() => {
+                  const unreadList = notifications.filter(n => !n.read);
+                  const firstUnread = unreadList[0];
+                  return (
+                    <div className="bg-[#EEF1EC] border border-[#E3E8E3] px-3.5 py-2 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-6 h-6 rounded-lg bg-white text-[#27845D] flex items-center justify-center shrink-0 shadow-2xs">
+                          <Bell className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="text-[11px] leading-tight truncate">
+                          <span className="font-bold text-[#18211F] mr-1">{firstUnread.title}:</span>
+                          <span className="text-[#69736F]">{firstUnread.message}</span>
+                        </div>
                       </div>
-                      <div className="text-[11px] leading-tight truncate">
-                        <span className="font-bold text-[#18211F] mr-1">{notifications[0].title}:</span>
-                        <span className="text-[#69736F]">{notifications[0].message}</span>
-                      </div>
+                      <button onClick={() => setActiveTab('notifications')} className="text-[11px] font-bold text-[#182D2A] hover:underline whitespace-nowrap shrink-0">
+                        View Unread ({unreadList.length})
+                      </button>
                     </div>
-                    <button onClick={() => setActiveTab('notifications')} className="text-[11px] font-bold text-[#182D2A] hover:underline whitespace-nowrap shrink-0">
-                      View All ({notifications.length})
-                    </button>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <BalanceCard
                   user={user}
@@ -855,35 +876,78 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* 9. NOTIFICATIONS TAB */}
             {activeTab === 'notifications' && (
-              <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-[#E3E8E3] shadow-xs space-y-3.5 animate-in fade-in duration-200 max-w-3xl mx-auto">
-                <div className="flex items-center justify-between">
+              <div className="bg-white p-4 sm:p-6 rounded-2xl border border-[#E3E8E3] shadow-sm space-y-4 animate-in fade-in duration-200 max-w-3xl mx-auto text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E3E8E3]">
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-[#18211F]">Notification Center</h2>
-                    <p className="text-[10.5px] sm:text-xs text-[#69736F]">Account alerts, investment confirmations, and distribution logs.</p>
+                    <h2 className="text-base sm:text-lg font-black text-[#18211F]">Notification Center</h2>
+                    <p className="text-xs text-[#69736F]">Account alerts, investment confirmations, and administrative distribution logs.</p>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#EEF1EC] text-[#27845D] text-[10px] font-bold">
-                    {notifications.length} Unread
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-[#27845D] text-xs font-bold">
+                      {notifications.filter(n => !n.read).length} Unread
+                    </span>
+                    {notifications.filter(n => !n.read).length > 0 && (
+                      <button
+                        onClick={() => {
+                          ledger.markAllNotificationsAsRead(user.id);
+                          setNotifRefresh(prev => prev + 1);
+                        }}
+                        className="px-3 py-1 rounded-lg bg-[#182D2A] text-white text-xs font-bold hover:bg-[#24423C] transition-colors cursor-pointer shadow-2xs"
+                      >
+                        Mark All Read
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {notifications.length === 0 ? (
-                  <div className="text-center py-8 text-[#69736F] space-y-1.5">
-                    <Bell className="w-8 h-8 mx-auto opacity-40" />
-                    <p className="text-xs font-semibold">You have no new notifications.</p>
+                  <div className="text-center py-10 text-[#69736F] space-y-2">
+                    <Bell className="w-10 h-10 mx-auto opacity-40 text-[#27845D]" />
+                    <p className="text-xs font-bold text-[#18211F]">You have no notifications.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {notifications.map((notif) => (
-                      <div key={notif.id} className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4]/60 flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white text-[#27845D] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                      <div
+                        key={notif.id}
+                        className={`p-3.5 sm:p-4 rounded-xl border transition-all flex items-start gap-3.5 ${
+                          notif.read
+                            ? 'bg-white border-[#E3E8E3] opacity-85'
+                            : 'bg-[#F6F7F4] border-emerald-500/50 shadow-2xs ring-1 ring-emerald-500/10'
+                        }`}
+                      >
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-2xs ${
+                          notif.read ? 'bg-slate-100 text-slate-500' : 'bg-[#182D2A] text-[#B7E36A]'
+                        }`}>
                           <Bell className="w-4 h-4" />
                         </div>
-                        <div className="flex-1 space-y-0.5 min-w-0">
+                        <div className="flex-1 space-y-1.5 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <h4 className="font-bold text-[#18211F] text-xs truncate">{notif.title}</h4>
-                            <span className="text-[9.5px] text-[#828D89] shrink-0">{formatDate(notif.createdAt)}</span>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-[#18211F] text-xs sm:text-sm">{notif.title}</h4>
+                              {!notif.read && (
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Unread" />
+                              )}
+                            </div>
+                            <span className="text-[10px] text-[#69736F] font-mono shrink-0">{formatDate(notif.createdAt)}</span>
                           </div>
-                          <p className="text-[11px] text-[#69736F] leading-relaxed">{notif.message}</p>
+                          <p className="text-xs sm:text-sm text-[#1F2937] leading-relaxed font-medium">{notif.message}</p>
+                          
+                          <div className="pt-1 flex items-center justify-end gap-2">
+                            {!notif.read ? (
+                              <button
+                                onClick={() => {
+                                  ledger.markNotificationAsRead(notif.id);
+                                  setNotifRefresh(prev => prev + 1);
+                                }}
+                                className="text-[11px] font-bold text-[#27845D] hover:text-[#182D2A] cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-lg transition-colors inline-flex items-center gap-1"
+                              >
+                                <span>Mark as Read ✓</span>
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-semibold px-2 py-0.5 bg-slate-100 rounded">Read</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

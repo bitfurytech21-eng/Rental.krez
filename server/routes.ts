@@ -1515,7 +1515,28 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
+  if (prop.fundedAmount >= prop.targetAmount || prop.availableTokens <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: `This property offering (${prop.title}) is 100% fully funded. Subscriptions are closed.`,
+      code: 'OFFERING_FULLY_FUNDED',
+      requestId: req.id
+    });
+  }
+
   const count = Number(tokensCount);
+  const totalCost = count * prop.tokenPrice;
+
+  const minInvest = prop.minimumInvestment || prop.tokenPrice || 1000;
+  if (totalCost < minInvest) {
+    return res.status(400).json({
+      success: false,
+      error: `Minimum investment for ${prop.title} is €${minInvest}. Requested: €${totalCost}.`,
+      code: 'BELOW_MINIMUM_INVESTMENT',
+      requestId: req.id
+    });
+  }
+
   if (prop.availableTokens < count) {
     return res.status(400).json({
       success: false,
@@ -1525,7 +1546,6 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const totalCost = count * prop.tokenPrice;
   const userRecord = mockUsers.find(u => u.id === req.user?.id);
 
   if (userRecord && userRecord.balance < totalCost) {

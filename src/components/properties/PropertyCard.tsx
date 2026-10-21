@@ -60,11 +60,11 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   };
 
   const getStatusBadge = () => {
-    if (isOwnedOrOccupied) {
+    if (tokensHeld > 0) {
       return (
         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-950/90 text-[#B7E36A] border border-[#B7E36A]/50 text-[11px] font-extrabold shadow-sm backdrop-blur-md">
           <Crown className="w-3.5 h-3.5 text-[#B7E36A]" />
-          <span>Occupied by You · {tokensHeld} Tokens</span>
+          <span>Your Holdings · {tokensHeld} Tokens</span>
         </span>
       );
     }
@@ -186,12 +186,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             {property.title}
           </h3>
 
-          {/* User Occupied Banner if user has holding */}
-          {isOwnedOrOccupied && (
+          {/* User Holdings Banner if user has active tokens */}
+          {tokensHeld > 0 && (
             <div className="mt-2.5 p-2.5 rounded-xl bg-[#E8F5E9] border border-[#27845D]/30 flex items-center justify-between text-xs">
               <span className="font-bold text-[#142421] flex items-center gap-1.5">
                 <Crown className="w-3.5 h-3.5 text-[#27845D]" />
-                <span>Your Active Position:</span>
+                <span>Your Holdings:</span>
               </span>
               <span className="font-extrabold text-[#27845D] tabular-nums">
                 {tokensHeld} Tokens ({formatCurrency(amountInvested)})

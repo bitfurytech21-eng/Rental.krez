@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Investment } from '../../types/investment';
 import { formatCurrency, formatPercent } from '../../lib/utils';
 import { CircularProgressRing } from '../common/CircularProgressRing';
+import { ButtonLoader } from '../common/ButtonLoader';
 import { X, ShieldCheck, Crown, ExternalLink, Calendar, Building2, Wallet, ArrowUpRight, CheckCircle2, Copy, Printer, Download, FileText, Loader2 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { 
@@ -255,8 +256,14 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
                 disabled={isPrinting}
                 className="py-2 px-3 rounded-xl bg-white text-[#142421] hover:bg-slate-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
-                <Printer className="w-3.5 h-3.5 text-[#27845D]" />
-                <span>{isPrinting ? 'Preparing...' : 'Print Agreement'}</span>
+                {isPrinting ? (
+                  <ButtonLoader text="Preparing..." />
+                ) : (
+                  <>
+                    <Printer className="w-3.5 h-3.5 text-[#27845D]" />
+                    <span>Print Agreement</span>
+                  </>
+                )}
               </button>
 
               <button
@@ -264,8 +271,14 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
                 disabled={isDownloading}
                 className="py-2 px-3 rounded-xl bg-[#27845D] hover:bg-[#1E6849] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               >
-                {isDownloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-[#B7E36A]" />}
-                <span>{isDownloading ? 'Generating...' : 'Download PDF'}</span>
+                {isDownloading ? (
+                  <ButtonLoader text="Generating..." />
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5 text-[#B7E36A]" />
+                    <span>Download PDF</span>
+                  </>
+                )}
               </button>
             </div>
 
