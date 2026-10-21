@@ -127,12 +127,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         >
           <img 
             src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-            alt="Kretz Logo" 
+            alt="L'Agence Logo" 
             className="w-8 h-8 rounded-xl object-cover shadow-xs border border-emerald-500/30"
             style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
           />
           <div>
-            <h2 className="font-bold text-xs text-white tracking-tight leading-tight">Kretz Real Estate</h2>
+            <h2 className="font-bold text-xs text-white tracking-tight leading-tight">L'Agence Real Estate</h2>
             <p className="text-[9px] text-[#A0A8A5] leading-tight">Prestige & Tokenized Assets</p>
           </div>
         </div>
@@ -232,13 +232,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             >
               <img 
                 src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-                alt="Kretz Logo" 
+                alt="L'Agence Logo" 
                 className="w-10 h-10 rounded-xl object-cover shadow-md border border-slate-700/60 group-hover:border-[#D6A15D]/60 transition-colors shrink-0"
                 style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
               />
               <div className="flex flex-col">
                 <span className="text-base sm:text-lg font-black tracking-tight text-white leading-tight">
-                  Kretz<span className="text-[#D6A15D]">.</span>
+                  L'Agence<span className="text-[#D6A15D]">.</span>
                 </span>
                 <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">
                   Dashboard & Asset Portal

@@ -108,7 +108,6 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ variant = 'f
           aria-label="Select Language & Translation Engine"
           className="px-3 py-2 rounded-xl bg-[#0E1F1B] hover:bg-[#18302A] border border-[#23423B] text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
         >
-          <Globe className="w-3.5 h-3.5 text-[#B7E36A]" />
           <span>{currentLanguageOption.flag}</span>
           <span className="font-medium text-slate-200">{currentLanguageOption.nativeName}</span>
           <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/40 font-mono hidden sm:inline">

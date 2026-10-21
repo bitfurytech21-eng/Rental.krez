@@ -1,5 +1,5 @@
 /**
- * Centralized API Client Wrapper for Kretz Real Estate Platform
+ * Centralized API Client Wrapper for L'Agence Real Estate Platform
  * 
  * Provides a robust, standard fetch wrapper for the separated backend architecture:
  * - Automatic JWT bearer authentication header injection

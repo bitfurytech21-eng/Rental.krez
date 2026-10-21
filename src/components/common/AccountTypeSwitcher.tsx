@@ -129,7 +129,7 @@ export const AccountTypeSwitcher: React.FC<AccountTypeSwitcherProps> = ({ user, 
                   type="text"
                   value={jointHolderName}
                   onChange={(e) => setJointHolderName(e.target.value)}
-                  placeholder="e.g., Claire Kretz / Partner Name"
+                  placeholder="e.g., Claire Dupont / Partner Name"
                   className="dash-inner border dash-text text-xs px-4 py-2.5 rounded-xl w-full"
                 />
                 <span className="text-[10px] dash-muted">Required for co-ownership on tokenized deeds and monthly rental distributions.</span>
@@ -144,7 +144,7 @@ export const AccountTypeSwitcher: React.FC<AccountTypeSwitcherProps> = ({ user, 
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g., Kretz Holding S.A. / Family Trust LLC"
+                    placeholder="e.g., L'Agence Holding S.A. / Family Trust LLC"
                     className="dash-inner border dash-text text-xs px-4 py-2.5 rounded-xl w-full"
                   />
                 </div>

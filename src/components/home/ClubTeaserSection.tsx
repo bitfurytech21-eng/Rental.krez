@@ -19,7 +19,7 @@ export const ClubTeaserSection: React.FC<ClubTeaserSectionProps> = ({
             <div className="lg:col-span-8 space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#182C27] border border-[#23423B] text-[#B7E36A] text-xs font-semibold uppercase tracking-wider">
                 <Crown className="w-3.5 h-3.5 text-[#B7E36A]" />
-                <span>Kretz Club Privé · Invitation & Membership</span>
+                <span>L'Agence Club Privé · Invitation & Membership</span>
               </div>
 
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-snug">

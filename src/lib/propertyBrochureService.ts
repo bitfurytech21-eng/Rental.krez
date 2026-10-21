@@ -184,8 +184,8 @@ export class PropertyBrochureService {
     };
 
     const agency = {
-      name: 'Kretz Spain & International Real Estate',
-      brand: 'Kretz Real Estate',
+      name: "L'Agence Spain & International Real Estate",
+      brand: "L'Agence Real Estate",
       address: 'Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain',
       phone: '+34 910 849 210',
       email: 'info@kretz.site',

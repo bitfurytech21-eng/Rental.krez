@@ -346,7 +346,7 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <h1 className="font-serif text-lg sm:text-xl font-bold tracking-[0.12em] text-[#0E201C] uppercase leading-none">
-                    Kretz
+                    L'Agence
                   </h1>
                   <span className="text-xs font-serif italic text-[#8B9B95] tracking-wide">
                     Prestige Real Estate
@@ -747,7 +747,7 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
                   Exclusive Mandate Agency
                 </span>
                 <span className="text-sm font-serif font-bold text-[#0E201C] block">
-                  Kretz Family Real Estate
+                  L'Agence Family Real Estate
                 </span>
                 <span className="text-gray-500 block">
                   Designated Partner: {designatedAdvisorName}
@@ -781,15 +781,15 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
             <div className="space-y-6">
               <div className="border-b border-[#CCD4D0] pb-2">
                 <span className="text-[10px] uppercase font-bold text-[#7D8C86] block">
-                  For Kretz Prestige Real Estate
+                  For L'Agence Prestige Real Estate
                 </span>
                 <span className="text-xs font-bold text-[#0E201C]">
                   {designatedAdvisorName} · Authorized Signatory
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full border-2 border-[#10B981]/40 flex items-center justify-center font-serif text-[10px] text-[#10B981] font-bold uppercase tracking-wider text-center rotate-[-8deg]">
-                  SEALED<br />KRETZ
+                <div className="w-12 h-12 rounded-full border-2 border-[#10B981]/40 flex items-center justify-center font-serif text-[9px] text-[#10B981] font-bold uppercase tracking-wider text-center rotate-[-8deg]">
+                  SEALED<br />L'AGENCE
                 </div>
                 <div className="text-[11px] text-gray-500 italic">
                   Electronically authenticated with notary timestamp
@@ -814,7 +814,7 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
 
           {/* Document Footer */}
           <footer className="mt-10 pt-4 border-t border-[#E1E6E1] flex flex-wrap items-center justify-between text-[10px] text-[#7D8C86]">
-            <span>Kretz Real Estate Dossier Engine · {formatDate(docRecord.updatedAt)}</span>
+            <span>L'Agence Real Estate Dossier Engine · {formatDate(docRecord.updatedAt)}</span>
             <span>Ref: {propertyRef} · ID: {docRecord.id.slice(0, 16)}</span>
           </footer>
         </section>

@@ -7076,7 +7076,7 @@ export const INITIAL_PROPERTIES: Property[] = rawProperties
         ? 'Maître Antoine Dupont, Notaire Associé à Nîmes' 
         : dIdx === 1 
         ? 'RICS Certified Real Estate Appraisal Group (Paris/Nîmes)' 
-        : 'Kretz SPV Legal & Financial Compliance Desk',
+        : "L'Agence SPV Legal & Financial Compliance Desk",
       issueDate: '2026-01-10',
       reviewDate: '2026-03-15',
       version: 'v2.1-audited',
@@ -7090,7 +7090,12 @@ export const INITIAL_PROPERTIES: Property[] = rawProperties
       totalTokens: metrics.totalTokens,
       availableTokens: metrics.availableTokens,
       isFullyFunded: metrics.isFullyFunded,
-      status: metrics.isFullyFunded ? 'funded' : p.status,
+      status: p.status === 'hidden' ? 'hidden' : (metrics.isFullyFunded ? 'funded' : p.status),
+      approvedForFrontend: p.status === 'hidden' ? false : true,
+      assignedFunction: p.status === 'hidden' 
+        ? undefined 
+        : (p.assignedFunction || (metrics.isFullyFunded ? 'Institutional Portfolio Core Asset' : 'Institutional Fractional Tokenization')),
+      frontendVisibilityStatus: p.status === 'hidden' ? ('admin_only' as const) : ('live_frontend' as const),
       monthlyTargetRate: metrics.monthlyTargetRatePercent,
       estimatedAnnualYield: metrics.estimatedAnnualYieldPercent,
       totalEstimatedReturn: metrics.totalTargetReturnPercent,
@@ -7099,7 +7104,7 @@ export const INITIAL_PROPERTIES: Property[] = rawProperties
       verificationStatus: 'verified' as const,
       valuationBasis: 'Independent RICS Certified Expert Appraisal & Notarial Deed Audit',
       legalOwnerEntity: isTargetAsset ? 'SCI Domaine d\'Uzès & Patrimoine' : `SCI ${p.title.slice(0, 25)}`,
-      spvEntityName: isTargetAsset ? 'Kretz SPV #616X SCI Participative' : `Kretz SPV #${index + 100} SCI`,
+      spvEntityName: isTargetAsset ? "L'Agence SPV #616X SCI Participative" : `L'Agence SPV #${index + 100} SCI`,
       spvJurisdiction: 'France (Paris Court of Commerce Registry)',
       spvRegistrationNumber: `RCS Paris ${849200000 + index}`,
       sensitivityAnalysis: {

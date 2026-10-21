@@ -102,7 +102,7 @@ export const AdminMonitoringView: React.FC = () => {
         durationMs: 8,
         eventType: 'SYSTEM_BOOT',
         outcome: 'success',
-        message: 'Kretz API Unified Server listening on port 3000 (/api/v1)'
+        message: "L'Agence API Unified Server listening on port 3000 (/api/v1)"
       },
       {
         id: 'log-sec-02',

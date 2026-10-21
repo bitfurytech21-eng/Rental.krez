@@ -1,6 +1,6 @@
 import { Transaction, TransactionType, TransactionStatus, LedgerEntry } from '../types/transaction';
 import { User, KYCStatus, UserRole, AccountType, getAccountTypeLabel } from '../types/user';
-import { Property } from '../types/property';
+import { Property, PropertyStatus } from '../types/property';
 import { Investment } from '../types/investment';
 import { INITIAL_PROPERTIES } from '../data/properties';
 import { MembershipTier, UserMembership, MembershipApplication, MembershipTierId, MembershipBillingCycle, INITIAL_MEMBERSHIP_TIERS } from '../types/membership';
@@ -80,7 +80,7 @@ export interface PaymentConfig {
 
 const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
   traditional: {
-    beneficiary: 'Kretz Escrow Services S.L.',
+    beneficiary: "L'Agence Escrow Services S.L.",
     iban: 'ES91 2100 0418 4502 0005 1829',
     bic: 'CAIXESBBXXX',
     bankName: 'CaixaBank Institutional Escrow',
@@ -480,7 +480,7 @@ const DEFAULT_USERS: User[] = [
   {
     id: 'usr-admin-kretz-site',
     email: 'info@kretz.site',
-    fullName: 'Kretz Executive Admin',
+    fullName: "L'Agence Executive Admin",
     role: 'admin',
     accountType: 'admin',
     kycStatus: 'verified',
@@ -489,7 +489,7 @@ const DEFAULT_USERS: User[] = [
     totalEarned: 0,
     createdAt: '2026-01-01T00:00:00Z',
     country: 'Spain',
-    cryptoDepositAddress: '0x71C...B3fA (Kretz Executive Treasury)',
+    cryptoDepositAddress: "0x71C...B3fA (L'Agence Executive Treasury)",
     status: 'active'
   },
   {
@@ -909,11 +909,12 @@ class LedgerService {
       this.properties = [...this.properties, ...missingProps];
     }
     
-    // Always sync latest INITIAL_PROPERTIES monthlyTargetRate and yield metrics onto property state
+    // Always sync latest INITIAL_PROPERTIES monthlyTargetRate, yield metrics, and function status onto property state
     const initialMap = new Map(INITIAL_PROPERTIES.map(p => [p.id, p]));
     this.properties = this.properties.map(p => {
       const init = initialMap.get(p.id);
       if (init) {
+        const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
         return {
           ...p,
           monthlyTargetRate: init.monthlyTargetRate,
@@ -921,9 +922,20 @@ class LedgerService {
           totalEstimatedReturn: init.totalEstimatedReturn,
           tokenPrice: init.tokenPrice,
           durationMonths: init.durationMonths,
+          approvedForFrontend: isHidden ? false : (p.approvedForFrontend !== undefined ? p.approvedForFrontend : init.approvedForFrontend),
+          assignedFunction: p.assignedFunction || init.assignedFunction,
+          frontendVisibilityStatus: isHidden ? 'admin_only' : (p.frontendVisibilityStatus || init.frontendVisibilityStatus),
         };
       }
       return p;
+    });
+
+    // Enforce invariant: All hidden properties stay strictly in the admin part
+    this.properties.forEach(p => {
+      if (p.status === 'hidden' || p.status === 'pending_approval') {
+        p.approvedForFrontend = false;
+        p.frontendVisibilityStatus = 'admin_only';
+      }
     });
     setStorage('properties', this.properties);
 
@@ -1306,7 +1318,7 @@ class LedgerService {
     const newUser: User = {
       id: supabaseId,
       email: email,
-      fullName: fullName || (isAdminEmail ? 'Kretz Executive Admin' : email.split('@')[0] || 'Investor'),
+      fullName: fullName || (isAdminEmail ? "L'Agence Executive Admin" : email.split('@')[0] || 'Investor'),
       role: effectiveRole,
       accountType: effectiveAccountType,
       country: country || 'Spain',
@@ -1404,6 +1416,7 @@ class LedgerService {
       .filter(p => Array.isArray(p.images) && p.images.length >= 7)
       .map(p => {
         const init = initialMap.get(p.id);
+        const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
         if (init) {
           return {
             ...p,
@@ -1411,16 +1424,163 @@ class LedgerService {
             estimatedAnnualYield: init.estimatedAnnualYield,
             totalEstimatedReturn: init.totalEstimatedReturn,
             tokenPrice: init.tokenPrice,
+            approvedForFrontend: isHidden ? false : (p.approvedForFrontend !== undefined ? p.approvedForFrontend : init.approvedForFrontend),
+            assignedFunction: p.assignedFunction || init.assignedFunction,
+            frontendVisibilityStatus: isHidden ? ('admin_only' as const) : (p.frontendVisibilityStatus || init.frontendVisibilityStatus),
           };
         }
-        return p;
+        return {
+          ...p,
+          approvedForFrontend: isHidden ? false : (p.approvedForFrontend ?? true),
+          frontendVisibilityStatus: isHidden ? ('admin_only' as const) : (p.frontendVisibilityStatus || 'live_frontend'),
+        };
       });
+  }
+
+  /**
+   * Returns only properties eligible to be displayed on the public frontend.
+   * All hidden, unapproved, or unassigned properties strictly stay in the admin part.
+   */
+  public getFrontendProperties(): Property[] {
+    return this.getProperties().filter(p => 
+      p.status !== 'hidden' && 
+      p.status !== 'pending_approval' && 
+      p.approvedForFrontend === true &&
+      Boolean(p.assignedFunction)
+    );
+  }
+
+  /**
+   * Returns all properties in the platform, including hidden/held properties in admin custody.
+   */
+  public getAdminProperties(): Property[] {
+    return this.getProperties();
+  }
+
+  /**
+   * Assigns an operational function to a property and formally approves it to appear on the public frontend.
+   */
+  public assignPropertyFunctionAndApprove(
+    propertyId: string,
+    options: {
+      assignedFunction: string;
+      agentName?: string;
+      targetStatus?: PropertyStatus;
+      adminEmail?: string;
+      notes?: string;
+    }
+  ): Property {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) throw new Error('Property not found in custody ledger.');
+    if (!options.assignedFunction || !options.assignedFunction.trim()) {
+      throw new Error('A specific operational function must be assigned before approving the property for frontend display.');
+    }
+
+    const admin = options.adminEmail || 'admin@kretz.site';
+    const now = new Date().toISOString();
+    const finalStatus: PropertyStatus = options.targetStatus || 'funding';
+
+    prop.assignedFunction = options.assignedFunction.trim();
+    prop.assignedAt = now;
+    prop.assignedBy = admin;
+    prop.approvedForFrontend = true;
+    prop.approvedAt = now;
+    prop.approvedBy = admin;
+    prop.status = finalStatus;
+    prop.approvalNotes = options.notes;
+    prop.frontendVisibilityStatus = 'live_frontend';
+    if (options.agentName) {
+      if (!prop.agent) {
+        prop.agent = { name: options.agentName };
+      } else {
+        prop.agent.name = options.agentName;
+      }
+    }
+
+    this.logAudit(
+      'usr-admin-1',
+      admin,
+      'PROPERTY_FUNCTION_ASSIGNED_AND_APPROVED',
+      `Property "${prop.title}" assigned function "${prop.assignedFunction}" and APPROVED to appear on frontend under status ${finalStatus.toUpperCase()}.`
+    );
+    this.saveState();
+    return prop;
+  }
+
+  /**
+   * Assigns an operational function to a property while keeping it strictly in the admin part.
+   */
+  public assignPropertyFunctionOnly(
+    propertyId: string,
+    assignedFunction: string,
+    agentName?: string,
+    adminEmail?: string
+  ): Property {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) throw new Error('Property not found in custody ledger.');
+    if (!assignedFunction || !assignedFunction.trim()) {
+      throw new Error('Please specify a valid operational function.');
+    }
+
+    const admin = adminEmail || 'admin@kretz.site';
+    const now = new Date().toISOString();
+
+    prop.assignedFunction = assignedFunction.trim();
+    prop.assignedAt = now;
+    prop.assignedBy = admin;
+    prop.status = 'hidden';
+    prop.approvedForFrontend = false;
+    prop.frontendVisibilityStatus = 'admin_only';
+    if (agentName) {
+      if (!prop.agent) {
+        prop.agent = { name: agentName };
+      } else {
+        prop.agent.name = agentName;
+      }
+    }
+
+    this.logAudit(
+      'usr-admin-1',
+      admin,
+      'PROPERTY_FUNCTION_ASSIGNED',
+      `Property "${prop.title}" assigned function "${prop.assignedFunction}". Held in admin custody until approved.`
+    );
+    this.saveState();
+    return prop;
+  }
+
+  /**
+   * Removes a property from the public frontend and keeps it safely in the admin part.
+   */
+  public hidePropertyFromFrontend(
+    propertyId: string,
+    adminEmail?: string,
+    reason?: string
+  ): Property {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) throw new Error('Property not found in custody ledger.');
+
+    const admin = adminEmail || 'admin@kretz.site';
+    prop.status = 'hidden';
+    prop.approvedForFrontend = false;
+    prop.frontendVisibilityStatus = 'admin_only';
+    if (reason) prop.approvalNotes = reason;
+
+    this.logAudit(
+      'usr-admin-1',
+      admin,
+      'PROPERTY_HIDDEN_FROM_FRONTEND',
+      `Property "${prop.title}" removed from frontend and moved to admin custody.${reason ? ` Reason: ${reason}` : ''}`
+    );
+    this.saveState();
+    return prop;
   }
 
   public getPropertyById(id: string): Property | undefined {
     const p = this.properties.find(prop => (prop.id === id || prop.slug === id) && Array.isArray(prop.images) && prop.images.length >= 7);
     if (p) {
       const init = INITIAL_PROPERTIES.find(item => item.id === p.id || item.slug === p.slug);
+      const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
       if (init) {
         return {
           ...p,
@@ -1428,8 +1588,16 @@ class LedgerService {
           estimatedAnnualYield: init.estimatedAnnualYield,
           totalEstimatedReturn: init.totalEstimatedReturn,
           tokenPrice: init.tokenPrice,
+          approvedForFrontend: isHidden ? false : (p.approvedForFrontend !== undefined ? p.approvedForFrontend : init.approvedForFrontend),
+          assignedFunction: p.assignedFunction || init.assignedFunction,
+          frontendVisibilityStatus: isHidden ? 'admin_only' : (p.frontendVisibilityStatus || init.frontendVisibilityStatus),
         };
       }
+      return {
+        ...p,
+        approvedForFrontend: isHidden ? false : (p.approvedForFrontend ?? true),
+        frontendVisibilityStatus: isHidden ? 'admin_only' : (p.frontendVisibilityStatus || 'live_frontend'),
+      };
     }
     return p;
   }
@@ -2040,7 +2208,7 @@ class LedgerService {
         amount: fee,
         currency: 'EUR',
         status: 'completed',
-        description: `Kretz Club ${tier.name} (${params.billingCycle}) Membership Dues`,
+        description: `L'Agence Club ${tier.name} (${params.billingCycle}) Membership Dues`,
         reference: `MEM-${tier.id.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
         createdAt: new Date().toISOString(),
         paymentMethod: 'Internal Balance',
@@ -2086,7 +2254,7 @@ class LedgerService {
 
     this.createNotification(
       params.userId,
-      `Welcome to Kretz Club — ${tier.name}`,
+      `Welcome to L'Agence Club — ${tier.name}`,
       `Your digital membership card #${memberNumber} has been issued. You now have full access to private concierge and off-market dossiers.`,
       'success'
     );

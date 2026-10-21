@@ -161,13 +161,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
         >
           <img 
             src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-            alt="Kretz Logo" 
+            alt="L'Agence Logo" 
             className="w-9 h-9 rounded-xl object-cover shadow-xs border border-slate-700/60 group-hover:border-emerald-500/50 transition-colors"
             style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
           />
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tight text-[#0F172A] leading-none">
-              Kretz<span className="text-[#059669]">.</span>
+              L'Agence<span className="text-[#059669]">.</span>
             </span>
             <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#69736F] mt-0.5">
               Spain & International
@@ -548,13 +548,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             <div className="flex items-center gap-2.5">
               <img 
                 src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-                alt="Kretz Logo" 
+                alt="L'Agence Logo" 
                 className="w-8 h-8 rounded-xl object-cover shadow-xs border border-slate-300"
                 style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
               />
               <div className="flex flex-col">
                 <span className="text-sm font-black tracking-tight text-[#0F172A] leading-none">
-                  Kretz<span className="text-[#059669]">.</span>
+                  L'Agence<span className="text-[#059669]">.</span>
                 </span>
                 <span className="text-[8px] uppercase tracking-wider font-extrabold text-[#69736F] mt-0.5">
                   Spain & International

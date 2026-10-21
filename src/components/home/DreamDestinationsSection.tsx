@@ -153,7 +153,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
         <div className="max-w-3xl mx-auto text-center mb-14 space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#D5DDD5] text-emerald-900 text-xs font-semibold uppercase tracking-widest shadow-xs">
             <Compass className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Kretz Signature Collection</span>
+            <span>L'Agence Signature Collection</span>
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#18211F] tracking-tight">
@@ -296,7 +296,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
               Looking for a confidential home in one of these dream destinations?
             </h3>
             <p className="text-xs sm:text-sm text-[#A8BEB9] leading-relaxed">
-              Kretz Agency operates an off-market private desk with confidential access to unlisted châteaux, waterfront fincas, and penthouses across all 7 territories.
+              L'Agence operates an off-market private desk with confidential access to unlisted châteaux, waterfront fincas, and penthouses across all 7 territories.
             </p>
           </div>
 

@@ -40,26 +40,26 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-sm sm:text-base font-bold dash-text">Active Property Assets</h3>
-          <p className="text-[11px] dash-muted">
+          <h3 className="text-xs sm:text-sm font-bold dash-text">Active Property Assets</h3>
+          <p className="text-[10px] dash-muted">
             {investments.length} {investments.length === 1 ? 'Holding' : 'Holdings'} generating monthly distributions
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
         {investments.map((inv) => (
           <div
             key={inv.id}
-            className="dash-card p-3.5 sm:p-4 rounded-xl border border-inherit/40 shadow-xs hover:shadow-sm transition-shadow flex flex-col justify-between"
+            className="dash-card p-2.5 sm:p-3 rounded-xl border border-inherit/40 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-start justify-between gap-2.5 mb-2.5">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                     <img
                       src={inv.propertyImage}
                       alt={inv.propertyTitle}
@@ -68,50 +68,50 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-bold dash-text truncate">{inv.propertyTitle}</h4>
-                    <span className="text-[11px] dash-muted truncate block">{inv.propertyLocation}</span>
+                    <h4 className="text-xs sm:text-[13px] font-bold dash-text truncate">{inv.propertyTitle}</h4>
+                    <span className="text-[10px] dash-muted truncate block">{inv.propertyLocation}</span>
                   </div>
                 </div>
 
-                <span className="text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 px-2 py-0.5 rounded-full shrink-0">
+                <span className="text-[8.5px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 px-1.5 py-0.2 rounded-full shrink-0">
                   Active
                 </span>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-1.5 py-2 border-y border-inherit/30 text-xs mb-2">
+              <div className="grid grid-cols-3 gap-1 py-1.5 border-y border-inherit/30 text-[11px] mb-1.5">
                 <div>
-                  <span className="dash-muted block text-[10px]">Tokens</span>
-                  <span className="font-bold dash-text text-xs">{inv.tokensPurchased} ({formatCurrency(inv.totalAmountInvested)})</span>
+                  <span className="dash-muted block text-[9px]">Tokens</span>
+                  <span className="font-bold dash-text text-[11px] sm:text-xs">{inv.tokensPurchased} ({formatCurrency(inv.totalAmountInvested)})</span>
                 </div>
                 <div>
-                  <span className="dash-muted block text-[10px]">Est. Yield</span>
-                  <span className="font-bold text-emerald-500 text-xs">{formatPercent(inv.estimatedAnnualYield)}</span>
+                  <span className="dash-muted block text-[9px]">Est. Yield</span>
+                  <span className="font-bold text-emerald-500 text-[11px] sm:text-xs">{formatPercent(inv.estimatedAnnualYield)}</span>
                 </div>
                 <div>
-                  <span className="dash-muted block text-[10px]">Monthly Payout</span>
-                  <span className="font-bold dash-text text-xs">+{formatCurrency(inv.projectedMonthlyIncome)}/mo</span>
+                  <span className="dash-muted block text-[9px]">Monthly Payout</span>
+                  <span className="font-bold dash-text text-[11px] sm:text-xs">+{formatCurrency(inv.projectedMonthlyIncome)}/mo</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-1.5">
+            <div className="flex items-center justify-between text-[11px] pt-1">
               <button
                 type="button"
                 onClick={() => setSelectedInvestmentForDocs(inv)}
-                className="font-medium text-emerald-500 hover:underline flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg text-[11px]"
+                className="font-medium text-emerald-500 hover:underline flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md text-[10px]"
               >
-                <FileText className="w-3 h-3" /> Legal Docs
+                <FileText className="w-2.5 h-2.5" /> Legal Docs
               </button>
 
-              <div className="flex items-center gap-2.5">
-                <span className="font-mono text-[9px] dash-muted hidden sm:inline">{inv.certificateId}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[8.5px] dash-muted hidden sm:inline">{inv.certificateId}</span>
                 {onSelectProperty && (
                   <button
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="font-semibold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 text-[11px]"
+                    className="font-semibold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 text-[10.5px]"
                   >
-                    View Asset <ArrowRight className="w-3 h-3" />
+                    View Asset <ArrowRight className="w-2.5 h-2.5" />
                   </button>
                 )}
               </div>

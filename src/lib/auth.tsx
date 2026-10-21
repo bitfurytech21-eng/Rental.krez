@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!found) {
           found = ledger.createUser({
             email: cleanEmail,
-            fullName: 'Kretz Executive Admin',
+            fullName: "L'Agence Executive Admin",
             role: 'admin',
             accountType: 'admin'
           });

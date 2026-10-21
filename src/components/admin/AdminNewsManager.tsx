@@ -40,7 +40,7 @@ export const AdminNewsManager: React.FC = () => {
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formCategory, setFormCategory] = useState<NewsCategory>('Company Updates');
-  const [formSource, setFormSource] = useState('Kretz Real Estate');
+  const [formSource, setFormSource] = useState("L'Agence Real Estate");
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formDuration, setFormDuration] = useState('10:00');
   const [formIsFeatured, setFormIsFeatured] = useState(false);
@@ -101,7 +101,7 @@ export const AdminNewsManager: React.FC = () => {
         if (data.title && !formTitle) {
           setFormTitle(data.title);
         }
-        if (data.author_name && formSource === 'Kretz Real Estate') {
+        if (data.author_name && formSource === "L'Agence Real Estate") {
           setFormSource(data.author_name);
         }
       }

@@ -72,7 +72,7 @@ export const MembershipApplicationModal: React.FC<MembershipApplicationModalProp
     }
 
     if (paymentMethod === 'complimentary_invitation' && !invitationCode.trim()) {
-      setError('Please enter a valid private invitation code provided by Kretz Partners.');
+      setError("Please enter a valid private invitation code provided by L'Agence Partners.");
       return;
     }
 
@@ -121,7 +121,7 @@ export const MembershipApplicationModal: React.FC<MembershipApplicationModalProp
         <div className="space-y-2 mb-6 border-b border-slate-100 pb-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
             <Crown className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Kretz Club Privé Application & Onboarding</span>
+            <span>L'Agence Club Privé Application & Onboarding</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-[#18211F] tracking-tight">
             Elevate Your Real Estate Journey
@@ -349,8 +349,8 @@ export const MembershipApplicationModal: React.FC<MembershipApplicationModalProp
             </div>
 
             <p className="text-[11px] text-amber-950 leading-relaxed">
-              <strong>Crucial Regulatory Distinction:</strong> Kretz Club membership confers access to private lifestyle concierge services, curated real estate networking salons, confidential off-market property dossiers, and bespoke advisory. 
-              <strong> Membership does NOT constitute property ownership, deed equity, securities, or financial returns.</strong> Kretz Agency does not guarantee profits or investment performance through membership.
+              <strong>Crucial Regulatory Distinction:</strong> L'Agence Club membership confers access to private lifestyle concierge services, curated real estate networking salons, confidential off-market property dossiers, and bespoke advisory. 
+              <strong> Membership does NOT constitute property ownership, deed equity, securities, or financial returns.</strong> L'Agence does not guarantee profits or investment performance through membership.
             </p>
 
             <div className="space-y-2 pt-1 border-t border-amber-200/60 text-xs text-slate-800">

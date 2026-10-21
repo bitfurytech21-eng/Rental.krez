@@ -292,7 +292,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         <div className="text-center mb-6">
           <img 
             src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-            alt="Kretz Logo" 
+            alt="L'Agence Logo" 
             className="w-12 h-12 rounded-2xl object-cover mx-auto mb-3 shadow-md border border-slate-300"
             style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
           />

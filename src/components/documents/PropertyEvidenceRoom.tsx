@@ -142,7 +142,7 @@ export const PropertyEvidenceRoom: React.FC<PropertyEvidenceRoomProps> = ({
       legalEntity: `SCI ${property.title.substring(0, 20)} SPV`,
       category: 'operating_expenses',
       title: 'Property Operating Budget & Management Fee Audit Statement',
-      issuer: 'Kretz Property Asset Management Desk',
+      issuer: "L'Agence Property Asset Management Desk",
       issueDate: '2026-02-15',
       version: 'v1.0',
       status: 'reviewed',

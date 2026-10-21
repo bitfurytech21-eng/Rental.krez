@@ -20,6 +20,7 @@ import { DreamDestinationsSection } from './components/home/DreamDestinationsSec
 import { ClubTeaserSection } from './components/home/ClubTeaserSection';
 import { CasosDeExitoTeaser } from './components/home/CasosDeExitoTeaser';
 import { InsightsTeaserSection } from './components/home/InsightsTeaserSection';
+import { TrustedByInvestorsSection } from './components/home/TrustedByInvestorsSection';
 
 // Dedicated Pages
 import { PropertiesPage } from './components/pages/PropertiesPage';
@@ -74,7 +75,7 @@ function MainApp() {
   useEffect(() => {
     if (currentPath.startsWith('/property/') && selectedProperty) {
       updatePageSeo({
-        title: `${selectedProperty.title} – Fractional Investment | Kretz Real Estate`,
+        title: `${selectedProperty.title} – Fractional Investment | L'Agence Real Estate`,
         description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected yield ${selectedProperty.estimatedAnnualYield}% p.a. Tokenized shares from €1,000.`,
         image: selectedProperty.images[0],
         type: 'article',
@@ -141,21 +142,62 @@ function MainApp() {
       const currentList = properties;
       const found = (selectedProperty && (selectedProperty.slug === slug || selectedProperty.id === slug))
         ? selectedProperty
-        : currentList.find(p => p.slug === slug || p.id === slug) || currentList[0];
+        : currentList.find(p => p.slug === slug || p.id === slug);
 
       if (found) {
+        const isHidden = found.status === 'hidden' || found.status === 'pending_approval' || found.approvedForFrontend === false || !found.assignedFunction;
+
+        // Invariant: Non-admin users cannot access hidden properties on the frontend
+        if (isHidden && user?.role !== 'admin') {
+          return (
+            <div className="min-h-[70vh] bg-[#F6F7F4] flex items-center justify-center py-20 px-4">
+              <div className="max-w-md w-full bg-white rounded-3xl border border-[#E3E8E3] p-8 text-center shadow-lg">
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto mb-4">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <div className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-3">
+                  Off-Market Asset · Admin Custody
+                </div>
+                <h2 className="text-xl font-bold text-[#18211F] mb-2">{found.title}</h2>
+                <p className="text-sm text-[#69736F] leading-relaxed mb-6">
+                  This property is currently held in off-market administrative custody and has not yet been approved to appear on the public frontend.
+                </p>
+                <button
+                  onClick={() => navigateTo('/properties')}
+                  className="w-full py-3 px-6 rounded-2xl bg-[#182D2A] text-white font-bold text-sm hover:bg-[#27845D] transition-colors cursor-pointer"
+                >
+                  Return to Active Marketplace
+                </button>
+              </div>
+            </div>
+          );
+        }
+
         return (
-          <PropertyDetailView
-            property={found}
-            onBack={() => navigateTo('/properties')}
-            onNavigateDeposit={() => navigateTo('/dashboard')}
-            onNavigateAuthForInvestment={(prop) => {
-              setPendingInvestmentProperty(prop);
-              setReturnDestination(`/property/${prop.slug}`);
-              navigateTo('/login');
-            }}
-            onInvestmentSuccess={handleInvestmentSuccess}
-          />
+          <div>
+            {isHidden && user?.role === 'admin' && (
+              <div className="bg-amber-600 text-white px-4 py-2.5 text-center text-xs font-bold flex items-center justify-center gap-2">
+                <span>🔒 Administrator Preview Mode: This property is HIDDEN from visitors (Function: {found.assignedFunction || 'Unassigned'} · Approved: No).</span>
+                <button
+                  onClick={() => navigateTo('/admin')}
+                  className="underline bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[11px] cursor-pointer"
+                >
+                  Manage in Admin Panel &rarr;
+                </button>
+              </div>
+            )}
+            <PropertyDetailView
+              property={found}
+              onBack={() => navigateTo('/properties')}
+              onNavigateDeposit={() => navigateTo('/dashboard')}
+              onNavigateAuthForInvestment={(prop) => {
+                setPendingInvestmentProperty(prop);
+                setReturnDestination(`/property/${prop.slug}`);
+                navigateTo('/login');
+              }}
+              onInvestmentSuccess={handleInvestmentSuccess}
+            />
+          </div>
         );
       }
     }
@@ -407,17 +449,7 @@ function MainApp() {
       case '/admin':
       case '/admin/deposits':
       case '/admin/withdrawals':
-        return (
-          <ProtectedRoute
-            requireAdmin={true}
-            onNavigateLogin={() => {
-              setReturnDestination(basePath);
-              navigateTo('/admin/login');
-            }}
-          >
-            <AdminPanel />
-          </ProtectedRoute>
-        );
+        return <AdminPanel />;
 
       // Default: Homepage
       case '/':
@@ -438,7 +470,7 @@ function MainApp() {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                     <div className="lg:col-span-8 space-y-4 text-left">
                       <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 uppercase tracking-wider">
-                        <span>Kretz Asset Marketplace</span>
+                        <span>L'Agence Asset Marketplace</span>
                         <span>·</span>
                         <span className="text-[#69736F] font-normal normal-case">Direct Fractional Real Estate</span>
                       </div>
@@ -455,7 +487,7 @@ function MainApp() {
                       <div className="pt-2 flex flex-wrap items-center gap-y-3 gap-x-8 text-xs font-medium text-[#18211F]">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          <span><strong>{properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval').length}</strong> Active Offerings</span>
+                          <span><strong>{properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend !== false && Boolean(p.assignedFunction)).length}</strong> Active Offerings</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -533,6 +565,8 @@ function MainApp() {
               onRegister={() => navigateTo('/register')}
               onExplore={() => navigateTo('/properties')}
             />
+
+            <TrustedByInvestorsSection />
           </main>
         );
     }

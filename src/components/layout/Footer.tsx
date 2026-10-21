@@ -18,12 +18,12 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <div className="flex items-center gap-2.5">
               <img 
                 src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-                alt="Kretz Logo" 
+                alt="L'Agence Logo" 
                 className="w-9 h-9 rounded-lg object-cover shadow-xs border border-[#C8E1F5]"
                 style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
               />
               <span className="text-xl font-black tracking-tight text-[#18211F]">
-                Kretz<span className="text-emerald-700">.</span>
+                L'Agence<span className="text-emerald-700">.</span>
               </span>
             </div>
             <p className="text-sm text-[#69736F] leading-relaxed">
@@ -108,7 +108,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         {/* Copyright & Regional Options */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#69736F] gap-4">
           <div className="flex items-center gap-4">
-            <p>© 2021 Kretz Real Estate S.L. All rights reserved.</p>
+            <p>© 2021 L'Agence Real Estate S.L. All rights reserved.</p>
             <HeaderLanguageButton />
           </div>
           <div className="flex items-center gap-6">

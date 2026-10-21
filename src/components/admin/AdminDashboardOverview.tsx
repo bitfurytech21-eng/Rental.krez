@@ -103,7 +103,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
     try {
       const reportData = {
         exportTimestamp: new Date().toISOString(),
-        institution: 'Kretz / Rental-log Real Estate Ledger',
+        institution: "L'Agence / Rental-log Real Estate Ledger",
         systemStatus: 'Operational - Ledger Validated',
         platformSummary: {
           totalPlatformAUM,

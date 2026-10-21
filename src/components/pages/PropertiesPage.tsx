@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
 import { PropertyCard } from '../properties/PropertyCard';
 import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
@@ -8,7 +8,7 @@ import { formatCurrency, formatPercent } from '../../lib/utils';
 import { 
   Building2, Search, SlidersHorizontal, ShieldCheck, TrendingUp, 
   Sparkles, Crown, Globe, ArrowUpDown, X, Check, MapPin, 
-  HelpCircle, Layers, Coins, Calendar, Info
+  HelpCircle, Layers, Coins, Calendar, Info, Lock, ArrowRight
 } from 'lucide-react';
 
 interface PropertiesPageProps {
@@ -23,7 +23,19 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
   onInvestProperty,
 }) => {
   const { user } = useAuth();
-  const [properties, setProperties] = useState<Property[]>(initialProperties);
+
+  // Invariant: All hidden properties stay strictly in the admin part until function assigned and approved to appear on the frontend
+  const isFrontendEligible = (p: Property) => 
+    p.status !== 'hidden' && 
+    p.status !== 'pending_approval' && 
+    p.approvedForFrontend !== false &&
+    Boolean(p.assignedFunction);
+
+  const [properties, setProperties] = useState<Property[]>(() => initialProperties.filter(isFrontendEligible));
+
+  useEffect(() => {
+    setProperties(initialProperties.filter(isFrontendEligible));
+  }, [initialProperties]);
   const [activeTab, setActiveTab] = useState<'all' | 'funding' | 'funded' | 'returned' | 'my_properties'>('all');
   const [brochureProperty, setBrochureProperty] = useState<Property | null>(null);
   
@@ -231,6 +243,31 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
           </div>
         </div>
 
+        {/* Admin Custody Notice */}
+        {user?.role === 'admin' && (
+          <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-800">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-bold text-amber-950">
+                  {initialProperties.filter(p => !isFrontendEligible(p)).length} Hidden Properties Isolated in Admin Part
+                </p>
+                <p className="text-[#69736F] text-[11px]">
+                  All hidden properties stay strictly in the admin part until an operational function is assigned and approved to appear on the frontend.
+                </p>
+              </div>
+            </div>
+            <a
+              href="/admin"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#182D2A] text-white font-bold hover:bg-[#27845D] transition-colors shrink-0 text-xs"
+            >
+              <span>Open Admin Panel & Review</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        )}
 
         {/* Search & Filter Bar */}
         <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#E3E8E3] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">

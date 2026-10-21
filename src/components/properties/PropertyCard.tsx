@@ -222,56 +222,43 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           </div>
         </div>
 
-        {/* Signature Reental 4-Box Financial Metrics Grid */}
-        <div className="grid grid-cols-2 gap-2.5 py-1">
+        {/* Refined Financial Metrics Grid: Time Frame & Monthly Target (Token Price removed) */}
+        <div className="grid grid-cols-3 gap-2 py-1">
           {/* 1. Monthly Target Percentage */}
-          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-              Monthly Target Rate
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide truncate">
+              Monthly Target
             </span>
-            <span className="text-lg font-black text-[#27845D] block tabular-nums mt-0.5">
+            <span className="text-sm sm:text-base md:text-lg font-black text-[#27845D] block tabular-nums my-0.5 truncate">
               {formatPercent(property.monthlyTargetRate || 6.0)}/mo
             </span>
-            <span className="text-[10px] text-[#69736F] font-medium block">
-              Projected Monthly Pay
+            <span className="text-[10px] text-[#69736F] font-medium block truncate">
+              Projected Pay
             </span>
           </div>
 
-          {/* 2. Total Estimated Return */}
-          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-              {property.durationMonths || 25}-Mo Target Return
+          {/* 2. Refined Time Frame (Image #2 refinement: show only the time frame) */}
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide truncate">
+              Time Frame
             </span>
-            <span className="text-lg font-black text-[#142421] block tabular-nums mt-0.5">
-              {formatPercent(property.totalEstimatedReturn)}
+            <span className="text-sm sm:text-base md:text-lg font-black text-[#142421] block tabular-nums my-0.5 truncate">
+              {property.durationMonths || 21} Months
             </span>
-            <span className="text-[10px] text-[#69736F] font-medium block">
-              {property.durationMonths || 25} Mo. Term (Projected)
-            </span>
-          </div>
-
-          {/* 3. Token Price */}
-          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-              Token Price
-            </span>
-            <span className="text-sm font-black text-[#142421] block tabular-nums mt-1">
-              {formatCurrency(property.tokenPrice)}
-            </span>
-            <span className="text-[10px] text-[#69736F] font-medium block">
-              Per Fractional Share
+            <span className="text-[10px] text-[#69736F] font-medium block truncate">
+              Projected Term
             </span>
           </div>
 
-          {/* 4. Minimum Investment */}
-          <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
+          {/* 3. Minimum Investment */}
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide truncate">
               Min. Investment
             </span>
-            <span className="text-sm font-black text-[#142421] block tabular-nums mt-1">
+            <span className="text-sm sm:text-base md:text-lg font-black text-[#142421] block tabular-nums my-0.5 truncate">
               {formatCurrency(property.minimumInvestment)}
             </span>
-            <span className="text-[10px] text-emerald-700 font-bold block">
+            <span className="text-[10px] text-emerald-700 font-bold block truncate">
               Ring-Fenced SPV
             </span>
           </div>

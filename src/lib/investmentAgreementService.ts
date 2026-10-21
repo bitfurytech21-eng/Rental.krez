@@ -126,8 +126,8 @@ export async function buildInvestmentAgreementData(
       signatureHash: sigHash
     },
     issuer: {
-      companyName: 'Kretz Real Estate S.L.',
-      brand: 'Kretz Prime Real Estate & International Asset Management',
+      companyName: "L'Agence Real Estate S.L.",
+      brand: "L'Agence Prime Real Estate & International Asset Management",
       cif: 'B-67894210',
       address: 'Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain',
       signatoryName: 'Valentin Kretz',

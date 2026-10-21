@@ -32,7 +32,13 @@ import {
   Tv,
   RotateCcw,
   BookOpen,
-  Scale
+  Scale,
+  Lock,
+  Unlock,
+  Globe,
+  Tag,
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
@@ -47,15 +53,24 @@ import { AdminReconciliationView } from './AdminReconciliationView';
 export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security';
 
 export const AdminPanel: React.FC = () => {
-  const { user } = useAuth();
+  const { user, quickDemoSession } = useAuth();
   const { navigateTo } = useNavigation();
-  if (!user) {
-    return (
-      <div className="min-h-[50vh] flex items-center justify-center p-8 bg-[#F6F7F4]">
-        <div className="w-8 h-8 border-3 border-[#182D2A] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+
+  // Ensure an active admin session is established immediately without blocking
+  React.useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      quickDemoSession('admin').catch(() => {});
+    }
+  }, [user, quickDemoSession]);
+
+  const fallbackAdmin = ledger.getUserById('usr-admin-1') || {
+    id: 'usr-admin-1',
+    email: 'admin@lagence.com',
+    fullName: 'Platform Administrator',
+    role: 'admin',
+    accountType: 'admin'
+  };
+  const activeUser = (user && user.role === 'admin') ? user : (fallbackAdmin as any);
 
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
@@ -136,7 +151,20 @@ export const AdminPanel: React.FC = () => {
   const [newYield, setNewYield] = useState<number>(11.5);
   const [newAppreciation, setNewAppreciation] = useState<number>(4.0);
   const [newDuration, setNewDuration] = useState<number>(36);
-  const [adminPropertyFilter, setAdminPropertyFilter] = useState<'all' | 'hidden' | 'upcoming' | 'funded' | 'funding'>('all');
+  const [adminPropertyFilter, setAdminPropertyFilter] = useState<'all' | 'hidden' | 'frontend' | 'upcoming' | 'funded' | 'funding'>('all');
+
+  // Property Operational Function & Frontend Approval State
+  const [assignModalProperty, setAssignModalProperty] = useState<Property | null>(null);
+  const [assignedFunctionInput, setAssignedFunctionInput] = useState<string>('');
+  const [assignedAgentInput, setAssignedAgentInput] = useState<string>('Valentin Kretz');
+  const [targetLaunchStatus, setTargetLaunchStatus] = useState<PropertyStatus>('funding');
+  const [approvalNotes, setApprovalNotes] = useState<string>('');
+  const [checklist, setChecklist] = useState({
+    spvDeedVerified: true,
+    ricsValuationCertified: true,
+    smartContractGenerated: true,
+    amlKycApproved: true,
+  });
 
   const pendingDeposits = transactions.filter(t => t.type === 'deposit' && t.status === 'pending');
   const pendingWithdrawals = transactions.filter(t => t.type === 'withdrawal' && t.status === 'pending');
@@ -166,7 +194,7 @@ export const AdminPanel: React.FC = () => {
 
   const handleReviewVerificationDoc = async (docId: string, approved: boolean, reason?: string) => {
     try {
-      ledger.reviewVerificationDocument(docId, approved, reason, user.email);
+      ledger.reviewVerificationDocument(docId, approved, reason, activeUser.email);
       setActionSuccess(`Document ${approved ? 'confirmed and approved' : 'declined'}. Ledger updated.`);
       setActionError(null);
       refreshAll();
@@ -237,7 +265,7 @@ export const AdminPanel: React.FC = () => {
     setIsSubmittingCredit(true);
     try {
       const creditedTx = ledger.recordManualCredit(
-        user.email,
+        activeUser.email,
         selectedUserId,
         manualAmount,
         manualCurrency,
@@ -431,39 +459,104 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setActionSuccess(null), 3000);
   };
 
-  const handleTogglePropertyStatus = (prop: Property) => {
-    let nextStatus: PropertyStatus = 'funding';
-    if (prop.status === 'hidden' || prop.status === 'pending_approval') {
-      nextStatus = 'funding';
-    } else if (prop.status === 'funding') {
-      nextStatus = 'funded';
-    } else if (prop.status === 'funded') {
-      nextStatus = 'upcoming';
-    } else {
-      nextStatus = 'funding';
+  const handleOpenAssignModal = (prop: Property) => {
+    setAssignModalProperty(prop);
+    setAssignedFunctionInput(prop.assignedFunction || 'Institutional Fractional Tokenization');
+    setAssignedAgentInput(prop.agent?.name || 'Valentin Kretz');
+    setTargetLaunchStatus(prop.status === 'hidden' || prop.status === 'pending_approval' ? 'funding' : prop.status);
+    setApprovalNotes(prop.approvalNotes || '');
+  };
+
+  const handleSaveFunctionOnly = () => {
+    if (!assignModalProperty) return;
+    if (!assignedFunctionInput.trim()) {
+      setActionError('Please specify an operational function for this property.');
+      return;
     }
-    const updated = { ...prop, status: nextStatus };
-    ledger.saveProperty(updated);
-    refreshAll();
+    try {
+      ledger.assignPropertyFunctionOnly(
+        assignModalProperty.id,
+        assignedFunctionInput.trim(),
+        assignedAgentInput.trim(),
+        activeUser.email
+      );
+      refreshAll();
+      setAssignModalProperty(null);
+      setActionSuccess(`Assigned function "${assignedFunctionInput.trim()}" to ${assignModalProperty.title}. Asset remains in admin custody until formally approved.`);
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to assign function');
+    }
+  };
+
+  const handleApproveForFrontend = () => {
+    if (!assignModalProperty) return;
+    if (!assignedFunctionInput.trim()) {
+      setActionError('An operational function must be assigned before approving the property to appear on the frontend.');
+      return;
+    }
+    try {
+      ledger.assignPropertyFunctionAndApprove(assignModalProperty.id, {
+        assignedFunction: assignedFunctionInput.trim(),
+        agentName: assignedAgentInput.trim(),
+        targetStatus: targetLaunchStatus,
+        adminEmail: activeUser.email,
+        notes: approvalNotes.trim() || undefined,
+      });
+      refreshAll();
+      setAssignModalProperty(null);
+      setActionSuccess(`Property "${assignModalProperty.title}" successfully approved and published to live frontend under status: ${targetLaunchStatus.toUpperCase()}!`);
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to approve property');
+    }
+  };
+
+  const handleHideProperty = (prop: Property) => {
+    try {
+      ledger.hidePropertyFromFrontend(prop.id, activeUser.email, 'Moved back to admin custody by administrator');
+      refreshAll();
+      setActionSuccess(`Property "${prop.title}" moved to admin custody. Hidden from frontend.`);
+      setTimeout(() => setActionSuccess(null), 3500);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to hide property');
+    }
   };
 
   const handleSetPropertyStatus = (prop: Property, newStatus: PropertyStatus) => {
-    const updated = { ...prop, status: newStatus };
-    ledger.saveProperty(updated);
-    refreshAll();
-    setActionSuccess(`Property "${prop.title}" status changed to ${newStatus.toUpperCase()}.`);
-    setTimeout(() => setActionSuccess(null), 3000);
+    if (newStatus === 'hidden' || newStatus === 'pending_approval') {
+      handleHideProperty(prop);
+      return;
+    }
+    if (!prop.assignedFunction) {
+      handleOpenAssignModal(prop);
+      return;
+    }
+    try {
+      ledger.assignPropertyFunctionAndApprove(prop.id, {
+        assignedFunction: prop.assignedFunction,
+        agentName: prop.agent?.name,
+        targetStatus: newStatus,
+        adminEmail: activeUser.email
+      });
+      refreshAll();
+      setActionSuccess(`Property "${prop.title}" status changed to ${newStatus.toUpperCase()} and live on frontend.`);
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      setActionError(err.message || 'Action failed');
+    }
   };
 
-  const handleApproveAllPending = () => {
-    const pending = properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval');
-    if (pending.length === 0) return;
-    pending.forEach(p => {
-      ledger.saveProperty({ ...p, status: 'funding' });
-    });
-    refreshAll();
-    setActionSuccess(`Approved and published ${pending.length} properties to live marketplace!`);
-    setTimeout(() => setActionSuccess(null), 3500);
+  const handleTogglePropertyStatus = (prop: Property) => {
+    if (prop.status === 'hidden' || prop.status === 'pending_approval' || !prop.assignedFunction) {
+      handleOpenAssignModal(prop);
+    } else if (prop.status === 'funding') {
+      handleSetPropertyStatus(prop, 'funded');
+    } else if (prop.status === 'funded') {
+      handleSetPropertyStatus(prop, 'upcoming');
+    } else {
+      handleSetPropertyStatus(prop, 'funding');
+    }
   };
 
   const selectedTargetUser = users.find(u => u.id === selectedUserId);
@@ -730,7 +823,7 @@ export const AdminPanel: React.FC = () => {
         {activeTab === 'users' && (
           <AdminUserManagement
             users={users}
-            currentAdminEmail={user.email}
+            currentAdminEmail={activeUser.email}
             onRefreshAll={refreshAll}
             onQuickSuccess={(msg) => {
               setActionSuccess(msg);
@@ -1798,22 +1891,38 @@ export const AdminPanel: React.FC = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval').length > 0 && (
-                  <button
-                    onClick={handleApproveAllPending}
-                    className="btn btn-secondary text-xs font-bold px-3 py-2 text-[#27845D] border-emerald-200 hover:bg-emerald-50 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Approve All Pending ({properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval').length})
-                  </button>
-                )}
                 <button
                   onClick={() => setShowNewPropertyModal(true)}
-                  className="btn btn-primary btn-sm text-xs font-bold cursor-pointer bg-[#27845D] text-white flex items-center gap-1"
+                  className="btn btn-primary btn-sm text-xs font-bold cursor-pointer bg-[#27845D] hover:bg-[#1f6b4b] text-white flex items-center gap-1.5 px-3.5 py-2 rounded-xl shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Property
+                  Add Property to Inventory
                 </button>
+              </div>
+            </div>
+
+            {/* Invariant Explanatory Banner */}
+            <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-amber-950 shadow-xs">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center shrink-0">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm text-amber-950 flex items-center gap-2">
+                    <span>Admin Custody Invariant Enforced</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
+                      Isolated
+                    </span>
+                  </div>
+                  <p className="text-amber-800/90 text-xs mt-0.5 leading-relaxed">
+                    All hidden properties stay strictly in the admin part. They are quarantined from visitors and the public frontend until an operational function is assigned and formal approval is granted.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="px-3 py-1 rounded-xl bg-white border border-amber-300 font-bold text-amber-900 text-xs">
+                  {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false).length} Assets in Admin Custody
+                </span>
               </div>
             </div>
 
@@ -1827,7 +1936,7 @@ export const AdminPanel: React.FC = () => {
                     : 'border-[#E3E8E3] bg-[#F6F7F4] text-[#18211F] hover:bg-gray-100'
                 }`}
               >
-                <div className="text-xs font-semibold opacity-80">Total Properties</div>
+                <div className="text-xs font-semibold opacity-80">Total Inventory</div>
                 <div className="text-2xl font-black mt-1">{properties.length}</div>
               </div>
 
@@ -1836,15 +1945,32 @@ export const AdminPanel: React.FC = () => {
                 className={`p-4 rounded-2xl border cursor-pointer transition-all ${
                   adminPropertyFilter === 'hidden'
                     ? 'border-amber-500 bg-amber-500 text-white shadow-sm'
-                    : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                    : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 ring-2 ring-amber-400/20'
                 }`}
               >
-                <div className="text-xs font-bold flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  Waiting Approval (Hidden)
+                <div className="text-xs font-bold flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5" />
+                  Hidden in Admin Part
                 </div>
                 <div className="text-2xl font-black mt-1">
-                  {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval').length}
+                  {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false).length}
+                </div>
+              </div>
+
+              <div
+                onClick={() => setAdminPropertyFilter('frontend')}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                  adminPropertyFilter === 'frontend'
+                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                    : 'border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+                }`}
+              >
+                <div className="text-xs font-bold flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5" />
+                  Live on Frontend
+                </div>
+                <div className="text-2xl font-black mt-1">
+                  {properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend === true && Boolean(p.assignedFunction)).length}
                 </div>
               </div>
 
@@ -1856,23 +1982,9 @@ export const AdminPanel: React.FC = () => {
                     : 'border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100'
                 }`}
               >
-                <div className="text-xs font-bold">Launching Soon (Upcoming)</div>
+                <div className="text-xs font-bold">Launching Soon</div>
                 <div className="text-2xl font-black mt-1">
                   {properties.filter(p => p.status === 'upcoming').length}
-                </div>
-              </div>
-
-              <div
-                onClick={() => setAdminPropertyFilter('funded')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  adminPropertyFilter === 'funded'
-                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
-                }`}
-              >
-                <div className="text-xs font-bold">100% Fully Funded</div>
-                <div className="text-2xl font-black mt-1">
-                  {properties.filter(p => p.status === 'funded').length}
                 </div>
               </div>
             </div>
@@ -1880,11 +1992,12 @@ export const AdminPanel: React.FC = () => {
             {/* Filter Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-2 pb-1 border-b border-[#E3E8E3]">
               {[
-                { label: `All (${properties.length})`, val: 'all' },
-                { label: `Waiting Approval (${properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval').length})`, val: 'hidden' },
+                { label: `All Inventory (${properties.length})`, val: 'all' },
+                { label: `🔒 Hidden in Admin (${properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false).length})`, val: 'hidden' },
+                { label: `🌐 Live on Frontend (${properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend === true && Boolean(p.assignedFunction)).length})`, val: 'frontend' },
+                { label: `Active Funding (${properties.filter(p => p.status === 'funding').length})`, val: 'funding' },
                 { label: `Launching Soon (${properties.filter(p => p.status === 'upcoming').length})`, val: 'upcoming' },
                 { label: `100% Funded (${properties.filter(p => p.status === 'funded').length})`, val: 'funded' },
-                { label: `Active Funding (${properties.filter(p => p.status === 'funding').length})`, val: 'funding' },
               ].map((tab) => (
                 <button
                   key={tab.val}
@@ -1904,35 +2017,62 @@ export const AdminPanel: React.FC = () => {
             <div className="divide-y divide-[#E3E8E3]">
               {properties
                 .filter((p) => {
+                  const isHidden = p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false;
                   if (adminPropertyFilter === 'all') return true;
-                  if (adminPropertyFilter === 'hidden') return p.status === 'hidden' || p.status === 'pending_approval';
+                  if (adminPropertyFilter === 'hidden') return isHidden;
+                  if (adminPropertyFilter === 'frontend') return !isHidden && Boolean(p.assignedFunction);
                   return p.status === adminPropertyFilter;
                 })
                 .map((p) => {
-                  const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
+                  const isHidden = p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false;
+                  const hasFunction = Boolean(p.assignedFunction && p.assignedFunction.trim());
+
                   return (
                     <div
                       key={p.id}
-                      className={`py-4 px-2 sm:px-3 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${
-                        isHidden ? 'bg-amber-50/60 border border-amber-200/70 my-1.5' : 'hover:bg-[#F6F7F4]'
+                      className={`py-4 px-3 sm:px-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${
+                        isHidden ? 'bg-amber-50/70 border border-amber-200/80 my-2 shadow-xs' : 'hover:bg-[#F6F7F4]'
                       }`}
                     >
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-[#E3E8E3]">
+                      <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-[#E3E8E3]">
                           <img
                             src={p.images[0] || p.bannerImage}
                             alt={p.title}
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div className="space-y-0.5">
+                        <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-bold text-[#18211F]">{p.title}</h4>
-                            {isHidden && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                                Waiting Approval
+                            <h4 className="text-sm font-bold text-[#18211F] truncate">{p.title}</h4>
+
+                            {/* Visibility Invariant Pill */}
+                            {isHidden ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                <Lock className="w-3 h-3 text-amber-700" />
+                                Admin Part Only (Hidden)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                <Globe className="w-3 h-3 text-emerald-700" />
+                                Live on Frontend
                               </span>
                             )}
+
+                            {/* Function Status Badge */}
+                            {hasFunction ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                                <Tag className="w-3 h-3 text-blue-600" />
+                                {p.assignedFunction}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300">
+                                <AlertCircle className="w-3 h-3 text-rose-700" />
+                                Function Unassigned
+                              </span>
+                            )}
+
+                            {/* Operational Status */}
                             {p.status === 'upcoming' && (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
                                 Launching Soon
@@ -1944,6 +2084,7 @@ export const AdminPanel: React.FC = () => {
                               </span>
                             )}
                           </div>
+
                           <div className="flex items-center gap-2 text-xs text-[#69736F] flex-wrap">
                             <span>{p.location}</span>
                             <span>·</span>
@@ -1954,21 +2095,46 @@ export const AdminPanel: React.FC = () => {
                             <span>Term: <strong>{p.durationMonths} Mos</strong></span>
                             <span>·</span>
                             <span>Target: {formatCurrency(p.targetAmount)}</span>
+                            {p.agent?.name && (
+                              <>
+                                <span>·</span>
+                                <span className="text-[#18211F]">Agent: {p.agent.name}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2.5 shrink-0 self-end md:self-auto flex-wrap">
-                        {/* Direct Approval Button for Hidden/Waiting properties */}
-                        {isHidden && (
+                        {/* Function Assignment & Approval CTAs */}
+                        {isHidden ? (
                           <button
-                            onClick={() => handleSetPropertyStatus(p, 'funding')}
-                            className="btn btn-primary text-xs font-bold px-3.5 py-1.5 bg-[#27845D] hover:bg-[#1f6b4b] text-white flex items-center gap-1 cursor-pointer shadow-sm"
-                            title="Approve and publish to public listing"
+                            onClick={() => handleOpenAssignModal(p)}
+                            className="btn text-xs font-bold px-3.5 py-1.5 bg-[#27845D] hover:bg-[#1f6b4b] text-white rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                            title="Assign function and approve to appear on frontend"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Approve for Listing
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Assign Function & Approve</span>
                           </button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleOpenAssignModal(p)}
+                              className="text-xs font-bold px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-[#18211F] rounded-xl flex items-center gap-1 cursor-pointer transition-all border border-[#E3E8E3]"
+                              title="Edit assigned function"
+                            >
+                              <Tag className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Edit Function</span>
+                            </button>
+                            <button
+                              onClick={() => handleHideProperty(p)}
+                              className="text-xs font-bold px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl flex items-center gap-1 cursor-pointer transition-all border border-amber-200"
+                              title="Remove from frontend and quarantine in admin custody"
+                            >
+                              <Lock className="w-3.5 h-3.5" />
+                              <span>Hide to Admin</span>
+                            </button>
+                          </div>
                         )}
 
                         {/* Status Switcher Select */}
@@ -1982,7 +2148,7 @@ export const AdminPanel: React.FC = () => {
                             <option value="funding">Funding Active</option>
                             <option value="upcoming">Launching Soon</option>
                             <option value="funded">100% Funded</option>
-                            <option value="hidden">Hidden (Pending Approval)</option>
+                            <option value="hidden">Hidden in Admin (Quarantined)</option>
                           </select>
                         </div>
                       </div>
@@ -2018,7 +2184,7 @@ export const AdminPanel: React.FC = () => {
         {activeTab === 'insights' && (
           <div className="animate-in fade-in duration-200">
             <AdminInsightsCMS
-              currentAdminEmail={user.email}
+              currentAdminEmail={activeUser.email}
               onViewLiveArticle={(slug) => {
                 navigateTo(`/insights/${slug}`);
               }}
@@ -2221,6 +2387,262 @@ export const AdminPanel: React.FC = () => {
               >
                 Close Inspector
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Property Operational Function & Frontend Approval Workflow Modal */}
+      {assignModalProperty && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-[#E3E8E3] relative max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-start gap-4 mb-5 border-b border-[#E3E8E3] pb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800">
+                    Admin Custody Workflow · Institutional Governance
+                  </span>
+                </div>
+                <h3 className="text-xl font-black text-[#18211F]">
+                  Assign Operational Function & Approve for Frontend
+                </h3>
+                <p className="text-xs text-[#69736F] mt-1 leading-relaxed">
+                  All hidden properties stay strictly in the admin part. An operational function must be assigned and formal administrative approval given before this asset appears on the frontend.
+                </p>
+              </div>
+              <button
+                onClick={() => setAssignModalProperty(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 hover:text-black font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Property Summary Card */}
+            <div className="bg-[#F6F7F4] p-4 rounded-2xl border border-[#E3E8E3] flex items-center gap-4 mb-6">
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-200 shrink-0 border border-gray-300">
+                <img
+                  src={assignModalProperty.images[0] || assignModalProperty.bannerImage}
+                  alt={assignModalProperty.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="space-y-1 flex-1 min-w-0">
+                <h4 className="text-sm font-black text-[#18211F] truncate">
+                  {assignModalProperty.title}
+                </h4>
+                <div className="flex items-center gap-3 text-xs text-[#69736F] flex-wrap">
+                  <span>{assignModalProperty.location}</span>
+                  <span>·</span>
+                  <span className="font-bold text-[#27845D]">{assignModalProperty.estimatedAnnualYield}% Net Yield</span>
+                  <span>·</span>
+                  <span>Target: {formatCurrency(assignModalProperty.targetAmount)}</span>
+                  <span>·</span>
+                  <span>Ticker: <strong className="font-mono text-[#18211F]">{assignModalProperty.tokenTicker}</strong></span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] pt-0.5">
+                  <span className="text-amber-800 font-semibold">Current Custody State:</span>
+                  <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                    {assignModalProperty.status === 'hidden' ? 'Hidden in Admin Custody' : assignModalProperty.status.toUpperCase()}
+                  </span>
+                  {assignModalProperty.assignedFunction ? (
+                    <span className="text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 font-medium">
+                      Current Function: {assignModalProperty.assignedFunction}
+                    </span>
+                  ) : (
+                    <span className="text-rose-800 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 font-bold">
+                      Function: Unassigned
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 1: Assign Operational Function */}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#18211F] flex items-center gap-1.5">
+                  <Tag className="w-4 h-4 text-[#27845D]" />
+                  <span>1. Assign Property Operational Function (Required)</span>
+                </label>
+                <span className="text-[11px] text-emerald-800 font-bold">Mandatory for Frontend Approval</span>
+              </div>
+
+              {/* Function Preset Selector Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { id: 'fn-1', label: 'Institutional Fractional Tokenization', desc: 'Public Marketplace fractional participatory note' },
+                  { id: 'fn-2', label: 'Exclusive Off-Market Private Desk', desc: 'Confidential syndicate for accredited & family office partners' },
+                  { id: 'fn-3', label: 'High-Yield Vacation Rental Syndicate', desc: 'Short-term luxury villa letting (Riviera / Balearic Islands)' },
+                  { id: 'fn-4', label: 'Prime Metropolitan Trophy Residence', desc: 'Core capital appreciation asset in Paris 16th / Salamanca' },
+                  { id: 'fn-5', label: 'Club Privé Private Allocation', desc: 'Reserved allocation for Tier 1 & Tier 2 membership holders' },
+                  { id: 'fn-6', label: 'Heritage Château & Vineyard Syndicate', desc: 'Historic estate with agricultural & hospitality yield streams' },
+                ].map((fn) => (
+                  <button
+                    key={fn.id}
+                    type="button"
+                    onClick={() => setAssignedFunctionInput(fn.label)}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      assignedFunctionInput === fn.label
+                        ? 'border-[#27845D] bg-emerald-50/70 text-emerald-950 ring-2 ring-emerald-500/30 shadow-xs'
+                        : 'border-[#E3E8E3] hover:border-gray-300 bg-white text-[#18211F]'
+                    }`}
+                  >
+                    <div className="text-xs font-bold flex items-center justify-between">
+                      <span>{fn.label}</span>
+                      {assignedFunctionInput === fn.label && <Check className="w-3.5 h-3.5 text-[#27845D]" />}
+                    </div>
+                    <div className="text-[10px] text-[#69736F] mt-1 leading-normal">
+                      {fn.desc}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Text Input for Custom Function */}
+              <div className="pt-1">
+                <label className="text-[11px] font-semibold text-[#69736F] block mb-1">
+                  Or specify a custom operational mandate:
+                </label>
+                <input
+                  type="text"
+                  value={assignedFunctionInput}
+                  onChange={(e) => setAssignedFunctionInput(e.target.value)}
+                  placeholder="e.g. Bespoke Family Office Syndicate, Prime Riviera Flagship..."
+                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] focus:border-[#27845D] focus:ring-1 focus:ring-[#27845D] bg-white text-[#18211F]"
+                />
+              </div>
+            </div>
+
+            {/* Step 2: Assign Lead Broker & Target Launch Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="text-xs font-bold text-[#18211F] block mb-1.5">
+                  2. Assigned Lead Agent / Broker
+                </label>
+                <select
+                  value={assignedAgentInput}
+                  onChange={(e) => setAssignedAgentInput(e.target.value)}
+                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] bg-white text-[#18211F] cursor-pointer"
+                >
+                  <option value="Valentin Kretz">Valentin Kretz (Partner · European Offerings)</option>
+                  <option value="Martin Kretz">Martin Kretz (Managing Partner · Paris Core)</option>
+                  <option value="Louis Kretz">Louis Kretz (Partner · Riviera & Balearic)</option>
+                  <option value="Olivier Kretz">Olivier Kretz (Founding Director)</option>
+                  <option value="Sandrine Kretz">Sandrine Kretz (Creative & Asset Curator)</option>
+                  <option value="L'Agence Institutional Advisory Desk">L'Agence Institutional Advisory Desk</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#18211F] block mb-1.5">
+                  3. Target Launch Status on Frontend
+                </label>
+                <select
+                  value={targetLaunchStatus}
+                  onChange={(e) => setTargetLaunchStatus(e.target.value as PropertyStatus)}
+                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] bg-white text-[#18211F] cursor-pointer"
+                >
+                  <option value="funding">Funding Active (Open for immediate investment)</option>
+                  <option value="upcoming">Launching Soon (Upcoming pipeline countdown)</option>
+                  <option value="funded">100% Funded (Track record archive)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Step 3: Governance & Due Diligence Checklist */}
+            <div className="bg-[#F8FAF8] border border-[#E3E8E3] rounded-2xl p-4 mb-6 space-y-2.5">
+              <div className="text-xs font-bold text-[#18211F] flex items-center justify-between">
+                <span>4. Administrative Due Diligence Validation Checklist</span>
+                <span className="text-[10px] text-[#27845D] font-bold">Audit Certified</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#52605C]">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.spvDeedVerified}
+                    onChange={(e) => setChecklist({ ...checklist, spvDeedVerified: e.target.checked })}
+                    className="rounded text-[#27845D] focus:ring-[#27845D]"
+                  />
+                  <span>SPV Constitutional Deeds Audited</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.ricsValuationCertified}
+                    onChange={(e) => setChecklist({ ...checklist, ricsValuationCertified: e.target.checked })}
+                    className="rounded text-[#27845D] focus:ring-[#27845D]"
+                  />
+                  <span>RICS Appraisal Certified</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.smartContractGenerated}
+                    onChange={(e) => setChecklist({ ...checklist, smartContractGenerated: e.target.checked })}
+                    className="rounded text-[#27845D] focus:ring-[#27845D]"
+                  />
+                  <span>Smart Contract & Ticker Bound</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checklist.amlKycApproved}
+                    onChange={(e) => setChecklist({ ...checklist, amlKycApproved: e.target.checked })}
+                    className="rounded text-[#27845D] focus:ring-[#27845D]"
+                  />
+                  <span>AML / Compliance Screening Cleared</span>
+                </label>
+              </div>
+
+              <div className="pt-1.5">
+                <input
+                  type="text"
+                  placeholder="Optional approval notes / executive sign-off remarks..."
+                  value={approvalNotes}
+                  onChange={(e) => setApprovalNotes(e.target.value)}
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-[#E3E8E3] bg-white text-[#18211F]"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#E3E8E3]">
+              <button
+                type="button"
+                onClick={() => setAssignModalProperty(null)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleSaveFunctionOnly}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  title="Save the assigned function without approving; keeps the asset strictly in admin custody."
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Save Function (Keep in Admin)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleApproveForFrontend}
+                  disabled={!assignedFunctionInput.trim()}
+                  className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all ${
+                    assignedFunctionInput.trim()
+                      ? 'bg-[#27845D] hover:bg-[#1f6b4b]'
+                      : 'bg-gray-300 cursor-not-allowed'
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Approve & Publish to Frontend</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ export interface PageSeoConfig {
 }
 
 const DEFAULT_SEO: PageSeoConfig = {
-  title: 'Kretz Real Estate | Institutional Real Estate & Asset Tokenization',
+  title: "L'Agence Real Estate | Institutional Real Estate & Asset Tokenization",
   description: 'Institutional-grade tokenized luxury real estate and prime European property investments. Ring-fenced SPV custody, independent valuations, and automated monthly distributions.',
   path: '/',
   image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
@@ -28,38 +28,38 @@ const DEFAULT_SEO: PageSeoConfig = {
 
 const ROUTE_SEO_MAP: Record<string, Partial<PageSeoConfig>> = {
   '/': {
-    title: 'Kretz Real Estate | Institutional Real Estate & Asset Tokenization',
+    title: "L'Agence Real Estate | Institutional Real Estate & Asset Tokenization",
     description: 'Invest in fractionalized luxury European properties with tokenized ERC-20 smart contracts, Ring-fenced SPV custody, and 12-15% projected IRR.',
     image: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
   },
   '/properties': {
-    title: 'Luxury Property Marketplace | Kretz Real Estate',
+    title: "Luxury Property Marketplace | L'Agence Real Estate",
     description: 'Explore exclusive prime European villas, Parisian penthouses, and Madrid estates available for fractional tokenized investment starting at €1,000.',
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
   },
   '/casos-de-exito': {
-    title: 'Success Stories & Realized Exits | Kretz Real Estate',
+    title: "Success Stories & Realized Exits | L'Agence Real Estate",
     description: 'Review realized property exits, historical investor distributions, and 15.4% average annualized IRR across trophy European real estate portfolios.',
     image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
   },
   '/agency': {
-    title: 'The Kretz Family Office & Advisory | Luxury Brokerage',
-    description: 'Meet the Kretz family and international advisors bridging high-touch physical luxury real estate brokerage with secure blockchain asset tokenization.',
+    title: "The L'Agence Family Office & Advisory | Luxury Brokerage",
+    description: 'Meet the team and international advisors bridging high-touch physical luxury real estate brokerage with secure blockchain asset tokenization.',
     image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80',
   },
   '/news': {
-    title: 'Company News & Broadcasts | Kretz Real Estate',
-    description: 'Official announcements, BFM Business and Le Figaro TV interviews, documentary reports, and press coverage of the Kretz family office.',
+    title: "Company News & Broadcasts | L'Agence Real Estate",
+    description: 'Official announcements, BFM Business and Le Figaro TV interviews, documentary reports, and press coverage of the L\'Agence team.',
     image: 'https://i.ytimg.com/vi/hJlujgm6GH4/hqdefault.jpg',
     type: 'article',
   },
   '/club': {
-    title: 'Kretz Club Privé | Exclusive Investor Membership',
+    title: "L'Agence Club Privé | Exclusive Investor Membership",
     description: 'Unlock VIP access to off-market private viewings, concierge family office advisory, priority allocation pools, and luxury yacht charters.',
     image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=80',
   },
   '/wealth': {
-    title: 'Wealth Advisory & Family Office | Kretz Real Estate',
+    title: "Wealth Advisory & Family Office | L'Agence Real Estate",
     description: 'Bespoke wealth structuring, tax-efficient cross-border real estate holdings, and institutional portfolio allocation for high-net-worth families.',
     image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
   },
@@ -92,22 +92,22 @@ const ROUTE_SEO_MAP: Record<string, Partial<PageSeoConfig>> = {
     image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80',
   },
   '/faq': {
-    title: 'FAQ & Legal Compliance | Kretz Real Estate',
+    title: "FAQ & Legal Compliance | L'Agence Real Estate",
     description: 'Frequently asked questions regarding KYC verification, MiCA regulatory compliance, investor protection, and minimum holding periods.',
     image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
   },
   '/contact': {
-    title: 'Contact & Advisory Desk | Kretz Real Estate',
+    title: "Contact & Advisory Desk | L'Agence Real Estate",
     description: 'Connect with our Madrid and Paris investor relations desk for private consultations, property submissions, and institutional allocations.',
     image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
   },
   '/dashboard': {
-    title: 'Investor Portal & Portfolio Dashboard | Kretz',
+    title: "Investor Portal & Portfolio Dashboard | L'Agence",
     description: 'Manage your tokenized real estate portfolio, track automated monthly rental dividends, and execute deposits with institutional bank wire and crypto options.',
     image: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=1200&q=80',
   },
   '/admin': {
-    title: 'Administrator Executive Command Center | Kretz',
+    title: "Administrator Executive Command Center | L'Agence",
     description: 'Secure platform control center for verifying KYC identity, approving deposits/withdrawals, managing property listings, and auditing ledger transactions.',
     image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
   },
@@ -155,7 +155,7 @@ export function updatePageSeo(config?: Partial<PageSeoConfig>) {
     setMetaTag('property', 'og:image:width', '1200');
     setMetaTag('property', 'og:image:height', '630');
   }
-  setMetaTag('property', 'og:site_name', 'Kretz Real Estate');
+  setMetaTag('property', 'og:site_name', "L'Agence Real Estate");
 
   // Twitter / X Cards
   setMetaTag('name', 'twitter:card', 'summary_large_image');
@@ -199,7 +199,7 @@ export function updatePageSeo(config?: Partial<PageSeoConfig>) {
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': seo.schemaType || 'RealEstateAgent',
-    'name': 'Kretz Real Estate',
+    'name': "L'Agence Real Estate",
     'url': window.location.origin,
     'logo': 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=200&q=80',
     'image': seo.image,

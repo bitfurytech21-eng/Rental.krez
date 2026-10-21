@@ -69,61 +69,98 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
 
   if (transactions.length === 0) {
     return (
-      <div className="dash-card p-6 rounded-2xl border text-center text-xs dash-muted">
+      <div className="dash-card p-4 rounded-xl border text-center text-xs dash-muted">
         No ledger transactions found.
       </div>
     );
   }
 
   return (
-    <div className="dashboard-table-wrapper border">
-      <table className="dashboard-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Description & Reference</th>
-            <th>Date</th>
-            <th>Payment Method</th>
-            <th>Status</th>
-            <th className="text-right">Amount</th>
-            <th className="text-right">Balance After</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y border-inherit/30">
-          {displayList.map((tx) => {
-            const isNegative = tx.type === 'withdrawal' || tx.type === 'investment';
-            return (
-              <tr key={tx.id} className="hover:opacity-85 transition-opacity">
-                <td>{getTypeBadge(tx.type)}</td>
-                <td className="max-w-xs">
-                  <span className="font-semibold dash-text block text-xs truncate">
+    <div>
+      {/* Mobile-First Compact Transaction Feed (< 640px) */}
+      <div className="sm:hidden divide-y border border-inherit/40 rounded-xl overflow-hidden dash-card">
+        {displayList.map((tx) => {
+          const isNegative = tx.type === 'withdrawal' || tx.type === 'investment';
+          return (
+            <div key={tx.id} className="p-2.5 flex items-center justify-between gap-2.5 hover:opacity-90 transition-opacity">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="shrink-0">{getTypeBadge(tx.type)}</div>
+                <div className="min-w-0">
+                  <span className="font-semibold dash-text block text-xs truncate leading-tight">
                     {tx.description}
                   </span>
-                  <span className="font-mono text-[10px] dash-muted">
-                    Ref: {tx.reference} {tx.txHash ? `· Hash: ${formatShortHash(tx.txHash)}` : ''}
-                  </span>
-                </td>
-                <td className="text-xs dash-muted whitespace-nowrap">
-                  {formatDate(tx.createdAt)}
-                </td>
-                <td className="text-xs dash-text font-medium whitespace-nowrap">
-                  {tx.paymentMethod}
-                </td>
-                <td>{getStatusBadge(tx.status)}</td>
-                <td className="text-right font-bold text-xs whitespace-nowrap">
-                  <span className={isNegative ? 'dash-text' : 'text-emerald-400'}>
-                    {isNegative ? '-' : '+'}
-                    {formatCurrency(tx.amount, tx.currency)}
-                  </span>
-                </td>
-                <td className="text-right font-medium text-xs dash-muted whitespace-nowrap">
-                  {formatCurrency(tx.balanceAfter)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <div className="flex items-center gap-1.5 text-[9.5px] dash-muted leading-tight mt-0.5">
+                    <span>{formatDate(tx.createdAt)}</span>
+                    <span>·</span>
+                    <span className="font-mono">{tx.paymentMethod}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className={`font-black text-xs tabular-nums ${isNegative ? 'dash-text' : 'text-[#27845D]'}`}>
+                  {isNegative ? '-' : '+'}
+                  {formatCurrency(tx.amount, tx.currency)}
+                </div>
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                  {getStatusBadge(tx.status)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop / Tablet Compact Table (>= 640px) */}
+      <div className="hidden sm:block dashboard-table-wrapper border rounded-xl overflow-hidden">
+        <table className="dashboard-table">
+          <thead>
+            <tr>
+              <th className="py-1.5 px-2.5 text-[9.5px]">Type</th>
+              <th className="py-1.5 px-2.5 text-[9.5px]">Description & Reference</th>
+              <th className="py-1.5 px-2.5 text-[9.5px]">Date</th>
+              <th className="py-1.5 px-2.5 text-[9.5px]">Method</th>
+              <th className="py-1.5 px-2.5 text-[9.5px]">Status</th>
+              <th className="py-1.5 px-2.5 text-[9.5px] text-right">Amount</th>
+              <th className="py-1.5 px-2.5 text-[9.5px] text-right">Balance After</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y border-inherit/30">
+            {displayList.map((tx) => {
+              const isNegative = tx.type === 'withdrawal' || tx.type === 'investment';
+              return (
+                <tr key={tx.id} className="hover:opacity-85 transition-opacity">
+                  <td className="py-1.5 px-2.5">{getTypeBadge(tx.type)}</td>
+                  <td className="py-1.5 px-2.5 max-w-xs">
+                    <span className="font-semibold dash-text block text-xs truncate">
+                      {tx.description}
+                    </span>
+                    <span className="font-mono text-[9.5px] dash-muted">
+                      Ref: {tx.reference} {tx.txHash ? `· ${formatShortHash(tx.txHash)}` : ''}
+                    </span>
+                  </td>
+                  <td className="py-1.5 px-2.5 text-[11px] dash-muted whitespace-nowrap">
+                    {formatDate(tx.createdAt)}
+                  </td>
+                  <td className="py-1.5 px-2.5 text-[11px] dash-text font-medium whitespace-nowrap">
+                    {tx.paymentMethod}
+                  </td>
+                  <td className="py-1.5 px-2.5">{getStatusBadge(tx.status)}</td>
+                  <td className="py-1.5 px-2.5 text-right font-bold text-xs whitespace-nowrap">
+                    <span className={isNegative ? 'dash-text' : 'text-[#27845D]'}>
+                      {isNegative ? '-' : '+'}
+                      {formatCurrency(tx.amount, tx.currency)}
+                    </span>
+                  </td>
+                  <td className="py-1.5 px-2.5 text-right font-medium text-[11px] dash-muted whitespace-nowrap">
+                    {formatCurrency(tx.balanceAfter)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

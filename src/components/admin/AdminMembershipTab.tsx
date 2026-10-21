@@ -170,7 +170,7 @@ export const AdminMembershipTab: React.FC = () => {
           <div>
             <h3 className="text-lg font-bold text-[#18211F] flex items-center gap-2">
               <Crown className="w-5 h-5 text-emerald-800" />
-              Kretz Club Active Member Roster
+              L'Agence Club Active Member Roster
             </h3>
             <p className="text-xs text-slate-500">
               Audit memberships, modify assigned tiers, grant honorary access, and view digital card credentials.

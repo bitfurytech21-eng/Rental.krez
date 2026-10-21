@@ -73,7 +73,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
   const [formCoverImage, setFormCoverImage] = useState('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80');
   const [formCoverAlt, setFormCoverAlt] = useState('European luxury real estate architecture');
   const [formCoverCaption, setFormCoverCaption] = useState('Prime architectural asset under institutional management');
-  const [formCoverAttribution, setFormCoverAttribution] = useState('Photo by Kretz Editorial License');
+  const [formCoverAttribution, setFormCoverAttribution] = useState("Photo by L'Agence Editorial License");
   const [formIsFeatured, setFormIsFeatured] = useState(false);
   const [formTags, setFormTags] = useState('Market Barometer, Prime Yield, Paris');
   const [formTakeaways, setFormTakeaways] = useState('Key finding 1 regarding European cap rate normalization.\nKey finding 2 analyzing Latin American family office inflows.');
@@ -124,7 +124,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
     setFormCoverImage('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80');
     setFormCoverAlt('Luxury architectural asset in Europe');
     setFormCoverCaption('Prime European property under institutional management');
-    setFormCoverAttribution('Photo by Kretz Editorial License');
+    setFormCoverAttribution("Photo by L'Agence Editorial License");
     setFormIsFeatured(false);
     setFormTags('Yields, Real Estate, Investment');
     setFormTakeaways('Key takeaway 1\nKey takeaway 2');
@@ -209,7 +209,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
               name: formAuthorName.trim(),
               role: formAuthorRole.trim(),
               avatar: formAuthorAvatar.trim(),
-              organization: 'Kretz Wealth Advisory'
+              organization: "L'Agence Wealth Advisory"
             },
             status: formStatus,
             scheduledPublishDate: formStatus === 'scheduled' ? formScheduledDate : undefined,
@@ -241,7 +241,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
               name: formAuthorName.trim(),
               role: formAuthorRole.trim(),
               avatar: formAuthorAvatar.trim(),
-              organization: 'Kretz Wealth Advisory'
+              organization: "L'Agence Wealth Advisory"
             },
             publishedAt: new Date().toISOString(),
             status: formStatus,

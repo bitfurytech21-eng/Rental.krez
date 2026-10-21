@@ -10,7 +10,6 @@ import {
   Coins,
   Copy,
   Check,
-  CreditCard,
   ShieldCheck,
   AlertCircle,
   Clock,
@@ -35,7 +34,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   const { user, refreshUser, isAdmin } = useAuth();
   const paymentConfig = ledger.getPaymentConfig();
 
-  const [method, setMethod] = useState<'sepa' | 'crypto' | 'instant'>('sepa');
+  const [method, setMethod] = useState<'sepa' | 'crypto'>('sepa');
   const [amount, setAmount] = useState<number>(5000);
   const [senderName, setSenderName] = useState<string>(user?.fullName || '');
   const [senderReference, setSenderReference] = useState<string>('');
@@ -125,16 +124,12 @@ export const DepositModal: React.FC<DepositModalProps> = ({
         metadata.bank = paymentConfig.traditional.bankName;
         metadata.iban = paymentConfig.traditional.iban;
         metadata.depositRef = externalRef;
-      } else if (method === 'crypto') {
+      } else {
         paymentMethodTitle = `Crypto Transfer - ${cryptoToken} (${selectedNetworkConfig.name || cryptoNetwork})`;
         currency = cryptoToken;
         metadata.network = selectedNetworkConfig.network || cryptoNetwork;
         metadata.treasuryAddress = selectedNetworkConfig.walletAddress;
         metadata.declaredTxHash = declaredTxHash.trim() || undefined;
-      } else {
-        paymentMethodTitle = 'Instant Card / SEPA Instant Gateway';
-        currency = 'EUR';
-        metadata.gateway = 'Stripe / CaixaBank 3D-Secure 2.0';
       }
 
       if (receiptBase64) {
@@ -273,7 +268,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
             {/* Scrollable Form Body */}
             <div className="overflow-y-auto p-3.5 sm:p-4 space-y-3 text-left">
               {/* Method Tabs */}
-              <div className="grid grid-cols-3 gap-1 p-0.5 bg-[#EEF1EC] rounded-xl text-xs">
+              <div className="grid grid-cols-2 gap-1 p-0.5 bg-[#EEF1EC] rounded-xl text-xs">
                 <button
                   type="button"
                   onClick={() => setMethod('sepa')}
@@ -284,7 +279,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                   }`}
                 >
                   <Building2 className="w-3 h-3 text-emerald-700" />
-                  <span>Bank Wire</span>
+                  <span>Bank Wire (SEPA)</span>
                 </button>
 
                 <button
@@ -297,20 +292,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                   }`}
                 >
                   <Coins className="w-3 h-3 text-amber-600" />
-                  <span>Crypto</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMethod('instant')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                    method === 'instant'
-                      ? 'bg-white text-[#18211F] shadow-xs'
-                      : 'text-[#69736F] hover:text-[#18211F]'
-                  }`}
-                >
-                  <CreditCard className="w-3 h-3 text-blue-600" />
-                  <span>Card</span>
+                  <span>Crypto Transfer</span>
                 </button>
               </div>
 
@@ -532,31 +514,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                   </div>
                 )}
 
-                {/* METHOD 3: INSTANT CARD / SIMULATED */}
-                {method === 'instant' && (
-                  <div className="space-y-2.5">
-                    <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs space-y-1">
-                      <div className="flex items-center gap-1.5 text-blue-900 font-bold text-[11px]">
-                        <CreditCard className="w-3.5 h-3.5 text-blue-700" />
-                        <span>Instant Institutional Card Gateway</span>
-                      </div>
-                      <p className="text-blue-800 text-[10px] leading-tight">
-                        Instant deposit gateway with CaixaBank 3D-Secure 2.0. Perfect for immediate allocation and testing without wire delays.
-                      </p>
-                    </div>
 
-                    <div>
-                      <label className="block text-[10px] font-semibold text-[#69736F] mb-0.5">Cardholder Name</label>
-                      <input
-                        type="text"
-                        value={senderName}
-                        onChange={(e) => setSenderName(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[#E3E8E3] text-xs font-bold focus:outline-none focus:border-[#182D2A]"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
 
                 {/* Receipt / Transfer Slip Upload */}
                 <div className="p-2.5 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1.5 text-xs">

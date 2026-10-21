@@ -735,7 +735,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 className="mt-0.5 rounded border-gray-300 text-[#182D2A] focus:ring-[#182D2A]"
               />
               <span className="text-xs text-[#18211F] font-semibold">
-                I confirm this status change complies with Kretz compliance policies and authorize recording this update in the immutable audit log under <strong className="font-mono">{currentAdminEmail}</strong>.
+                I confirm this status change complies with L'Agence compliance policies and authorize recording this update in the immutable audit log under <strong className="font-mono">{currentAdminEmail}</strong>.
               </span>
             </label>
 

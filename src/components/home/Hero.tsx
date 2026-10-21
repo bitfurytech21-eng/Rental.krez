@@ -20,7 +20,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, onHowItWorks }) => {
             
             {/* Dignified Institutional Kicker */}
             <div className="inline-flex items-center gap-2 text-xs font-semibold text-sky-300 tracking-wide uppercase px-3.5 py-1.5 rounded-full bg-sky-950/60 border border-sky-500/30 shadow-xs">
-              <span>Kretz Institutional Real Estate</span>
+              <span>L'Agence Institutional Real Estate</span>
               <span className="text-sky-400">·</span>
               <span className="text-sky-100 normal-case font-medium">Ring-Fenced European SPV Structure</span>
             </div>

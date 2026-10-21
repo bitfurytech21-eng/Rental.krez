@@ -29,7 +29,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#0E1F1B] text-[#B7E36A] text-xs font-black uppercase tracking-wider">
               <BookOpen className="w-3.5 h-3.5 text-[#B7E36A]" />
-              <span>Kretz Intelligence & Dossiers</span>
+              <span>L'Agence Intelligence & Dossiers</span>
             </div>
 
             <h2 className="text-3xl sm:text-4xl font-extrabold text-[#18211F] tracking-tight">

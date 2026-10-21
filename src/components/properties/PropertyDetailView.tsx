@@ -10,6 +10,7 @@ import { PropertyLegalDocumentModal } from '../documents/PropertyLegalDocumentMo
 import { SensitivityAnalysisCard } from './SensitivityAnalysisCard';
 import { InvestmentTermsAndExitPolicy } from './InvestmentTermsAndExitPolicy';
 import { RiskAndTermsAcknowledgementModal } from './RiskAndTermsAcknowledgementModal';
+import { ProjectedYieldChart } from './ProjectedYieldChart';
 import {
   MapPin,
   Calendar,
@@ -59,7 +60,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [inspectingDoc, setInspectingDoc] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'financials' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization'
+    'overview' | 'financials' | 'yield_chart' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization'
   >('overview');
 
   // Investment Modal State
@@ -473,6 +474,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
         <div className="flex flex-wrap border-b border-[#E3E8E3] mb-6 gap-3 sm:gap-6 text-xs sm:text-sm font-bold">
           {[
             { id: 'overview', label: 'Description & Highlights' },
+            { id: 'yield_chart', label: '📈 10-Yr Yield Growth (D3 Chart)' },
             { id: 'financials', label: 'Financial Terms & Pro-Forma' },
             { id: 'sensitivity', label: 'Sensitivity Analysis' },
             { id: 'evidence', label: 'Evidence Room' },
@@ -655,6 +657,11 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             </div>
           )}
 
+          {/* TAB: 10-Yr D3 Interactive Yield Growth Chart */}
+          {activeTab === 'yield_chart' && (
+            <ProjectedYieldChart property={property} initialInvestmentEUR={property.minimumInvestment} />
+          )}
+
           {/* TAB 2: Investment Structure (Requirement 6) */}
           {activeTab === 'structure' && (
             <div className="bg-white p-7 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
@@ -783,6 +790,11 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* D3 10-Year Projected Yield Growth Chart */}
+              <div className="pt-4 border-t border-[#E3E8E3]">
+                <ProjectedYieldChart property={property} initialInvestmentEUR={property.minimumInvestment} />
               </div>
             </div>
           )}

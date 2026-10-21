@@ -351,14 +351,14 @@ export const InvestmentAgreementModal: React.FC<InvestmentAgreementModalProps> =
                   <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1.5">
                     <h4 className="font-black text-[#142421]">ARTICLE III: BANKRUPTCY-REMOTENESS & RING-FENCED ASSET INSULATION</h4>
                     <p className="text-[#384642] leading-relaxed">
-                      3.1. The Underlying Real Estate Asset is held within an autonomous, ring-fenced European SPV. Pursuant to Spanish Commercial Jurisprudence, neither the property deed nor the investor fractional rights may be attached, encumbered, or liquidated to satisfy any liabilities, debts, or claims of Kretz Real Estate S.L. or associated platform entities.
+                      3.1. The Underlying Real Estate Asset is held within an autonomous, ring-fenced European SPV. Pursuant to Spanish Commercial Jurisprudence, neither the property deed nor the investor fractional rights may be attached, encumbered, or liquidated to satisfy any liabilities, debts, or claims of L'Agence Real Estate S.L. or associated platform entities.
                     </p>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1.5">
                     <h4 className="font-black text-[#142421]">ARTICLE IV: SECONDARY MARKETPLACE & LIQUIDITY RIGHTS</h4>
                     <p className="text-[#384642] leading-relaxed">
-                      4.1. The Investor maintains the right to hold the Participatory Notes until scheduled SPV asset divestment or list the Notes for secondary peer-to-peer transfer via the Kretz Marketplace in accordance with regulatory transfer requirements and MiCA guidelines.
+                      4.1. The Investor maintains the right to hold the Participatory Notes until scheduled SPV asset divestment or list the Notes for secondary peer-to-peer transfer via the L'Agence Marketplace in accordance with regulatory transfer requirements and MiCA guidelines.
                     </p>
                   </div>
 

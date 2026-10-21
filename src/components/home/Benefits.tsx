@@ -40,7 +40,7 @@ export const Benefits: React.FC = () => {
       <div className="container">
         <div className="section-heading">
           <div className="text-xs font-semibold text-emerald-800 tracking-wider uppercase mb-2">
-            Kretz Institutional Governance · Asset Protections
+            L'Agence Institutional Governance · Asset Protections
           </div>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#18211F] mb-3">
             Institutional Real Estate Fundamentals with Verified Custody

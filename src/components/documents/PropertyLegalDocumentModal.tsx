@@ -140,7 +140,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
   const propertyIdIndex = Math.abs(property.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 456)) % propertyIdsList.length;
   const uniquePropertyIdentifier = propertyIdsList[propertyIdIndex];
 
-  const spvName = property.spvEntityName || `Kretz Real Estate SPV ${property.tokenTicker || 'KTZ'} S.L.`;
+  const spvName = property.spvEntityName || `L'Agence Real Estate SPV ${property.tokenTicker || 'KTZ'} S.L.`;
   const spvJurisdiction = property.spvJurisdiction || 'France / European Union (Commercial Registry of Paris & Nice)';
   
   const cadastralIdNum = Math.abs(property.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 12345)) % 90000 + 10000;
@@ -283,7 +283,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
 
               <div className="space-y-4 pt-2">
                 <p className="indent-8">
-                  <span className="font-bold uppercase">ENTRE LES SOUSSIGNÉS :</span> Kretz Luxury Real Estate France SAS, agissant en qualité d'agent de commercialisation institutionnel autorisé, et le Propriétaire Inscrit au Registre désigné ci-dessus, le présent Mandat Exclusif et Examen des Titres de Propriété est établi conformément au Code Civil français, à la Loi Hoguet n° 70-9 et aux directives européennes applicables aux actifs immobiliers de prestige.
+                  <span className="font-bold uppercase">ENTRE LES SOUSSIGNÉS :</span> L'Agence Luxury Real Estate France SAS, agissant en qualité d'agent de commercialisation institutionnel autorisé, et le Propriétaire Inscrit au Registre désigné ci-dessus, le présent Mandat Exclusif et Examen des Titres de Propriété est établi conformément au Code Civil français, à la Loi Hoguet n° 70-9 et aux directives européennes applicables aux actifs immobiliers de prestige.
                 </p>
 
                 <section className="space-y-2">
@@ -291,7 +291,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
                     Article 1 : Nomination & Étendue de l'Autorité Exclusive
                   </h3>
                   <p className="indent-8">
-                    Le Mandant confère par les présentes à Kretz Luxury Real Estate le mandat exclusif de structurer, commercialiser et coordonner l'ensemble du dossier d'acquisition institutionnelle et de tokenisation pour le bien immobilier sis à {property.location}, {property.city}. Le bien présente une surface bâtie totale de {property.surfaceAreaM2 || 320} m², doté de prestations architecturales sur mesure, d'infrastructures de sécurité de pointe et de droits de pleine propriété inaliénables.
+                    Le Mandant confère par les présentes à L'Agence Luxury Real Estate le mandat exclusif de structurer, commercialiser et coordonner l'ensemble du dossier d'acquisition institutionnelle et de tokenisation pour le bien immobilier sis à {property.location}, {property.city}. Le bien présente une surface bâtie totale de {property.surfaceAreaM2 || 320} m², doté de prestations architecturales sur mesure, d'infrastructures de sécurité de pointe et de droits de pleine propriété inaliénables.
                   </p>
                   <p className="indent-8">
                     {property.description}
@@ -358,7 +358,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-3 font-sans text-xs">
                     <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] space-y-2">
-                      <span className="font-bold text-[#0f172a] block">Pour Kretz Luxury Real Estate SAS</span>
+                      <span className="font-bold text-[#0f172a] block">Pour L'Agence Luxury Real Estate SAS</span>
                       <p className="text-[#64748b]">Directeur Général & Bureau des Mandats</p>
                       <div className="pt-4 border-t border-[#cbd5e1] flex items-center justify-between">
                         <span className="font-mono text-[10px] text-emerald-700 font-bold">QES eIDAS VÉRIFIÉ</span>
@@ -561,7 +561,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#18211F] p-2 flex items-center justify-center shadow-md border border-[#27845D] shrink-0">
                 <img 
                   src="/assets/aistudio/IMG_7223_65d95b79.jpeg" 
-                  alt="Kretz Official Seal & Stamp" 
+                  alt="L'Agence Official Seal & Stamp" 
                   className="w-full h-full object-contain rounded-xl"
                 />
               </div>
@@ -571,7 +571,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
                   <span className="text-xs font-bold text-[#18211F]">Cachet d'Authenticité Certifié & Valeur Légale</span>
                 </div>
                 <p className="text-[11px] text-[#69736F] mt-0.5">
-                  Émis sous le Moteur de Conformité Kretz & le Règlement eIDAS (UE) n° 910/2014.
+                  Émis sous le Moteur de Conformité L'Agence & le Règlement eIDAS (UE) n° 910/2014.
                 </p>
               </div>
             </div>

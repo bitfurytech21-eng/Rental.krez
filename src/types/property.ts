@@ -136,5 +136,15 @@ export interface Property {
     stressTestYield: number;
     vacancyAssumption: string;
   };
+  assignedFunction?: string;
+  assignedRole?: string;
+  assignedAgentName?: string;
+  assignedAt?: string;
+  assignedBy?: string;
+  approvedForFrontend?: boolean;
+  approvedAt?: string;
+  approvedBy?: string;
+  approvalNotes?: string;
+  frontendVisibilityStatus?: 'admin_only' | 'live_frontend';
 }
 

@@ -52,7 +52,7 @@ export const HowItWorks: React.FC = () => {
             How Fractional Property Investment Works
           </h2>
           <p className="text-sm sm:text-base text-[#69736F] max-w-2xl mx-auto">
-            Kretz oversees acquisition, SPV titling, property maintenance, and professional leasing while investors hold direct fractional economic rights.
+            L'Agence oversees acquisition, SPV titling, property maintenance, and professional leasing while investors hold direct fractional economic rights.
           </p>
         </div>
 

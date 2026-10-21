@@ -80,7 +80,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
           </h2>
 
           <p className="text-base sm:text-lg text-[#69736F] leading-relaxed">
-            Founded on family values and institutional rigor, Kretz Agency combines cutting-edge marketing, 
+            Founded on family values and institutional rigor, L'Agence combines cutting-edge marketing, 
             absolute off-market discretion, and an expanded family network across France and prime international markets.
           </p>
         </div>
@@ -178,10 +178,10 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
 
               <div className="space-y-4 text-base sm:text-lg text-[#C7D9D5] leading-relaxed font-normal">
                 <p>
-                  Specializing in luxury real estate, <strong>Kretz Agency</strong> brings a fresh perspective to the high-end market. Founded on family values, the Agency collaborates with the best agents in France and internationally.
+                  Specializing in luxury real estate, <strong>L'Agence</strong> brings a fresh perspective to the high-end market. Founded on family values, the Agency collaborates with the best agents in France and internationally.
                 </p>
                 <p className="text-sm sm:text-base text-[#9DB2AE]">
-                  Kretz agents benefit from a shared client base to support you in each of your real estate projects. The Agency offers a different vision of luxury real estate, with cutting-edge marketing to showcase each property, either through public communication or an off-market strategy.
+                  L'Agence agents benefit from a shared client base to support you in each of your real estate projects. The Agency offers a different vision of luxury real estate, with cutting-edge marketing to showcase each property, either through public communication or an off-market strategy.
                 </p>
               </div>
 
@@ -248,7 +248,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                   <ArrowRight className="w-4 h-4 text-[#B7E36A] group-hover:translate-x-1 transition-transform" />
                 </div>
                 <p className="text-sm font-bold text-white mb-1">Confidential Mandate</p>
-                <p className="text-xs text-[#87A09B]">Entrust your luxury acquisition or sale to Kretz Agency.</p>
+                <p className="text-xs text-[#87A09B]">Entrust your luxury acquisition or sale to L'Agence.</p>
               </button>
 
               <button
@@ -288,10 +288,10 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
 
               <div className="space-y-4 text-base sm:text-lg text-[#C7D9D5] leading-relaxed">
                 <p>
-                  Each Kretz agent, in France and internationally, represents the family that has passed on the Agency’s unique expertise. In addition to sharing our values and expertise, Kretz agents have a deep attachment to their region, knowing every corner of it.
+                  Each L'Agence agent, in France and internationally, represents the family that has passed on the Agency’s unique expertise. In addition to sharing our values and expertise, L'Agence agents have a deep attachment to their region, knowing every corner of it.
                 </p>
                 <p className="text-sm sm:text-base text-[#9DB2AE]">
-                  Our innovative collaborative approach allows all agents in the network and the Kretz family to seize every opportunity and effectively meet all your real estate projects.
+                  Our innovative collaborative approach allows all agents in the network and the leadership family to seize every opportunity and effectively meet all your real estate projects.
                 </p>
               </div>
             </div>
@@ -305,7 +305,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                 </div>
                 <h4 className="text-base font-bold text-white">Family Values & Heritage</h4>
                 <p className="text-xs text-[#8DA6A1] leading-relaxed">
-                  Every partner agent is hand-selected and trained in the Kretz methodology, ensuring high empathy, transparency, and personal commitment to every buyer and seller.
+                  Every partner agent is hand-selected and trained in the L'Agence methodology, ensuring high empathy, transparency, and personal commitment to every buyer and seller.
                 </p>
               </div>
 
@@ -346,7 +346,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                   onClick={onNavigateTeam}
                   className="inline-flex items-center gap-2 text-xs font-bold text-[#B7E36A] hover:text-white transition-colors cursor-pointer"
                 >
-                  <span>Meet all 65+ Kretz Agents</span>
+                  <span>Meet all 65+ L'Agence Agents</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>

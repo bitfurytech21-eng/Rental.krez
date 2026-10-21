@@ -19,7 +19,7 @@ const DEFAULT_LEGAL_CHECKLIST: LegalChecklistItem[] = [
   {
     id: 'chk-1',
     category: 'company',
-    title: 'Operating Entity Incorporation (Kretz Real Estate S.L.)',
+    title: "Operating Entity Incorporation (L'Agence Real Estate S.L.)",
     status: 'verified',
     verifiedBy: 'Maitre H. Dupont (Notary Paris)',
     verifiedAt: '2026-01-10',
@@ -32,7 +32,7 @@ const DEFAULT_LEGAL_CHECKLIST: LegalChecklistItem[] = [
     status: 'verified',
     verifiedBy: 'Garrigues Legal & Financial Advisors',
     verifiedAt: '2026-01-20',
-    notes: 'Dedicated SPV articles confirm asset title is held directly by SPV, isolated from Kretz operating entity liabilities.'
+    notes: "Dedicated SPV articles confirm asset title is held directly by SPV, isolated from L'Agence operating entity liabilities."
   },
   {
     id: 'chk-3',
@@ -48,7 +48,7 @@ const DEFAULT_LEGAL_CHECKLIST: LegalChecklistItem[] = [
     category: 'regulatory',
     title: 'EU MiCA / AMF Crowdfunding Compliance Review',
     status: 'verified',
-    verifiedBy: 'Kretz Internal Compliance & Regulatory Counsel',
+    verifiedBy: "L'Agence Internal Compliance & Regulatory Counsel",
     verifiedAt: '2026-02-15',
     notes: 'Cross-border investor eligibility rules and MiCA token classification cleared for European private offerings.'
   },
@@ -79,7 +79,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = '
           Legal Entity Infrastructure & Regulatory Framework
         </h1>
         <p className="text-xs text-[#69736F] leading-relaxed max-w-3xl">
-          Kretz Real Estate operates under strict European financial and real estate regulatory standards. Every property offering is structured via an independent, bankruptcy-remote Special Purpose Vehicle (SPV) with notarized title deeds and audited financial projections.
+          L'Agence Real Estate operates under strict European financial and real estate regulatory standards. Every property offering is structured via an independent, bankruptcy-remote Special Purpose Vehicle (SPV) with notarized title deeds and audited financial projections.
         </p>
 
         {/* Tab Navigation */}
@@ -158,7 +158,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = '
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1">
               <span className="font-semibold text-[#69736F] block">Registered Operating Name</span>
-              <span className="font-black text-[#18211F] text-sm block">Kretz Real Estate S.L.</span>
+              <span className="font-black text-[#18211F] text-sm block">L'Agence Real Estate S.L.</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1">
@@ -204,7 +204,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = '
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#27845D] font-bold text-[10px] uppercase block w-max">
                 Tier 1: Platform Operator
               </span>
-              <h4 className="font-black text-[#18211F] text-sm">Kretz Real Estate S.L.</h4>
+              <h4 className="font-black text-[#18211F] text-sm">L'Agence Real Estate S.L.</h4>
               <p className="text-[#69736F] leading-relaxed">
                 Provides technology infrastructure, KYC/AML verification, investor onboarding, property sourcing, marketing, and web platform maintenance.
               </p>
@@ -259,7 +259,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = '
             <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1">
               <span className="font-bold text-[#18211F] text-sm block">Bankruptcy Remoteness & Ring-Fencing</span>
               <p className="text-[#69736F] leading-relaxed">
-                Because title deeds are held directly by independent SPVs, any insolvency or corporate restructuring of Kretz Real Estate S.L. does not impact property ownership. An independent court-appointed trustee would assume payout administration.
+                Because title deeds are held directly by independent SPVs, any insolvency or corporate restructuring of L'Agence Real Estate S.L. does not impact property ownership. An independent court-appointed trustee would assume payout administration.
               </p>
             </div>
           </div>
@@ -276,7 +276,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = '
 
           <div className="space-y-3 text-xs text-[#69736F] leading-relaxed">
             <p>
-              Participation in Kretz property offerings is strictly reserved for natural persons aged 18+ or accredited corporate entities who have passed mandatory Know Your Customer (KYC) and Anti-Money Laundering (AML) identity checks under EU Directive 2018/843.
+              Participation in L'Agence property offerings is strictly reserved for natural persons aged 18+ or accredited corporate entities who have passed mandatory Know Your Customer (KYC) and Anti-Money Laundering (AML) identity checks under EU Directive 2018/843.
             </p>
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 font-medium">
               Sanctioned jurisdictions and non-verified accounts are strictly prohibited from subscribing to offerings or receiving dividend distributions.
