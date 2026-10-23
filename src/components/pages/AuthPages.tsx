@@ -16,11 +16,15 @@ import {
   ExternalLink,
   Info,
   Globe,
-  Phone
+  Phone,
+  Sparkles,
+  Tag,
+  Gift
 } from 'lucide-react';
 import { TurnstileWidget } from '../security/TurnstileWidget';
 import { authApi } from '../../lib/api';
 import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from '../../data/countries';
+import { ledger } from '../../lib/ledger';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register' | 'forgot-password' | 'reset-password';
@@ -67,6 +71,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('individual_investor');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return (params.get('ref') || params.get('referral') || '').toUpperCase();
+    }
+    return '';
+  });
 
   // Status states
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +194,18 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         currentCountry.name,
         fullPhoneNumber
       );
+
+      if (referralCode) {
+        try {
+          ledger.logAudit(
+            result.user?.id || 'new-user',
+            email,
+            'REFERRAL_APPLIED',
+            `Investor registered using referral code ${referralCode}. €500 Welcome Allocation bonus queued.`
+          );
+        } catch {}
+      }
+
       if (result.requiresVerification) {
         setVerificationPending(true);
       } else {
@@ -577,6 +600,39 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     );
                   })()}
                 </div>
+
+                {/* VIP Referral Code Field / Applied Banner */}
+                {referralCode ? (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#27845D] shrink-0" />
+                      <div>
+                        <div className="text-[10px] text-emerald-700 font-semibold">VIP Partner Invitation Active</div>
+                        <div className="font-mono font-bold text-[#182D2A] text-xs">CODE: {referralCode}</div>
+                      </div>
+                    </div>
+                    <span className="font-bold text-[#27845D] bg-white px-2 py-0.5 rounded-full shadow-xs text-[10.5px] shrink-0 border border-emerald-100">
+                      +€500 Bonus
+                    </span>
+                  </div>
+                ) : (
+                  <div className="form-field space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-[#18211F] flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-[#27845D]" />
+                        <span>Referral / Partner Code (Optional)</span>
+                      </label>
+                      <span className="text-[10px] text-[#69736F]">€500 Welcome Allocation</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. KRETZ-VIP"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                      className="w-full text-xs bg-[#F6F7F4] border border-[#E3E8E3] rounded-xl px-3.5 py-2.5 font-mono font-semibold text-[#18211F] focus:outline-none focus:border-[#182D2A] uppercase placeholder:normal-case"
+                    />
+                  </div>
+                )}
 
                 <div className="form-field space-y-1">
                   <label className="text-xs font-bold text-[#18211F]">Password (Min 8 Characters)</label>

@@ -22,47 +22,46 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
   const totalMonthlyProjected = investments.reduce((acc, inv) => acc + inv.projectedMonthlyIncome, 0);
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-3">
       {/* Top summary banner */}
-      <div className="bg-gradient-to-r from-[#182D2A] to-[#24423C] text-white p-3.5 sm:p-4.5 rounded-2xl shadow-md relative overflow-hidden border border-[#24423C]/60">
-        <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 rounded-full bg-[#B7E36A]/10 pointer-events-none" />
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+      <div className="bg-[#182D2A] text-white p-3 sm:p-3.5 rounded-xl shadow-2xs relative overflow-hidden border border-[#24423C]">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3">
           <div>
-            <span className="text-[10px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
-              Total Cumulative Dividends
+            <span className="text-[9px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
+              Cumulative Dividends
             </span>
-            <div className="text-xl sm:text-2xl font-extrabold text-[#B7E36A]">
+            <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-[#B7E36A]">
               {formatCurrency(totalDividendsEarned)}
             </div>
-            <p className="text-[10px] text-[#A0A8A5] mt-0.5">Paid directly to your uninvested cash balance</p>
+            <p className="text-[9.5px] text-[#A0A8A5] mt-0.5">Credited to uninvested cash balance</p>
           </div>
 
           <div>
-            <span className="text-[10px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
-              Est. Monthly Passive Cashflow
+            <span className="text-[9px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
+              Est. Monthly Cashflow
             </span>
-            <div className="text-xl sm:text-2xl font-extrabold text-white">
+            <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-white">
               {formatCurrency(totalMonthlyProjected)}<span className="text-xs font-normal text-[#A0A8A5]">/mo</span>
             </div>
-            <p className="text-[10px] text-[#A0A8A5] mt-0.5">Across {investments.length} active tokenized assets</p>
+            <p className="text-[9.5px] text-[#A0A8A5] mt-0.5">Across {investments.length} active property holdings</p>
           </div>
 
           <div>
-            <span className="text-[10px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
+            <span className="text-[9px] text-[#A0A8A5] uppercase tracking-wider font-semibold block mb-0.5">
               Average Portfolio Yield
             </span>
-            <div className="text-xl sm:text-2xl font-extrabold text-white">
+            <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-white">
               {investments.length > 0 
                 ? formatPercent(investments.reduce((acc, i) => acc + i.estimatedAnnualYield, 0) / investments.length)
                 : '0.0%'}
             </div>
-            <p className="text-[10px] text-[#A0A8A5] mt-0.5">Net rental yields verified via RICS audits</p>
+            <p className="text-[9.5px] text-[#A0A8A5] mt-0.5">Net yields audited via RICS standards</p>
           </div>
         </div>
       </div>
 
       {/* Breakdown per Property */}
-      <div className="dash-card p-3.5 sm:p-4.5 rounded-2xl border border-inherit/40 shadow-xs space-y-3">
+      <div className="dash-card p-3 sm:p-3.5 rounded-xl border border-inherit/40 shadow-2xs space-y-2.5">
         <div>
           <h3 className="text-sm sm:text-base font-bold dash-text">Monthly Yield Distribution Breakdown</h3>
           <p className="text-[11px] dash-muted">Real-time accrual and historical dividend payouts per property asset</p>
@@ -117,32 +116,32 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
       </div>
 
       {/* Distribution Payout History */}
-      <div className="dash-card p-7 rounded-3xl border shadow-sm space-y-4">
+      <div className="dash-card p-3.5 sm:p-4 rounded-xl border border-inherit/40 shadow-2xs space-y-3">
         <div>
-          <h3 className="text-lg font-bold dash-text">Dividend Payout History</h3>
-          <p className="text-xs dash-muted">Immutable record of monthly rental yields credited to your balance</p>
+          <h3 className="text-xs sm:text-sm font-bold dash-text">Dividend Payout History</h3>
+          <p className="text-[10px] dash-muted">Immutable record of monthly rental yields credited to your balance</p>
         </div>
 
         {dividendTransactions.length === 0 ? (
-          <div className="text-center py-8 text-xs dash-muted">
+          <div className="text-center py-6 text-xs dash-muted">
             No dividend payouts recorded yet. Payouts occur on the 1st of each month.
           </div>
         ) : (
           <div className="divide-y border-inherit/30">
             {dividendTransactions.map((tx) => (
-              <div key={tx.id} className="py-3.5 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                    <RefreshCw className="w-4 h-4" />
+              <div key={tx.id} className="py-2 sm:py-2.5 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                    <RefreshCw className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <span className="font-bold dash-text block">{tx.description}</span>
-                    <span className="text-[10px] dash-muted font-mono">Ref: {tx.reference} · {formatDate(tx.createdAt)}</span>
+                    <span className="font-semibold dash-text block text-xs">{tx.description}</span>
+                    <span className="text-[9.5px] dash-muted font-mono">Ref: {tx.reference} · {formatDate(tx.createdAt)}</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-emerald-400 text-sm block">+{formatCurrency(tx.amount)}</span>
-                  <span className="text-[10px] dash-muted uppercase">Completed</span>
+                  <span className="font-bold font-mono tabular-nums text-emerald-600 text-xs sm:text-sm block">+{formatCurrency(tx.amount)}</span>
+                  <span className="text-[9px] dash-muted uppercase">Completed</span>
                 </div>
               </div>
             ))}

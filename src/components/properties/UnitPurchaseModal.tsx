@@ -53,7 +53,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
     } catch (err) {
       console.error('Failed to print investment agreement:', err);
     } finally {
-      setTimeout(() => setIsPrintingAgreement(false), 1200);
+      setIsPrintingAgreement(false);
     }
   };
 
@@ -171,77 +171,78 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-[#E3E8E3] overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+      <div className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-[#E3E8E3] overflow-hidden my-6">
         
         {/* Header Bar */}
-        <div className="p-5 sm:p-6 bg-[#142421] text-white flex items-center justify-between border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-2xl ${mode === 'reinvest' ? 'bg-[#B7E36A]/20 text-[#B7E36A]' : 'bg-[#27845D]/30 text-emerald-400'}`}>
-              {mode === 'reinvest' ? <RefreshCw className="w-5 h-5 animate-spin-slow" /> : <Building2 className="w-5 h-5" />}
+        <div className="p-3.5 sm:p-4 bg-[#142421] text-white flex items-center justify-between border-b border-white/10">
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <div className={`p-2 rounded-lg shrink-0 ${mode === 'reinvest' ? 'bg-[#B7E36A]/20 text-[#B7E36A]' : 'bg-[#27845D]/30 text-emerald-400'}`}>
+              {mode === 'reinvest' ? <RefreshCw className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
             </div>
-            <div>
-              <h2 className="text-lg font-black leading-tight text-white">
-                {mode === 'reinvest' ? 'Reinvest Account Balance' : 'Buy Property Fractional Units'}
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold leading-tight text-white truncate">
+                {mode === 'reinvest' ? 'Reinvest Account Balance' : 'Buy Property Units'}
               </h2>
-              <p className="text-xs text-emerald-200/80 font-medium">
-                {selectedProperty.tokenTicker} • {selectedProperty.title}
+              <p className="text-[11px] text-emerald-200/80 font-mono truncate">
+                {selectedProperty.tokenTicker} · {selectedProperty.title}
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0"
+            aria-label="Close dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+        <div className="p-3.5 sm:p-4 space-y-3.5 max-h-[80vh] overflow-y-auto">
 
           {/* Success State Screen */}
           {successResult ? (
-            <div className="py-4 text-center space-y-4">
-              <div className="w-14 h-14 bg-emerald-100 text-[#27845D] rounded-full flex items-center justify-center mx-auto shadow-md">
-                <CheckCircle2 className="w-9 h-9" />
+            <div className="py-2 text-center space-y-3">
+              <div className="w-11 h-11 bg-emerald-100 text-[#27845D] rounded-full flex items-center justify-center mx-auto shadow-xs">
+                <CheckCircle2 className="w-6 h-6" />
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-xl font-black text-[#142421]">Investment Successfully Executed!</h3>
-                <p className="text-xs sm:text-sm text-[#52605C]">
-                  You have successfully acquired <strong className="text-[#142421]">{tokenCount} fractional units</strong> in {selectedProperty.title}.
+              <div className="space-y-0.5">
+                <h3 className="text-base sm:text-lg font-bold text-[#142421]">Investment Executed</h3>
+                <p className="text-xs text-[#52605C]">
+                  Acquired <strong className="text-[#142421] font-mono">{tokenCount} fractional units</strong> in {selectedProperty.title}.
                 </p>
               </div>
 
               {/* Order Transaction Details */}
-              <div className="p-3.5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] text-left text-xs space-y-2 max-w-lg mx-auto">
+              <div className="p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] text-left text-xs space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-[#69736F] font-medium">Certificate Ref:</span>
-                  <span className="font-mono font-bold text-[#142421]">{successResult.certificateId}</span>
+                  <span className="text-[#69736F]">Certificate Ref:</span>
+                  <span className="font-mono font-bold text-[#18211F]">{successResult.certificateId}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#69736F] font-medium">Total Invested:</span>
-                  <span className="font-black text-[#27845D] text-sm">{formatCurrency(totalCost)}</span>
+                  <span className="text-[#69736F]">Total Invested:</span>
+                  <span className="font-bold font-mono text-[#27845D] text-sm">{formatCurrency(totalCost)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#69736F] font-medium">Projected Monthly Yield:</span>
-                  <span className="font-bold text-[#142421]">+{formatCurrency(monthlyTarget)} / month</span>
+                  <span className="text-[#69736F]">Monthly Yield:</span>
+                  <span className="font-bold font-mono text-[#142421]">+{formatCurrency(monthlyTarget)}/mo</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#69736F] font-medium">New Wallet Balance:</span>
-                  <span className="font-bold text-[#142421]">{formatCurrency(userBalance)}</span>
+                  <span className="text-[#69736F]">Wallet Balance:</span>
+                  <span className="font-bold font-mono text-[#142421]">{formatCurrency(userBalance)}</span>
                 </div>
               </div>
 
               {/* Prominent Legal Agreement & Instant Print Section */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-[#142421] text-white text-left space-y-3 shadow-xl border border-[#27845D]/40 max-w-lg mx-auto">
-                <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <div className="p-3 sm:p-3.5 rounded-xl bg-[#142421] text-white text-left space-y-2.5 shadow-xl border border-[#27845D]/40 max-w-lg mx-auto">
+                <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
                   <div className="flex items-center gap-2">
-                    <Award className="w-5 h-5 text-[#B7E36A] shrink-0" />
+                    <Award className="w-4 h-4 text-[#B7E36A] shrink-0" />
                     <div>
-                      <h4 className="text-xs font-black uppercase text-white tracking-wide">
+                      <h4 className="text-xs font-bold uppercase text-white tracking-wide">
                         Legally Signed Investment Agreement
                       </h4>
                       <p className="text-[10px] text-emerald-200/80">
@@ -249,51 +250,51 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                       </p>
                     </div>
                   </div>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#27845D]/40 text-[#B7E36A] border border-[#B7E36A]/30 shrink-0">
+                  <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded bg-[#27845D]/40 text-[#B7E36A] border border-[#B7E36A]/30 shrink-0">
                     Signed & Sealed
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-200 leading-relaxed">
+                <p className="text-[11px] text-slate-200 leading-normal">
                   Your legal agreement has been formally executed with qualified signatures by <strong className="text-white">Valentin Kretz</strong> (Managing Partner) under Spanish Commercial Registry jurisdiction. Print your signed agreement immediately for your records or save the official certified PDF.
                 </p>
 
                 {/* Primary Immediate Print and Download Buttons */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                   <button
                     onClick={handleImmediatePrint}
                     disabled={isPrintingAgreement}
-                    className="w-full py-2.5 px-3 rounded-xl bg-white text-[#142421] hover:bg-slate-100 font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-2 px-3 rounded-lg bg-white text-[#142421] hover:bg-slate-100 font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-50"
                   >
-                    <Printer className="w-4 h-4 text-[#27845D]" />
+                    <Printer className="w-3.5 h-3.5 text-[#27845D]" />
                     <span>{isPrintingAgreement ? 'Preparing Print...' : 'Print Agreement Now'}</span>
                   </button>
 
                   <button
                     onClick={handleImmediateDownload}
                     disabled={isDownloadingAgreement}
-                    className="w-full py-2.5 px-3 rounded-xl bg-[#27845D] hover:bg-[#1E6849] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    className="w-full py-2 px-3 rounded-lg bg-[#27845D] hover:bg-[#1E6849] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {isDownloadingAgreement ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-[#B7E36A]" />}
+                    {isDownloadingAgreement ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-[#B7E36A]" />}
                     <span>{isDownloadingAgreement ? 'Generating PDF...' : 'Download Signed PDF'}</span>
                   </button>
                 </div>
 
-                <div className="pt-1 text-center">
+                <div className="pt-0.5 text-center">
                   <button
                     onClick={() => setShowAgreementModal(true)}
-                    className="text-xs text-[#B7E36A] hover:underline font-bold inline-flex items-center gap-1.5 cursor-pointer py-1"
+                    className="text-[11px] text-[#B7E36A] hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer py-0.5"
                   >
-                    <FileText className="w-3.5 h-3.5" />
+                    <FileText className="w-3 h-3" />
                     <span>View Full Signed Legal Contract On Screen</span>
                   </button>
                 </div>
               </div>
 
-              <div className="pt-2 max-w-lg mx-auto">
+              <div className="pt-1 max-w-lg mx-auto">
                 <button
                   onClick={onClose}
-                  className="w-full py-3 bg-[#F6F7F4] hover:bg-[#EEF2EC] border border-[#E3E8E3] text-[#142421] font-bold text-xs rounded-xl transition-all cursor-pointer"
+                  className="w-full py-2 px-3 bg-[#F6F7F4] hover:bg-[#EEF2EC] border border-[#E3E8E3] text-[#142421] font-semibold text-xs rounded-lg transition-all cursor-pointer"
                 >
                   Return to Dashboard
                 </button>
@@ -301,49 +302,49 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
             </div>
           ) : isConfirmStep ? (
             /* Step 2: Final Order Confirmation */
-            <div className="space-y-5 animate-fadeIn">
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium space-y-1">
-                <div className="flex items-center gap-2 font-bold text-amber-950 text-sm">
+            <div className="space-y-3 animate-fadeIn">
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium space-y-0.5">
+                <div className="flex items-center gap-1.5 font-bold text-amber-950 text-xs">
                   <ShieldCheck className="w-4 h-4 text-amber-700" />
                   <span>Review & Confirm Order</span>
                 </div>
-                <p>Please review your purchase details before final execution. All property units are ring-fenced within an SPV contract.</p>
+                <p className="text-[11px]">Please review your purchase details before final execution. All property units are ring-fenced within an SPV contract.</p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-3.5 text-xs">
-                <div className="flex justify-between items-center pb-2.5 border-b border-[#E3E8E3]">
+              <div className="p-3.5 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-2 text-xs">
+                <div className="flex justify-between items-center pb-2 border-b border-[#E3E8E3]">
                   <span className="text-[#69736F] font-semibold">Selected Property:</span>
-                  <span className="font-black text-[#142421] text-sm">{selectedProperty.title}</span>
+                  <span className="font-bold text-[#142421] text-xs sm:text-sm">{selectedProperty.title}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <span className="text-[#69736F] font-medium">Units Purchased:</span>
-                  <span className="font-extrabold text-[#142421]">{tokenCount} Shares (@ {formatCurrency(tokenPrice)}/unit)</span>
+                  <span className="font-bold font-mono text-[#142421]">{tokenCount} Shares (@ {formatCurrency(tokenPrice)}/unit)</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#69736F] font-medium">Total Unit Purchase Cost:</span>
-                  <span className="font-extrabold text-[#142421]">{formatCurrency(totalCost)}</span>
+                  <span className="text-[#69736F] font-medium">Total Purchase Cost:</span>
+                  <span className="font-bold font-mono text-[#142421]">{formatCurrency(totalCost)}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#69736F] font-medium">Structuring & Closing Fees:</span>
-                  <span className="font-extrabold text-emerald-700">€0.00 (0% Included)</span>
+                  <span className="text-[#69736F] font-medium">Structuring Fees:</span>
+                  <span className="font-semibold text-emerald-700">€0.00 (0% Included)</span>
                 </div>
 
-                <div className="flex justify-between items-center pt-2.5 border-t border-[#E3E8E3] text-sm">
+                <div className="flex justify-between items-center pt-2 border-t border-[#E3E8E3]">
                   <span className="font-bold text-[#142421]">Total Amount Payable:</span>
-                  <span className="font-black text-[#27845D] text-base">{formatCurrency(totalPayable)}</span>
+                  <span className="font-bold font-mono text-[#27845D] text-sm sm:text-base">{formatCurrency(totalPayable)}</span>
                 </div>
 
-                <div className="flex justify-between items-center text-xs text-[#52605C] pt-1">
+                <div className="flex justify-between items-center text-xs text-[#52605C] pt-0.5">
                   <span>Current Available Balance:</span>
-                  <span className="font-bold">{formatCurrency(userBalance)}</span>
+                  <span className="font-bold font-mono">{formatCurrency(userBalance)}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs text-[#52605C]">
-                  <span>Remaining Balance After Purchase:</span>
-                  <span className={`font-black ${remainingBalance >= 0 ? 'text-[#27845D]' : 'text-red-600'}`}>
+                  <span>Balance After Purchase:</span>
+                  <span className={`font-bold font-mono ${remainingBalance >= 0 ? 'text-[#27845D]' : 'text-red-600'}`}>
                     {formatCurrency(remainingBalance)}
                   </span>
                 </div>
@@ -351,19 +352,19 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
 
               {/* Error Message */}
               {error && (
-                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Confirmation Actions */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsConfirmStep(false)}
                   disabled={loading}
-                  className="flex-1 py-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F7F4] text-[#142421] text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  className="flex-1 py-2 px-3 bg-white border border-[#E3E8E3] hover:bg-[#F6F7F4] text-[#142421] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                 >
                   Back
                 </button>
@@ -372,14 +373,14 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                   type="button"
                   onClick={handleExecuteOrder}
                   disabled={loading}
-                  className="flex-[2] py-3 bg-[#27845D] hover:bg-[#1f6b4a] text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="flex-[2] py-2 px-3 bg-[#27845D] hover:bg-[#1f6b4a] text-white text-xs font-bold rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
                       <span>Confirm & Execute Investment</span>
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}
                 </button>
@@ -387,20 +388,20 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
             </div>
           ) : (
             /* Step 1: Unit Calculator & Balance Validation */
-            <form onSubmit={handleProceedToConfirm} className="space-y-5">
+            <form onSubmit={handleProceedToConfirm} className="space-y-3.5">
               
               {/* Property Summary Banner */}
-              <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3]">
                 <img
                   src={selectedProperty.images[0] || selectedProperty.bannerImage}
                   alt={selectedProperty.title}
-                  className="w-16 h-16 rounded-xl object-cover shrink-0"
+                  className="w-14 h-14 rounded-lg object-cover shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-black text-[#142421] truncate">{selectedProperty.title}</h4>
-                  <p className="text-xs text-[#52605C] truncate">{selectedProperty.location}</p>
-                  <div className="flex items-center gap-3 text-[11px] font-bold text-[#27845D] mt-1">
-                    <span>{formatPercent(selectedProperty.estimatedAnnualYield)} APY</span>
+                  <h4 className="text-xs sm:text-sm font-bold text-[#142421] truncate">{selectedProperty.title}</h4>
+                  <p className="text-[11px] text-[#52605C] truncate">{selectedProperty.location}</p>
+                  <div className="flex items-center gap-2 text-[11px] font-semibold text-[#27845D] mt-0.5">
+                    <span className="font-mono">{formatPercent(selectedProperty.estimatedAnnualYield)} APY</span>
                     <span className="text-[#BCC5BD]">•</span>
                     <span>{selectedProperty.durationMonths} Months Term</span>
                   </div>
@@ -408,23 +409,23 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
               </div>
 
               {/* Balance Card */}
-              <div className="p-4 rounded-2xl bg-[#142421] text-white flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-white/10 text-[#B7E36A]">
-                    <Wallet className="w-5 h-5" />
+              <div className="p-3 rounded-xl bg-[#142421] text-white flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-white/10 text-[#B7E36A]">
+                    <Wallet className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-emerald-200/80 tracking-wide block">
-                      Your Available Balance
+                    <span className="text-[10px] uppercase font-semibold text-emerald-200/80 tracking-wide block">
+                      Available Cash Balance
                     </span>
-                    <span className="text-lg font-black text-white tabular-nums">
+                    <span className="text-base sm:text-lg font-bold font-mono text-white tabular-nums">
                       {formatCurrency(userBalance)}
                     </span>
                   </div>
                 </div>
 
                 {mode === 'reinvest' && (
-                  <span className="text-[10px] bg-[#B7E36A]/20 text-[#B7E36A] font-bold px-2.5 py-1 rounded-full border border-[#B7E36A]/30">
+                  <span className="text-[10px] bg-[#B7E36A]/20 text-[#B7E36A] font-semibold px-2 py-0.5 rounded border border-[#B7E36A]/30">
                     Reinvestment Eligible
                   </span>
                 )}
@@ -432,13 +433,13 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
 
               {/* Insufficient Funds Banner */}
               {isInsufficient && (
-                <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 space-y-2.5 animate-fadeIn">
-                  <div className="flex items-start gap-2.5">
-                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    <div className="text-xs space-y-1">
-                      <p className="font-extrabold text-red-950">Insufficient Account Funds</p>
-                      <p className="text-red-800 leading-relaxed">
-                        Your available balance is <strong className="font-black text-red-950">{formatCurrency(userBalance)}</strong>, but you need <strong className="font-black text-red-950">{formatCurrency(totalPayable)}</strong> to complete this investment. Please fund your account to continue.
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-900 space-y-2 animate-fadeIn">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-bold text-red-950">Insufficient Account Funds</p>
+                      <p className="text-[11px] text-red-800 leading-normal">
+                        Your balance is <strong className="font-mono font-bold text-red-950">{formatCurrency(userBalance)}</strong>, but you need <strong className="font-mono font-bold text-red-950">{formatCurrency(totalPayable)}</strong>. Please fund your account to continue.
                       </p>
                     </div>
                   </div>
@@ -450,10 +451,10 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                         onClose();
                         onOpenDeposit();
                       }}
-                      className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-1.5 px-3 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <Plus className="w-4 h-4" />
-                      <span>Fund Account Now</span>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Deposit Funds Now</span>
                     </button>
                   )}
                 </div>
@@ -461,8 +462,8 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
 
               {/* Property Selector for Reinvest Mode */}
               {mode === 'reinvest' && allProperties.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#142421] block">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#142421] block">
                     Select Target Property to Reinvest Into
                   </label>
                   <select
@@ -471,7 +472,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                       const found = allProperties.find(p => p.id === e.target.value);
                       if (found) setSelectedProperty(found);
                     }}
-                    className="w-full p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] text-xs font-bold text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
+                    className="w-full p-2.5 rounded-lg border border-[#E3E8E3] bg-[#F6F7F4] text-xs font-semibold text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
                   >
                     {allProperties.map(p => (
                       <option key={p.id} value={p.id}>
@@ -483,24 +484,24 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
               )}
 
               {/* Units Input Section */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs">
-                  <label className="font-bold text-[#142421]">
-                    Number of Property Investment Units
+                  <label className="font-semibold text-[#142421]">
+                    Number of Property Units
                   </label>
-                  <span className="text-[#69736F] font-medium">
+                  <span className="text-[#69736F] font-mono text-[11px]">
                     {maxAvailable} units remaining
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => handleUnitChange(tokenCount - 1)}
                     disabled={tokenCount <= minTokensRequired}
-                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
+                    className="p-2.5 rounded-lg border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
                   >
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
 
                   <div className="relative flex-1">
@@ -510,9 +511,9 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                       max={maxAvailable}
                       value={tokenCount}
                       onChange={(e) => handleUnitChange(parseInt(e.target.value) || 0)}
-                      className="w-full py-3 px-4 rounded-xl border border-[#E3E8E3] text-center text-lg font-black text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
+                      className="w-full py-2 px-3 rounded-lg border border-[#E3E8E3] text-center text-base font-bold font-mono tabular-nums text-[#142421] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#69736F]">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#69736F]">
                       Units
                     </span>
                   </div>
@@ -521,66 +522,66 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                     type="button"
                     onClick={() => handleUnitChange(tokenCount + 1)}
                     disabled={tokenCount >= maxAvailable}
-                    className="p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
+                    className="p-2.5 rounded-lg border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#E3E8E3] text-[#142421] font-bold disabled:opacity-40 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="flex justify-between text-[11px] text-[#69736F] font-medium px-1">
-                  <span>Price per unit: <strong>{formatCurrency(tokenPrice)}</strong></span>
-                  <span>Minimum purchase: <strong>{minTokensRequired} units ({formatCurrency(selectedProperty.minimumInvestment)})</strong></span>
+                <div className="flex justify-between text-[11px] text-[#69736F] font-medium px-0.5">
+                  <span>Price/unit: <strong className="font-mono">{formatCurrency(tokenPrice)}</strong></span>
+                  <span>Min. purchase: <strong className="font-mono">{minTokensRequired} units ({formatCurrency(selectedProperty.minimumInvestment)})</strong></span>
                 </div>
               </div>
 
               {/* Investment Projection Grid */}
-              <div className="grid grid-cols-2 gap-2.5 p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] text-xs">
+              <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] text-xs">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                    Target Monthly Pay ({monthlyTargetPercentage}% Projected)
+                  <span className="text-[10px] uppercase font-semibold text-[#69736F] block tracking-wide">
+                    Est. Monthly Yield ({monthlyTargetPercentage}%)
                   </span>
-                  <span className="text-base font-black text-[#27845D] block mt-0.5 tabular-nums">
+                  <span className="text-sm font-bold font-mono text-[#27845D] block mt-0.5 tabular-nums">
                     +{formatCurrency(monthlyTarget)}/mo
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                    Annual Target Return
+                  <span className="text-[10px] uppercase font-semibold text-[#69736F] block tracking-wide">
+                    Annual Return
                   </span>
-                  <span className="text-base font-black text-[#142421] block mt-0.5 tabular-nums">
+                  <span className="text-sm font-bold font-mono text-[#142421] block mt-0.5 tabular-nums">
                     +{formatCurrency(annualTarget)}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                    Net-Monthly Target ({durationMonths} Mo)
+                  <span className="text-[10px] uppercase font-semibold text-[#69736F] block tracking-wide">
+                    Net Target ({durationMonths} Mo)
                   </span>
-                  <span className="text-xs font-bold text-[#27845D] block mt-0.5 tabular-nums">
+                  <span className="text-xs font-bold font-mono text-[#27845D] block mt-0.5 tabular-nums">
                     +{formatCurrency(netMonthlyTarget)}
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                    Total Investment Cost
+                  <span className="text-[10px] uppercase font-semibold text-[#69736F] block tracking-wide">
+                    Total Capital Outlay
                   </span>
-                  <span className="text-xs font-bold text-[#142421] block mt-0.5 tabular-nums">
+                  <span className="text-xs font-bold font-mono text-[#142421] block mt-0.5 tabular-nums">
                     {formatCurrency(totalCost)}
                   </span>
                 </div>
               </div>
 
               {/* Principal Repayment Notice */}
-              <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-emerald-950 flex items-center justify-between font-semibold">
-                <span className="text-[#52605C]">Total including separately returned principal (Projected):</span>
-                <span className="font-black text-[#27845D] text-xs tabular-nums">{formatCurrency(totalWithPrincipal)}</span>
+              <div className="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-emerald-950 flex items-center justify-between font-semibold">
+                <span className="text-[#52605C]">Total with returned principal:</span>
+                <span className="font-bold font-mono text-[#27845D] text-xs tabular-nums">{formatCurrency(totalWithPrincipal)}</span>
               </div>
 
               {/* Error Message */}
               {error && (
-                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2.5">
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
@@ -590,10 +591,10 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
               <button
                 type="submit"
                 disabled={isInsufficient || tokenCount < minTokensRequired}
-                className="w-full py-3.5 bg-[#142421] hover:bg-[#1E332E] disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                className="w-full py-2.5 px-3 bg-[#142421] hover:bg-[#1E332E] disabled:bg-slate-300 text-white font-bold text-xs rounded-lg transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5 disabled:cursor-not-allowed"
               >
                 <span>{isInsufficient ? 'Insufficient Funds' : 'Proceed to Confirmation'}</span>
-                {!isInsufficient && <ArrowRight className="w-4 h-4" />}
+                {!isInsufficient && <ArrowRight className="w-3.5 h-3.5" />}
               </button>
             </form>
           )}

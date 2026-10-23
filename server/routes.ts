@@ -19,6 +19,17 @@ import {
   handleSwitchProvider,
   handleTestTranslation,
 } from './translationController';
+import {
+  emailTemplates,
+  sendEmail,
+  getEmailLogs,
+  getEmailSettings,
+  updateEmailSettings,
+  generateExpiringToken,
+  verifyAndConsumeToken,
+  verifySmtpConnection,
+  getSmtpCredentials
+} from './emailService';
 import crypto from 'crypto';
 
 const router = Router();
@@ -545,6 +556,30 @@ router.post('/auth/register', authLimiter, requireTurnstile, (req: Authenticated
   mockUsers.push(newUser);
   const token = `sess_${newUser.id}`;
 
+  // Automatically dispatch branded welcome & email verification
+  const verifToken = generateExpiringToken(newUser.email, 'verification', 24 * 60);
+  const origin = req.headers.origin || 'https://kretzdespain.com';
+  sendEmail({
+    templateId: 'welcome_verification',
+    recipient: newUser.email,
+    data: {
+      fullName: newUser.fullName,
+      email: newUser.email,
+      verificationLink: `${origin}/auth/verify?token=${verifToken}`,
+      expiresInHours: 24,
+      accountType: 'Accredited Investor (Tier 1)'
+    }
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'auth',
+      requestId: req.id || 'req-reg-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch welcome email: ${err.message}`
+    });
+  });
+
   logger.log({
     level: 'info',
     category: 'auth',
@@ -604,6 +639,36 @@ router.post('/auth/password/forgot', authLimiter, requireTurnstile, (req: Authen
   const { email } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
 
+  const foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+
+  if (foundUser) {
+    const resetToken = generateExpiringToken(normalizedEmail, 'password_reset', 15);
+    const origin = req.headers.origin || 'https://kretzdespain.com';
+    const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    
+    sendEmail({
+      templateId: 'password_reset',
+      recipient: normalizedEmail,
+      data: {
+        fullName: foundUser.fullName,
+        email: normalizedEmail,
+        resetLink: `${origin}/auth/reset?token=${resetToken}`,
+        expiresInMinutes: 15,
+        ipAddress: ip,
+        location: foundUser.country || 'Madrid, Spain'
+      }
+    }).catch(err => {
+      logger.log({
+        level: 'error',
+        category: 'auth',
+        requestId: req.id || 'req-forgot-email',
+        eventType: 'EMAIL_DISPATCH_FAILURE',
+        outcome: 'failure',
+        message: `Failed to dispatch password recovery email: ${err.message}`
+      });
+    });
+  }
+
   logger.log({
     level: 'info',
     category: 'auth',
@@ -642,6 +707,31 @@ router.post('/contact', contactLimiter, requireTurnstile, (req: AuthenticatedReq
     });
   }
 
+  const ticketId = `KZ-INQ-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+
+  // Auto-dispatch branded inquiry receipt to the investor
+  sendEmail({
+    templateId: 'contact_receipt',
+    recipient: normalizedEmail,
+    data: {
+      fullName,
+      email: normalizedEmail,
+      topic: topic || 'Investor Inquiries',
+      ticketId,
+      messageSnippet: typeof message === 'string' ? message.slice(0, 160) : '',
+      slaHours: '4 business hours'
+    }
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'system',
+      requestId: req.id || 'req-contact-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch contact receipt email: ${err.message}`
+    });
+  });
+
   logger.log({
     level: 'info',
     category: 'system',
@@ -652,11 +742,12 @@ router.post('/contact', contactLimiter, requireTurnstile, (req: AuthenticatedReq
     eventType: 'CONTACT_INQUIRY_RECEIVED',
     outcome: 'success',
     message: `Direct investor desk inquiry received from ${fullName} (${normalizedEmail})`,
-    metadata: { email: normalizedEmail, topic: topic || 'Investor Inquiries' }
+    metadata: { email: normalizedEmail, topic: topic || 'Investor Inquiries', ticketId }
   });
 
   return res.json({
     success: true,
+    data: { ticketId },
     message: 'Your inquiry has been successfully received by the Kretz Investor Relations Desk.',
     requestId: req.id,
   });
@@ -1360,6 +1451,63 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
 
   mockTransactions.unshift(depositTx);
 
+  // Send branded deposit initiated email with CaixaBank escrow instructions
+  const userRecipient = req.user?.email || 'investor@kretz.com';
+  const foundUser = mockUsers.find(u => u.id === req.user?.id);
+  
+  sendEmail({
+    templateId: 'deposit_received',
+    recipient: userRecipient,
+    data: {
+      fullName: foundUser?.fullName || 'Valued Investor',
+      email: userRecipient,
+      amount: numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      currency,
+      reference: ref,
+      method,
+      beneficiary: 'Kretz Escrow Services S.L.',
+      iban: 'ES91 2100 0418 4502 0005 1829',
+      bic: 'CAIXESBBXXX',
+      bankName: 'CaixaBank Institutional Private Banking'
+    }
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'payments',
+      requestId: req.id || 'req-dep-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch deposit escrow instructions email: ${err.message}`
+    });
+  });
+
+  // If high-value deposit (>= €50,000), notify compliance super admin
+  if (numAmount >= 50000) {
+    sendEmail({
+      templateId: 'admin_alert',
+      recipient: 'info@kretz.site',
+      data: {
+        adminName: 'Chief Compliance Officer',
+        eventType: 'HIGH_VALUE_DEPOSIT_INITIATED',
+        userEmail: userRecipient,
+        userName: foundUser?.fullName || 'Institutional Partner',
+        amount: numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        currency,
+        reference: ref,
+        reviewLink: 'https://kretzdespain.com/admin#deposits'
+      }
+    }).catch(err => {
+      logger.log({
+        level: 'error',
+        category: 'payments',
+        requestId: req.id || 'req-admin-alert',
+        eventType: 'EMAIL_DISPATCH_FAILURE',
+        outcome: 'failure',
+        message: `Failed to dispatch admin high-value alert: ${err.message}`
+      });
+    });
+  }
+
   logger.log({
     level: 'info',
     category: 'payments',
@@ -1454,6 +1602,32 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
   };
 
   mockTransactions.unshift(withdrawalTx);
+
+  const userRecipient = req.user?.email || 'investor@kretz.com';
+  const foundUser = mockUsers.find(u => u.id === req.user?.id);
+  
+  sendEmail({
+    templateId: 'withdrawal_requested',
+    recipient: userRecipient,
+    data: {
+      fullName: foundUser?.fullName || 'Valued Investor',
+      email: userRecipient,
+      amount: numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      currency: 'EUR',
+      reference: ref,
+      destination,
+      estimatedProcessingTime: '24 business hours'
+    }
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'payments',
+      requestId: req.id || 'req-wth-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch withdrawal registered email: ${err.message}`
+    });
+  });
 
   logger.log({
     level: 'info',
@@ -1583,6 +1757,34 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
   };
 
   mockTransactions.unshift(invTx);
+
+  const userRecipient = req.user?.email || 'investor@kretz.com';
+  sendEmail({
+    templateId: 'investment_confirmed',
+    recipient: userRecipient,
+    data: {
+      fullName: userRecord?.fullName || 'Valued Investor',
+      email: userRecipient,
+      propertyTitle: prop.title,
+      tokensCount: count,
+      tokenPrice: prop.tokenPrice.toFixed(2),
+      totalCost: totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      currency: 'EUR',
+      certificateId: certId,
+      spvName: `${prop.title} SPV S.L.`,
+      projectedYield: `${(prop as any).estimatedAnnualYield || (prop as any).projectedYield || 12.5}% Annualized`,
+      firstDistributionDate: '1st of next month'
+    }
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'marketplace',
+      requestId: req.id || 'req-inv-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch investment confirmation email: ${err.message}`
+    });
+  });
 
   logger.log({
     level: 'info',
@@ -1959,8 +2161,79 @@ router.get('/admin/withdrawals', requireAdmin, (req: AuthenticatedRequest, res: 
   });
 });
 
+router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { depositId } = req.params;
+  const targetTx = mockTransactions.find(t => t.id === depositId || t.reference === depositId);
+  
+  if (targetTx) {
+    targetTx.status = 'completed';
+    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
+    if (foundUser) {
+      foundUser.balance = (foundUser.balance || 0) + Number(targetTx.amount);
+    }
+    
+    sendEmail({
+      templateId: 'deposit_confirmed',
+      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
+      data: {
+        fullName: foundUser?.fullName || 'Valued Investor',
+        amount: Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        currency: targetTx.currency || 'EUR',
+        reference: targetTx.reference || depositId,
+        creditedBalance: (foundUser?.balance || Number(targetTx.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        settledAt: new Date().toUTCString()
+      }
+    }).catch(err => {
+      logger.log({
+        level: 'error',
+        category: 'admin',
+        requestId: req.id || 'req-dep-appr-email',
+        eventType: 'EMAIL_DISPATCH_FAILURE',
+        outcome: 'failure',
+        message: `Failed to dispatch deposit confirmation email: ${err.message}`
+      });
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Deposit ${depositId} approved and cash credited to user balance.`,
+    requestId: req.id
+  });
+});
+
 router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   const { withdrawalId } = req.params;
+  const targetTx = mockTransactions.find(t => t.id === withdrawalId || t.reference === withdrawalId);
+  
+  if (targetTx) {
+    targetTx.status = 'completed';
+    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
+    
+    sendEmail({
+      templateId: 'withdrawal_completed',
+      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
+      data: {
+        fullName: foundUser?.fullName || 'Valued Investor',
+        amount: Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        currency: targetTx.currency || 'EUR',
+        reference: targetTx.reference || withdrawalId,
+        destination: (targetTx as any).destination || 'Verified Bank Account',
+        bankTransferId: `SEPA-CX-${Date.now().toString().slice(-6)}`,
+        dispatchedAt: new Date().toUTCString()
+      }
+    }).catch(err => {
+      logger.log({
+        level: 'error',
+        category: 'admin',
+        requestId: req.id || 'req-wth-appr-email',
+        eventType: 'EMAIL_DISPATCH_FAILURE',
+        outcome: 'failure',
+        message: `Failed to dispatch withdrawal completed email: ${err.message}`
+      });
+    });
+  }
+
   res.json({
     success: true,
     message: `Withdrawal ${withdrawalId} approved and transfer queued.`,
@@ -1970,6 +2243,16 @@ router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: Auth
 
 router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   const { withdrawalId } = req.params;
+  const targetTx = mockTransactions.find(t => t.id === withdrawalId || t.reference === withdrawalId);
+  if (targetTx) {
+    targetTx.status = 'rejected';
+    // Refund locked balance back to user
+    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
+    if (foundUser) {
+      foundUser.balance = (foundUser.balance || 0) + Number(targetTx.amount);
+    }
+  }
+
   res.json({
     success: true,
     message: `Withdrawal ${withdrawalId} rejected and funds unlocked.`,
@@ -2188,6 +2471,179 @@ router.delete('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, r
   res.json({
     success: true,
     message: `Article ${id} deleted successfully.`,
+    requestId: req.id
+  });
+});
+
+// ============================================================================
+// ADMIN EMAIL COMMUNICATION MANAGEMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/v1/admin/email/templates
+ * List all available email templates with descriptions, categories, and variables
+ */
+router.get('/admin/email/templates', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: emailTemplates.map(t => ({
+      id: t.id,
+      name: t.name,
+      category: t.category,
+      description: t.description,
+      defaultSubject: t.defaultSubject,
+      sampleData: t.sampleData
+    })),
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/admin/email/preview/:templateId
+ * Render live preview of an email template with HTML, plain text, and variable interpolation
+ */
+router.get('/admin/email/preview/:templateId', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { templateId } = req.params;
+  const template = emailTemplates.find(t => t.id === templateId);
+
+  if (!template) {
+    return res.status(404).json({
+      success: false,
+      error: `Email template '${templateId}' not found.`,
+      requestId: req.id
+    });
+  }
+
+  const customData = req.query ? { ...template.sampleData, ...req.query } : template.sampleData;
+  const settings = getEmailSettings();
+  let subject = settings.subjectOverrides[templateId] || template.defaultSubject;
+  
+  Object.keys(customData).forEach(k => {
+    subject = subject.replace(new RegExp(`{{${k}}}`, 'g'), String(customData[k] || ''));
+  });
+
+  const html = template.generateHtml(customData);
+  const text = template.generateText(customData);
+
+  res.json({
+    success: true,
+    data: {
+      id: template.id,
+      name: template.name,
+      category: template.category,
+      subject,
+      html,
+      text,
+      sampleData: template.sampleData
+    },
+    requestId: req.id
+  });
+});
+
+/**
+ * POST /api/v1/admin/email/send-test
+ * Dispatches a real test email for any template to an admin-designated recipient
+ */
+router.post('/admin/email/send-test', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { templateId, recipient, customData, subjectOverride } = req.body || {};
+
+  if (!templateId || !recipient) {
+    return res.status(400).json({
+      success: false,
+      error: 'Template ID and recipient email address are required.',
+      requestId: req.id
+    });
+  }
+
+  const template = emailTemplates.find(t => t.id === templateId);
+  if (!template) {
+    return res.status(404).json({
+      success: false,
+      error: `Template '${templateId}' not found.`,
+      requestId: req.id
+    });
+  }
+
+  const mergedData = { ...template.sampleData, ...(customData || {}) };
+
+  try {
+    const result = await sendEmail({
+      templateId,
+      recipient,
+      data: mergedData,
+      subjectOverride
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: `Test email (${template.name}) successfully dispatched to ${recipient}.`,
+      requestId: req.id
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to dispatch test email.',
+      requestId: req.id
+    });
+  }
+});
+
+/**
+ * GET /api/v1/admin/email/logs
+ * Retrieve recent email transmission audit logs
+ */
+router.get('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: getEmailLogs(),
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/admin/email/settings
+ * Retrieve sender metadata, support info, and SMTP transport status
+ */
+router.get('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const isSmtp = Boolean(process.env.SMTP_HOST);
+  res.json({
+    success: true,
+    data: {
+      ...getEmailSettings(),
+      smtpConfigured: isSmtp,
+      smtpHost: process.env.SMTP_HOST || 'Sandbox Engine (Instant Simulated Delivery)',
+      smtpPort: process.env.SMTP_PORT || 'N/A'
+    },
+    requestId: req.id
+  });
+});
+
+/**
+ * POST /api/v1/admin/email/settings
+ * Update sender name, address, support contact, and subject overrides
+ */
+router.post('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const updates = req.body || {};
+  const updated = updateEmailSettings(updates);
+
+  res.json({
+    success: true,
+    data: updated,
+    message: 'Email sender configuration and template subject overrides updated.',
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/admin/email/verify-smtp
+ * Test real SMTP connection, authentication, and return SPF/DMARC recommendations
+ */
+router.get('/admin/email/verify-smtp', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const result = await verifySmtpConnection();
+  res.json({
+    success: result.connected,
+    data: result,
     requestId: req.id
   });
 });

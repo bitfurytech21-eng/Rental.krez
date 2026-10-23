@@ -41,7 +41,7 @@ interface AdminDashboardOverviewProps {
   users: User[];
   auditLogs: AuditLog[];
   paymentConfig: PaymentConfig;
-  onNavigateTab: (tab: 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news') => void;
+  onNavigateTab: (tab: 'dashboard' | 'users' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails') => void;
   onOpenNewPropertyModal: () => void;
   onRefreshAll: () => void;
   onQuickCreditSuccess: (msg: string) => void;

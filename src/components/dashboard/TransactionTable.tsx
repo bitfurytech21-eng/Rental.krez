@@ -15,30 +15,30 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (type) {
       case 'deposit':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#27845D] bg-[#E8F5E9] px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#27845D] bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
             <ArrowDownLeft className="w-2.5 h-2.5" /> Deposit
           </span>
         );
       case 'withdrawal':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#C24141] bg-red-50 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#C24141] bg-red-50 border border-red-200 px-1.5 py-0.2 rounded">
             <ArrowUpRight className="w-2.5 h-2.5" /> Withdrawal
           </span>
         );
       case 'investment':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#182D2A] bg-[#EEF1EC] px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#182D2A] bg-[#EEF1EC] border border-[#DCE4DA] px-1.5 py-0.2 rounded">
             <Coins className="w-2.5 h-2.5" /> Investment
           </span>
         );
       case 'distribution':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#27845D] bg-[#E8F5E9] px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#27845D] bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
             <RefreshCw className="w-2.5 h-2.5" /> Dividend
           </span>
         );
       default:
-        return <span className="text-[10px] uppercase">{type}</span>;
+        return <span className="text-[9.5px] uppercase font-mono">{type}</span>;
     }
   };
 
@@ -116,13 +116,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
         <table className="dashboard-table">
           <thead>
             <tr>
-              <th className="py-1.5 px-2.5 text-[9.5px]">Type</th>
-              <th className="py-1.5 px-2.5 text-[9.5px]">Description & Reference</th>
-              <th className="py-1.5 px-2.5 text-[9.5px]">Date</th>
-              <th className="py-1.5 px-2.5 text-[9.5px]">Method</th>
-              <th className="py-1.5 px-2.5 text-[9.5px]">Status</th>
-              <th className="py-1.5 px-2.5 text-[9.5px] text-right">Amount</th>
-              <th className="py-1.5 px-2.5 text-[9.5px] text-right">Balance After</th>
+              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Type</th>
+              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Description & Reference</th>
+              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Date</th>
+              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Method</th>
+              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Status</th>
+              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px] text-right">Amount</th>
+              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px] text-right">Balance After</th>
             </tr>
           </thead>
           <tbody className="divide-y border-inherit/30">
@@ -130,29 +130,29 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               const isNegative = tx.type === 'withdrawal' || tx.type === 'investment';
               return (
                 <tr key={tx.id} className="hover:opacity-85 transition-opacity">
-                  <td className="py-1.5 px-2.5">{getTypeBadge(tx.type)}</td>
-                  <td className="py-1.5 px-2.5 max-w-xs">
+                  <td className="py-2 px-2.5">{getTypeBadge(tx.type)}</td>
+                  <td className="py-2 px-2.5 max-w-xs">
                     <span className="font-semibold dash-text block text-xs truncate">
                       {tx.description}
                     </span>
-                    <span className="font-mono text-[9.5px] dash-muted">
+                    <span className="font-mono text-[10px] dash-muted">
                       Ref: {tx.reference} {tx.txHash ? `· ${formatShortHash(tx.txHash)}` : ''}
                     </span>
                   </td>
-                  <td className="py-1.5 px-2.5 text-[11px] dash-muted whitespace-nowrap">
+                  <td className="py-2 px-2.5 text-xs dash-muted whitespace-nowrap font-mono">
                     {formatDate(tx.createdAt)}
                   </td>
-                  <td className="py-1.5 px-2.5 text-[11px] dash-text font-medium whitespace-nowrap">
+                  <td className="py-2 px-2.5 text-xs dash-text font-medium whitespace-nowrap">
                     {tx.paymentMethod}
                   </td>
-                  <td className="py-1.5 px-2.5">{getStatusBadge(tx.status)}</td>
-                  <td className="py-1.5 px-2.5 text-right font-bold text-xs whitespace-nowrap">
+                  <td className="py-2 px-2.5">{getStatusBadge(tx.status)}</td>
+                  <td className="py-2 px-2.5 text-right font-bold font-mono tabular-nums text-xs sm:text-[13px] whitespace-nowrap">
                     <span className={isNegative ? 'dash-text' : 'text-[#27845D]'}>
                       {isNegative ? '-' : '+'}
                       {formatCurrency(tx.amount, tx.currency)}
                     </span>
                   </td>
-                  <td className="py-1.5 px-2.5 text-right font-medium text-[11px] dash-muted whitespace-nowrap">
+                  <td className="py-2 px-2.5 text-right font-medium font-mono tabular-nums text-xs dash-muted whitespace-nowrap">
                     {formatCurrency(tx.balanceAfter)}
                   </td>
                 </tr>

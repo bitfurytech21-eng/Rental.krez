@@ -187,6 +187,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(found);
       setToken('local_sess_' + found.id);
       localStorage.setItem(CURRENT_USER_KEY, found.id);
+      try {
+        ledger.recordAuditLog(
+          found.id,
+          found.email,
+          'LOGIN_SUCCESS',
+          `User ${found.email} authenticated successfully (${found.role}).`,
+          'auth',
+          'success',
+          { targetUserId: found.id, targetUserEmail: found.email }
+        );
+      } catch (e) {}
       return found;
     }
 
@@ -199,6 +210,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) {
+      try {
+        ledger.recordAuditLog(
+          'guest',
+          cleanEmail,
+          'LOGIN_FAILED',
+          `Failed login attempt for ${cleanEmail}: ${error.message}`,
+          'auth',
+          'warning',
+          { targetUserEmail: cleanEmail }
+        );
+      } catch (e) {}
+
       // If this is an executive administrator account (info@kretz.site) and cloud Supabase account is not yet seeded
       if (isExecutiveEmail && (pass === 'admin123' || pass.length >= 6)) {
         console.warn('Supabase Auth user not found in cloud project. Elevating verified local executive admin session.');
@@ -214,6 +237,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(found);
         setToken('admin_sess_' + found.id);
         localStorage.setItem(CURRENT_USER_KEY, found.id);
+        try {
+          ledger.recordAuditLog(
+            found.id,
+            found.email,
+            'LOGIN_SUCCESS',
+            `Executive admin session elevated for ${found.email}.`,
+            'auth',
+            'success',
+            { targetUserId: found.id, targetUserEmail: found.email }
+          );
+        } catch (e) {}
         return found;
       }
 
@@ -242,6 +276,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(data.session);
     setToken(data.session?.access_token || null);
     localStorage.setItem(CURRENT_USER_KEY, synced.id);
+    try {
+      ledger.recordAuditLog(
+        synced.id,
+        synced.email,
+        'LOGIN_SUCCESS',
+        `User ${synced.email} authenticated successfully (${synced.role}).`,
+        'auth',
+        'success',
+        { targetUserId: synced.id, targetUserEmail: synced.email }
+      );
+    } catch (e) {}
     return synced;
   };
 
@@ -373,6 +418,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Working Sign Out action
   const logout = async (): Promise<void> => {
+    if (user) {
+      try {
+        ledger.recordAuditLog(
+          user.id,
+          user.email,
+          'USER_LOGOUT',
+          `User ${user.email} signed out of session.`,
+          'auth',
+          'info',
+          { targetUserId: user.id, targetUserEmail: user.email }
+        );
+      } catch (e) {}
+    }
     if (isConfigured) {
       try {
         await supabase.auth.signOut();
@@ -522,6 +580,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser({ ...existing });
     setToken('local_preview_' + existing.id);
     localStorage.setItem(CURRENT_USER_KEY, existing.id);
+    try {
+      ledger.recordAuditLog(
+        existing.id,
+        existing.email,
+        'LOGIN_SUCCESS',
+        `Authenticated session established for ${existing.email} (${role}).`,
+        'auth',
+        'success',
+        { targetUserId: existing.id, targetUserEmail: existing.email }
+      );
+    } catch (e) {}
     return existing;
   };
 

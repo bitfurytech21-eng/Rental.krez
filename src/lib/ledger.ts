@@ -9,6 +9,9 @@ import { CompanyNewsItem } from '../types/news';
 import { INITIAL_COMPANY_NEWS } from '../data/companyNews';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
+export type AuditCategory = 'auth' | 'user_status' | 'financial' | 'compliance' | 'security' | 'system';
+export type AuditSeverity = 'info' | 'success' | 'warning' | 'critical';
+
 export interface AuditLog {
   id: string;
   adminId: string;
@@ -17,6 +20,11 @@ export interface AuditLog {
   details: string;
   timestamp: string;
   ipAddress?: string;
+  category?: AuditCategory;
+  severity?: AuditSeverity;
+  targetUserId?: string;
+  targetUserEmail?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface Notification {
@@ -870,6 +878,160 @@ const DEFAULT_VERIFICATION_DOCUMENTS: VerificationDocument[] = [
   }
 ];
 
+export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
+  {
+    id: 'audit-001',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'PASSGATE_UNLOCKED',
+    details: 'Executive pass gate unlocked with verified authorization code.',
+    timestamp: '2026-03-20T10:14:22Z',
+    category: 'security',
+    severity: 'success',
+    ipAddress: '82.64.120.45 (Paris, FR)',
+    targetUserEmail: 'admin@lagence.com'
+  },
+  {
+    id: 'audit-002',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'USER_SUSPENDED',
+    details: 'Investor account elena.rostova@monacocap.mc changed from ACTIVE to SUSPENDED by compliance officer. Reason: PEP enhanced due diligence refresh required.',
+    timestamp: '2026-03-20T09:42:15Z',
+    category: 'user_status',
+    severity: 'warning',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-4',
+    targetUserEmail: 'elena.rostova@monacocap.mc'
+  },
+  {
+    id: 'audit-003',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'DEPOSIT_APPROVED',
+    details: 'Approved SEPA bank wire deposit of €10,000.00 for investor@kretz.com. Ref: DEP-EUR-849201.',
+    timestamp: '2026-03-20T09:15:30Z',
+    category: 'financial',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-1',
+    targetUserEmail: 'investor@kretz.com'
+  },
+  {
+    id: 'audit-004',
+    adminId: 'usr-investor-1',
+    adminEmail: 'investor@kretz.com',
+    action: 'LOGIN_SUCCESS',
+    details: 'Investor user investor@kretz.com authenticated successfully via session credentials.',
+    timestamp: '2026-03-20T08:55:04Z',
+    category: 'auth',
+    severity: 'success',
+    ipAddress: '88.175.24.12 (Lyon, FR)',
+    targetUserId: 'usr-investor-1',
+    targetUserEmail: 'investor@kretz.com'
+  },
+  {
+    id: 'audit-005',
+    adminId: 'guest',
+    adminEmail: 'david.vance@heritagefo.ch',
+    action: 'LOGIN_FAILED',
+    details: 'Failed authentication attempt for david.vance@heritagefo.ch: Invalid security credentials entered.',
+    timestamp: '2026-03-20T08:12:18Z',
+    category: 'auth',
+    severity: 'warning',
+    ipAddress: '178.197.234.90 (Geneva, CH)',
+    targetUserEmail: 'david.vance@heritagefo.ch'
+  },
+  {
+    id: 'audit-006',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'KYC_STATUS_UPDATED',
+    details: 'User sophie.martin@luxcapital.fr KYC status set to VERIFIED following biometric passport eIDAS review.',
+    timestamp: '2026-03-19T16:30:00Z',
+    category: 'compliance',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-2',
+    targetUserEmail: 'sophie.martin@luxcapital.fr'
+  },
+  {
+    id: 'audit-007',
+    adminId: 'usr-investor-3',
+    adminEmail: 'david.vance@heritagefo.ch',
+    action: 'INVESTMENT_EXECUTED',
+    details: 'Acquired 50 digital fractional security tokens (€50,000.00) in Villa Magna Marbella SPV. Smart contract ledger updated.',
+    timestamp: '2026-03-19T14:22:45Z',
+    category: 'financial',
+    severity: 'success',
+    ipAddress: '178.197.234.90 (Geneva, CH)',
+    targetUserId: 'usr-investor-3',
+    targetUserEmail: 'david.vance@heritagefo.ch'
+  },
+  {
+    id: 'audit-008',
+    adminId: 'usr-investor-1',
+    adminEmail: 'investor@kretz.com',
+    action: 'DOCUMENT_UPLOADED',
+    details: 'Uploaded deposit_proof document "CaixaBank SEPA Wire Transfer Slip (€10,000)" (caixabank_sepa_wire_transfer_10000eur.pdf).',
+    timestamp: '2026-03-19T11:05:12Z',
+    category: 'compliance',
+    severity: 'info',
+    ipAddress: '88.175.24.12 (Lyon, FR)',
+    targetUserId: 'usr-investor-1',
+    targetUserEmail: 'investor@kretz.com'
+  },
+  {
+    id: 'audit-009',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'WITHDRAWAL_APPROVED',
+    details: 'Approved withdrawal request of €5,000.00 to IBAN FR763000...9841 for sophie.martin@luxcapital.fr.',
+    timestamp: '2026-03-18T15:40:22Z',
+    category: 'financial',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-2',
+    targetUserEmail: 'sophie.martin@luxcapital.fr'
+  },
+  {
+    id: 'audit-010',
+    adminId: 'guest',
+    adminEmail: 'unknown',
+    action: 'PASSGATE_FAILED_ATTEMPT',
+    details: 'Failed pass gate authorization attempt at /admin. 4 attempts remaining before temporary rate-limit.',
+    timestamp: '2026-03-18T10:19:05Z',
+    category: 'security',
+    severity: 'critical',
+    ipAddress: '45.142.214.88 (External Probe)',
+    targetUserEmail: 'admin@lagence.com'
+  },
+  {
+    id: 'audit-011',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'USER_ACTIVATED',
+    details: 'Investor account sophie.martin@luxcapital.fr status set to ACTIVE after standard annual compliance renewal.',
+    timestamp: '2026-03-17T11:20:00Z',
+    category: 'user_status',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-2',
+    targetUserEmail: 'sophie.martin@luxcapital.fr'
+  },
+  {
+    id: 'audit-012',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'SYSTEM_INITIALIZATION',
+    details: 'Double-entry cryptographic ledger and compliance audit subsystem initialized for production custody.',
+    timestamp: '2026-01-01T00:00:00Z',
+    category: 'system',
+    severity: 'info',
+    ipAddress: '127.0.0.1 (System)'
+  }
+];
+
 class LedgerService {
   private users: User[];
   private properties: Property[];
@@ -974,16 +1136,13 @@ class LedgerService {
         setStorage('companyNews', this.companyNews);
       }
     }
-    this.auditLogs = getStorage('auditLogs', [
-      {
-        id: 'audit-1',
-        adminId: 'usr-admin-1',
-        adminEmail: 'admin@kretz.com',
-        action: 'SYSTEM_INITIALIZATION',
-        details: 'Double-entry ledger initialized for production custody.',
-        timestamp: '2026-01-01T00:00:00Z'
-      }
-    ]);
+    const storedLogs = getStorage<AuditLog[]>('auditLogs', DEFAULT_AUDIT_LOGS);
+    if (storedLogs.length <= 1) {
+      this.auditLogs = [...DEFAULT_AUDIT_LOGS];
+      setStorage('auditLogs', this.auditLogs);
+    } else {
+      this.auditLogs = storedLogs;
+    }
     this.notifications = getStorage('notifications', []);
   }
 
@@ -1403,9 +1562,55 @@ class LedgerService {
     return user;
   }
 
-  public recordAuditLog(adminId: string, adminEmail: string, action: string, details: string): void {
-    this.logAudit(adminId, adminEmail, action, details);
+  public recordAuditLog(
+    adminId: string,
+    adminEmail: string,
+    action: string,
+    details: string,
+    category?: AuditCategory,
+    severity?: AuditSeverity,
+    extra?: {
+      targetUserId?: string;
+      targetUserEmail?: string;
+      ipAddress?: string;
+      metadata?: Record<string, any>;
+    }
+  ): AuditLog {
+    const entry = this.logAudit(adminId, adminEmail, action, details, category, severity, extra);
     this.saveState();
+    return entry;
+  }
+
+  public clearAuditLogs(): void {
+    this.auditLogs = [];
+    this.saveState();
+  }
+
+  public seedComplianceSampleAuditLogs(): AuditLog[] {
+    this.auditLogs = [...DEFAULT_AUDIT_LOGS];
+    this.saveState();
+    return [...this.auditLogs];
+  }
+
+  public getAuditLogStats(): {
+    total: number;
+    authCount: number;
+    userStatusCount: number;
+    financialCount: number;
+    complianceCount: number;
+    securityCount: number;
+    warningCount: number;
+  } {
+    const logs = this.auditLogs;
+    return {
+      total: logs.length,
+      authCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'auth').length,
+      userStatusCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'user_status').length,
+      financialCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'financial').length,
+      complianceCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'compliance').length,
+      securityCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'security').length,
+      warningCount: logs.filter(l => l.severity === 'warning' || l.severity === 'critical').length,
+    };
   }
 
 
@@ -2434,15 +2639,75 @@ class LedgerService {
     return undefined;
   }
 
-  private logAudit(adminId: string, adminEmail: string, action: string, details: string) {
-    this.auditLogs.unshift({
+  private inferAuditCategory(action: string): AuditCategory {
+    const upper = action.toUpperCase();
+    if (upper.includes('LOGIN') || upper.includes('AUTH') || upper.includes('REGISTER') || upper.includes('LOGOUT') || upper.includes('PASSWORD')) {
+      return 'auth';
+    }
+    if (upper.includes('PASSGATE')) {
+      return 'security';
+    }
+    if (upper.includes('STATUS') || upper.includes('SUSPEND') || upper.includes('ACTIVATE') || upper.includes('PROFILE') || upper.includes('ROLE')) {
+      return 'user_status';
+    }
+    if (upper.includes('DEPOSIT') || upper.includes('WITHDRAW') || upper.includes('INVEST') || upper.includes('PAYMENT') || upper.includes('CRYPTO')) {
+      return 'financial';
+    }
+    if (upper.includes('KYC') || upper.includes('DOCUMENT') || upper.includes('MEMBERSHIP') || upper.includes('COMPLIANCE')) {
+      return 'compliance';
+    }
+    return 'system';
+  }
+
+  private inferAuditSeverity(action: string): AuditSeverity {
+    const upper = action.toUpperCase();
+    if (upper.includes('FAILED') || upper.includes('CRITICAL')) {
+      return 'critical';
+    }
+    if (upper.includes('REJECTED') || upper.includes('SUSPENDED') || upper.includes('WARNING') || upper.includes('DECLINED')) {
+      return 'warning';
+    }
+    if (upper.includes('SUCCESS') || upper.includes('APPROVED') || upper.includes('CONFIRMED') || upper.includes('VERIFIED') || upper.includes('UNLOCKED') || upper.includes('ACTIVATED')) {
+      return 'success';
+    }
+    return 'info';
+  }
+
+  public logAudit(
+    adminId: string,
+    adminEmail: string,
+    action: string,
+    details: string,
+    category?: AuditCategory,
+    severity?: AuditSeverity,
+    extra?: {
+      targetUserId?: string;
+      targetUserEmail?: string;
+      ipAddress?: string;
+      metadata?: Record<string, any>;
+    }
+  ): AuditLog {
+    const cat = category || this.inferAuditCategory(action);
+    const sev = severity || this.inferAuditSeverity(action);
+    const entry: AuditLog = {
       id: 'audit-' + Math.random().toString(36).substring(2, 9),
       adminId,
       adminEmail,
       action,
       details,
-      timestamp: new Date().toISOString()
-    });
+      timestamp: new Date().toISOString(),
+      category: cat,
+      severity: sev,
+      targetUserId: extra?.targetUserId,
+      targetUserEmail: extra?.targetUserEmail,
+      ipAddress: extra?.ipAddress || '127.0.0.1 (Local Verified)',
+      metadata: extra?.metadata
+    };
+    this.auditLogs.unshift(entry);
+    if (this.auditLogs.length > 2000) {
+      this.auditLogs = this.auditLogs.slice(0, 2000);
+    }
+    return entry;
   }
 
   private createNotification(userId: string, title: string, message: string, type: 'info' | 'success' | 'warning' | 'financial') {

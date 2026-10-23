@@ -60,7 +60,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
     } catch (err) {
       console.error('Document printing failed:', err);
     } finally {
-      setTimeout(() => setIsGenerating(false), 1000);
+      setIsGenerating(false);
     }
   };
 
@@ -78,7 +78,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
       <div className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-50 animate-in slide-in-from-bottom-3 duration-200">
         {isDocked ? (
           /* Minimized Docked Bar at bottom edge */
-          <div className="dash-card border shadow-2xl rounded-2xl px-3.5 py-2 flex items-center gap-2.5 text-xs">
+          <div className="dash-card border shadow-xl rounded-xl px-3 py-1.5 flex items-center gap-2.5 text-xs">
             <div className="w-5 h-5 rounded-md bg-[#10B981] text-white flex items-center justify-center font-black shrink-0 shadow-xs">
               <Award className="w-3 h-3" />
             </div>
@@ -110,11 +110,11 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           </div>
         ) : (
           /* Brought Down Document Preview Modal */
-          <div className="dash-card rounded-2xl max-w-sm sm:max-w-md w-full max-w-[calc(100%-24px)] sm:w-[380px] p-4 sm:p-5 shadow-2xl border relative space-y-3 max-h-[82vh] overflow-y-auto">
+          <div className="dash-card rounded-xl max-w-sm sm:max-w-md w-full max-w-[calc(100%-24px)] sm:w-[380px] p-3.5 sm:p-4 shadow-xl border relative space-y-2.5 max-h-[82vh] overflow-y-auto">
             {/* Top Bar with Bring Down button for clearer view */}
-            <div className="flex items-center justify-between pb-1.5 text-[9px] text-emerald-400 border-b border-inherit/20">
+            <div className="flex items-center justify-between pb-1.5 text-[9.5px] text-emerald-400 border-b border-inherit/20">
               <span className="font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <Award className="w-3 h-3" />
                 Anchored Down View
               </span>
               <button

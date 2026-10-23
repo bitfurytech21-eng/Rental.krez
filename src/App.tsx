@@ -50,6 +50,7 @@ import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
 import { updatePageSeo } from './lib/seo';
 import { InsightsEditorialHome } from './components/insights/InsightsEditorialHome';
 import { InsightArticleDetail } from './components/insights/InsightArticleDetail';
+import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 
 import { ArrowRight, ShieldCheck, UserCheck, Plus } from 'lucide-react';
 
@@ -60,6 +61,11 @@ function MainApp() {
   const [pendingInvestmentProperty, setPendingInvestmentProperty] = useState<Property | null>(null);
   const [returnDestination, setReturnDestination] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>(ledger.getProperties());
+  const [passGateUnlocked, setPassGateUnlocked] = useState(isPassGateUnlocked);
+
+  useEffect(() => {
+    return subscribePassGate(setPassGateUnlocked);
+  }, []);
 
   // Synchronize selectedProperty whenever route changes to a property page
   useEffect(() => {
@@ -582,12 +588,13 @@ function MainApp() {
 
   const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
+  const isPassGateActive = isAdminView && !passGateUnlocked;
   const isHomePage = currentBasePath === '/' || currentBasePath === '';
 
   return (
     <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#DFF0FC] min-h-screen'}`}>
 
-      {!isDashboardView && !isAdminLoginPage && <Header currentPath={currentPath} onNavigate={navigateTo} />}
+      {!isDashboardView && !isAdminLoginPage && !isPassGateActive && <Header currentPath={currentPath} onNavigate={navigateTo} />}
 
       <div className={`flex-1 flex flex-col ${isDashboardView ? 'overflow-hidden' : ''}`}>
         {renderContent()}

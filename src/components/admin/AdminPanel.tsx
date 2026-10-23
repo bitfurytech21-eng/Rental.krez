@@ -38,7 +38,8 @@ import {
   Globe,
   Tag,
   Sparkles,
-  Check
+  Check,
+  Mail
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
@@ -49,19 +50,29 @@ import { AdminUserManagement } from './AdminUserManagement';
 import { AdminInsightsCMS } from './AdminInsightsCMS';
 import { AdminAccountSettings } from './AdminAccountSettings';
 import { AdminReconciliationView } from './AdminReconciliationView';
+import { AdminPassGate } from './AdminPassGate';
+import { AdminAuditLogsView } from './AdminAuditLogsView';
+import { AdminEmailManager } from './AdminEmailManager';
+import { lockPassGate, isPassGateUnlocked } from '../../lib/passGate';
 
-export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security';
+export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails';
 
 export const AdminPanel: React.FC = () => {
   const { user, quickDemoSession } = useAuth();
   const { navigateTo } = useNavigation();
 
-  // Ensure an active admin session is established immediately without blocking
+  // Ensure an active admin session is established only after the Pass Gate is cleared
   React.useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      quickDemoSession('admin').catch(() => {});
+    if (isPassGateUnlocked()) {
+      if (!user || user.role !== 'admin') {
+        quickDemoSession('admin').catch(() => {});
+      }
     }
   }, [user, quickDemoSession]);
+
+  const handleLockPassGate = () => {
+    lockPassGate();
+  };
 
   const fallbackAdmin = ledger.getUserById('usr-admin-1') || {
     id: 'usr-admin-1',
@@ -75,7 +86,7 @@ export const AdminPanel: React.FC = () => {
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails'];
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
@@ -562,46 +573,55 @@ export const AdminPanel: React.FC = () => {
   const selectedTargetUser = users.find(u => u.id === selectedUserId);
 
   return (
-    <div className="bg-[#F6F7F4] min-h-screen py-10">
-      <div className="container mx-auto px-4 sm:px-6">
+    <AdminPassGate>
+      <div className="bg-[#F6F7F4] min-h-screen py-10">
+        <div className="container mx-auto px-4 sm:px-6">
         
-        {/* Header */}
-        <div className="bg-[#182D2A] text-white p-7 rounded-3xl shadow-xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#24423C] text-[#B7E36A] flex items-center justify-center">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black text-white">Platform Administration</h1>
-                <span className="bg-[#24423C] text-[#B7E36A] text-xs font-bold px-2 py-0.5 rounded-full uppercase">
-                  Super Admin
-                </span>
+          {/* Header */}
+          <div className="bg-[#182D2A] text-white p-7 rounded-3xl shadow-xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#24423C] text-[#B7E36A] flex items-center justify-center">
+                <Shield className="w-6 h-6" />
               </div>
-              <p className="text-xs text-[#A0A8A5]">
-                Manage payments, manual balance integrations, treasury wallets, offerings, and financial ledger compliance.
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-black text-white">Platform Administration</h1>
+                  <span className="bg-[#24423C] text-[#B7E36A] text-xs font-bold px-2 py-0.5 rounded-full uppercase">
+                    Super Admin
+                  </span>
+                </div>
+                <p className="text-xs text-[#A0A8A5]">
+                  Manage payments, manual balance integrations, treasury wallets, offerings, and financial ledger compliance.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleLockPassGate}
+                className="btn bg-[#0D1815] text-amber-300 hover:bg-black/60 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-amber-500/30 transition-colors"
+                title="Lock Admin Pass Gate immediately"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Lock Pass Gate</span>
+              </button>
+              <button
+                onClick={handleRestoreDefaults}
+                className="btn bg-[#182D2A] text-white hover:bg-[#24423C] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-800/40"
+                title="Restore all properties and videos to default"
+              >
+                <RotateCcw className="w-4 h-4 text-emerald-400" />
+                Restore Properties & Videos
+              </button>
+              <button
+                onClick={() => setShowNewPropertyModal(true)}
+                className="btn btn-accent text-xs font-bold px-5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Publish New Property
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleRestoreDefaults}
-              className="btn bg-[#182D2A] text-white hover:bg-[#24423C] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-800/40"
-              title="Restore all properties and videos to default"
-            >
-              <RotateCcw className="w-4 h-4 text-emerald-400" />
-              Restore Properties & Videos
-            </button>
-            <button
-              onClick={() => setShowNewPropertyModal(true)}
-              className="btn btn-accent text-xs font-bold px-5 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Publish New Property
-            </button>
-          </div>
-        </div>
 
         {actionSuccess && (
           <div className="p-4 mb-6 rounded-2xl bg-green-50 text-green-800 text-xs font-bold border border-green-200 flex items-center justify-between animate-in fade-in">
@@ -774,8 +794,8 @@ export const AdminPanel: React.FC = () => {
               activeTab === 'audit' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
             }`}
           >
-            <ClipboardList className="w-4 h-4" />
-            Ledger Audit Logs
+            <ClipboardList className="w-4 h-4 text-emerald-700" />
+            <span>Compliance Audit Trail</span>
           </button>
 
           <button
@@ -797,6 +817,16 @@ export const AdminPanel: React.FC = () => {
           >
             <Shield className="w-4 h-4 text-emerald-800" />
             <span>Admin Security & Passphrase</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('emails')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'emails' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <Mail className="w-4 h-4 text-[#27845D]" />
+            <span>Email Templates &amp; Delivery</span>
           </button>
         </div>
 
@@ -2193,24 +2223,9 @@ export const AdminPanel: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 6: Audit Logs */}
+        {/* Tab 6: Audit Logs & Compliance Trail */}
         {activeTab === 'audit' && (
-          <div className="bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-sm">
-            <h3 className="text-lg font-bold text-[#18211F] mb-4">Financial Ledger & Administrative Audit Trail</h3>
-            <div className="divide-y divide-[#E3E8E3] max-h-96 overflow-y-auto font-mono text-xs">
-              {auditLogs.map((log) => (
-                <div key={log.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <span className="font-bold text-[#182D2A] mr-2">[{log.action}]</span>
-                    <span className="text-[#69736F]">{log.details}</span>
-                  </div>
-                  <div className="text-[11px] text-[#828D89] whitespace-nowrap">
-                    {formatDate(log.timestamp)} · Admin: {log.adminEmail}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AdminAuditLogsView currentAdminEmail={activeUser.email} />
         )}
 
         {/* Tab 7: API Logs & System Monitoring */}
@@ -2218,6 +2233,9 @@ export const AdminPanel: React.FC = () => {
 
         {/* Tab 8: Admin Security & Passphrase Settings */}
         {activeTab === 'admin-security' && <AdminAccountSettings />}
+
+        {/* Tab 9: Institutional Email Communication & Templates */}
+        {activeTab === 'emails' && <AdminEmailManager />}
       </div>
 
       {/* New Property Modal */}
@@ -2648,5 +2666,6 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
     </div>
+  </AdminPassGate>
   );
 };

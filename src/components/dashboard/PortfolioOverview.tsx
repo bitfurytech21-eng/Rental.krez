@@ -73,7 +73,7 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                   </div>
                 </div>
 
-                <span className="text-[8.5px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 px-1.5 py-0.2 rounded-full shrink-0">
+                <span className="text-[9px] font-semibold tracking-wide text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
                   Active
                 </span>
               </div>
@@ -82,15 +82,15 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <div className="grid grid-cols-3 gap-1 py-1.5 border-y border-inherit/30 text-[11px] mb-1.5">
                 <div>
                   <span className="dash-muted block text-[9px]">Tokens</span>
-                  <span className="font-bold dash-text text-[11px] sm:text-xs">{inv.tokensPurchased} ({formatCurrency(inv.totalAmountInvested)})</span>
+                  <span className="font-bold font-mono tabular-nums dash-text text-[11px] sm:text-xs">{inv.tokensPurchased} ({formatCurrency(inv.totalAmountInvested)})</span>
                 </div>
                 <div>
                   <span className="dash-muted block text-[9px]">Est. Yield</span>
-                  <span className="font-bold text-emerald-500 text-[11px] sm:text-xs">{formatPercent(inv.estimatedAnnualYield)}</span>
+                  <span className="font-bold font-mono tabular-nums text-emerald-600 text-[11px] sm:text-xs">{formatPercent(inv.estimatedAnnualYield)}</span>
                 </div>
                 <div>
                   <span className="dash-muted block text-[9px]">Monthly Payout</span>
-                  <span className="font-bold dash-text text-[11px] sm:text-xs">+{formatCurrency(inv.projectedMonthlyIncome)}/mo</span>
+                  <span className="font-bold font-mono tabular-nums dash-text text-[11px] sm:text-xs">+{formatCurrency(inv.projectedMonthlyIncome)}/mo</span>
                 </div>
               </div>
             </div>
@@ -99,7 +99,7 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedInvestmentForDocs(inv)}
-                className="font-medium text-emerald-500 hover:underline flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-md text-[10px]"
+                className="font-medium text-emerald-600 hover:underline flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[10px] cursor-pointer"
               >
                 <FileText className="w-2.5 h-2.5" /> Legal Docs
               </button>
@@ -109,7 +109,7 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 {onSelectProperty && (
                   <button
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="font-semibold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 text-[10.5px]"
+                    className="font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 text-[10.5px] cursor-pointer"
                   >
                     View Asset <ArrowRight className="w-2.5 h-2.5" />
                   </button>
