@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './lib/auth';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ToastProvider } from './context/ToastContext';
 import { ledger } from './lib/ledger';
@@ -50,6 +50,10 @@ import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
 import { updatePageSeo } from './lib/seo';
 import { InsightsEditorialHome } from './components/insights/InsightsEditorialHome';
 import { InsightArticleDetail } from './components/insights/InsightArticleDetail';
+import { ViewportDesktopMonitor } from './components/common/ViewportDesktopMonitor';
+import { SchemaJsonLd } from './components/seo/schema';
+import { Breadcrumb } from './components/common/Breadcrumb';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 
 import { ArrowRight, ShieldCheck, UserCheck, Plus } from 'lucide-react';
@@ -57,6 +61,7 @@ import { ArrowRight, ShieldCheck, UserCheck, Plus } from 'lucide-react';
 function MainApp() {
   const { user, isConfigured, quickDemoSession } = useAuth();
   const { currentPath, navigateTo } = useNavigation();
+  const { currentLanguage } = useLanguage();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [pendingInvestmentProperty, setPendingInvestmentProperty] = useState<Property | null>(null);
   const [returnDestination, setReturnDestination] = useState<string | null>(null);
@@ -77,19 +82,25 @@ function MainApp() {
     }
   }, [currentPath]);
 
-  // Update dynamic SEO metadata and OpenGraph tags whenever route or selected property changes
+  // Update dynamic SEO metadata, canonical tags, localized descriptions, and OpenGraph/Twitter cards
   useEffect(() => {
     if (currentPath.startsWith('/property/') && selectedProperty) {
       updatePageSeo({
+        path: currentPath,
+        lang: currentLanguage,
         title: `${selectedProperty.title} – Fractional Investment | L'Agence Real Estate`,
-        description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected yield ${selectedProperty.estimatedAnnualYield}% p.a. Tokenized shares from €1,000.`,
+        description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected net yield ${selectedProperty.estimatedAnnualYield}% p.a. Tokenized shares from €750 with segregated SPV legal ownership.`,
         image: selectedProperty.images[0],
         type: 'article',
+        schemaType: 'RealEstateAgent',
       });
     } else {
-      updatePageSeo();
+      updatePageSeo({
+        path: currentPath,
+        lang: currentLanguage,
+      });
     }
-  }, [currentPath, selectedProperty]);
+  }, [currentPath, selectedProperty, currentLanguage]);
 
   const handleSelectProperty = (property: Property) => {
     setSelectedProperty(property);
@@ -342,6 +353,10 @@ function MainApp() {
       case '/contact':
         return <ContactPage />;
 
+      case '/legal':
+      case '/compliance':
+      case '/disclosures':
+      case '/cookies':
       case '/terms':
         return <LegalPage mode="terms" />;
 
@@ -470,7 +485,7 @@ function MainApp() {
             <PlatformStats />
 
             {/* Dedicated Marketplace Gateway Section */}
-            <section className="py-14 sm:py-20 bg-[#DFF0FC] border-b border-[#C8E1F5]">
+            <section className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <div className="container">
                 <div className="bg-white rounded-2xl border border-[#E3E8E3] p-8 sm:p-12 shadow-xs">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -592,53 +607,39 @@ function MainApp() {
   const isHomePage = currentBasePath === '/' || currentBasePath === '';
 
   return (
-    <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#DFF0FC] min-h-screen'}`}>
+    <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#F8FAFC] min-h-screen'}`}>
 
       {!isDashboardView && !isAdminLoginPage && !isPassGateActive && <Header currentPath={currentPath} onNavigate={navigateTo} />}
+
+      {/* Dynamic Hierarchical Breadcrumb Navigation & Schema.org BreadcrumbList */}
+      {!isDashboardView && !isAdminLoginPage && !isPassGateActive && !isHomePage && (
+        <Breadcrumb
+          currentPath={currentPath}
+          onNavigate={navigateTo}
+          selectedProperty={selectedProperty}
+        />
+      )}
 
       <div className={`flex-1 flex flex-col ${isDashboardView ? 'overflow-hidden' : ''}`}>
         {renderContent()}
       </div>
 
-      {/* Footer is visible only on the home page */}
-      {isHomePage && <Footer onNavigate={navigateTo} />}
+      {/* Standard Institutional Footer across all public pages */}
+      {!isDashboardView && !isAdminLoginPage && !isPassGateActive && <Footer onNavigate={navigateTo} />}
 
       {/* Support System */}
       <SmartsuppWidget />
 
       {/* First-visit Cookie Consent Banner */}
       <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />
+
+      {/* Viewport Resize Monitor & Desktop Site Layout Trigger */}
+      <ViewportDesktopMonitor />
+
+      {/* Dynamic Schema.org JSON-LD Structured Data Engine */}
+      <SchemaJsonLd property={selectedProperty} />
     </div>
   );
-}
-
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
-  state: { hasError: boolean; error: Error | null } = { hasError: false, error: null };
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-[#DFF0FC]">
-          <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-[#E3E8E3] shadow-lg text-center space-y-4">
-            <h2 className="text-xl font-bold text-[#18211F]">Application Error</h2>
-            <p className="text-xs text-[#69736F]">{this.state.error?.message || 'An unexpected error occurred while rendering the interface.'}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="btn btn-primary w-full py-3 text-xs font-bold"
-            >
-              Reload Application
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
 }
 
 export default function App() {

@@ -2,7 +2,9 @@ export type NewsCategory =
   | 'Company Updates'
   | 'Documentaries & Media'
   | 'Property News & Market Insights'
-  | 'Announcements';
+  | 'Announcements'
+  | 'FEATURED NEWS'
+  | 'REAL ESTATE & INNOVATION';
 
 export interface CompanyNewsItem {
   id: string;

@@ -84,6 +84,7 @@ async function startServer() {
       appType: 'custom',
     });
     app.use(vite.middlewares);
+    app.use(express.static(path.resolve(__dirname, 'public')));
 
     // Fallback for HTML navigation routes
     app.use('*', async (req, res, next) => {

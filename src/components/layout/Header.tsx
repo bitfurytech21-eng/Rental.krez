@@ -7,9 +7,10 @@ import {
   Wallet, Crown, ChevronDown, ChevronRight, Coins, 
   BookOpen, HelpCircle, PhoneCall, Layers, Trophy, 
   TrendingUp, Compass, ArrowRight, ArrowDownLeft, ArrowUpRight,
-  Tv
+  Tv, Monitor
 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
+import { isDesktopModeEnabled, toggleDesktopMode } from '../../lib/desktopMode';
 
 interface HeaderProps {
   currentPath: string;
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [insightsDropdownOpen, setInsightsDropdownOpen] = useState(false);
+  const [isDesktopActive, setIsDesktopActive] = useState<boolean>(isDesktopModeEnabled);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const insightsDropdownRef = useRef<HTMLDivElement>(null);
@@ -356,6 +358,23 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
 
         {/* Actions Zone */}
         <div className="header-actions flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Desktop View Mode Toggle Button */}
+          <button
+            onClick={() => {
+              const active = toggleDesktopMode();
+              setIsDesktopActive(active);
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+              isDesktopActive
+                ? 'bg-[#182D2A] text-[#B7E36A] border-[#182D2A] shadow-xs'
+                : 'bg-white text-[#4A5551] border-[#DDE3DD] hover:text-[#182D2A] hover:border-[#182D2A]'
+            }`}
+            title={isDesktopActive ? "Desktop Site Active (1280px). Click to switch to Responsive View." : "Switch to Desktop Site View (1280px)"}
+          >
+            <Monitor className="w-3.5 h-3.5 text-[#059669]" />
+            <span className="hidden sm:inline">{isDesktopActive ? 'Desktop Mode' : 'Desktop Site'}</span>
+          </button>
+
           {user ? (
             <div className="relative" ref={userDropdownRef}>
               <div className="flex items-center gap-2">

@@ -50,7 +50,7 @@ export const ContactPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#DFF0FC] min-h-screen py-12">
+    <div className="bg-[#F8FAFC] min-h-screen py-12">
       <div className="container max-w-5xl">
         <div className="max-w-2xl mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-[#E3E8E3] text-xs font-semibold text-[#182D2A] mb-3">

@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <!-- Primary Institutional Landing & Marketplace Pages -->
+  <url>
+    <loc>https://kretz.site/</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/properties</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/properties" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/properties?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/properties?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/properties?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/properties?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/insights</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/insights" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/insights?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/insights?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/insights?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/insights?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/wealth</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/wealth" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/wealth?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/wealth?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/wealth?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/wealth?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/casos-de-exito</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/casos-de-exito" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/casos-de-exito?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/casos-de-exito?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/casos-de-exito?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/casos-de-exito?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/agency</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/agency" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/agency?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/agency?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/agency?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/agency?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/club</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/club" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/club?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/club?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/club?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/club?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/news</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/news" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://kretz.site/news?lang=en" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://kretz.site/news?lang=es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://kretz.site/news?lang=fr" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://kretz.site/news?lang=de" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/token</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/token" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/investing</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/investing" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/blog</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.75</priority>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://kretz.site/blog" />
+  </url>
+
+  <url>
+    <loc>https://kretz.site/guide</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/faq</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/contact</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/legal</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/terms</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/privacy</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Key Luxury Real Estate Assets & Offerings -->
+  <url>
+    <loc>https://kretz.site/property/kp1-102-roquebrune-cap-martin</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-117-paris</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-608a-saint-tropez</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-616x-uzes</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-892-cannes</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-1038-mougins</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-2304-paris</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-3774-cap-d-antibes</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-8590a-saint-tropez</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/property/kp1-9123-bidart</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Real Estate Dossiers & Research Publications -->
+  <url>
+    <loc>https://kretz.site/insights?type=dossiers</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/insights?category=barometre-immobilier</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/insights?category=proptech-tokenization</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://kretz.site/insights?category=reglementation-fiscalite</loc>
+    <lastmod>2026-10-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+</urlset>

@@ -13,7 +13,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'setup' | 'faq'>('overview');
 
   return (
-    <div className="bg-[#DFF0FC] min-h-screen py-12">
+    <div className="bg-[#F8FAFC] min-h-screen py-12">
       <div className="container max-w-[1000px] mx-auto px-4 space-y-12">
         {/* Breadcrumb & Header */}
         <div className="space-y-4">
@@ -87,7 +87,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-                <div className="p-5 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5] space-y-2">
+                <div className="p-5 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] space-y-2">
                   <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
                     <Lock className="w-4 h-4 text-[#27845D]" />
                   </div>
@@ -95,7 +95,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
                   <p className="text-xs text-[#69736F]">Passkeys are cryptographically bound to our official domain. Fake login pages cannot trick your browser.</p>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5] space-y-2">
+                <div className="p-5 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] space-y-2">
                   <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
                     <Smartphone className="w-4 h-4 text-[#27845D]" />
                   </div>
@@ -103,7 +103,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
                   <p className="text-xs text-[#69736F]">Access your portfolio in less than a second using Face ID, Touch ID, or Windows Hello biometrics.</p>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5] space-y-2">
+                <div className="p-5 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] space-y-2">
                   <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
                     <KeyRound className="w-4 h-4 text-[#27845D]" />
                   </div>
@@ -122,7 +122,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
               <p className="text-xs text-[#69736F]">Follow these 3 simple steps to secure your real estate portfolio with passkeys:</p>
 
               <div className="space-y-6">
-                <div className="flex gap-4 items-start p-5 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5]">
+                <div className="flex gap-4 items-start p-5 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0]">
                   <div className="w-8 h-8 rounded-full bg-[#182D2A] text-white flex items-center justify-center font-bold text-xs shrink-0">
                     1
                   </div>
@@ -134,7 +134,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
                   </div>
                 </div>
 
-                <div className="flex gap-4 items-start p-5 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5]">
+                <div className="flex gap-4 items-start p-5 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0]">
                   <div className="w-8 h-8 rounded-full bg-[#182D2A] text-white flex items-center justify-center font-bold text-xs shrink-0">
                     2
                   </div>
@@ -146,7 +146,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
                   </div>
                 </div>
 
-                <div className="flex gap-4 items-start p-5 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5]">
+                <div className="flex gap-4 items-start p-5 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0]">
                   <div className="w-8 h-8 rounded-full bg-[#182D2A] text-white flex items-center justify-center font-bold text-xs shrink-0">
                     3
                   </div>
@@ -178,21 +178,21 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
               <h2 className="text-xl font-bold text-[#18211F]">Frequently Asked Questions on Passkeys</h2>
 
               <div className="space-y-4 text-xs">
-                <div className="p-4 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5] space-y-1.5">
+                <div className="p-4 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] space-y-1.5">
                   <h3 className="font-bold text-[#18211F] text-sm">What happens if I lose my phone or change devices?</h3>
                   <p className="text-[#69736F] leading-relaxed">
                     Passkeys are automatically synced across your secure cloud ecosystem (iCloud Keychain for Apple devices or Google Password Manager for Android/Chrome). If you switch devices, your passkey securely migrates with your verified account.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5] space-y-1.5">
+                <div className="p-4 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] space-y-1.5">
                   <h3 className="font-bold text-[#18211F] text-sm">Are passkeys mandatory for investing?</h3>
                   <p className="text-[#69736F] leading-relaxed">
                     While standard email/password authentication is supported for retail browsing, accounts holding over €50,000 in tokenized real estate or participating in private allocations are strongly encouraged to enable passkey verification for heightened security.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-[#E8F4FD] border border-[#C8E1F5] space-y-1.5">
+                <div className="p-4 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] space-y-1.5">
                   <h3 className="font-bold text-[#18211F] text-sm">Can anyone access my biometrics?</h3>
                   <p className="text-[#69736F] leading-relaxed">
                     Never. Your biometric data (fingerprint or facial geometry) is processed strictly within your device's secure hardware enclave (Secure Enclave or TPM chip). Neither our servers nor any third party ever see or store your biometrics.

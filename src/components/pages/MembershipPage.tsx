@@ -54,7 +54,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#18211F]">
       
       {/* Toast Notification */}
       {successToast && (
@@ -141,7 +141,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       )}
 
       {/* Main Section: Tiers & Pricing Configurator */}
-      <section className="py-20 sm:py-28 bg-[#DFF0FC] border-b border-[#C8E1F5] relative">
+      <section className="py-20 sm:py-28 bg-[#F8FAFC] border-b border-[#E2E8F0] relative">
         <div className="container max-w-[1240px] mx-auto px-4 text-center">
           
           <div className="max-w-2xl mx-auto mb-14 space-y-4">
@@ -368,7 +368,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       </section>
 
       {/* Frequently Asked Questions */}
-      <section className="py-20 bg-[#DFF0FC]">
+      <section className="py-20 bg-[#F8FAFC]">
         <div className="container max-w-[900px] mx-auto px-4 text-left">
           <div className="text-center mb-12 space-y-2">
             <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Common Questions</span>

@@ -9,7 +9,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   return (
-    <footer className="bg-[#DFF0FC] text-[#18211F] pt-16 pb-12 border-t border-[#C8E1F5] overflow-hidden max-w-full">
+    <footer className="bg-[#F8FAFC] text-[#18211F] pt-16 pb-12 border-t border-[#E2E8F0] overflow-hidden max-w-full">
       <div className="container">
         {/* Main Columns */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-[#E3E8E3]">
@@ -19,7 +19,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <img 
                 src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
                 alt="L'Agence Logo" 
-                className="w-9 h-9 rounded-lg object-cover shadow-xs border border-[#C8E1F5]"
+                className="w-9 h-9 rounded-lg object-cover shadow-xs border border-[#E2E8F0]"
                 style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
               />
               <span className="text-xl font-black tracking-tight text-[#18211F]">
@@ -108,7 +108,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         {/* Copyright & Regional Options */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-[#69736F] gap-4">
           <div className="flex items-center gap-4">
-            <p>© 2021 L'Agence Real Estate S.L. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} L'Agence Real Estate S.L. All rights reserved.</p>
             <HeaderLanguageButton />
           </div>
           <div className="flex items-center gap-6">

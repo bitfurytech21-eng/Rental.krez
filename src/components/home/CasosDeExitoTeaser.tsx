@@ -22,7 +22,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
   const latestArticles = BLOG_POSTS.slice(0, 2);
 
   return (
-    <section className="py-20 sm:py-28 bg-[#DFF0FC] border-t border-b border-[#C8E1F5] text-[#18211F] text-left">
+    <section className="py-20 sm:py-28 bg-[#F8FAFC] border-t border-b border-[#E2E8F0] text-[#18211F] text-left">
       <div className="container max-w-[1240px] mx-auto px-4">
         
         {/* Section Header */}
@@ -98,7 +98,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                 </div>
 
                 <div className="p-6 sm:p-7 space-y-4 text-left">
-                  <div className="grid grid-cols-3 gap-2 p-4 bg-[#DFF0FC] rounded-2xl border border-sky-200 text-center">
+                  <div className="grid grid-cols-3 gap-2 p-4 bg-[#F8FAFC] rounded-2xl border border-slate-200 text-center">
                     <div>
                       <p className="text-[10px] sm:text-xs text-slate-500 uppercase font-bold">Realized IRR</p>
                       <p className="text-lg sm:text-2xl font-black text-emerald-800">{study.realTIR}%</p>
@@ -172,7 +172,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
               <div
                 key={art.id}
                 onClick={onNavigateBlog}
-                className="p-4 rounded-2xl bg-[#DFF0FC] hover:bg-[#D4EAF8] border border-sky-200 transition-colors cursor-pointer space-y-1"
+                className="p-4 rounded-2xl bg-[#F8FAFC] hover:bg-[#E2E8F0] border border-slate-200 transition-colors cursor-pointer space-y-1"
               >
                 <div className="flex items-center justify-between text-[11px] text-slate-500">
                   <span className="font-bold text-emerald-800">{art.category}</span>

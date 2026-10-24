@@ -30,7 +30,7 @@ export const PlatformStats: React.FC = () => {
   ];
 
   return (
-    <section className="bg-[#DFF0FC] text-[#18211F] border-b border-[#C8E1F5] py-10">
+    <section className="bg-[#F8FAFC] text-[#18211F] border-b border-[#E2E8F0] py-10">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {stats.map((s, idx) => {

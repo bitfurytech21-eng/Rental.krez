@@ -156,7 +156,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   };
 
   return (
-    <div className="bg-[#DFF0FC] min-h-screen py-8">
+    <div className="bg-[#F8FAFC] min-h-screen py-8">
       <div className="container">
         {/* Navigation Breadcrumb */}
         <button

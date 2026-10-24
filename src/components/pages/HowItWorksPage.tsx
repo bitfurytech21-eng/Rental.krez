@@ -9,7 +9,7 @@ interface HowItWorksPageProps {
 
 export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({ onExplore, onRegister }) => {
   return (
-    <div className="bg-[#DFF0FC] min-h-screen py-12">
+    <div className="bg-[#F8FAFC] min-h-screen py-12">
       <div className="container space-y-12">
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center space-y-4">

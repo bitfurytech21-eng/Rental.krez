@@ -22,6 +22,7 @@ import {
   ToggleLeft,
   ToggleRight,
   AlertCircle,
+  AlertTriangle,
   FileText,
   Activity,
   UploadCloud,
@@ -53,9 +54,10 @@ import { AdminReconciliationView } from './AdminReconciliationView';
 import { AdminPassGate } from './AdminPassGate';
 import { AdminAuditLogsView } from './AdminAuditLogsView';
 import { AdminEmailManager } from './AdminEmailManager';
+import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
 import { lockPassGate, isPassGateUnlocked } from '../../lib/passGate';
 
-export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails';
+export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
 
 export const AdminPanel: React.FC = () => {
   const { user, quickDemoSession } = useAuth();
@@ -86,7 +88,7 @@ export const AdminPanel: React.FC = () => {
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
@@ -827,6 +829,16 @@ export const AdminPanel: React.FC = () => {
           >
             <Mail className="w-4 h-4 text-[#27845D]" />
             <span>Email Templates &amp; Delivery</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('frontend-errors')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'frontend-errors' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
+            <span>Frontend Error Buffer</span>
           </button>
         </div>
 
@@ -2236,6 +2248,9 @@ export const AdminPanel: React.FC = () => {
 
         {/* Tab 9: Institutional Email Communication & Templates */}
         {activeTab === 'emails' && <AdminEmailManager />}
+
+        {/* Tab 10: Client-Side Frontend Error Buffer */}
+        {activeTab === 'frontend-errors' && <AdminFrontendErrorLogView />}
       </div>
 
       {/* New Property Modal */}

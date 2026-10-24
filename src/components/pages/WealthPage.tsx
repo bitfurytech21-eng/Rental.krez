@@ -56,7 +56,7 @@ export const WealthPage: React.FC<WealthPageProps> = ({ onExplore, onContact }) 
   ];
 
   return (
-    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#18211F]">
       {/* Hero Section */}
       <section className="bg-[#031914] text-white py-20 lg:py-28 relative overflow-hidden max-w-full">
         <div className="absolute top-0 right-1/4 w-72 sm:w-[600px] h-72 sm:h-[600px] max-w-full bg-[#00FF9D]/10 rounded-full blur-[140px] pointer-events-none" />

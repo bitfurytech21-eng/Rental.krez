@@ -4,9 +4,9 @@
   --color-primary: #182D2A;
   --color-primary-hover: #24423C;
   --color-accent: #B7E36A;
-  --color-background: #DFF0FC;
-  --color-background-soft: #DFF0FC;
-  --color-background-muted: #E8F4FD;
+  --color-background: #F8FAFC;
+  --color-background-soft: #F8FAFC;
+  --color-background-muted: #F1F5F9;
   --color-surface: #FFFFFF;
   --color-surface-dark: #142421;
   --color-text: #18211F;
@@ -267,7 +267,7 @@ p {
 }
 
 html, body, #root {
-  background-color: #DFF0FC;
+  background-color: #F8FAFC;
 }
 
 .site-header {
@@ -275,11 +275,11 @@ html, body, #root {
   top: 0;
   z-index: 1000;
   min-height: var(--header-height);
-  background: rgba(223, 240, 252, 0.96);
-  border-bottom: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #E2E8F0;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 20px rgba(24, 45, 42, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .site-header .container,
@@ -1061,6 +1061,38 @@ html, body, #root {
     transform: none !important;
   }
 }
+
+/* ============================================================================
+   FORCED DESKTOP SITE MODE OVERRIDES
+   ============================================================================ */
+html.desktop-mode-active,
+body.desktop-mode-active {
+  min-width: 1280px !important;
+  overflow-x: auto !important;
+}
+
+body.desktop-mode-active #root {
+  min-width: 1280px !important;
+}
+
+body.desktop-mode-active nav.hidden.lg\:flex,
+body.desktop-mode-active div.hidden.lg\:flex,
+body.desktop-mode-active button.hidden.lg\:flex {
+  display: flex !important;
+}
+
+body.desktop-mode-active .lg\:hidden {
+  display: none !important;
+}
+
+body.desktop-mode-active .container,
+body.desktop-mode-active .max-w-7xl,
+body.desktop-mode-active .max-w-\[1240px\],
+body.desktop-mode-active .max-w-\[1400px\] {
+  max-width: 1440px !important;
+  width: 100% !important;
+}
+
 
 
 

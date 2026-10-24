@@ -17,9 +17,9 @@ export const useNavigation = (): NavigationContextType => {
   return context;
 };
 
-const MIN_TRANSITION_DURATION_MS = 5000; // Minimum 5 seconds as strictly required
-const FADE_OUT_DURATION_MS = 350;        // Smooth exit fade
-const FAILSAFE_MAX_DURATION_MS = 10000;  // Failsafe recovery timer
+const MIN_TRANSITION_DURATION_MS = 600;  // Smooth 600ms desktop page transition
+const FADE_OUT_DURATION_MS = 250;        // Smooth exit fade
+const FAILSAFE_MAX_DURATION_MS = 4000;   // Failsafe recovery timer
 
 export const getPathFromLocation = (): string => {
   if (typeof window === 'undefined') return '/';

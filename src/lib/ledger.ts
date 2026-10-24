@@ -1123,19 +1123,32 @@ class LedgerService {
     this.memberships = getStorage('memberships', []);
     this.membershipApplications = getStorage('membershipApplications', []);
     const storedNews = getStorage<CompanyNewsItem[]>('companyNews', []);
-    // Ensure all initial authentic YouTube news videos exist
+    const initialNewsMap = new Map(INITIAL_COMPANY_NEWS.map(n => [n.id, n]));
     if (!Array.isArray(storedNews) || storedNews.length === 0) {
       this.companyNews = [...INITIAL_COMPANY_NEWS];
-      setStorage('companyNews', this.companyNews);
     } else {
-      // Merge any missing initial news items by youtubeId
-      const existingIds = new Set(storedNews.map(n => n.youtubeId));
-      const missing = INITIAL_COMPANY_NEWS.filter(n => !existingIds.has(n.youtubeId));
-      this.companyNews = [...storedNews, ...missing];
-      if (missing.length > 0) {
-        setStorage('companyNews', this.companyNews);
-      }
+      this.companyNews = storedNews.map(n => {
+        const init = initialNewsMap.get(n.id) || INITIAL_COMPANY_NEWS.find(m => m.youtubeId === n.youtubeId);
+        if (init) {
+          return {
+            ...n,
+            title: init.title,
+            description: init.description,
+            category: init.category,
+            source: init.source,
+            tags: init.tags,
+            youtubeId: init.youtubeId,
+            youtubeUrl: init.youtubeUrl,
+            thumbnailUrl: init.thumbnailUrl
+          };
+        }
+        return n;
+      });
+      const existingIds = new Set(this.companyNews.map(n => n.id));
+      const missing = INITIAL_COMPANY_NEWS.filter(n => !existingIds.has(n.id));
+      this.companyNews = [...this.companyNews, ...missing];
     }
+    setStorage('companyNews', this.companyNews);
     const storedLogs = getStorage<AuditLog[]>('auditLogs', DEFAULT_AUDIT_LOGS);
     if (storedLogs.length <= 1) {
       this.auditLogs = [...DEFAULT_AUDIT_LOGS];

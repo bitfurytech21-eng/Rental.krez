@@ -7,7 +7,7 @@ interface LegalPageProps {
 
 export const LegalPage: React.FC<LegalPageProps> = () => {
   return (
-    <div className="bg-[#DFF0FC] min-h-screen py-10">
+    <div className="bg-[#F8FAFC] min-h-screen py-10">
       <div className="container max-w-5xl">
         <LegalFrameworkView mode="full" />
       </div>

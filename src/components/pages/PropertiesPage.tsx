@@ -125,7 +125,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
 
 
   return (
-    <div className="min-h-screen bg-[#DFF0FC] text-[#142421]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#142421]">
       {/* Reental-style Top Announcement & Metrics Ribbon */}
       <section className="bg-[#0A1613] text-white py-14 border-b border-[#1E332E] relative overflow-hidden max-w-full">
         <div className="absolute top-0 right-0 w-72 sm:w-[500px] h-72 sm:h-[500px] max-w-full bg-[#B7E36A]/10 rounded-full blur-[140px] pointer-events-none" />
@@ -135,7 +135,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
             <div className="max-w-2xl space-y-3">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#B7E36A] bg-white/10 px-3 py-1 rounded-full border border-white/15">
-                  Reental Protocol Proxy · European Tokenized Real Estate
+                  L'Agence Institutional Real Estate · European Tokenized Assets
                 </span>
                 <span className="text-xs text-white/70 hidden sm:inline">
                   Regulated Fractional Investing
@@ -145,12 +145,12 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
               <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
                 Tokenized Real Estate <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#B7E36A] to-teal-300">
-                  Opportunities & Marketplace
+                  Opportunities &amp; Marketplace
                 </span>
               </h1>
 
               <p className="text-xs sm:text-sm text-[#C8D1CE] leading-relaxed max-w-xl">
-                Invest in high-yield European and international properties from €100. Earn passive monthly dividends deposited directly into your investor wallet, backed by notarized physical deeds.
+                Invest in high-yield European and international properties with verified institutional governance. Earn passive monthly dividends deposited directly into your investor wallet, backed by notarized physical deeds.
               </p>
             </div>
 

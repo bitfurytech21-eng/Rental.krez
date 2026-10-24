@@ -32,7 +32,7 @@ export const BlogPage: React.FC<BlogPageProps> = ({
   const featured = BLOG_POSTS[0];
 
   return (
-    <div className="min-h-screen bg-[#DFF0FC] text-[#18211F]">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#18211F]">
       
       {/* Blog Hero */}
       <section className="relative overflow-hidden bg-[#0A1613] text-white pt-24 pb-20 border-b border-[#1E332E]">
@@ -56,7 +56,7 @@ export const BlogPage: React.FC<BlogPageProps> = ({
       </section>
 
       {/* Main Blog Container */}
-      <section className="py-16 sm:py-24 bg-[#DFF0FC] border-b border-[#C8E1F5]">
+      <section className="py-16 sm:py-24 bg-[#F8FAFC] border-b border-[#E2E8F0]">
         <div className="container max-w-[1240px] mx-auto px-4 text-left">
           
           {/* Search & Category Filter Bar */}

@@ -65,7 +65,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
   ];
 
   return (
-    <section className="relative py-20 sm:py-28 bg-[#DFF0FC] text-[#18211F] overflow-hidden max-w-full border-t border-b border-[#C8E1F5]">
+    <section className="relative py-20 sm:py-28 bg-[#F8FAFC] text-[#18211F] overflow-hidden max-w-full border-t border-b border-[#E2E8F0]">
       <div className="container max-w-[1240px] mx-auto px-4 relative z-10">
         
         {/* Section Pill & Header */}

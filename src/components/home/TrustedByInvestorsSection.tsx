@@ -202,12 +202,12 @@ export const TrustedByInvestorsSection: React.FC = () => {
   return (
     <section 
       aria-label="Trusted by Investors"
-      className="py-14 sm:py-20 bg-[#DFF0FC] border-t border-[#C8E1F5] relative overflow-hidden"
+      className="py-14 sm:py-20 bg-[#F8FAFC] border-t border-[#E2E8F0] relative overflow-hidden"
     >
       <div className="container relative z-10">
         {/* Section Header */}
         <div className="max-w-3xl mx-auto text-center space-y-3 mb-10 sm:mb-14">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/80 border border-[#C8E1F5] text-[#27845D] text-xs font-bold shadow-xs">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/80 border border-[#E2E8F0] text-[#27845D] text-xs font-bold shadow-xs">
             <ShieldCheck className="w-4 h-4 text-[#27845D]" />
             <span>Institutional Grade & Partner Ecosystem</span>
           </div>
@@ -273,7 +273,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
                   return (
                     <div
                       key={`reg-${badge.id}-${idx}`}
-                      className="bg-white border border-[#C8E1F5] hover:border-[#27845D]/40 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all duration-300 flex items-center gap-4 min-w-[280px] sm:min-w-[320px] h-20 sm:h-24 shrink-0 group"
+                      className="bg-white border border-[#E2E8F0] hover:border-[#27845D]/40 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all duration-300 flex items-center gap-4 min-w-[280px] sm:min-w-[320px] h-20 sm:h-24 shrink-0 group"
                     >
                       <div className="shrink-0 p-1 bg-[#F6F7F4] rounded-xl border border-[#E3E8E3]">
                         <AuthLogo className="h-8 sm:h-9 w-auto" />

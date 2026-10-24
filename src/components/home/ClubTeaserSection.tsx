@@ -11,7 +11,7 @@ export const ClubTeaserSection: React.FC<ClubTeaserSectionProps> = ({
   onContactDesk,
 }) => {
   return (
-    <section className="py-16 sm:py-24 bg-[#DFF0FC] text-[#18211F] border-t border-b border-[#C8E1F5] relative overflow-hidden">
+    <section className="py-16 sm:py-24 bg-[#F8FAFC] text-[#18211F] border-t border-b border-[#E2E8F0] relative overflow-hidden">
       <div className="container max-w-[1240px] mx-auto px-4 relative z-10 text-left">
         <div className="bg-[#12201D] border border-[#1E3631] rounded-3xl p-8 sm:p-12 lg:p-14 relative overflow-hidden shadow-2xl">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
