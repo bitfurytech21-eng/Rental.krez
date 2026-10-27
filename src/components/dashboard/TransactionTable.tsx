@@ -1,7 +1,9 @@
 import React from 'react';
 import { Transaction } from '../../types/transaction';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
-import { ArrowDownLeft, ArrowUpRight, Coins, RefreshCw, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Coins, RefreshCw, CheckCircle2, Clock, AlertCircle, Printer } from 'lucide-react';
+import { useAuth } from '../../lib/auth';
+import { printTransactionReceipt, ReceiptPrintData } from '../../lib/printService';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -9,7 +11,25 @@ interface TransactionTableProps {
 }
 
 export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions, maxRows }) => {
+  const { user } = useAuth();
   const displayList = maxRows ? transactions.slice(0, maxRows) : transactions;
+
+  const handlePrintReceipt = (tx: Transaction) => {
+    const receiptData: ReceiptPrintData = {
+      receiptId: tx.reference || tx.id,
+      transactionHash: tx.txHash || `0x${tx.id.replace(/-/g, '').slice(0, 32)}`,
+      date: formatDate(tx.createdAt),
+      userName: user?.fullName || 'Verified Investor',
+      userEmail: user?.email || 'investor@lagence.com',
+      propertyTitle: tx.description,
+      tokensPurchased: tx.type === 'investment' ? Math.max(1, Math.floor(tx.amount / 100)) : 1,
+      tokenPrice: tx.type === 'investment' ? 100 : tx.amount,
+      totalPaid: tx.amount,
+      paymentMethod: tx.paymentMethod || 'Bank Wire / SEPA Instant',
+      status: tx.status === 'completed' ? 'Completed' : tx.status === 'pending' ? 'Pending' : 'Verified'
+    };
+    printTransactionReceipt(receiptData);
+  };
 
   const getTypeBadge = (type: Transaction['type']) => {
     switch (type) {
@@ -123,6 +143,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Status</th>
               <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-right text-[#71817D]">Amount</th>
               <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-right text-[#71817D]">Balance After</th>
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-center text-[#71817D]">Receipt</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E4EEEA]">
@@ -154,6 +175,15 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                   </td>
                   <td className="py-2.5 px-3 text-right font-medium font-mono tabular-nums text-xs text-[#71817D] whitespace-nowrap">
                     {formatCurrency(tx.balanceAfter)}
+                  </td>
+                  <td className="py-2.5 px-3 text-center">
+                    <button
+                      onClick={() => handlePrintReceipt(tx)}
+                      className="p-1.5 rounded-lg bg-[#F6F7F4] hover:bg-[#EEF1EC] text-[#182D2A] transition-colors border border-[#E3E8E3] inline-flex items-center justify-center cursor-pointer"
+                      title="Print Official Receipt"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-[#27845D]" />
+                    </button>
                   </td>
                 </tr>
               );

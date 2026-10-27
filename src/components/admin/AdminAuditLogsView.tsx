@@ -6,6 +6,7 @@ import {
   Search,
   Filter,
   Download,
+  Printer,
   RefreshCw,
   Trash2,
   Shield,
@@ -29,6 +30,7 @@ import {
   Copy,
   X
 } from 'lucide-react';
+import { printAuditLogReport, AuditReportPrintData } from '../../lib/printService';
 
 interface AdminAuditLogsViewProps {
   currentAdminEmail?: string;
@@ -52,6 +54,17 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({
     setLogs(ledger.getAuditLogs());
     setActionNotice('Audit trail refreshed from local persistent ledger storage.');
     setTimeout(() => setActionNotice(null), 3000);
+  };
+
+  const handlePrintAuditReport = () => {
+    const reportData: AuditReportPrintData = {
+      generatedAt: new Date().toLocaleString('en-US'),
+      generatedBy: currentAdminEmail,
+      filterApplied: `Category: ${selectedCategory.toUpperCase()}, Severity: ${selectedSeverity.toUpperCase()}, Timeframe: ${selectedTimeframe.toUpperCase()}`,
+      totalEventsCount: filteredLogs.length,
+      logs: filteredLogs
+    };
+    printAuditLogReport(reportData);
   };
 
   const handleSeedSamples = () => {
@@ -317,6 +330,16 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({
           >
             <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
             <span>Sync</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrintAuditReport}
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Print or export compliance audit log report"
+          >
+            <Printer className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Print Report</span>
           </button>
 
           {/* Export Dropdown */}

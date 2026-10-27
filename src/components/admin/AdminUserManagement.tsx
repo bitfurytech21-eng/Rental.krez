@@ -5,10 +5,12 @@ import { Transaction } from '../../types/transaction';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { getAuthToken } from '../../lib/api';
+import { printUserDirectoryReport, UserDirectoryPrintData } from '../../lib/printService';
 import {
   Users,
   Search,
   Filter,
+  Printer,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -94,6 +96,25 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const totalWalletCapital = users.reduce((sum, u) => sum + (u.walletBalance || 0), 0);
   const totalInvestedCapital = users.reduce((sum, u) => sum + (u.investedBalance || 0), 0);
   const totalActiveInvestments = Object.values(userStats).reduce((sum, s) => sum + s.investments.length, 0);
+
+  const handlePrintUserDirectory = () => {
+    const reportData: UserDirectoryPrintData = {
+      generatedAt: new Date().toLocaleString('en-US'),
+      generatedBy: currentAdminEmail,
+      totalUsersCount: filteredUsers.length,
+      users: filteredUsers.map(u => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        role: u.role,
+        accountType: u.accountType,
+        kycStatus: u.kycStatus,
+        walletBalance: u.walletBalance || 0,
+        createdAt: u.createdAt
+      }))
+    };
+    printUserDirectoryReport(reportData);
+  };
 
   // Filtered & sorted users list
   const filteredUsers = useMemo(() => {
@@ -228,6 +249,14 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrintUserDirectory}
+              className="px-3.5 py-2 rounded-xl bg-[#182D2A] hover:bg-[#233F3B] text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Print User Directory Report"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Print Directory</span>
+            </button>
             <button
               onClick={onRefreshAll}
               className="px-3.5 py-2 rounded-xl bg-[#F6F7F4] hover:bg-[#EEF1EC] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#E3E8E3]"

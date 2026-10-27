@@ -3,6 +3,7 @@ import { useAuth } from '../../lib/auth';
 import { ledger, CryptoNetworkConfig } from '../../lib/ledger';
 import { formatCurrency } from '../../lib/utils';
 import { ButtonLoader } from '../common/ButtonLoader';
+import { printTransactionReceipt } from '../../lib/printService';
 import {
   ArrowDownLeft,
   CheckCircle2,
@@ -13,7 +14,8 @@ import {
   ShieldCheck,
   AlertCircle,
   Clock,
-  UploadCloud
+  UploadCloud,
+  Printer
 } from 'lucide-react';
 
 interface DepositModalProps {
@@ -223,15 +225,39 @@ export const DepositModal: React.FC<DepositModalProps> = ({
             </div>
 
             {/* Quick Action */}
-            <div className="pt-1.5">
+            <div className="pt-1.5 flex gap-2">
               <button
+                type="button"
+                onClick={() => {
+                  printTransactionReceipt({
+                    receiptId: submittedTx.reference || submittedTx.id,
+                    transactionHash: submittedTx.txHash || `0x${submittedTx.id.replace(/-/g, '').slice(0, 32)}`,
+                    date: new Date().toLocaleDateString('en-US'),
+                    userName: user.fullName,
+                    userEmail: user.email,
+                    propertyTitle: `Deposit via ${submittedTx.paymentMethod}`,
+                    tokensPurchased: 1,
+                    tokenPrice: submittedTx.amount,
+                    totalPaid: submittedTx.amount,
+                    paymentMethod: submittedTx.paymentMethod,
+                    status: 'Pending'
+                  });
+                }}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-white border border-[#E3E8E3] hover:bg-slate-50 text-[#18211F] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Printer className="w-3.5 h-3.5 text-[#27845D]" />
+                <span>Print Receipt</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   resetModal();
                   if (onNavigateTransactions) {
                     onNavigateTransactions();
                   }
                 }}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-all shadow-xs"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-all shadow-xs"
               >
                 <span>View in Ledger</span>
               </button>

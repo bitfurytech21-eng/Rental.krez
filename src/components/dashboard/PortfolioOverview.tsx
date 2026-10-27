@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Investment } from '../../types/investment';
 import { formatCurrency, formatPercent, formatDate } from '../../lib/utils';
-import { Building2, Award, Calendar, ArrowRight, FileText } from 'lucide-react';
+import { Building2, Award, Calendar, ArrowRight, FileText, Printer } from 'lucide-react';
 import { DocumentViewerModal } from './DocumentViewerModal';
+import { printPortfolioReport, PortfolioPrintData } from '../../lib/printService';
+import { useAuth } from '../../lib/auth';
 
 interface PortfolioOverviewProps {
   investments: Investment[];
@@ -15,7 +17,44 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   onSelectProperty,
   onExploreMore,
 }) => {
+  const { user } = useAuth();
   const [selectedInvestmentForDocs, setSelectedInvestmentForDocs] = useState<Investment | null>(null);
+
+  const handlePrintPortfolio = () => {
+    const totalValue = investments.reduce((sum, inv) => sum + (inv.currentValuation || inv.totalAmountInvested), 0);
+    const totalTokens = investments.reduce((sum, inv) => sum + inv.tokensPurchased, 0);
+    const totalDividends = investments.reduce((sum, inv) => sum + (inv.totalDividendsReceived || 0), 0);
+
+    const reportData: PortfolioPrintData = {
+      investor: {
+        fullName: user?.fullName || 'Verified Investor',
+        email: user?.email || 'investor@lagence.com',
+        id: user?.id || 'usr-investor-01',
+        kycStatus: user?.kycStatus ? String(user.kycStatus) : 'Verified'
+      },
+      summary: {
+        totalHoldingsValue: totalValue,
+        totalTokensHeld: totalTokens,
+        activePropertiesCount: investments.length,
+        totalDividendsReceived: totalDividends,
+        walletBalance: user?.walletBalance || 0,
+        generatedAt: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      },
+      holdings: investments.map(inv => ({
+        id: inv.id,
+        propertyTitle: inv.propertyTitle,
+        tokensPurchased: inv.tokensPurchased,
+        totalCost: inv.totalAmountInvested,
+        currentValue: inv.currentValuation || inv.totalAmountInvested,
+        projectedAnnualDividend: (inv.totalAmountInvested * inv.estimatedAnnualYield) / 100,
+        dividendsReceived: inv.totalDividendsReceived || 0,
+        purchaseDate: formatDate(inv.purchasedAt || inv.startDate),
+        certificateId: inv.certificateId || `CERT-${inv.id.slice(0, 8)}`
+      }))
+    };
+
+    printPortfolioReport(reportData);
+  };
 
   if (investments.length === 0) {
     return (
@@ -48,6 +87,15 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
             {investments.length} {investments.length === 1 ? 'Holding' : 'Holdings'} generating monthly distributions
           </p>
         </div>
+
+        <button
+          onClick={handlePrintPortfolio}
+          className="py-1.5 px-3 bg-white hover:bg-[#EAF8F4] border border-[#E4EEEA] text-[#087F5B] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+          title="Print official Portfolio Performance Report"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          <span>Print Portfolio Report</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
