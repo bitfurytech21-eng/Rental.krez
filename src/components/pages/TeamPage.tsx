@@ -83,9 +83,9 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#142421]">
+    <div className="min-h-screen bg-[#0B1B30] text-white">
       {/* Editorial Luxury Agency Hero */}
-      <section className="relative overflow-hidden bg-[#0A1613] text-white pt-24 pb-20 border-b border-[#1E332E]">
+      <section className="relative overflow-hidden bg-[#0B1B30] text-white pt-24 pb-20 border-b border-[#1D3860]">
         <div className="absolute inset-0 z-0 opacity-25 mix-blend-luminosity">
           <img 
             src="/src/assets/images/kretz_agency_headquarters_1792092491560.jpg" 
@@ -93,48 +93,48 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
             className="w-full h-full object-cover"
           />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1613] via-[#0A1613]/85 to-transparent z-0" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B30] via-[#0B1B30]/85 to-transparent z-0" />
 
         <div className="container max-w-[1240px] mx-auto px-4 relative z-10">
           <div className="max-w-3xl space-y-6">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-[11px] font-extrabold tracking-widest uppercase text-[#B7E36A] bg-white/10 px-3 py-1 rounded-full border border-white/15">
+              <span className="text-[11px] font-extrabold tracking-widest uppercase text-[#BEE179] bg-[#102442] px-3.5 py-1.5 rounded-full border border-[#1D3860]">
                 The Agency · Founded in 2007
               </span>
-              <div className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-950/60 border border-amber-500/30 px-3 py-1 rounded-full font-semibold">
+              <div className="flex items-center gap-1.5 text-xs text-[#BEE179] bg-[#102442] border border-[#1D3860] px-3.5 py-1.5 rounded-full font-semibold">
                 <Tv className="w-3.5 h-3.5" />
                 <span>Stars of Netflix “The Parisian Agency” (L'Agence)</span>
               </div>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-white">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-[#BEE179]">
               A Family Affair, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#B7E36A] via-emerald-300 to-teal-200">
+              <span className="text-white italic font-normal">
                 A Global Luxury Vision.
               </span>
             </h1>
 
-            <p className="text-base sm:text-lg text-[#C8D1CE] leading-relaxed max-w-2xl font-normal">
+            <p className="text-base sm:text-lg text-[#D1E2F7] leading-relaxed max-w-2xl font-normal">
               Born around the dining room table in Boulogne-Billancourt, Kretz Real Estate has transformed the world of prestige real estate. We combine authentic family warmth and unwavering discretion with institutional tokenized liquidity for the world’s most extraordinary homes.
             </p>
 
             {/* Quick KPI Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/10 text-left">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-[#1D3860] text-left">
               <div>
                 <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">€2.8B+</div>
-                <div className="text-xs text-[#95A5A0] mt-0.5">Luxury Portfolio Volume</div>
+                <div className="text-xs text-[#8EA7C7] mt-0.5">Luxury Portfolio Volume</div>
               </div>
               <div>
-                <div className="text-2xl sm:text-3xl font-black text-[#B7E36A] tabular-nums">100+</div>
-                <div className="text-xs text-[#95A5A0] mt-0.5">Advisors Across 10 Countries</div>
+                <div className="text-2xl sm:text-3xl font-black text-[#BEE179] tabular-nums">100+</div>
+                <div className="text-xs text-[#8EA7C7] mt-0.5">Advisors Across 10 Countries</div>
               </div>
               <div>
                 <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">17+</div>
-                <div className="text-xs text-[#95A5A0] mt-0.5">Years of Excellence</div>
+                <div className="text-xs text-[#8EA7C7] mt-0.5">Years of Excellence</div>
               </div>
               <div>
-                <div className="text-2xl sm:text-3xl font-black text-[#B7E36A] tabular-nums">100%</div>
-                <div className="text-xs text-[#95A5A0] mt-0.5">Independent & Family-Run</div>
+                <div className="text-2xl sm:text-3xl font-black text-[#BEE179] tabular-nums">100%</div>
+                <div className="text-xs text-[#8EA7C7] mt-0.5">Independent & Family-Run</div>
               </div>
             </div>
           </div>
@@ -142,20 +142,20 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
       </section>
 
       {/* Agency Story & The Netflix Heritage */}
-      <section className="py-16 bg-white border-b border-[#E3E8E3]">
+      <section className="py-16 bg-[#0B1B30] border-b border-[#1D3860]">
         <div className="container max-w-[1240px] mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#27845D]">Our Heritage & Philosophy</span>
-              <h2 className="text-2xl sm:text-4xl font-black text-[#142421] tracking-tight">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#BEE179]">Our Heritage & Philosophy</span>
+              <h2 className="text-2xl sm:text-4xl font-black text-[#BEE179] tracking-tight">
                 From Boulogne-Billancourt to the Global Stage
               </h2>
-              <div className="space-y-4 text-sm sm:text-base text-[#52605C] leading-relaxed">
+              <div className="space-y-4 text-sm sm:text-base text-[#D1E2F7] leading-relaxed">
                 <p>
-                  In 2007, <strong>Olivier and Sandrine Kretz</strong> made a bold decision: to leave their corporate careers and create a different kind of luxury agency—one where business meetings happen over home-cooked espresso, where every client is welcomed as an honored guest, and where absolute integrity takes precedence over quick transactions.
+                  In 2007, <strong className="text-white">Olivier and Sandrine Kretz</strong> made a bold decision: to leave their corporate careers and create a different kind of luxury agency—one where business meetings happen over home-cooked espresso, where every client is welcomed as an honored guest, and where absolute integrity takes precedence over quick transactions.
                 </p>
                 <p>
-                  Joined one by one by their four sons—<strong>Martin, Valentin, Louis, and Raphaël</strong>—alongside the beloved family matriarch <strong>Majo</strong>, the Kretz family became household names globally through the hit docu-series <em>The Parisian Agency (L'Agence)</em>, broadcast internationally on Netflix.
+                  Joined one by one by their four sons—<strong className="text-white">Martin, Valentin, Louis, and Raphaël</strong>—alongside the beloved family matriarch <strong className="text-white">Majo</strong>, the Kretz family became household names globally through the hit docu-series <em>The Parisian Agency (L'Agence)</em>, broadcast internationally on Netflix.
                 </p>
                 <p>
                   Today, Kretz Real Estate represents iconic châteaux in the Loire Valley, panoramic penthouses overlooking the Eiffel Tower, private waterfront estates in Cannes and Saint-Tropez, and ski chalets in Courchevel. By introducing blockchain tokenization to European prime properties, Kretz allows both high-net-worth investors and fractional buyers to participate in generational European real estate assets.
@@ -164,38 +164,38 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
 
               {/* Pillars Bento */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
-                <div className="p-4 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0]">
-                  <Heart className="w-5 h-5 text-[#27845D] mb-2" />
-                  <h4 className="font-bold text-sm text-[#142421]">Family Spirit</h4>
-                  <p className="text-xs text-[#69736F] mt-1">Direct communication with family principals on every flagship asset.</p>
+                <div className="p-4 rounded-2xl bg-[#102442] border border-[#1D3860]">
+                  <Heart className="w-5 h-5 text-[#BEE179] mb-2" />
+                  <h4 className="font-bold text-sm text-white">Family Spirit</h4>
+                  <p className="text-xs text-[#8EA7C7] mt-1">Direct communication with family principals on every flagship asset.</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0]">
-                  <ShieldCheck className="w-5 h-5 text-[#27845D] mb-2" />
-                  <h4 className="font-bold text-sm text-[#142421]">Total Discretion</h4>
-                  <p className="text-xs text-[#69736F] mt-1">Confidential off-market sales for discerning personalities & family offices.</p>
+                <div className="p-4 rounded-2xl bg-[#102442] border border-[#1D3860]">
+                  <ShieldCheck className="w-5 h-5 text-[#BEE179] mb-2" />
+                  <h4 className="font-bold text-sm text-white">Total Discretion</h4>
+                  <p className="text-xs text-[#8EA7C7] mt-1">Confidential off-market sales for discerning personalities & family offices.</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0]">
-                  <ShieldCheck className="w-5 h-5 text-[#27845D] mb-2" />
-                  <h4 className="font-bold text-sm text-[#142421]">Tokenized Access</h4>
-                  <p className="text-xs text-[#69736F] mt-1">Fractional liquidity and instant monthly yields starting from €1,000.</p>
+                <div className="p-4 rounded-2xl bg-[#102442] border border-[#1D3860]">
+                  <ShieldCheck className="w-5 h-5 text-[#BEE179] mb-2" />
+                  <h4 className="font-bold text-sm text-white">Tokenized Access</h4>
+                  <p className="text-xs text-[#8EA7C7] mt-1">Fractional liquidity and instant monthly yields starting from €1,000.</p>
                 </div>
               </div>
             </div>
 
             <div className="lg:col-span-5">
-              <div className="relative rounded-3xl overflow-hidden border border-[#E3E8E3] shadow-xl bg-slate-100 group">
+              <div className="relative rounded-3xl overflow-hidden border border-[#1D3860] shadow-2xl bg-[#102442] group">
                 <img 
                   src="/src/assets/images/kretz_agency_headquarters_1792092491560.jpg" 
                   alt="Kretz Paris Agency Interior" 
                   className="w-full h-[460px] object-cover group-hover:scale-103 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6 text-white space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#B7E36A] bg-black/40 px-2.5 py-1 rounded-md backdrop-blur-md">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#0B1B30] bg-[#BEE179] px-2.5 py-1 rounded-md">
                     Paris Headquarters
                   </span>
-                  <h3 className="text-xl font-bold">The Boulogne-Billancourt Salon</h3>
-                  <p className="text-xs text-white/80">
+                  <h3 className="text-xl font-bold text-white">The Boulogne-Billancourt Salon</h3>
+                  <p className="text-xs text-[#D1E2F7]">
                     Where exceptional Parisian properties and international luxury buyers meet in private discretion.
                   </p>
                 </div>
@@ -207,13 +207,13 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
 
       {/* Team Directory Header & Interactive Filter Bar */}
       <section className="py-12 container max-w-[1240px] mx-auto px-4">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#E3E8E3]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#1D3860]">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#27845D]">Our Leadership & Advisors</span>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#142421] tracking-tight mt-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#BEE179]">Our Leadership & Advisors</span>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#BEE179] tracking-tight mt-1">
               Meet the Kretz Family & Partners
             </h2>
-            <p className="text-xs sm:text-sm text-[#69736F] max-w-xl mt-1">
+            <p className="text-xs sm:text-sm text-[#8EA7C7] max-w-xl mt-1">
               Direct access to our senior partners and prestige advisors across France, Monaco, Spain, Caribbean, and the US. Select an advisor to review their credentials, active luxury mandate specialties, or request a private consultation.
             </p>
           </div>
@@ -221,18 +221,18 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-4 h-4 text-[#8C9B96] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-[#8EA7C7] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input 
                 type="text"
                 placeholder="Search by name, city, specialty..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 text-xs bg-white border border-[#D5DDD6] rounded-xl text-[#142421] placeholder-[#8C9B96] focus:outline-hidden focus:border-[#27845D] w-full sm:w-64"
+                className="pl-9 pr-4 py-2.5 text-xs bg-[#102442] border border-[#1D3860] rounded-xl text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179] w-full sm:w-64"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8C9B96] hover:text-[#142421] text-xs"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8EA7C7] hover:text-white text-xs cursor-pointer"
                 >
                   ✕
                 </button>
@@ -240,7 +240,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
             </div>
 
             {/* Segmented Controls */}
-            <div className="flex items-center gap-1.5 p-1.5 bg-[#EEF2ED] rounded-2xl border border-[#E3E8E3] overflow-x-auto shrink-0">
+            <div className="flex items-center gap-1.5 p-1.5 bg-[#102442] rounded-2xl border border-[#1D3860] overflow-x-auto shrink-0">
               {[
                 { id: 'all', label: `All (${teamMembers.length})` },
                 { id: 'founders', label: 'Founders' },
@@ -253,8 +253,8 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
                   onClick={() => setSelectedCategory(tab.id)}
                   className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                     selectedCategory === tab.id
-                      ? 'bg-[#142421] text-white shadow-sm'
-                      : 'text-[#52605C] hover:text-[#142421] hover:bg-white/60'
+                      ? 'bg-[#BEE179] text-[#0B1B30] shadow-sm font-black'
+                      : 'text-[#8EA7C7] hover:text-white'
                   }`}
                 >
                   {tab.label}
@@ -271,10 +271,10 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
             return (
               <div
                 key={member.id}
-                className="bg-white rounded-3xl border border-[#E3E8E3] overflow-hidden shadow-xs hover:shadow-xl hover:border-[#142421]/20 transition-all duration-300 flex flex-col group"
+                className="bg-[#102442] rounded-3xl border border-[#1D3860] overflow-hidden shadow-xl hover:border-[#BEE179]/60 transition-all duration-300 flex flex-col group"
               >
                 {/* Portrait Frame */}
-                <div className="relative aspect-[3/4] overflow-hidden bg-slate-100">
+                <div className="relative aspect-[3/4] overflow-hidden bg-[#0B1B30]">
                   <img
                     src={memberPhoto}
                     alt={member.name}
@@ -287,63 +287,63 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#102442] via-black/25 to-transparent" />
 
                 {/* Netflix Badge if featured */}
                 {member.netflixFeatured && (
-                  <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-black/75 backdrop-blur-md text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-500/30">
-                    <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
+                  <div className="absolute top-4 left-4 z-10 flex items-center gap-1 bg-[#0B1B30]/90 backdrop-blur-md text-[#BEE179] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#1D3860]">
+                    <Star className="w-3 h-3 fill-[#BEE179] text-[#BEE179]" />
                     <span>L'Agence · Netflix</span>
                   </div>
                 )}
 
-                <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-md text-[#142421] text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/40">
+                <div className="absolute top-4 right-4 z-10 bg-[#0B1B30]/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#1D3860]">
                   {member.location.split('&')[0]}
                 </div>
 
                 {/* Overlaid Title */}
                 <div className="absolute bottom-4 left-5 right-5 text-white z-10">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#B7E36A] block mb-0.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#BEE179] block mb-0.5">
                     {member.role}
                   </span>
-                  <h3 className="text-2xl font-black tracking-tight">{member.name}</h3>
+                  <h3 className="text-2xl font-black tracking-tight text-white">{member.name}</h3>
                 </div>
               </div>
 
               {/* Bio & Details */}
               <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
                 <div className="space-y-3">
-                  <div className="text-xs font-semibold text-[#27845D] flex items-center gap-1.5">
+                  <div className="text-xs font-semibold text-[#BEE179] flex items-center gap-1.5">
                     <Compass className="w-3.5 h-3.5 shrink-0" />
                     <span>Specialty: {member.specialty}</span>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-[#52605C] leading-relaxed line-clamp-4">
+                  <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed line-clamp-4">
                     {member.bio}
                   </p>
                 </div>
 
-                <div className="space-y-4 pt-4 border-t border-[#E3E8E3]">
+                <div className="space-y-4 pt-4 border-t border-[#1D3860]">
                   {/* Languages Spoken */}
-                  <div className="flex items-center justify-between text-xs text-[#69736F]">
-                    <span className="font-semibold text-[#142421]">Languages:</span>
-                    <span className="font-medium">{member.languages.join(' · ')}</span>
+                  <div className="flex items-center justify-between text-xs text-[#8EA7C7]">
+                    <span className="font-semibold text-white">Languages:</span>
+                    <span className="font-medium text-[#D1E2F7]">{member.languages.join(' · ')}</span>
                   </div>
 
                   {/* Action Bar */}
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       onClick={() => setContactingMember(member)}
-                      className="w-full btn btn-primary text-xs font-bold py-2.5 bg-[#142421] text-white hover:bg-[#1E332E] rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      className="w-full text-xs font-bold py-2.5 bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all"
                     >
-                      <Mail className="w-3.5 h-3.5 text-[#B7E36A]" />
+                      <Mail className="w-3.5 h-3.5 text-[#0B1B30]" />
                       <span>Contact</span>
                     </button>
                     <a
                       href={`tel:${member.phone}`}
-                      className="w-full btn btn-secondary text-xs font-bold py-2.5 border border-[#E3E8E3] hover:border-[#142421] text-[#142421] rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="w-full text-xs font-bold py-2.5 border border-[#1D3860] bg-[#0B1B30] hover:bg-[#132745] text-white rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                     >
-                      <Phone className="w-3.5 h-3.5 text-[#27845D]" />
+                      <Phone className="w-3.5 h-3.5 text-[#BEE179]" />
                       <span>Direct Call</span>
                     </a>
                   </div>

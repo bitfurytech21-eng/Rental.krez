@@ -36,19 +36,19 @@ export const HumanVerificationModal: React.FC<HumanVerificationModalProps> = ({
       onClick={onCancel}
     >
       <div
-        className="bg-[#142421] text-white w-full max-w-md rounded-2xl sm:rounded-3xl border border-[#24423C] shadow-2xl p-6 sm:p-8 space-y-6"
+        className="bg-[#102442] text-white w-full max-w-md rounded-2xl sm:rounded-3xl border border-[#1D3860] shadow-2xl p-6 sm:p-8 space-y-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1A332D] border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#BEE179]">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-base sm:text-lg text-white">
                 {title}
               </h3>
-              <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">
+              <span className="text-[10px] uppercase tracking-wider text-[#BEE179] font-bold">
                 Cloudflare Managed Protection
               </span>
             </div>
@@ -63,12 +63,12 @@ export const HumanVerificationModal: React.FC<HumanVerificationModalProps> = ({
           )}
         </div>
 
-        <p className="text-xs text-[#A0A8A5] leading-relaxed">
+        <p className="text-xs text-[#8EA7C7] leading-relaxed">
           {description}
         </p>
 
         {error && (
-          <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs">
+          <div className="p-3 rounded-xl bg-red-950/60 border border-red-500/30 text-red-200 text-xs">
             {error}
           </div>
         )}
@@ -90,7 +90,7 @@ export const HumanVerificationModal: React.FC<HumanVerificationModalProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white"
+              className="px-4 py-2 text-xs font-semibold text-[#8EA7C7] hover:text-white"
             >
               Cancel
             </button>
@@ -99,7 +99,7 @@ export const HumanVerificationModal: React.FC<HumanVerificationModalProps> = ({
             type="button"
             disabled={!token}
             onClick={handleComplete}
-            className="px-6 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-[#0E1A17] rounded-xl shadow-md transition-colors cursor-pointer"
+            className="px-6 py-2.5 text-xs font-black bg-[#BEE179] hover:bg-[#aed860] disabled:opacity-40 disabled:cursor-not-allowed text-[#0B1B30] rounded-xl shadow-md transition-all cursor-pointer"
           >
             Confirm & Continue
           </button>

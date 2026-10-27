@@ -436,11 +436,11 @@ function decodeHtmlEntities(str: string): string {
 }
 
 /**
- * Translates a single text using MyMemory Translation API
+ * Translates text using Free Google GTX API
  */
-async function translateWithMyMemory(text: string, sourceLang: string, targetLang: string): Promise<string> {
-  const emailParam = process.env.MYMEMORY_EMAIL || 'trustwallet042619@gmail.com';
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(sourceLang)}|${encodeURIComponent(targetLang)}&de=${encodeURIComponent(emailParam)}`;
+async function translateWithGoogleGTX(text: string, _sourceLang: string, targetLang: string): Promise<string> {
+  const baseLang = targetLang.split('-')[0].toLowerCase();
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(baseLang)}&dt=t&q=${encodeURIComponent(text)}`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -450,22 +450,57 @@ async function translateWithMyMemory(text: string, sourceLang: string, targetLan
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      throw new Error(`MyMemory HTTP error: ${res.status}`);
+      throw new Error(`Google GTX HTTP error: ${res.status}`);
     }
 
     const data = await res.json();
-    if (data && data.responseData && data.responseData.translatedText) {
-      const decoded = decodeHtmlEntities(data.responseData.translatedText);
-      // If MyMemory returns uppercase warning or unchanged due to quota, verify it didn't fail
-      if (decoded.startsWith('MYMEMORY WARNING:') || decoded.startsWith('QUERY LENGTH LIMIT EXCEEDED')) {
-        throw new Error(decoded);
+    if (data && data[0] && Array.isArray(data[0])) {
+      const translated = data[0].map((item: any) => item[0]).join('');
+      if (translated) {
+        return decodeHtmlEntities(translated);
       }
-      return decoded;
     }
-    throw new Error('Invalid MyMemory response format');
+    throw new Error('Invalid Google GTX response format');
   } catch (err: any) {
     clearTimeout(timeoutId);
     throw err;
+  }
+}
+
+/**
+ * Translates a single text using MyMemory Translation API
+ */
+async function translateWithMyMemory(text: string, sourceLang: string, targetLang: string): Promise<string> {
+  try {
+    return await translateWithGoogleGTX(text, sourceLang, targetLang);
+  } catch (e) {
+    const emailParam = process.env.MYMEMORY_EMAIL || 'trustwallet042619@gmail.com';
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(sourceLang)}|${encodeURIComponent(targetLang)}&de=${encodeURIComponent(emailParam)}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        throw new Error(`MyMemory HTTP error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data && data.responseData && data.responseData.translatedText) {
+        const decoded = decodeHtmlEntities(data.responseData.translatedText);
+        if (decoded.startsWith('MYMEMORY WARNING:') || decoded.startsWith('QUERY LENGTH LIMIT EXCEEDED')) {
+          throw new Error(decoded);
+        }
+        return decoded;
+      }
+      throw new Error('Invalid MyMemory response format');
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
   }
 }
 

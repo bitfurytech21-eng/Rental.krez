@@ -99,44 +99,44 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#18211F]">
+    <div className="min-h-screen bg-[#0B1B30] text-white">
       
-      {/* 1. Immo Matin Inspired Editorial Masthead & Financial Ticker */}
-      <section className="border-b border-[#E3E8E3] bg-[#0E1F1B] text-white pt-10 pb-8 px-4 sm:px-6">
+      {/* 1. Editorial Masthead & Financial Ticker */}
+      <section className="border-b border-[#1D3860] bg-[#0B1B30] text-white pt-10 pb-8 px-4 sm:px-6">
         <div className="max-w-[1440px] mx-auto">
           
           {/* Ticker Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-6 border-b border-emerald-950/80 text-[11px] text-[#A2B8B1]">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-6 border-b border-[#1D3860] text-[11px] text-[#8EA7C7]">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-bold tracking-wider uppercase text-emerald-400">Kretz Editorial Wire</span>
-              <span className="text-slate-500">|</span>
+              <span className="w-2 h-2 rounded-full bg-[#BEE179] animate-pulse" />
+              <span className="font-bold tracking-wider uppercase text-[#BEE179]">Kretz Editorial Wire</span>
+              <span className="text-[#1D3860]">|</span>
               <span>European Real Estate Intelligence & Dossiers</span>
             </div>
 
             <div className="hidden md:flex items-center gap-6 font-mono text-[11px]">
               <div>
-                <span className="text-slate-400 mr-1.5">Euribor 3M:</span>
+                <span className="text-[#8EA7C7] mr-1.5">Euribor 3M:</span>
                 <span className="font-bold text-white">3.18%</span>
-                <span className="text-emerald-400 ml-1 text-[10px]">▼ -4 bps</span>
+                <span className="text-[#BEE179] ml-1 text-[10px]">▼ -4 bps</span>
               </div>
               <div>
-                <span className="text-slate-400 mr-1.5">Paris Prime Cap Rate:</span>
+                <span className="text-[#8EA7C7] mr-1.5">Paris Prime Cap Rate:</span>
                 <span className="font-bold text-white">4.25%</span>
-                <span className="text-emerald-400 ml-1 text-[10px]">Stable</span>
+                <span className="text-[#BEE179] ml-1 text-[10px]">Stable</span>
               </div>
               <div>
-                <span className="text-slate-400 mr-1.5">Madrid Salamanca Index:</span>
+                <span className="text-[#8EA7C7] mr-1.5">Madrid Salamanca Index:</span>
                 <span className="font-bold text-white">€9,400/m²</span>
-                <span className="text-emerald-400 ml-1 text-[10px]">▲ +7.2%</span>
+                <span className="text-[#BEE179] ml-1 text-[10px]">▲ +7.2%</span>
               </div>
               <div>
-                <span className="text-slate-400 mr-1.5">Active Tokenized SPVs:</span>
-                <span className="font-bold text-emerald-400">100% Backed</span>
+                <span className="text-[#8EA7C7] mr-1.5">Active Tokenized SPVs:</span>
+                <span className="font-bold text-[#BEE179]">100% Backed</span>
               </div>
             </div>
 
-            <div className="text-[11px] font-semibold text-[#8DA69F]">
+            <div className="text-[11px] font-semibold text-[#8EA7C7]">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
           </div>
@@ -144,22 +144,22 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
           {/* Editorial Title Banner */}
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="space-y-3 max-w-3xl text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#18332D] text-[#B7E36A] border border-[#234A42] text-xs font-bold uppercase tracking-widest">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#102442] text-[#BEE179] border border-[#1D3860] text-xs font-bold uppercase tracking-widest">
                 <span>The Independent Real Estate Review</span>
               </div>
               
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.1]">
-                Real Estate <span className="text-[#B7E36A]">Dossiers & Insights</span>
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#BEE179] leading-[1.1]">
+                Real Estate <span className="text-white">Dossiers & Insights</span>
               </h1>
               
-              <p className="text-sm sm:text-base text-[#B0C4BE] leading-relaxed max-w-2xl">
+              <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed max-w-2xl">
                 Rigorous editorial investigations, quarterly market barometers, PropTech tokenization blueprints, 
                 and regulatory analyses across Paris, Madrid, and prime European trophy markets.
               </p>
             </div>
 
             {/* Quick Filter Switcher */}
-            <div className="flex items-center gap-3 bg-[#162B26] p-1.5 rounded-2xl border border-[#234A42]">
+            <div className="flex items-center gap-3 bg-[#102442] p-1.5 rounded-2xl border border-[#1D3860]">
               <button
                 onClick={() => {
                   setOnlyDossiers(false);
@@ -167,8 +167,8 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                 }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   !onlyDossiers && selectedCategory === 'all'
-                    ? 'bg-[#B7E36A] text-[#0E1F1B] shadow-md'
-                    : 'text-[#B0C4BE] hover:text-white'
+                    ? 'bg-[#BEE179] text-[#0B1B30] shadow-md'
+                    : 'text-[#D1E2F7] hover:text-white'
                 }`}
               >
                 All Publications ({insightsService.getArticles().length})
@@ -181,8 +181,8 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                 }}
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   onlyDossiers
-                    ? 'bg-[#B7E36A] text-[#0E1F1B] shadow-md'
-                    : 'text-[#B0C4BE] hover:text-white'
+                    ? 'bg-[#BEE179] text-[#0B1B30] shadow-md'
+                    : 'text-[#D1E2F7] hover:text-white'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
@@ -195,7 +195,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
       </section>
 
       {/* 2. Interactive Category Navigation Bar & Live Search */}
-      <section className="sticky top-[74px] sm:top-[80px] z-30 bg-white/95 backdrop-blur-md border-b border-[#E3E8E3] py-3.5 px-4 sm:px-6 shadow-xs">
+      <section className="sticky top-[74px] sm:top-[80px] z-30 bg-[#0B1B30]/95 backdrop-blur-md border-b border-[#1D3860] py-3.5 px-4 sm:px-6 shadow-xs">
         <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           
           {/* Category Tabs */}
@@ -207,8 +207,8 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
               }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 selectedCategory === 'all' && !onlyDossiers
-                  ? 'bg-[#182D2A] text-white'
-                  : 'bg-[#F2F5F2] text-[#4A5551] hover:text-[#182D2A] hover:bg-[#E7EBE7]'
+                  ? 'bg-[#BEE179] text-[#0B1B30]'
+                  : 'bg-[#102442] text-[#D1E2F7] hover:text-white border border-[#1D3860]'
               }`}
             >
               All Topics
@@ -223,8 +223,8 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                 }}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
                   selectedCategory === cat.slug
-                    ? 'bg-[#182D2A] text-white shadow-xs'
-                    : 'bg-[#F2F5F2] text-[#4A5551] hover:text-[#182D2A] hover:bg-[#E7EBE7]'
+                    ? 'bg-[#BEE179] text-[#0B1B30] shadow-xs'
+                    : 'bg-[#102442] text-[#D1E2F7] hover:text-white border border-[#1D3860]'
                 }`}
               >
                 {getCategoryIcon(cat.icon)}
@@ -235,18 +235,18 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
 
           {/* Search Input */}
           <div className="relative w-full md:w-80 shrink-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#8EA7C7] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search dossiers, topics, yields..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-[#F9FAF8] text-xs text-[#18211F] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#182D2A] focus:bg-white transition-all"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#1D3860] bg-[#102442] text-xs text-white placeholder-[#8EA7C7] focus:outline-none focus:ring-2 focus:ring-[#BEE179] transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#8EA7C7] hover:text-white"
               >
                 ✕
               </button>
@@ -256,18 +256,18 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
         </div>
       </section>
 
-      {/* 3. Featured Lead Cover Story (Immo Matin Style Grande Enquête) */}
+      {/* 3. Featured Lead Cover Story */}
       {featuredCover && !searchQuery.trim() && (
-        <section className="py-8 sm:py-12 px-4 sm:px-6 bg-[#F8FAF7] border-b border-[#E3E8E3]">
+        <section className="py-8 sm:py-12 px-4 sm:px-6 bg-[#0B1B30] border-b border-[#1D3860]">
           <div className="max-w-[1440px] mx-auto text-left">
             
             <div 
               onClick={() => onSelectArticle(featuredCover.slug)}
-              className="bg-white rounded-3xl border border-[#DCE4DA] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 grid grid-cols-1 lg:grid-cols-12 group cursor-pointer"
+              className="bg-[#102442] rounded-3xl border border-[#1D3860] overflow-hidden shadow-sm hover:shadow-xl hover:border-[#BEE179]/60 transition-all duration-300 grid grid-cols-1 lg:grid-cols-12 group cursor-pointer"
             >
               
               {/* Cover Visual */}
-              <div className="lg:col-span-7 relative aspect-[16/10] lg:aspect-auto overflow-hidden bg-slate-900">
+              <div className="lg:col-span-7 relative aspect-[16/10] lg:aspect-auto overflow-hidden bg-[#0B1B30]">
                 <img
                   src={featuredCover.coverImage}
                   alt={featuredCover.coverImageAlt}
@@ -278,7 +278,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                 
                 {/* Floating Badges */}
                 <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-[#10B981] text-white text-[11px] font-black uppercase tracking-wider shadow-md">
+                  <span className="px-3 py-1 rounded-full bg-[#BEE179] text-[#0B1B30] text-[11px] font-black uppercase tracking-wider shadow-md">
                     {featuredCover.dossierIssue || 'Cover Story Dossier'}
                   </span>
                   <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold border border-white/20">
@@ -295,32 +295,32 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
               <div className="lg:col-span-5 p-6 sm:p-10 flex flex-col justify-between space-y-6">
                 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-xs text-[#69736F]">
-                    <span className="font-semibold text-emerald-800">{featuredCover.author.organization || 'Kretz Wealth Research'}</span>
+                  <div className="flex items-center gap-3 text-xs text-[#8EA7C7]">
+                    <span className="font-bold text-[#BEE179]">{featuredCover.author.organization || 'Kretz Wealth Research'}</span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
+                      <Clock className="w-3.5 h-3.5 text-[#BEE179]" />
                       {featuredCover.readTime}
                     </span>
                     <span>•</span>
                     <span>{formatDate(featuredCover.publishedAt)}</span>
                   </div>
 
-                  <h2 className="text-2xl sm:text-3xl xl:text-4xl font-black text-[#18211F] group-hover:text-emerald-900 transition-colors leading-tight">
+                  <h2 className="text-2xl sm:text-3xl xl:text-4xl font-black text-[#BEE179] group-hover:underline transition-colors leading-tight">
                     {featuredCover.title}
                   </h2>
 
-                  <p className="text-xs sm:text-sm text-[#4A5551] leading-relaxed line-clamp-4">
+                  <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed line-clamp-4">
                     {featuredCover.excerpt}
                   </p>
 
                   {/* Key Takeaways Preview */}
                   {featuredCover.keyTakeaways && featuredCover.keyTakeaways.length > 0 && (
-                    <div className="p-4 rounded-2xl bg-[#F1F5F9] border border-[#E2E8F0] space-y-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900 block">
+                    <div className="p-4 rounded-2xl bg-[#0B1B30] border border-[#1D3860] space-y-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#BEE179] block">
                         Dossier Key Findings:
                       </span>
-                      <ul className="text-xs text-[#2A3532] space-y-1.5 list-disc pl-4">
+                      <ul className="text-xs text-[#D1E2F7] space-y-1.5 list-disc pl-4">
                         {featuredCover.keyTakeaways.slice(0, 2).map((takeaway, i) => (
                           <li key={i} className="line-clamp-2">{takeaway}</li>
                         ))}
@@ -330,22 +330,22 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                 </div>
 
                 {/* Footer with Author and CTA */}
-                <div className="pt-4 border-t border-[#E3E8E3] flex items-center justify-between">
+                <div className="pt-4 border-t border-[#1D3860] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <img
                       src={featuredCover.author.avatar}
                       alt={featuredCover.author.name}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-emerald-600/30"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-[#BEE179]/50"
                     />
                     <div className="text-left">
-                      <span className="text-xs font-bold text-[#18211F] block">{featuredCover.author.name}</span>
-                      <span className="text-[11px] text-[#69736F] block truncate max-w-[180px]">{featuredCover.author.role}</span>
+                      <span className="text-xs font-bold text-white block">{featuredCover.author.name}</span>
+                      <span className="text-[11px] text-[#8EA7C7] block truncate max-w-[180px]">{featuredCover.author.role}</span>
                     </div>
                   </div>
 
-                  <span className="btn bg-[#182D2A] text-white group-hover:bg-[#24423C] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs">
+                  <span className="btn bg-[#BEE179] text-[#0B1B30] hover:bg-[#AEDB5B] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer">
                     <span>Read Dossier</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#B7E36A]" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
                   </span>
                 </div>
 
@@ -357,20 +357,20 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
         </section>
       )}
 
-      {/* 4. Secondary Lead Dossiers Carousel / Multi-Part Guides */}
+      {/* 4. Secondary Lead Dossiers Carousel */}
       {secondaryDossiers.length > 0 && !searchQuery.trim() && (
         <section className="py-10 px-4 sm:px-6 max-w-[1440px] mx-auto text-left">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Editorial Focus</span>
-              <h3 className="text-xl sm:text-2xl font-black text-[#18211F]">In-Depth Investigative Dossiers</h3>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#BEE179] block">Editorial Focus</span>
+              <h3 className="text-xl sm:text-2xl font-black text-[#BEE179]">In-Depth Investigative Dossiers</h3>
             </div>
             <button
               onClick={() => {
                 setOnlyDossiers(true);
                 setSelectedCategory('all');
               }}
-              className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-[#BEE179] hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>Explore All Dossiers</span>
               <ChevronRight className="w-4 h-4" />
@@ -382,10 +382,10 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
               <div
                 key={art.id}
                 onClick={() => onSelectArticle(art.slug)}
-                className="bg-white rounded-2xl border border-[#E3E8E3] overflow-hidden shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+                className="bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden shadow-xs hover:border-[#BEE179]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between group cursor-pointer"
               >
                 <div>
-                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                  <div className="relative aspect-[16/10] overflow-hidden bg-[#0B1B30]">
                     <img
                       src={art.coverImage}
                       alt={art.coverImageAlt}
@@ -393,31 +393,31 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                       loading="lazy"
                     />
                     <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-800/90 text-white text-[10px] font-bold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#BEE179] text-[#0B1B30] text-[10px] font-bold">
                         {art.dossierIssue || 'Dossier'}
                       </span>
                     </div>
                   </div>
 
                   <div className="p-5 space-y-3">
-                    <div className="flex items-center justify-between text-[11px] text-[#69736F]">
-                      <span className="font-semibold text-emerald-800">{art.categoryName}</span>
+                    <div className="flex items-center justify-between text-[11px] text-[#8EA7C7]">
+                      <span className="font-bold text-[#BEE179]">{art.categoryName}</span>
                       <span>{art.readTime}</span>
                     </div>
 
-                    <h4 className="font-bold text-base text-[#18211F] group-hover:text-emerald-900 transition-colors line-clamp-2 leading-snug">
+                    <h4 className="font-black text-base text-[#BEE179] group-hover:underline transition-colors line-clamp-2 leading-snug">
                       {art.title}
                     </h4>
 
-                    <p className="text-xs text-[#5E6864] line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-[#D1E2F7] line-clamp-3 leading-relaxed">
                       {art.excerpt}
                     </p>
                   </div>
                 </div>
 
-                <div className="p-5 pt-0 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-slate-500 font-medium">By {art.author.name}</span>
-                  <span className="text-emerald-800 font-bold flex items-center gap-1 group-hover:underline">
+                <div className="p-5 pt-0 border-t border-[#1D3860] flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-[#8EA7C7] font-medium">By {art.author.name}</span>
+                  <span className="text-[#BEE179] font-bold flex items-center gap-1 group-hover:underline">
                     Read Report →
                   </span>
                 </div>
@@ -428,20 +428,20 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
       )}
 
       {/* 5. Main Content Grid: Articles Feed & Editorial Sidebar */}
-      <section className="py-12 px-4 sm:px-6 bg-[#F8FAFC] border-t border-[#E2E8F0]">
+      <section className="py-12 px-4 sm:px-6 bg-[#0B1B30] border-t border-[#1D3860]">
         <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
           
           {/* Left Column: Articles Stream (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
             
-            <div className="flex items-center justify-between border-b border-[#DCE4DA] pb-3">
+            <div className="flex items-center justify-between border-b border-[#1D3860] pb-3">
               <div>
-                <h3 className="text-lg font-black text-[#18211F]">
+                <h3 className="text-lg font-black text-[#BEE179]">
                   {selectedCategory === 'all' 
                     ? (onlyDossiers ? 'All Major Dossiers' : 'Latest Insights & Market Analyses') 
                     : categories.find(c => c.slug === selectedCategory)?.name || 'Category Articles'}
                 </h3>
-                <span className="text-xs text-[#69736F]">
+                <span className="text-xs text-[#8EA7C7]">
                   Showing {allArticles.length} published editorial reports
                 </span>
               </div>
@@ -453,7 +453,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                     setSearchQuery('');
                     setOnlyDossiers(false);
                   }}
-                  className="text-xs text-emerald-800 hover:underline font-bold"
+                  className="text-xs text-[#BEE179] hover:underline font-bold"
                 >
                   Reset Filters
                 </button>
@@ -462,10 +462,10 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
 
             {/* Articles List */}
             {allArticles.length === 0 ? (
-              <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
-                <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
-                <h4 className="font-bold text-base text-slate-700">No matching articles found</h4>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <div className="p-12 text-center bg-[#102442] rounded-2xl border border-[#1D3860] space-y-3">
+                <BookOpen className="w-10 h-10 text-[#8EA7C7] mx-auto" />
+                <h4 className="font-bold text-base text-white">No matching articles found</h4>
+                <p className="text-xs text-[#8EA7C7] max-w-sm mx-auto">
                   Try adjusting your search query or selecting a different category from the filter bar above.
                 </p>
               </div>
@@ -475,10 +475,10 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                   <article
                     key={article.id}
                     onClick={() => onSelectArticle(article.slug)}
-                    className="p-5 sm:p-6 bg-white rounded-2xl border border-[#E3E8E3] hover:border-emerald-600/50 shadow-xs hover:shadow-md transition-all duration-200 grid grid-cols-1 sm:grid-cols-12 gap-5 group cursor-pointer"
+                    className="p-5 sm:p-6 bg-[#102442] rounded-2xl border border-[#1D3860] hover:border-[#BEE179]/60 shadow-xs hover:shadow-md transition-all duration-200 grid grid-cols-1 sm:grid-cols-12 gap-5 group cursor-pointer"
                   >
                     {/* Visual */}
-                    <div className="sm:col-span-4 relative aspect-[16/10] sm:aspect-square md:aspect-[4/3] rounded-xl overflow-hidden bg-slate-900 shrink-0">
+                    <div className="sm:col-span-4 relative aspect-[16/10] sm:aspect-square md:aspect-[4/3] rounded-xl overflow-hidden bg-[#0B1B30] shrink-0">
                       <img
                         src={article.coverImage}
                         alt={article.coverImageAlt}
@@ -486,7 +486,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                         loading="lazy"
                       />
                       {article.isDossier && (
-                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-[#0E1F1B] text-[#B7E36A] text-[9px] font-black uppercase tracking-wider">
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-[#BEE179] text-[#0B1B30] text-[9px] font-black uppercase tracking-wider">
                           Dossier
                         </span>
                       )}
@@ -495,46 +495,46 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                     {/* Content */}
                     <div className="sm:col-span-8 flex flex-col justify-between space-y-2">
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-[11px] text-[#69736F]">
-                          <span className="font-bold text-emerald-800 uppercase tracking-wider">
+                        <div className="flex items-center justify-between text-[11px] text-[#8EA7C7]">
+                          <span className="font-bold text-[#BEE179] uppercase tracking-wider">
                             {article.categoryName}
                           </span>
                           <span className="flex items-center gap-1 font-mono">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="w-3 h-3 text-[#BEE179]" />
                             {article.readTime}
                           </span>
                         </div>
 
-                        <h4 className="font-bold text-base sm:text-lg text-[#18211F] group-hover:text-emerald-900 transition-colors leading-snug">
+                        <h4 className="font-black text-base sm:text-lg text-[#BEE179] group-hover:underline transition-colors leading-snug">
                           {article.title}
                         </h4>
 
-                        <p className="text-xs text-[#5A6561] line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-[#D1E2F7] line-clamp-2 leading-relaxed">
                           {article.excerpt}
                         </p>
 
                         {/* Tag pills */}
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {article.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} className="text-[10px] px-2 py-0.5 rounded-md bg-[#EEF2EC] text-[#2C4A42] font-semibold">
+                            <span key={tag} className="text-[10px] px-2 py-0.5 rounded-md bg-[#0B1B30] text-[#BEE179] border border-[#1D3860] font-bold">
                               #{tag}
                             </span>
                           ))}
                         </div>
                       </div>
 
-                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-[#69736F]">
+                      <div className="pt-3 border-t border-[#1D3860] flex items-center justify-between text-xs text-[#8EA7C7]">
                         <div className="flex items-center gap-2">
                           <img
                             src={article.author.avatar}
                             alt={article.author.name}
                             className="w-6 h-6 rounded-full object-cover"
                           />
-                          <span className="text-[11px] font-medium text-[#18211F]">{article.author.name}</span>
-                          <span className="text-[10px] text-slate-400">• {formatDate(article.publishedAt)}</span>
+                          <span className="text-[11px] font-bold text-white">{article.author.name}</span>
+                          <span className="text-[10px] text-[#8EA7C7]">• {formatDate(article.publishedAt)}</span>
                         </div>
 
-                        <span className="text-emerald-800 font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                        <span className="text-[#BEE179] font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                           <span>Read</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </span>
@@ -550,16 +550,16 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
           {/* Right Column: Editorial Sidebar (4 cols) */}
           <div className="lg:col-span-4 space-y-6">
             
-            {/* 1. Most Read Ranking / Top 5 (Immo Matin Style) */}
-            <div className="bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            {/* 1. Most Read Ranking / Top 5 */}
+            <div className="bg-[#102442] p-6 rounded-3xl border border-[#1D3860] shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#1D3860]">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-800" />
-                  <h4 className="font-black text-sm uppercase tracking-wider text-[#18211F]">
+                  <TrendingUp className="w-4 h-4 text-[#BEE179]" />
+                  <h4 className="font-black text-sm uppercase tracking-wider text-[#BEE179]">
                     Most Read Dossiers
                   </h4>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400">Weekly Pulse</span>
+                <span className="text-[10px] font-bold text-[#8EA7C7]">Weekly Pulse</span>
               </div>
 
               <div className="space-y-4">
@@ -567,19 +567,19 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                   <div
                     key={item.id}
                     onClick={() => onSelectArticle(item.slug)}
-                    className="flex items-start gap-3.5 group cursor-pointer pb-3.5 border-b border-slate-50 last:border-none last:pb-0"
+                    className="flex items-start gap-3.5 group cursor-pointer pb-3.5 border-b border-[#1D3860] last:border-none last:pb-0"
                   >
-                    <span className="font-mono text-xl font-black text-emerald-700/40 group-hover:text-emerald-700 transition-colors shrink-0">
+                    <span className="font-mono text-xl font-black text-[#BEE179] group-hover:underline transition-colors shrink-0">
                       0{index + 1}
                     </span>
                     <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                      <span className="text-[10px] font-bold text-[#BEE179] uppercase tracking-wider block">
                         {item.categoryName}
                       </span>
-                      <h5 className="font-bold text-xs text-[#18211F] group-hover:text-emerald-900 transition-colors line-clamp-2 leading-snug">
+                      <h5 className="font-bold text-xs text-white group-hover:text-[#BEE179] transition-colors line-clamp-2 leading-snug">
                         {item.title}
                       </h5>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      <div className="flex items-center gap-2 text-[10px] text-[#8EA7C7]">
                         <span>{item.readTime}</span>
                         <span>•</span>
                         <span>{item.viewsCount} reads</span>
@@ -591,36 +591,36 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
             </div>
 
             {/* 2. Whitepaper & Institutional Dossier Download Hub */}
-            <div className="bg-gradient-to-br from-[#102420] to-[#182D2A] text-white p-6 rounded-3xl shadow-md space-y-4">
-              <div className="w-10 h-10 rounded-2xl bg-[#24423C] text-[#B7E36A] flex items-center justify-center">
+            <div className="bg-[#102442] text-white p-6 rounded-3xl border border-[#1D3860] shadow-md space-y-4">
+              <div className="w-10 h-10 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center">
                 <Download className="w-5 h-5" />
               </div>
 
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#B7E36A] block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#BEE179] block">
                   Institutional Whitepaper
                 </span>
                 <h4 className="text-base font-extrabold text-white mt-1">
                   The 2026 European Prime Real Estate Yield Compendium
                 </h4>
-                <p className="text-xs text-[#A0B5AE] mt-2 leading-relaxed">
+                <p className="text-xs text-[#D1E2F7] mt-2 leading-relaxed">
                   Download our complete 64-page research compendium with complete cadastral registry datasets, 
                   SPV legal templates, and micro-market cap rate projections.
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-white/10 text-xs font-mono flex items-center justify-between text-white/90">
+              <div className="p-3 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-xs font-mono flex items-center justify-between text-white/90">
                 <span>Format: PDF / A4 Format</span>
-                <span className="font-bold text-[#B7E36A]">4.8 MB</span>
+                <span className="font-bold text-[#BEE179]">4.8 MB</span>
               </div>
 
               {compendiumDownloadNotice ? (
-                <div className="p-3 bg-emerald-950/80 border border-[#B7E36A]/50 rounded-xl text-center space-y-1">
-                  <p className="text-xs font-bold text-[#B7E36A] flex items-center justify-center gap-1.5">
+                <div className="p-3 bg-[#0B1B30] border border-[#BEE179]/50 rounded-xl text-center space-y-1">
+                  <p className="text-xs font-bold text-[#BEE179] flex items-center justify-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Research Compendium Generated</span>
                   </p>
-                  <p className="text-[11px] text-slate-300">64-Page PDF Compendium queued for viewing.</p>
+                  <p className="text-[11px] text-[#D1E2F7]">64-Page PDF Compendium queued for viewing.</p>
                 </div>
               ) : (
                 <button
@@ -630,7 +630,7 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                       window.print();
                     }, 500);
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#B7E36A] hover:bg-[#a5d259] text-[#0E1F1B] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
                 >
                   <Download className="w-4 h-4" />
                   <span>Download Free Research PDF</span>
@@ -639,8 +639,8 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
             </div>
 
             {/* 3. The Kretz Real Estate Dispatch (Newsletter) */}
-            <div className="bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-xs space-y-4">
-              <div className="flex items-center gap-2 text-emerald-800">
+            <div className="bg-[#102442] p-6 rounded-3xl border border-[#1D3860] shadow-xs space-y-4">
+              <div className="flex items-center gap-2 text-[#BEE179]">
                 <FileText className="w-4 h-4" />
                 <h4 className="font-bold text-xs uppercase tracking-wider">
                   The Editorial Dispatch
@@ -648,17 +648,17 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
               </div>
 
               <div className="space-y-1">
-                <h5 className="font-black text-sm text-[#18211F]">
+                <h5 className="font-black text-sm text-white">
                   Weekly European Property Intelligence
                 </h5>
-                <p className="text-xs text-[#69736F] leading-relaxed">
+                <p className="text-xs text-[#D1E2F7] leading-relaxed">
                   Join 14,000+ family office directors, institutional allocators, and real estate professionals receiving our curated Thursday briefings.
                 </p>
               </div>
 
               {newsletterSubscribed ? (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="p-3 bg-[#0B1B30] border border-[#BEE179] rounded-xl text-[#BEE179] text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#BEE179] shrink-0" />
                   <span>You are subscribed to the Kretz Dispatch.</span>
                 </div>
               ) : (
@@ -669,25 +669,25 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                     value={newsletterEmail}
                     onChange={(e) => setNewsletterEmail(e.target.value)}
                     placeholder="Enter your corporate email..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-[#18211F] focus:outline-none focus:ring-2 focus:ring-[#182D2A]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#1D3860] bg-[#0B1B30] text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#BEE179]"
                   />
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-colors cursor-pointer"
+                    className="w-full py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold transition-colors cursor-pointer"
                   >
                     Subscribe to Dispatch
                   </button>
                 </form>
               )}
 
-              <span className="text-[10px] text-slate-400 block">
+              <span className="text-[10px] text-[#8EA7C7] block">
                 Strict no-spam policy. Unsubscribe anytime with 1-click.
               </span>
             </div>
 
             {/* 4. Category Taxonomy Pills Card */}
-            <div className="bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-xs space-y-3">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-[#18211F]">
+            <div className="bg-[#102442] p-6 rounded-3xl border border-[#1D3860] shadow-xs space-y-3">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-[#BEE179]">
                 Dossier Categories
               </h4>
               <div className="space-y-1.5">
@@ -697,10 +697,10 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
                     <button
                       key={c.slug}
                       onClick={() => setSelectedCategory(c.slug)}
-                      className="w-full py-2 px-3 rounded-xl hover:bg-[#F2F5F2] flex items-center justify-between text-xs transition-colors cursor-pointer text-left"
+                      className="w-full py-2 px-3 rounded-xl hover:bg-[#0B1B30] flex items-center justify-between text-xs transition-colors cursor-pointer text-left"
                     >
-                      <span className="font-semibold text-[#2C3835]">{c.name}</span>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold">
+                      <span className="font-bold text-white">{c.name}</span>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#0B1B30] text-[#BEE179] font-bold border border-[#1D3860]">
                         {count}
                       </span>
                     </button>

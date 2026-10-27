@@ -1115,6 +1115,49 @@ export class TranslationService {
   }
 
   /**
+   * Free Google GTX Translate Engine (100% Free, Zero API Key required)
+   */
+  public static async translateSingleFree(text: string, targetLang: LanguageCode): Promise<string> {
+    if (!text || !text.trim() || targetLang === 'en' || targetLang.startsWith('en')) {
+      return text;
+    }
+
+    const trimmed = text.trim();
+    const baseLang = targetLang.split('-')[0].toLowerCase();
+    const cacheKey = `${targetLang}:${trimmed}`;
+
+    if (memoryCache[cacheKey]) return memoryCache[cacheKey];
+
+    // Check dictionary
+    const dictMatch = DICTIONARY[baseLang]?.[trimmed] || DICTIONARY[targetLang]?.[trimmed];
+    if (dictMatch) {
+      memoryCache[cacheKey] = dictMatch;
+      return dictMatch;
+    }
+
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(baseLang)}&dt=t&q=${encodeURIComponent(trimmed)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[0] && Array.isArray(data[0])) {
+          const translated = data[0].map((item: any) => item[0]).join('');
+          if (translated) {
+            memoryCache[cacheKey] = translated;
+            saveCacheToStorage();
+            notifyTranslationUpdates();
+            return translated;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore network errors and fall back
+    }
+
+    return trimmed;
+  }
+
+  /**
    * Smart offline fallback method that matches common words in compound phrases without API
    */
   private static translateOfflineFallback(text: string, lang: string): string {
@@ -1135,16 +1178,16 @@ export class TranslationService {
   }
 
   /**
-   * Detects initial translation provider from localStorage or defaults to 'dictionary'
+   * Detects initial translation provider from localStorage or defaults to 'auto'
    */
   public static getInitialProvider(): TranslationProviderId {
     if (typeof window !== 'undefined' && window.localStorage) {
       const saved = window.localStorage.getItem(PROVIDER_KEY) as TranslationProviderId;
-      if (saved && ['mymemory', 'libretranslate', 'deepl', 'dictionary', 'auto'].includes(saved)) {
+      if (saved && ['auto', 'mymemory', 'libretranslate', 'deepl', 'dictionary'].includes(saved)) {
         return saved;
       }
     }
-    return 'dictionary';
+    return 'auto';
   }
 
   /**
@@ -1157,30 +1200,30 @@ export class TranslationService {
   }
 
   /**
-   * Fetch current provider statuses and list from backend
+   * Fetch current provider statuses and list
    */
   public static async fetchProviders(): Promise<{
     activeProvider: TranslationProviderId;
     providers: TranslationProviderInfo[];
   }> {
     return {
-      activeProvider: 'dictionary',
+      activeProvider: 'auto',
       providers: [
         {
+          id: 'auto',
+          name: 'Free Universal Google GTX Engine (Recommended)',
+          description: '100% Free real-time universal website translation engine for 100+ languages. Zero API key required.',
+          isAvailable: true,
+          requiresKey: false,
+          type: 'free',
+        },
+        {
           id: 'dictionary',
-          name: 'L\'Agence Deterministic Terminology Engine (Offline)',
-          description: 'High-speed deterministic luxury real estate and financial terminology dictionary. Zero API key required.',
+          name: 'L\'Agence Luxury Real Estate Terminology Engine',
+          description: 'High-speed deterministic luxury real estate and financial terminology dictionary across 12 core languages.',
           isAvailable: true,
           requiresKey: false,
           type: 'local',
-        },
-        {
-          id: 'auto',
-          name: 'Smart Offline Local Engine',
-          description: 'Pure client-side zero-latency translation engine operating without external API network dependencies.',
-          isAvailable: true,
-          requiresKey: false,
-          type: 'hybrid',
         },
       ],
     };
@@ -1205,7 +1248,7 @@ export class TranslationService {
   }
 
   /**
-   * Complete offline batch translation for all UI components and page text
+   * Complete batch translation using free Google GTX engine + local cache
    */
   public static async translateBatch(
     texts: string[],
@@ -1217,12 +1260,34 @@ export class TranslationService {
     }
 
     const results: string[] = [...texts];
+    const missing: { index: number; text: string }[] = [];
 
-    // Apply client-side dictionary & offline translation engine to all strings instantly
+    // Step 1: Check instant cache and dictionary
     texts.forEach((txt, idx) => {
       if (!txt || !txt.trim()) return;
-      results[idx] = this.translateInstant(txt, targetLang);
+      const cached = this.translateInstant(txt, targetLang);
+      if (cached && cached !== txt) {
+        results[idx] = cached;
+      } else {
+        missing.push({ index: idx, text: txt.trim() });
+      }
     });
+
+    // Step 2: Fetch missing strings using free Google GTX endpoint concurrently (chunks of 6)
+    if (missing.length > 0) {
+      const chunkSize = 6;
+      for (let i = 0; i < missing.length; i += chunkSize) {
+        const slice = missing.slice(i, i + chunkSize);
+        await Promise.all(
+          slice.map(async (item) => {
+            const translated = await this.translateSingleFree(item.text, targetLang);
+            if (translated && translated !== item.text) {
+              results[item.index] = translated;
+            }
+          })
+        );
+      }
+    }
 
     return results;
   }

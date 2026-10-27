@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
-import { MapPin, TrendingUp, Users, Calendar, ArrowRight, ShieldCheck, CheckCircle2, Crown, Clock, FileText, Eye } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Crown, Clock, FileText } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 import { PropertyBrochureModal } from './PropertyBrochureModal';
@@ -46,25 +46,25 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
   const fundingPercent = Math.min(100, Math.round((property.fundedAmount / property.targetAmount) * 100));
 
-  // Country Flag helper
-  const getCountryFlag = (country: string) => {
+  // Country Code helper (replaces emojis with clean ISO codes)
+  const getCountryCode = (country: string) => {
     const c = country.toLowerCase();
-    if (c.includes('france')) return '🇫🇷';
-    if (c.includes('spain') || c.includes('esp')) return '🇪🇸';
-    if (c.includes('monaco')) return '🇲🇨';
-    if (c.includes('mexico')) return '🇲🇽';
-    if (c.includes('usa') || c.includes('united states')) return '🇺🇸';
-    if (c.includes('italy')) return '🇮🇹';
-    if (c.includes('portugal')) return '🇵🇹';
-    return '🇪🇺';
+    if (c.includes('france')) return 'FR';
+    if (c.includes('spain') || c.includes('esp')) return 'ES';
+    if (c.includes('monaco')) return 'MC';
+    if (c.includes('mexico')) return 'MX';
+    if (c.includes('usa') || c.includes('united states')) return 'US';
+    if (c.includes('italy')) return 'IT';
+    if (c.includes('portugal')) return 'PT';
+    return 'EU';
   };
 
   const getStatusBadge = () => {
     if (tokensHeld > 0) {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-950/90 text-[#B7E36A] border border-[#B7E36A]/50 text-[11px] font-extrabold shadow-sm backdrop-blur-md">
-          <Crown className="w-3.5 h-3.5 text-[#B7E36A]" />
-          <span>Your Holdings · {tokensHeld} Tokens</span>
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1E3A34]/95 text-[#D4AF37] border border-[#D4AF37]/30 text-[10px] font-semibold tracking-wider uppercase backdrop-blur-md">
+          <Crown className="w-3 h-3 text-[#D4AF37]" aria-hidden="true" />
+          <span>Holdings · {tokensHeld} Tokens</span>
         </span>
       );
     }
@@ -72,34 +72,34 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
     switch (property.status) {
       case 'funding':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#142421]/90 text-[#B7E36A] border border-[#B7E36A]/40 text-[11px] font-extrabold backdrop-blur-md shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#B7E36A] animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1C1917]/85 text-white border border-white/15 text-[10px] font-medium tracking-wider uppercase backdrop-blur-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A34] animate-pulse" aria-hidden="true" />
             <span>In Funding</span>
           </span>
         );
       case 'funded':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-900/90 text-slate-200 border border-slate-700 text-[11px] font-bold backdrop-blur-md">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#1E3A34]/90 text-white border border-[#1E3A34] text-[10px] font-medium tracking-wider uppercase backdrop-blur-md">
+            <CheckCircle2 className="w-3 h-3 text-[#78C29E]" aria-hidden="true" />
             <span>100% Funded</span>
           </span>
         );
       case 'upcoming':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-950/90 text-amber-300 border border-amber-600/40 text-[11px] font-bold backdrop-blur-md">
-            <Clock className="w-3.5 h-3.5" />
-            <span>Launching Soon</span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-stone-900/85 text-stone-200 border border-stone-600/40 text-[10px] font-medium tracking-wider uppercase backdrop-blur-md">
+            <Clock className="w-3 h-3" aria-hidden="true" />
+            <span>Private Preview</span>
           </span>
         );
       case 'completed':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full bg-teal-950/90 text-teal-300 border border-teal-500/30 text-[11px] font-bold backdrop-blur-md">
+          <span className="inline-flex items-center px-2.5 py-1 rounded bg-[#14221F]/90 text-stone-200 border border-stone-700 text-[10px] font-medium tracking-wider uppercase backdrop-blur-md">
             Returned & Exited
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-900/90 text-white text-[11px] font-medium">
+          <span className="inline-flex items-center px-2.5 py-1 rounded bg-stone-900/85 text-stone-200 text-[10px] font-medium uppercase tracking-wider">
             {property.status}
           </span>
         );
@@ -107,17 +107,23 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   };
 
   return (
-    <div className={`property-card flex flex-col group rounded-3xl bg-white overflow-hidden transition-all duration-300 ${
-      isOwnedOrOccupied 
-        ? 'border-2 border-[#27845D] shadow-md ring-2 ring-[#B7E36A]/30' 
-        : 'border border-[#E3E8E3] hover:border-[#142421]/40 shadow-xs hover:shadow-xl'
-    }`}>
-      {/* Property Hero Image with Overlays */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+    <article 
+      aria-label={`${property.title}, ${property.city}, ${property.country}`}
+      className={`property-card flex flex-col group rounded-xl bg-white overflow-hidden transition-all duration-300 ${
+        isOwnedOrOccupied 
+          ? 'border-2 border-[#1E3A34] shadow-md ring-1 ring-[#1E3A34]/20' 
+          : 'border border-[#d4e5f5] hover:border-[#1E3A34]/40 hover:shadow-lg'
+      }`}
+    >
+      {/* Property Hero Image with Architectural Framing */}
+      <div className="relative aspect-[16/10] overflow-hidden bg-[#e4f1fb]">
         <img
           src={property.images[0] || property.bannerImage}
-          alt={property.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-104"
+          alt={`Architectural view of ${property.title} in ${property.city}, ${property.country}`}
+          width={640}
+          height={400}
+          loading="lazy"
+          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-103"
           referrerPolicy="no-referrer"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -129,40 +135,37 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         />
         
         {/* Subtle Dark Gradient Scrim */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-black/25 pointer-events-none" aria-hidden="true" />
 
         {/* Top Status Bar */}
-        <div className="absolute top-3.5 left-3.5 right-3.5 z-10 flex items-center justify-between gap-2">
+        <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2">
           {getStatusBadge()}
 
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={handleOpenBrochure}
-              className="bg-black/60 hover:bg-[#0E201C] backdrop-blur-md text-[#B7E36A] hover:text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-white/20 hover:border-[#B7E36A]/50 flex items-center gap-1 transition-all cursor-pointer shadow-xs"
-              title="View & Download Property Brochure (PDF & ZIP)"
+              aria-label={`View and download official brochure for ${property.title}`}
+              className="bg-black/50 hover:bg-[#1E3A34] focus-visible:ring-2 focus-visible:ring-white backdrop-blur-md text-white text-[10px] font-medium px-2.5 py-1 rounded border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer min-h-[30px]"
             >
-              <FileText className="w-2.5 h-2.5 text-[#B7E36A]" />
+              <FileText className="w-3 h-3 opacity-80" aria-hidden="true" />
               <span>Brochure</span>
             </button>
-            {property.images && property.images.length > 1 && (
-              <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/20">
-                {property.images.length} Photos
-              </span>
-            )}
-            <span className="bg-[#142421]/80 backdrop-blur-md text-[#B7E36A] text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-[#B7E36A]/30">
+            <span className="bg-black/50 backdrop-blur-md text-stone-200 text-[10px] font-medium px-2 py-1 rounded border border-white/20">
               {property.type}
             </span>
           </div>
         </div>
 
-        {/* Bottom Image Overlay: Flag, Location & Token Ticker */}
-        <div className="absolute bottom-3 left-3.5 right-3.5 z-10 flex items-center justify-between text-xs text-white">
-          <div className="flex items-center gap-1.5 font-bold drop-shadow-md truncate">
-            <span className="text-base">{getCountryFlag(property.country)}</span>
-            <span className="truncate">{property.city}, {property.country}</span>
+        {/* Bottom Image Overlay: ISO Country Code, Location & Token Ticker */}
+        <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between text-xs text-white">
+          <div className="flex items-center gap-2 font-medium drop-shadow-sm truncate">
+            <span className="font-mono text-[10px] tracking-widest font-semibold px-1.5 py-0.5 rounded bg-black/40 border border-white/20 uppercase text-stone-200">
+              {getCountryCode(property.country)}
+            </span>
+            <span className="truncate text-[13px] tracking-wide">{property.city}, {property.country}</span>
           </div>
-          <span className="text-[10px] font-mono font-bold bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-md uppercase tracking-wider text-white border border-white/20 shrink-0">
+          <span className="text-[10px] font-mono tracking-widest bg-black/40 backdrop-blur-md px-2 py-0.5 rounded uppercase text-white/90 border border-white/15 shrink-0">
             {property.tokenTicker}
           </span>
         </div>
@@ -172,127 +175,131 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
         {/* Title and Specs */}
         <div>
-          <div className="flex items-center justify-between text-xs text-[#69736F] mb-1">
+          <div className="flex items-center justify-between text-xs text-[#78716C] mb-1.5">
             <span className="truncate max-w-[200px]">{property.location}</span>
             {property.surfaceAreaM2 && (
-              <span className="font-semibold text-[#142421] shrink-0">{property.surfaceAreaM2} m²</span>
+              <span className="font-mono text-[11px] text-[#57534E] shrink-0">{property.surfaceAreaM2} m²</span>
             )}
           </div>
 
-          <h3 
-            onClick={() => onSelect(property)}
-            className="text-lg font-black text-[#142421] leading-tight line-clamp-1 group-hover:text-[#27845D] transition-colors cursor-pointer"
-          >
-            {property.title}
+          <h3 className="font-serif text-lg sm:text-xl font-bold text-[#1C1917] leading-snug line-clamp-1">
+            <button
+              type="button"
+              onClick={() => onSelect(property)}
+              className="text-left hover:text-[#1E3A34] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded transition-colors cursor-pointer w-full"
+            >
+              {property.title}
+            </button>
           </h3>
 
           {/* User Holdings Banner if user has active tokens */}
           {tokensHeld > 0 && (
-            <div className="mt-2.5 p-2.5 rounded-xl bg-[#E8F5E9] border border-[#27845D]/30 flex items-center justify-between text-xs">
-              <span className="font-bold text-[#142421] flex items-center gap-1.5">
-                <Crown className="w-3.5 h-3.5 text-[#27845D]" />
-                <span>Your Holdings:</span>
+            <div className="mt-2.5 p-2.5 rounded-lg bg-[#e9f4fd] border border-[#1E3A34]/20 flex items-center justify-between text-xs">
+              <span className="font-medium text-[#1C1917] flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-[#1E3A34]" aria-hidden="true" />
+                <span>Your Position:</span>
               </span>
-              <span className="font-extrabold text-[#27845D] tabular-nums">
+              <span className="font-semibold text-[#1E3A34] tabular-nums">
                 {tokensHeld} Tokens ({formatCurrency(amountInvested)})
               </span>
             </div>
           )}
         </div>
 
-        {/* Reental-style Funding Progress Indicator */}
-        <div className="space-y-1.5 bg-[#F6F7F4] p-3 rounded-2xl border border-[#E3E8E3]">
+        {/* Editorial Funding Progress Indicator */}
+        <div className="space-y-1.5 bg-[#f0f8fe] p-3 rounded-lg border border-[#d4e5f5]">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-[#52605C]">
-              Funded: <strong className="text-[#142421]">{formatCurrency(property.fundedAmount)}</strong>
+            <span className="text-[#57534E]">
+              Funded <strong className="text-[#1C1917] font-semibold">{formatCurrency(property.fundedAmount)}</strong>
             </span>
-            <span className="font-black text-[#142421] tabular-nums">{fundingPercent}%</span>
+            <span className="font-mono text-xs font-semibold text-[#1E3A34] tabular-nums">{fundingPercent}%</span>
           </div>
 
-          <div className="w-full bg-[#E3E8E3] h-2 rounded-full overflow-hidden">
+          <div 
+            className="w-full bg-[#d4e5f5] h-1.5 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuenow={fundingPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Funding progress for ${property.title}: ${fundingPercent}%`}
+          >
             <div 
-              className="bg-[#27845D] h-full rounded-full transition-all duration-700"
+              className="bg-[#1E3A34] h-full rounded-full transition-all duration-700"
               style={{ width: `${fundingPercent}%` }}
             />
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-[#69736F] pt-0.5">
+          <div className="flex justify-between items-center text-[10px] text-[#78716C] pt-0.5">
             <span>Target: {formatCurrency(property.targetAmount)}</span>
-            <span className="font-medium">{property.availableTokens} tokens left</span>
+            <span className="font-mono">{property.availableTokens} tokens remain</span>
           </div>
         </div>
 
-        {/* Refined Financial Metrics Grid: Time Frame & Monthly Target (Token Price removed) */}
+        {/* Refined Financial Metrics Grid */}
         <div className="grid grid-cols-3 gap-2 py-1">
-          {/* 1. Monthly Target Percentage */}
-          <div className="p-2.5 sm:p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between">
-            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide truncate">
-              Monthly Target
+          {/* 1. Monthly Target */}
+          <div className="p-2.5 sm:p-3 rounded-lg bg-[#f0f8fe] border border-[#d4e5f5] flex flex-col justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-[#78716C] font-semibold block truncate">
+              Monthly Yield
             </span>
-            <span className="text-sm sm:text-base md:text-lg font-black text-[#27845D] block tabular-nums my-0.5 truncate">
-              {formatPercent(property.monthlyTargetRate || 6.0)}/mo
+            <span className="font-mono text-base font-bold text-[#1E3A34] block tabular-nums my-0.5 truncate">
+              {formatPercent(property.monthlyTargetRate || 6.0)}
             </span>
-            <span className="text-[10px] text-[#69736F] font-medium block truncate">
-              Projected Pay
+            <span className="text-[10px] text-[#78716C] block truncate">
+              Annualized
             </span>
           </div>
 
-          {/* 2. Refined Time Frame (Image #2 refinement: show only the time frame) */}
-          <div className="p-2.5 sm:p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between">
-            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide truncate">
+          {/* 2. Projected Term */}
+          <div className="p-2.5 sm:p-3 rounded-lg bg-[#f0f8fe] border border-[#d4e5f5] flex flex-col justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-[#78716C] font-semibold block truncate">
               Time Frame
             </span>
-            <span className="text-sm sm:text-base md:text-lg font-black text-[#142421] block tabular-nums my-0.5 truncate">
-              {property.durationMonths || 21} Months
+            <span className="font-mono text-base font-bold text-[#1C1917] block tabular-nums my-0.5 truncate">
+              {property.durationMonths || 21} Mo.
             </span>
-            <span className="text-[10px] text-[#69736F] font-medium block truncate">
-              Projected Term
+            <span className="text-[10px] text-[#78716C] block truncate">
+              Target Term
             </span>
           </div>
 
           {/* 3. Minimum Investment */}
-          <div className="p-2.5 sm:p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between">
-            <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide truncate">
-              Min. Investment
+          <div className="p-2.5 sm:p-3 rounded-lg bg-[#f0f8fe] border border-[#d4e5f5] flex flex-col justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-[#78716C] font-semibold block truncate">
+              Entry Ticket
             </span>
-            <span className="text-sm sm:text-base md:text-lg font-black text-[#142421] block tabular-nums my-0.5 truncate">
+            <span className="font-mono text-base font-bold text-[#1C1917] block tabular-nums my-0.5 truncate">
               {formatCurrency(property.minimumInvestment)}
             </span>
-            <span className="text-[10px] text-emerald-700 font-bold block truncate">
-              Ring-Fenced SPV
+            <span className="text-[10px] text-[#1E3A34] font-medium block truncate">
+              100% SPV
             </span>
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons with 44px Minimum Touch Targets & Keyboard Accessibility */}
         <div className="pt-2 flex items-center gap-2">
           <button
             type="button"
-            onClick={handleOpenBrochure}
-            className="px-3 py-2.5 rounded-xl border border-emerald-800/30 bg-emerald-50/80 hover:bg-emerald-100 hover:border-emerald-800 text-[#142421] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-xs"
-            title="View & Download Official Property Brochure (PDF & ZIP)"
-          >
-            <FileText className="w-3.5 h-3.5 text-emerald-800" />
-            <span>Brochure</span>
-          </button>
-
-          <button
             onClick={() => onSelect(property)}
-            className="flex-1 btn btn-secondary text-xs font-bold py-2.5 border border-[#E3E8E3] hover:border-[#142421] text-[#142421] rounded-xl flex items-center justify-center cursor-pointer transition-colors"
+            aria-label={`View details for ${property.title}`}
+            className="flex-1 min-h-[44px] py-2.5 px-3 rounded-lg border border-[#d4e5f5] hover:border-[#1C1917] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] text-[#1C1917] text-xs font-semibold flex items-center justify-center cursor-pointer transition-colors bg-white hover:bg-[#f0f8fe]"
           >
             See Details
           </button>
           
           <button
+            type="button"
             onClick={() => onInvest ? onInvest(property) : onSelect(property)}
-            className={`flex-1 btn btn-primary text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all ${
+            aria-label={isOwnedOrOccupied ? `Manage position in ${property.title}` : `Invest now in ${property.title}`}
+            className={`flex-1 min-h-[44px] py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] ${
               isOwnedOrOccupied
-                ? 'bg-[#27845D] hover:bg-[#1f6b4a] text-white'
-                : 'bg-[#142421] hover:bg-[#1E332E] text-white'
+                ? 'bg-[#1E3A34] hover:bg-[#142622] text-white'
+                : 'bg-[#1C1917] hover:bg-[#1E3A34] text-white'
             }`}
           >
             <span>{isOwnedOrOccupied ? 'Manage Asset' : 'Invest Now'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -305,6 +312,6 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           onClose={() => setIsInternalBrochureOpen(false)}
         />
       )}
-    </div>
+    </article>
   );
 };

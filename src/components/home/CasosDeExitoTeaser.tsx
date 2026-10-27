@@ -3,8 +3,7 @@ import { CASE_STUDIES } from '../../data/caseStudies';
 import { BLOG_POSTS } from '../../data/blogPosts';
 import { formatCurrency } from '../../lib/utils';
 import { 
-  Trophy, TrendingUp, CheckCircle2, ArrowRight, 
-  Clock, BookOpen, ChevronRight, ShieldCheck, ExternalLink
+  Trophy, ArrowRight, BookOpen, ChevronRight
 } from 'lucide-react';
 
 interface CasosDeExitoTeaserProps {
@@ -16,58 +15,55 @@ interface CasosDeExitoTeaserProps {
 export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
   onNavigateCasos,
   onNavigateBlog,
-  onNavigateProperties,
 }) => {
   const topCases = CASE_STUDIES.slice(0, 3);
   const latestArticles = BLOG_POSTS.slice(0, 2);
 
   return (
-    <section className="py-20 sm:py-28 bg-[#F8FAFC] border-t border-b border-[#E2E8F0] text-[#18211F] text-left">
-      <div className="container max-w-[1240px] mx-auto px-4">
+    <section className="py-20 sm:py-28 bg-[#0B1B30] border-t border-b border-[#1D3860] text-white text-left">
+      <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
         
         {/* Section Header */}
         <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-14">
           <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border border-[#D5DDD5] text-emerald-900 text-xs font-bold uppercase tracking-wider">
-              <Trophy className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Proven Performance & Realized Track Record</span>
-            </div>
+            <p className="text-[11px] font-bold text-[#BEE179] tracking-[0.2em] uppercase">
+              Proven Performance · Realized Track Record
+            </p>
 
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#18211F] tracking-tight">
-              129+ Tokenized Projects Exited with <span className="text-emerald-800">15.4% Avg Realized IRR</span>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#BEE179] tracking-tight">
+              129+ Properties Exited with <span className="text-white italic font-normal">15.4% Avg Realized IRR</span>
             </h2>
 
-            <p className="text-sm sm:text-base text-[#69736F] leading-relaxed">
-              We provide 100% radical transparency on exited real estate opportunities. 
-              Review the exact capital returned, holding durations, live photo documentation, and notarized SPV dissolution deeds.
+            <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed font-normal">
+              Radical transparency on exited real estate opportunities. Review exact capital distributions, holding durations, live photo documentation, and notarized SPV dissolution deeds.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={onNavigateCasos}
-              className="btn btn-primary py-3.5 px-6 text-xs font-bold bg-[#182D2A] text-white hover:bg-[#24423C] rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-all"
+              className="py-3 px-5 text-xs font-bold bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] rounded-lg flex items-center gap-2 cursor-pointer shadow-xs transition-colors"
             >
-              <span>Explore All Success Stories</span>
-              <ArrowRight className="w-4 h-4 text-[#B7E36A]" />
+              <span>All Realized Cases</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Top Real-Time Case Study Cards Stacked in a Scrollable Vertical Feed */}
-        <div className="max-w-2xl mx-auto flex flex-col gap-8 mb-16 w-full">
+        {/* Case Study Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-16">
           {topCases.map((study) => (
             <div
               key={study.id}
               onClick={onNavigateCasos}
-              className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+              className="bg-[#102442] rounded-xl border border-[#1D3860] overflow-hidden hover:border-[#BEE179]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between group cursor-pointer"
             >
               <div>
-                <div className="relative aspect-[16/10] sm:aspect-[16/9] overflow-hidden bg-slate-900">
+                <div className="relative aspect-[16/10] overflow-hidden bg-[#0B1B30]">
                   <img 
                     src={study.image} 
                     alt={study.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-700 ease-out" 
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -77,90 +73,90 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
                   
-                  <div className="absolute top-3.5 left-3.5 flex items-center gap-1.5">
-                    <span className="px-3 py-1 rounded-full bg-black/65 backdrop-blur-md text-white text-xs font-bold border border-white/20">
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded bg-black/60 backdrop-blur-md text-white text-[11px] font-medium border border-white/15">
                       {study.city}, {study.country}
                     </span>
                   </div>
 
-                  <div className="absolute top-3.5 right-3.5">
-                    <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-[11px] font-extrabold uppercase tracking-wider shadow-sm">
-                      100% Exited & Liquidated
+                  <div className="absolute top-3 right-3">
+                    <span className="px-2.5 py-1 rounded bg-[#BEE179] text-[#0B1B30] text-[10px] font-bold uppercase tracking-wider">
+                      Liquidated & Exited
                     </span>
                   </div>
 
-                  <div className="absolute bottom-4 left-4 right-4 text-left">
-                    <p className="text-xs text-[#B7E36A] uppercase font-bold tracking-wider">{study.strategy}</p>
-                    <h3 className="text-lg sm:text-xl font-extrabold text-white leading-tight mt-0.5">{study.title}</h3>
+                  <div className="absolute bottom-3 left-3 right-3 text-left">
+                    <p className="text-[10px] text-stone-300 uppercase font-semibold tracking-wider">{study.strategy}</p>
+                    <h3 className="font-serif text-lg font-bold text-white leading-tight mt-0.5">{study.title}</h3>
                   </div>
                 </div>
 
-                <div className="p-6 sm:p-7 space-y-4 text-left">
-                  <div className="grid grid-cols-3 gap-2 p-4 bg-[#F8FAFC] rounded-2xl border border-slate-200 text-center">
+                <div className="p-6 space-y-4 text-left">
+                  <div className="grid grid-cols-3 gap-2 p-3 bg-[#0B1B30] rounded-lg border border-[#1D3860] text-center">
                     <div>
-                      <p className="text-[10px] sm:text-xs text-slate-500 uppercase font-bold">Realized IRR</p>
-                      <p className="text-lg sm:text-2xl font-black text-emerald-800">{study.realTIR}%</p>
+                      <p className="text-[10px] text-[#8EA7C7] uppercase font-semibold">Realized IRR</p>
+                      <p className="font-mono text-xl font-bold text-[#BEE179]">{study.realTIR}%</p>
                     </div>
-                    <div className="border-x border-slate-200">
-                      <p className="text-[10px] sm:text-xs text-slate-500 uppercase font-bold">Capital Gain</p>
-                      <p className="text-lg sm:text-2xl font-black text-slate-900">+{study.capitalGain}%</p>
+                    <div className="border-x border-[#1D3860]">
+                      <p className="text-[10px] text-[#8EA7C7] uppercase font-semibold">Gain</p>
+                      <p className="font-mono text-xl font-bold text-white">+{study.capitalGain}%</p>
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs text-slate-500 uppercase font-bold">Duration</p>
-                      <p className="text-lg sm:text-2xl font-black text-slate-900">{study.durationMonths} mo</p>
+                      <p className="text-[10px] text-[#8EA7C7] uppercase font-semibold">Term</p>
+                      <p className="font-mono text-xl font-bold text-white">{study.durationMonths}m</p>
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-xs sm:text-sm text-slate-600 pt-1">
+                  <div className="space-y-1.5 text-xs text-[#D1E2F7]">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Total Returned:</span>
-                      <span className="font-bold text-slate-900">{formatCurrency(study.totalReturned)}</span>
+                      <span className="text-[#8EA7C7]">Total Returned:</span>
+                      <span className="font-mono font-bold text-white">{formatCurrency(study.totalReturned)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Investors:</span>
-                      <span className="font-semibold text-slate-900">{study.investorCount} participants</span>
+                      <span className="text-[#8EA7C7]">Participants:</span>
+                      <span className="font-medium text-white">{study.investorCount} investors</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Notary Deed:</span>
-                      <span className="font-mono text-emerald-800 font-bold">{study.spvDeedId}</span>
+                      <span className="text-[#8EA7C7]">Notary Deed:</span>
+                      <span className="font-mono text-[#BEE179] text-[11px] font-bold">{study.spvDeedId}</span>
                     </div>
                   </div>
 
-                  <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed pt-1">
+                  <p className="text-xs text-[#8EA7C7] line-clamp-2 leading-relaxed pt-1">
                     {study.summary}
                   </p>
                 </div>
               </div>
 
-              <div className="p-5 sm:p-6 pt-0 border-t border-slate-100 flex items-center justify-between text-xs sm:text-sm font-bold text-emerald-800 group-hover:text-emerald-950">
-                <span>View Real-Time Audit & Photos</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-emerald-700" />
+              <div className="p-5 pt-0 border-t border-[#1D3860] flex items-center justify-between text-xs font-bold text-[#BEE179] group-hover:underline">
+                <span>View Notarial Deed & Audit</span>
+                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
           ))}
         </div>
 
         {/* Dual Banner: Educational Blog & Academy */}
-        <div className="p-8 sm:p-10 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 text-left">
+        <div className="p-8 sm:p-10 rounded-xl bg-[#102442] border border-[#1D3860] shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 text-left">
           <div className="space-y-3 max-w-xl">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 uppercase tracking-wider">
-              <BookOpen className="w-4 h-4" />
-              <span>Real Estate Tokenization Academy & Guides</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-extrabold text-[#18211F]">
-              Understand the mechanics of tokenized property before you invest
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Read comprehensive analyses on MiCA compliance, calculating real compound IRR returns, Spanish IRPF tax guidelines, and how participatory loans safeguard investor capital.
+            <p className="text-[11px] font-bold text-[#BEE179] uppercase tracking-wider flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5 text-[#BEE179]" />
+              <span>Investment Academy & Legal Guides</span>
             </p>
-            <div className="pt-2">
+            <h3 className="font-serif text-2xl font-bold text-white">
+              Understand fractional mechanics before participating
+            </h3>
+            <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed">
+              Read comprehensive analyses on European regulatory frameworks, calculating compound IRR yields, Spanish IRPF tax filings, and how SPV deeds ring-fence investor capital.
+            </p>
+            <div className="pt-1">
               <button
                 onClick={onNavigateBlog}
-                className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 hover:text-emerald-950 cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#BEE179] hover:underline cursor-pointer"
               >
-                <span>Browse All Educational Guides</span>
+                <span>Browse Educational Guides</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -172,14 +168,14 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
               <div
                 key={art.id}
                 onClick={onNavigateBlog}
-                className="p-4 rounded-2xl bg-[#F8FAFC] hover:bg-[#E2E8F0] border border-slate-200 transition-colors cursor-pointer space-y-1"
+                className="p-4 rounded-lg bg-[#0B1B30] hover:bg-[#132745] border border-[#1D3860] transition-colors cursor-pointer space-y-1"
               >
-                <div className="flex items-center justify-between text-[11px] text-slate-500">
-                  <span className="font-bold text-emerald-800">{art.category}</span>
-                  <span>{art.readTime}</span>
+                <div className="flex items-center justify-between text-[11px] text-[#8EA7C7]">
+                  <span className="font-bold text-[#BEE179]">{art.category}</span>
+                  <span className="font-mono text-[10px] text-slate-300">{art.readTime}</span>
                 </div>
-                <h4 className="font-bold text-xs sm:text-sm text-[#18211F] line-clamp-1">{art.title}</h4>
-                <p className="text-[11px] text-slate-600 line-clamp-1">{art.excerpt}</p>
+                <h4 className="font-serif font-bold text-xs sm:text-sm text-white line-clamp-1">{art.title}</h4>
+                <p className="text-[11px] text-[#8EA7C7] line-clamp-1">{art.excerpt}</p>
               </div>
             ))}
           </div>

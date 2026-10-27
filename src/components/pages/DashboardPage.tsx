@@ -21,7 +21,8 @@ import {
   ArrowRight, Bell, Building2, TrendingUp, Wallet, ShieldCheck, History, 
   PieChart, ArrowDownLeft, ArrowUpRight, HelpCircle, User, FileText, LayoutDashboard, Coins,
   Share2, Award, CheckCircle2, AlertCircle, ExternalLink, Copy, Check, Menu, X, UploadCloud, LayoutGrid, LogOut,
-  Search, ChevronDown, Sparkles, Gift, Users, Send, Mail, QrCode, Globe, CheckCheck, MessageCircle, RefreshCw, Clock
+  Search, ChevronDown, Sparkles, Gift, Users, Send, Mail, QrCode, Globe, CheckCheck, MessageCircle, RefreshCw, Clock,
+  Sun, Moon
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
@@ -61,6 +62,42 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [mobileHeaderMenuOpen, setMobileHeaderMenuOpen] = useState(false);
   const [exploringLoading, setExploringLoading] = useState(false);
   const [notifRefresh, setNotifRefresh] = useState(0);
+
+  const [dashboardMode, setDashboardMode] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('dashboard_mode');
+      if (saved === 'light' || saved === 'dark') return saved;
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
+    } catch {}
+    return 'light';
+  });
+
+  const [dashboardTheme, setDashboardTheme] = useState<string>(() => {
+    try {
+      return localStorage.getItem('dashboard_theme') || 'slate';
+    } catch {}
+    return 'slate';
+  });
+
+  React.useEffect(() => {
+    const handleThemeChange = (e: any) => {
+      if (e?.detail) {
+        setDashboardTheme(e.detail);
+      }
+    };
+    window.addEventListener('dashboard-theme-changed', handleThemeChange);
+    return () => window.removeEventListener('dashboard-theme-changed', handleThemeChange);
+  }, []);
+
+  const toggleDashboardMode = () => {
+    const nextMode = dashboardMode === 'light' ? 'dark' : 'light';
+    setDashboardMode(nextMode);
+    try {
+      localStorage.setItem('dashboard_mode', nextMode);
+    } catch {}
+  };
 
   React.useEffect(() => {
     if (defaultTab === 'deposit') {
@@ -211,13 +248,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   ];
 
   return (
-    <div className="app-shell bg-[#0F1E1B]">
+    <div className={`app-shell dashboard-${dashboardMode} dashboard-theme-${dashboardTheme}`}>
       {/* Desktop Fixed-Width Sidebar */}
       <aside className="app-sidebar hidden md:flex">
         {/* Brand / Logo */}
         <div 
           onClick={onNavigateHome}
-          className="p-2.5 border-b border-[#1E332E] flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
+          className="p-2.5 border-b border-[var(--dash-sidebar-border)] flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
         >
           <img 
             src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
@@ -226,21 +263,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
           />
           <div className="min-w-0">
-            <h2 className="font-bold text-[11px] text-white tracking-tight leading-tight truncate">L'Agence Real Estate</h2>
-            <p className="text-[8.5px] text-[#A0A8A5] leading-tight truncate">Prestige & Tokenized Assets</p>
+            <h2 className="font-bold text-[11px] text-[var(--dash-text)] tracking-tight leading-tight truncate">L'Agence Real Estate</h2>
+            <p className="text-[8.5px] text-[var(--dash-text-muted)] leading-tight truncate">Prestige &amp; Tokenized Assets</p>
           </div>
         </div>
 
         {/* User Mini Card */}
-        <div className="p-1.5 mx-2 my-1.5 bg-[#1E332E] rounded-lg border border-[#2D4540] flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-[#B7E36A] text-[#182D2A] flex items-center justify-center font-bold text-[10px] shrink-0">
+        <div className="p-1.5 mx-2 my-1.5 bg-[var(--dash-sidebar-card)] rounded-lg border border-[var(--dash-sidebar-border)] flex items-center gap-2">
+          <div className="w-6 h-6 rounded bg-[#1E3A34] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
             {user.fullName.split(' ').map(n => n[0]).join('')}
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-[11px] text-white truncate leading-tight">{user.fullName}</h3>
+            <h3 className="font-bold text-[11px] text-[var(--dash-text)] truncate leading-tight">{user.fullName}</h3>
             <div className="flex items-center gap-1 mt-0.5">
               {user.kycStatus === 'verified' && (
-                <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-[#B7E36A] bg-[#27845D]/30 px-1 py-0.2 rounded">
+                <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold text-emerald-600 dark:text-[#B7E36A] bg-emerald-500/10 dark:bg-[#27845D]/30 px-1 py-0.2 rounded">
                   <ShieldCheck className="w-2 h-2" /> Verified
                 </span>
               )}
@@ -259,17 +296,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[11.5px] font-medium transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-[#B7E36A] text-[#182D2A] font-bold shadow-2xs'
-                    : 'text-[#A0A8A5] hover:bg-[#1E332E] hover:text-white'
+                    ? 'bg-[var(--dash-sidebar-active-bg)] text-[var(--dash-sidebar-active-text)] font-bold shadow-2xs'
+                    : 'text-[var(--dash-text-secondary)] hover:bg-[var(--dash-sidebar-hover-bg)] hover:text-[var(--dash-text)]'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#182D2A]' : 'text-[#69736F]'}`} />
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[var(--dash-sidebar-active-text)]' : 'opacity-70'}`} />
                   <span className="truncate">{item.label}</span>
                 </div>
                 {item.count !== undefined && item.count > 0 && (
                   <span className={`px-1 py-0.2 rounded text-[8.5px] font-bold shrink-0 ml-1 ${
-                    isActive ? 'bg-[#182D2A] text-white' : 'bg-[#2D4540] text-white'
+                    isActive ? 'bg-black/20 text-white' : 'bg-[var(--dash-inner)] text-[var(--dash-text)]'
                   }`}>
                     {item.count}
                   </span>
@@ -280,22 +317,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </nav>
 
         {/* Sidebar Shortcut Nav Bar including Logout */}
-        <div className="p-2 border-t border-[#1E332E] bg-[#142421] space-y-1.5">
-          <div className="text-[9px] font-bold uppercase tracking-wider text-[#A0A8A5] px-1 flex items-center justify-between">
+        <div className="p-2 border-t border-[var(--dash-sidebar-border)] bg-[var(--dash-sidebar-card)] space-y-1.5">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--dash-text-muted)] px-1 flex items-center justify-between">
             <span>Quick Actions</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#B7E36A]"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           </div>
           <div className="grid grid-cols-2 gap-1">
             <button
               onClick={() => setIsDepositOpen(true)}
-              className="flex items-center justify-center gap-1 bg-[#B7E36A] hover:bg-[#a6d557] text-[#182D2A] text-[10.5px] font-bold rounded py-1 px-1.5 shadow-2xs transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1 bg-[#1E3A34] hover:bg-[#142622] text-white text-[10.5px] font-bold rounded py-1 px-1.5 shadow-2xs transition-colors cursor-pointer"
               title="Deposit Funds"
             >
               <ArrowDownLeft className="w-3 h-3 stroke-[2.5]" /> Deposit
             </button>
             <button
               onClick={() => setIsWithdrawOpen(true)}
-              className="flex items-center justify-center gap-1 bg-[#1E332E] hover:bg-[#274540] text-white border border-[#2D4540] text-[10.5px] font-semibold rounded py-1 px-1.5 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1 bg-[var(--dash-inner)] hover:bg-[var(--dash-card-hover)] text-[var(--dash-text)] border border-[var(--dash-inner-border)] text-[10.5px] font-semibold rounded py-1 px-1.5 transition-colors cursor-pointer"
               title="Withdraw Funds"
             >
               <ArrowUpRight className="w-3 h-3" /> Withdraw
@@ -303,10 +340,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-1 bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-900/50 text-[10.5px] font-semibold rounded py-1 px-1.5 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-1 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 text-[10.5px] font-semibold rounded py-1 px-1.5 transition-colors cursor-pointer"
             title="Log out of account"
           >
-            <LogOut className="w-3 h-3 text-red-400" />
+            <LogOut className="w-3 h-3" />
             <span>Logout</span>
           </button>
         </div>
@@ -315,7 +352,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* Main Content Wrapper */}
       <div className="app-main-area pb-14 md:pb-0">
         {/* Compact Website Dashboard Header */}
-        <header className="bg-[#0B1B30] border-b border-slate-800/80 h-14 sm:h-16 shrink-0 z-40 px-3 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 shadow-lg">
+        <header className="bg-[var(--dash-header)] border-b border-[var(--dash-header-border)] backdrop-blur-md h-14 sm:h-16 shrink-0 z-40 px-3 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 shadow-xs transition-colors">
           {/* Left: Company Logo and Brand Name */}
           <div className="flex items-center gap-2.5">
             <button
@@ -327,14 +364,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <img 
                 src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
                 alt="L'Agence Logo" 
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover shadow-xs border border-slate-700/60 group-hover:border-[#D6A15D]/60 transition-colors shrink-0"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover shadow-xs border border-[var(--dash-header-border)] group-hover:border-[#1E3A34] dark:group-hover:border-[#D6A15D] transition-colors shrink-0"
                 style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
               />
               <div className="flex flex-col">
-                <span className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">
-                  L'Agence<span className="text-[#D6A15D]">.</span>
+                <span className="text-sm sm:text-base font-bold tracking-tight text-[var(--dash-text)] leading-tight">
+                  L'Agence<span className="text-[#1E3A34] dark:text-[#D6A15D]">.</span>
                 </span>
-                <span className="text-[8.5px] uppercase tracking-wider font-semibold text-slate-400">
+                <span className="text-[8.5px] uppercase tracking-wider font-semibold text-[var(--dash-text-muted)]">
                   Investor Portal
                 </span>
               </div>
@@ -342,7 +379,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {/* Center Navigation: Dashboard, Investments, Transactions, Reports, Portfolio */}
-          <nav className="hidden lg:flex items-center gap-1 bg-[#06101D] px-2 py-1 rounded-xl border border-slate-800 shadow-inner">
+          <nav className="hidden lg:flex items-center gap-1 bg-[var(--dash-header-controls)] px-2 py-1 rounded-xl border border-[var(--dash-header-controls-border)] shadow-xs">
             {[
               { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'properties', label: 'Investments', icon: TrendingUp },
@@ -358,47 +395,61 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   onClick={() => setActiveTab(item.id)}
                   className={`relative px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                     isActive
-                      ? 'bg-[#132A4A] text-white font-bold shadow-2xs'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                      ? 'bg-[var(--dash-card)] text-[var(--dash-text)] font-bold shadow-2xs border border-[var(--dash-card-border)]'
+                      : 'text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)]'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#D6A15D]' : 'text-slate-400'}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-[#1E3A34] dark:text-[#D6A15D]' : 'opacity-70'}`} />
                   <span>{item.label}</span>
                   {isActive && (
-                    <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-[#D6A15D] rounded-full" />
+                    <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-[#1E3A34] dark:bg-[#D6A15D] rounded-full" />
                   )}
                 </button>
               );
             })}
           </nav>
 
-          {/* Right Side: Compact search field, notification bell, and user profile menu */}
+          {/* Right Side: Compact search field, mode toggle, notification bell, and user profile menu */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Compact Search Field */}
             <div className="hidden xl:flex items-center relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-[var(--dash-text-muted)] absolute left-2.5 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search assets, txs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-40 sm:w-44 bg-[#06101D] text-xs text-white placeholder-slate-400 rounded-lg pl-8 pr-2.5 py-1.5 border border-slate-800 focus:outline-none focus:border-[#D6A15D] transition-all shadow-inner"
+                className="w-40 sm:w-44 bg-[var(--dash-header-controls)] text-xs text-[var(--dash-text)] placeholder-[var(--dash-text-muted)] rounded-lg pl-8 pr-2.5 py-1.5 border border-[var(--dash-header-controls-border)] focus:outline-none focus:border-[#1E3A34] dark:focus:border-[#D6A15D] transition-all shadow-xs"
               />
             </div>
+
+            {/* Light / Dark Mode Toggle Button */}
+            <button
+              onClick={toggleDashboardMode}
+              className="p-2 rounded-lg bg-[var(--dash-header-controls)] text-[var(--dash-text)] hover:text-[var(--dash-text)] border border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)] transition-all cursor-pointer flex items-center justify-center shadow-xs"
+              title={dashboardMode === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+              aria-label={dashboardMode === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+            >
+              {dashboardMode === 'light' ? (
+                <Moon className="w-3.5 h-3.5 text-[#1E3A34]" />
+              ) : (
+                <Sun className="w-3.5 h-3.5 text-[#D6A15D]" />
+              )}
+            </button>
 
             {/* Notification Bell with Real Unread-Count Badge */}
             <button
               onClick={() => setActiveTab('notifications')}
-              className={`relative p-2 rounded-lg transition-all cursor-pointer border ${
+              className={`relative p-2 rounded-lg transition-all cursor-pointer border shadow-xs ${
                 activeTab === 'notifications'
-                  ? 'bg-[#132A4A] text-white border-[#D6A15D]/50 shadow-2xs'
-                  : 'bg-[#06101D] text-slate-300 hover:text-white border-slate-800 hover:border-slate-700'
+                  ? 'bg-[var(--dash-card)] text-[var(--dash-text)] border-[#1E3A34] dark:border-[#D6A15D]/50'
+                  : 'bg-[var(--dash-header-controls)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)]'
               }`}
               title="Notifications"
             >
               <Bell className="w-3.5 h-3.5" />
               {notifications.filter(n => !n.read).length > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#D6A15D] text-[#0B1B30] text-[8px] font-black rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30] text-[8px] font-black rounded-full flex items-center justify-center">
                   {notifications.filter(n => !n.read).length}
                 </span>
               )}
@@ -408,9 +459,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#06101D] hover:bg-slate-800/80 border border-slate-800 hover:border-slate-700 text-white transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[var(--dash-header-controls)] hover:bg-[var(--dash-hover)] border border-[var(--dash-header-controls-border)] text-[var(--dash-text)] transition-all cursor-pointer shadow-xs"
               >
-                <div className="w-6 h-6 rounded-md bg-[#D6A15D] text-[#0B1B30] flex items-center justify-center font-black text-[11px] overflow-hidden shrink-0">
+                <div className="w-6 h-6 rounded-md bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30] flex items-center justify-center font-black text-[11px] overflow-hidden shrink-0">
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
                   ) : (
@@ -418,44 +469,60 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   )}
                 </div>
                 <div className="hidden md:flex flex-col text-left">
-                  <span className="text-xs font-bold text-white truncate max-w-[90px]">
+                  <span className="text-xs font-bold text-[var(--dash-text)] truncate max-w-[90px]">
                     {user.fullName.split(' ')[0]}
                   </span>
-                  <span className="text-[8.5px] text-[#D6A15D] font-mono font-semibold">
+                  <span className="text-[8.5px] text-[#1E3A34] dark:text-[#D6A15D] font-mono font-semibold">
                     {formatCurrency(user.walletBalance)}
                   </span>
                 </div>
-                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3 h-3 text-[var(--dash-text-muted)] transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* User Profile Dropdown Menu */}
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-1.5 w-60 bg-[#0B1B30] border border-slate-800 rounded-xl shadow-2xl py-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3 py-2 border-b border-slate-800 mb-1">
-                    <p className="text-[9px] uppercase font-bold text-slate-400">Signed In As</p>
-                    <p className="text-xs font-bold text-white truncate mt-0.5">{user.email}</p>
-                    <p className="text-[9.5px] font-mono font-semibold text-[#D6A15D] mt-0.5">Wallet: {formatCurrency(user.walletBalance)}</p>
+                <div className="absolute right-0 mt-1.5 w-60 bg-[var(--dash-card)] border border-[var(--dash-card-border)] rounded-xl shadow-2xl py-1.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-2 border-b border-[var(--dash-card-border)] mb-1">
+                    <p className="text-[9px] uppercase font-bold text-[var(--dash-text-muted)]">Signed In As</p>
+                    <p className="text-xs font-bold text-[var(--dash-text)] truncate mt-0.5">{user.email}</p>
+                    <p className="text-[9.5px] font-mono font-semibold text-[#1E3A34] dark:text-[#D6A15D] mt-0.5">Wallet: {formatCurrency(user.walletBalance)}</p>
                   </div>
                   <button
                     onClick={() => { setActiveTab('verification'); setUserDropdownOpen(false); }}
-                    className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:text-white hover:bg-[#132A4A] flex items-center gap-2 transition-colors cursor-pointer"
+                    className="w-full text-left px-3 py-2 text-xs text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)] flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <User className="w-3.5 h-3.5 text-[#D6A15D]" />
-                    <span>Profile & Security</span>
+                    <User className="w-3.5 h-3.5 text-[#1E3A34] dark:text-[#D6A15D]" />
+                    <span>Profile &amp; Security</span>
                   </button>
                   <button
                     onClick={() => { setActiveTab('wallet'); setUserDropdownOpen(false); }}
-                    className="w-full text-left px-3 py-2 text-xs text-slate-300 hover:text-white hover:bg-[#132A4A] flex items-center gap-2 transition-colors cursor-pointer"
+                    className="w-full text-left px-3 py-2 text-xs text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)] flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <Wallet className="w-3.5 h-3.5 text-[#D6A15D]" />
-                    <span>Wallet & Deposits</span>
+                    <Wallet className="w-3.5 h-3.5 text-[#1E3A34] dark:text-[#D6A15D]" />
+                    <span>Wallet &amp; Deposits</span>
                   </button>
-                  <div className="border-t border-slate-800 my-1" />
+                  <button
+                    onClick={() => { toggleDashboardMode(); setUserDropdownOpen(false); }}
+                    className="w-full text-left px-3 py-2 text-xs text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)] flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    {dashboardMode === 'light' ? (
+                      <>
+                        <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Switch to Dark Theme</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sun className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Switch to Light Theme</span>
+                      </>
+                    )}
+                  </button>
+                  <div className="border-t border-[var(--dash-card-border)] my-1" />
                   <button
                     onClick={() => { logout(); setUserDropdownOpen(false); }}
-                    className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 flex items-center gap-2 transition-colors cursor-pointer font-bold"
+                    className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <LogOut className="w-3.5 h-3.5 text-red-400" />
+                    <LogOut className="w-3.5 h-3.5" />
                     <span>Logout</span>
                   </button>
                 </div>
@@ -465,7 +532,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setMobileHeaderMenuOpen(!mobileHeaderMenuOpen)}
-              className="lg:hidden p-1.5 rounded-lg bg-[#06101D] text-white border border-slate-800 hover:border-slate-700 cursor-pointer"
+              className="lg:hidden p-1.5 rounded-lg bg-[var(--dash-header-controls)] text-[var(--dash-text)] border border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)] cursor-pointer"
               title="Toggle Menu"
             >
               {mobileHeaderMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -475,7 +542,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* Mobile Collapsible Navigation Menu */}
         {mobileHeaderMenuOpen && (
-          <div className="lg:hidden bg-[#0B1B30] border-b border-slate-800 px-4 py-3 space-y-1.5 z-30 animate-in slide-in-from-top-2 duration-150">
+          <div className="lg:hidden bg-[var(--dash-header)] border-b border-[var(--dash-header-border)] px-4 py-3 space-y-1.5 z-30 animate-in slide-in-from-top-2 duration-150 shadow-lg">
             {[
               { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'properties', label: 'Investments', icon: TrendingUp },
@@ -494,22 +561,41 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   onClick={() => { setActiveTab(item.id); setMobileHeaderMenuOpen(false); }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-[#132A4A] text-white border-l-4 border-[#D6A15D]'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                      ? 'bg-[var(--dash-sidebar-active-bg)] text-[var(--dash-sidebar-active-text)] shadow-xs'
+                      : 'text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#D6A15D]' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--dash-sidebar-active-text)]' : 'opacity-70'}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.count !== undefined && item.count > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#D6A15D] text-[#0B1B30]">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30]">
                       {item.count}
                     </span>
                   )}
                 </button>
               );
             })}
+            <div className="pt-2 border-t border-[var(--dash-header-border)] flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--dash-text-muted)]">Theme Appearance</span>
+              <button
+                onClick={toggleDashboardMode}
+                className="px-3 py-1.5 rounded-lg bg-[var(--dash-header-controls)] text-[var(--dash-text)] border border-[var(--dash-header-controls-border)] text-xs font-medium flex items-center gap-1.5"
+              >
+                {dashboardMode === 'light' ? (
+                  <>
+                    <Moon className="w-3.5 h-3.5 text-[#1E3A34]" />
+                    <span>Dark Theme</span>
+                  </>
+                ) : (
+                  <>
+                    <Sun className="w-3.5 h-3.5 text-[#D6A15D]" />
+                    <span>Light Theme</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
 

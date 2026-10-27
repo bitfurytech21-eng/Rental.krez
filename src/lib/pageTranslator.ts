@@ -18,7 +18,7 @@ function shouldSkipElement(element: Element | null): boolean {
   if (['script', 'style', 'code', 'pre', 'noscript', 'textarea', 'svg'].includes(tagName)) {
     return true;
   }
-  if (element.getAttribute('data-no-translate') === 'true' || element.classList.contains('no-translate')) {
+  if (element.getAttribute('data-no-translate') === 'true' || element.classList.contains('no-translate') || element.closest('#google_translate_element')) {
     return true;
   }
   return false;
@@ -99,11 +99,10 @@ export async function translateCurrentPage(targetLang: string): Promise<void> {
       }
     });
 
-    // Step 2: Batch fetch missing translations from backend Switch Translation API
+    // Step 2: Batch fetch missing translations using free Google GTX engine
     if (missingTexts.length > 0) {
-      // Deduplicate texts for server call
       const uniqueTexts = Array.from(new Set(missingTexts));
-      const batchSize = 15;
+      const batchSize = 12;
 
       for (let i = 0; i < uniqueTexts.length; i += batchSize) {
         const slice = uniqueTexts.slice(i, i + batchSize);

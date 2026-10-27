@@ -138,20 +138,20 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
       aria-label="Breadcrumb Navigation"
       className={`w-full max-w-[1240px] mx-auto px-4 sm:px-6 pt-4 pb-2 ${className}`}
     >
-      <ol className="flex items-center gap-1.5 sm:gap-2 text-xs text-[#69736F] flex-wrap leading-normal">
+      <ol className="flex items-center gap-1.5 sm:gap-2 text-xs text-[#78716C] flex-wrap leading-normal font-sans">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
 
           return (
             <li key={`crumb-${item.path}-${index}`} className="flex items-center gap-1.5 sm:gap-2">
               {index > 0 && (
-                <ChevronRight className="w-3.5 h-3.5 text-[#94A3B8] shrink-0" aria-hidden="true" />
+                <ChevronRight className="w-3.5 h-3.5 text-[#A8A29E] shrink-0" aria-hidden="true" />
               )}
 
               {isLast ? (
                 <span
                   aria-current="page"
-                  className="font-bold text-[#18211F] truncate max-w-[240px] sm:max-w-[420px]"
+                  className="font-semibold text-[#1C1917] truncate max-w-[240px] sm:max-w-[420px]"
                   title={item.label}
                 >
                   {item.label}
@@ -159,9 +159,9 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
               ) : (
                 <button
                   onClick={() => onNavigate(item.path)}
-                  className="hover:text-[#182D2A] hover:underline flex items-center gap-1 transition-colors cursor-pointer text-[#475569] font-medium"
+                  className="hover:text-[#1E3A34] hover:underline flex items-center gap-1 transition-colors cursor-pointer text-[#57534E] font-medium"
                 >
-                  {index === 0 && <Home className="w-3.5 h-3.5 text-[#27845D] shrink-0" aria-hidden="true" />}
+                  {index === 0 && <Home className="w-3.5 h-3.5 text-[#1E3A34] shrink-0" aria-hidden="true" />}
                   <span>{item.label}</span>
                 </button>
               )}

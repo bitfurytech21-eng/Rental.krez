@@ -11,6 +11,9 @@ import { SensitivityAnalysisCard } from './SensitivityAnalysisCard';
 import { InvestmentTermsAndExitPolicy } from './InvestmentTermsAndExitPolicy';
 import { RiskAndTermsAcknowledgementModal } from './RiskAndTermsAcknowledgementModal';
 import { ProjectedYieldChart } from './ProjectedYieldChart';
+import { MonthlyYieldRecharts } from './MonthlyYieldRecharts';
+import { SharePropertyModal } from './SharePropertyModal';
+import { PropertyLocationMap } from './PropertyLocationMap';
 import {
   MapPin,
   Calendar,
@@ -37,7 +40,8 @@ import {
   Layers,
   Receipt,
   UserCheck,
-  Tv
+  Tv,
+  Share2
 } from 'lucide-react';
 
 interface PropertyDetailViewProps {
@@ -60,7 +64,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [inspectingDoc, setInspectingDoc] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'financials' | 'yield_chart' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization'
+    'overview' | 'location' | 'financials' | 'monthly_recharts' | 'yield_chart' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization'
   >('overview');
 
   // Investment Modal State
@@ -78,6 +82,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [docNotification, setDocNotification] = useState<string | null>(null);
   const [isDocViewerOpen, setIsDocViewerOpen] = useState<boolean>(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
 
   const fundingPercent = Math.min(
     100,
@@ -204,6 +209,15 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-white text-[#18211F] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+              title="Share Property via Direct Link, Social Platforms or QR Code"
+            >
+              <Share2 className="w-4 h-4 text-[#27845D]" />
+              <span>Share Property</span>
+            </button>
+
             <button
               onClick={() => setIsDocViewerOpen(true)}
               className="px-5 py-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-white text-[#18211F] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
@@ -474,6 +488,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
         <div className="flex flex-wrap border-b border-[#E3E8E3] mb-6 gap-3 sm:gap-6 text-xs sm:text-sm font-bold">
           {[
             { id: 'overview', label: 'Description & Highlights' },
+            { id: 'location', label: '🗺️ Map & Location' },
+            { id: 'monthly_recharts', label: '📊 12-Mo Monthly Yield (Recharts)' },
             { id: 'yield_chart', label: '📈 10-Yr Yield Growth (D3 Chart)' },
             { id: 'financials', label: 'Financial Terms & Pro-Forma' },
             { id: 'sensitivity', label: 'Sensitivity Analysis' },
@@ -653,8 +669,19 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 </div>
               </div>
 
-
+              {/* Property Location Map Component */}
+              <PropertyLocationMap property={property} />
             </div>
+          )}
+
+          {/* TAB: Dedicated Map & Location */}
+          {activeTab === 'location' && (
+            <PropertyLocationMap property={property} />
+          )}
+
+          {/* TAB: 12-Month Recharts Monthly Rental Yield Growth */}
+          {activeTab === 'monthly_recharts' && (
+            <MonthlyYieldRecharts property={property} investmentAmountEUR={property.minimumInvestment * 10} />
           )}
 
           {/* TAB: 10-Yr D3 Interactive Yield Growth Chart */}
@@ -1303,6 +1330,13 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
         property={property}
         isOpen={isDocViewerOpen}
         onClose={() => setIsDocViewerOpen(false)}
+      />
+
+      {/* Share Property Modal */}
+      <SharePropertyModal
+        property={property}
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
 
       {/* Pre-Subscription Risk & Terms Consent Modal */}

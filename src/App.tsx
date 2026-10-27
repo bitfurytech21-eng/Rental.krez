@@ -485,42 +485,40 @@ function MainApp() {
             <PlatformStats />
 
             {/* Dedicated Marketplace Gateway Section */}
-            <section className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-[#E2E8F0]">
-              <div className="container">
-                <div className="bg-white rounded-2xl border border-[#E3E8E3] p-8 sm:p-12 shadow-xs">
+            <section className="py-14 sm:py-20 bg-[#0B1B30] border-b border-[#1D3860]">
+              <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
+                <div className="bg-[#102442] rounded-xl border border-[#1D3860] p-8 sm:p-12 shadow-xs">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    <div className="lg:col-span-8 space-y-4 text-left">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 uppercase tracking-wider">
-                        <span>L'Agence Asset Marketplace</span>
-                        <span>·</span>
-                        <span className="text-[#69736F] font-normal normal-case">Direct Fractional Real Estate</span>
-                      </div>
-                      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#18211F] tracking-tight">
-                        Access Curated Prime Offerings in the Marketplace
+                    <div className="lg:col-span-8 space-y-3.5 text-left">
+                      <p className="text-[11px] font-bold text-[#BEE179] tracking-[0.2em] uppercase">
+                        Asset Marketplace · Direct Fractional Real Estate
+                      </p>
+                      <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-black text-[#BEE179] tracking-tight">
+                        Access Curated Prime Assets in the Marketplace
                       </h2>
-                      <p className="text-sm sm:text-base text-[#69736F] max-w-2xl leading-relaxed">
+                      <p className="text-sm sm:text-base text-[#D1E2F7] max-w-2xl leading-relaxed font-normal">
                         The full marketplace is hosted in an independent investment portal with advanced filtering, 
                         RICS certified appraisals, notarial deed verification, and real-time funding progress. 
                         Invest directly from €750 with automated monthly dividend distributions.
                       </p>
                       
                       {/* Marketplace Metrics Bar */}
-                      <div className="pt-2 flex flex-wrap items-center gap-y-3 gap-x-8 text-xs font-medium text-[#18211F]">
+                      <div className="pt-2 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-[#D1E2F7]">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          <span><strong>{properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend !== false && Boolean(p.assignedFunction)).length}</strong> Active Offerings</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
+                          <span><strong className="text-white font-bold">{properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend !== false && Boolean(p.assignedFunction)).length}</strong> Active Offerings</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          <span><strong>€750</strong> Minimum Investment</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
+                          <span><strong className="text-white font-bold font-mono">€750</strong> Min. Investment</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          <span><strong>11.4%</strong> Avg. Target Net IRR</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
+                          <span><strong className="text-[#BEE179] font-bold font-mono">11.4%</strong> Avg. Net IRR</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          <span><strong>100%</strong> Independent SPVs</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
+                          <span><strong className="text-white font-bold">100%</strong> Independent SPVs</span>
                         </div>
                       </div>
                     </div>
@@ -528,14 +526,14 @@ function MainApp() {
                     <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
                       <button
                         onClick={() => navigateTo('/properties')}
-                        className="btn btn-primary py-4 px-6 text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer"
+                        className="py-3.5 px-6 rounded-lg bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs tracking-wide flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                       >
                         <span>Enter Marketplace</span>
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
                       </button>
                       <button
                         onClick={() => navigateTo('/investing')}
-                        className="btn btn-secondary py-3.5 px-6 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                        className="py-3 px-6 rounded-lg border border-[#1D3860] hover:border-[#BEE179] bg-[#0B1B30] hover:bg-[#132745] text-white font-bold text-xs tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-colors"
                       >
                         <span>Review How It Works</span>
                       </button>
@@ -607,7 +605,7 @@ function MainApp() {
   const isHomePage = currentBasePath === '/' || currentBasePath === '';
 
   return (
-    <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#F8FAFC] min-h-screen'}`}>
+    <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#f0f8fe] text-[#1C1917] font-sans min-h-screen'}`}>
 
       {!isDashboardView && !isAdminLoginPage && !isPassGateActive && <Header currentPath={currentPath} onNavigate={navigateTo} />}
 

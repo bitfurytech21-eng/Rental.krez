@@ -1,16 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
-import { getAccountTypeBadge } from '../../types/user';
-import { MAIN_NAV_LINKS, NavLink } from '../../data/navigation';
 import { 
-  Building2, Menu, X, User as UserIcon, Shield, LogOut, 
-  Wallet, Crown, ChevronDown, ChevronRight, Coins, 
-  BookOpen, HelpCircle, PhoneCall, Layers, Trophy, 
-  TrendingUp, Compass, ArrowRight, ArrowDownLeft, ArrowUpRight,
-  Tv, Monitor
+  Menu, X, User as UserIcon, Shield, LogOut, 
+  Wallet, Crown, ChevronDown, ChevronRight, 
+  BookOpen, HelpCircle, PhoneCall, Layers, 
+  TrendingUp, Compass, ArrowUpRight,
+  Tv, Monitor, Building2, Globe
 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 import { isDesktopModeEnabled, toggleDesktopMode } from '../../lib/desktopMode';
+import { HeaderLanguageButton } from './HeaderLanguageButton';
 
 interface HeaderProps {
   currentPath: string;
@@ -24,6 +23,39 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
   const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [insightsDropdownOpen, setInsightsDropdownOpen] = useState(false);
   const [isDesktopActive, setIsDesktopActive] = useState<boolean>(isDesktopModeEnabled);
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dashboard_mode');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return true;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem('dashboard_mode')) {
+        setIsDark(e.matches);
+      }
+    };
+    mql.addEventListener('change', handleMediaChange);
+    return () => mql.removeEventListener('change', handleMediaChange);
+  }, []);
+
+  const toggleDarkMode = () => {
+    const next = !isDark;
+    setIsDark(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboard_mode', next ? 'dark' : 'light');
+      window.dispatchEvent(new CustomEvent('dashboard-mode-changed', { detail: { mode: next ? 'dark' : 'light' } }));
+    }
+  };
+
+  const isHomePage = currentPath === '/' || currentPath === '' || currentPath === '/home';
+  
   const moreDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const insightsDropdownRef = useRef<HTMLDivElement>(null);
@@ -50,764 +82,385 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
     setMobileMenuOpen(false);
     setMoreDropdownOpen(false);
     setUserDropdownOpen(false);
+    setInsightsDropdownOpen(false);
   };
 
-  // Primary direct desktop navigation links
-  const primaryDesktopLinks = [
-    { label: 'Marketplace', path: '/properties', badge: 'Live', badgeColor: 'bg-emerald-100 text-emerald-800' },
-    { label: 'Success Stories', path: '/casos-de-exito', badge: '15.4% IRR', badgeColor: 'bg-emerald-100 text-emerald-800' },
+  // Primary navigation links adhering to strict 1-line Top Bar Contract
+  const primaryNavLinks = [
+    { label: 'Marketplace', path: '/properties' },
+    { label: 'How It Works', path: '/investing' },
     { label: 'The Agency', path: '/agency' },
-    { label: 'Company News', path: '/news' },
-    { label: 'Membership Club', path: '/club', icon: Crown, iconColor: 'text-[#D4AF37]' },
-    { label: 'Wealth Advisory', path: '/wealth' },
+    { label: 'Club Privé', path: '/club' },
   ];
 
-  // Real Estate Insights & Dossiers Submenu Links (Immo Matin Structure)
-  const insightsSubmenuLinks = [
-    {
-      label: 'Dossiers & Investigations',
-      path: '/insights?type=dossiers',
-      description: 'In-depth multi-part market surveys and deep editorial investigations',
-      badge: 'Major Dossiers',
-      badgeColor: 'bg-[#0E1F1B] text-[#B7E36A]',
-      icon: BookOpen,
-    },
-    {
-      label: 'Market Barometer & Yields',
-      path: '/insights?category=barometre-immobilier',
-      description: 'Quarterly price-per-m² indices, cap rates & Paris/Madrid yields',
-      icon: TrendingUp,
-    },
-    {
-      label: 'PropTech & Tokenization',
-      path: '/insights?category=proptech-tokenization',
-      description: 'Smart contracts, fractional SPVs & digital title registry innovation',
-      icon: Layers,
-    },
-    {
-      label: 'Regulation & Tax Advisory',
-      path: '/insights?category=reglementation-fiscalite',
-      description: 'MiCA compliance, post-Golden Visa laws & wealth structuring',
-      icon: Shield,
-    },
-    {
-      label: 'Luxury Assets & Family Offices',
-      path: '/insights?category=patrimoine-luxe',
-      description: 'Trophy real estate, Parisian hôtels particuliers & private wealth',
-      icon: Crown,
-    },
-    {
-      label: 'Editorial Wire (All Publications)',
-      path: '/insights',
-      description: 'Browse all investigative features, whitepapers & research reports',
-      icon: Compass,
-    },
+  const insightsLinks = [
+    { label: 'All Dossiers & Investigations', path: '/insights', desc: 'In-depth market surveys & institutional research' },
+    { label: 'Major Investigative Dossiers', path: '/insights?type=dossiers', desc: 'Long-form editorial surveys on trophy European assets' },
+    { label: 'Market Barometer & Yields', path: '/insights?category=barometre-immobilier', desc: 'Quarterly price-per-m² indices & cap rate benchmarks' },
+    { label: 'PropTech & Tokenization', path: '/insights?category=proptech-tokenization', desc: 'Smart contracts, fractional SPVs & digital title registry' },
+    { label: 'Regulation & Tax Advisory', path: '/insights?category=reglementation-fiscalite', desc: 'MiCA compliance, post-Golden Visa laws & family office' },
+  ];
+
+  const secondaryMenuLinks = [
+    { label: 'Success Stories', path: '/casos-de-exito', desc: 'Historical exits and 15.4% average realized IRR' },
+    { label: 'Wealth Advisory', path: '/wealth', desc: 'Cross-border estate structuring & family office advisory' },
+    { label: 'Company News & Media', path: '/news', desc: 'Official broadcasts, TV interviews and press releases' },
+    { label: 'Token Model & Liquidity', path: '/token', desc: 'Polygon ERC-20 architecture and secondary transfer desk' },
+    { label: 'FAQ & Disclosures', path: '/faq', desc: 'Legal structuring, KYC and investor protection notice' },
+    { label: 'Contact & Advisory Desk', path: '/contact', desc: 'Barcelona & Paris client desks for private consultations' },
   ];
 
   const isInsightsActive = currentPath === '/insights' || currentPath.startsWith('/insights/');
-
-  // Secondary items cleanly grouped in the "More" dropdown for standard screens
-  const secondaryLinks = [
-    { 
-      label: 'Blog & Educational Guides', 
-      path: '/blog', 
-      description: 'Real estate tokenization basics & investor guides',
-      icon: BookOpen
-    },
-    { 
-      label: 'Company News & Media', 
-      path: '/news', 
-      description: 'Official announcements, YouTube broadcasts & press interviews',
-      icon: Tv
-    },
-    { 
-      label: 'How It Works', 
-      path: '/investing', 
-      description: 'Step-by-step tokenization process & legal SPV custody',
-      icon: Layers
-    },
-    { 
-      label: 'Tokenization Model', 
-      path: '/token', 
-      description: 'Polygon ERC-20 smart contracts & secondary liquidity',
-      icon: Coins
-    },
-    { 
-      label: 'FAQ & Disclosures', 
-      path: '/faq', 
-      description: 'Legal compliance, MiCA, KYC, and investor protection',
-      icon: HelpCircle
-    },
-    { 
-      label: 'Contact & Advisory', 
-      path: '/contact', 
-      description: 'Private concierge, Madrid & Paris family offices',
-      icon: PhoneCall
-    },
-  ];
-
-  // Check if any secondary link is currently active
-  const isSecondaryActive = secondaryLinks.some(
-    link => currentPath === link.path || (link.path !== '/' && currentPath.startsWith(link.path))
-  );
+  const isMoreActive = secondaryMenuLinks.some(link => currentPath === link.path);
 
   return (
-    <header className="site-header">
-      <div className="w-full max-w-[1680px] mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center justify-between min-h-[74px] sm:min-h-[80px] gap-2 lg:gap-4 xl:gap-6">
+    <header className={`sticky top-0 z-50 w-full backdrop-blur-md border-b transition-colors ${
+      isDark ? 'bg-[#0B1412]/95 border-[#1E2B27] text-white' : 'bg-[#f0f8fe]/95 border-[#d4e5f5] text-[#1C1917]'
+    }`}>
+      <div className="w-full max-w-[1380px] mx-auto px-4 sm:px-6 lg:px-8 h-[74px] flex items-center justify-between gap-6 sm:gap-8">
         
-        {/* Brand Zone */}
+        {/* Zone 1: Single-Element Brand Wordmark with subtle crest */}
         <button
           onClick={() => handleNavClick('/')}
-          className="brand hover:opacity-90 transition-opacity flex items-center gap-2.5 text-left cursor-pointer whitespace-nowrap shrink-0 group"
-          style={{ background: 'none', border: 'none', padding: 0 }}
+          className="flex items-center gap-3 text-left cursor-pointer whitespace-nowrap shrink-0 group focus:outline-hidden"
+          aria-label="L'Agence Home"
         >
           <img 
             src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-            alt="L'Agence Logo" 
-            className="w-9 h-9 rounded-xl object-cover shadow-xs border border-slate-700/60 group-hover:border-emerald-500/50 transition-colors"
-            style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
+            alt="L'Agence Crest" 
+            className={`w-8 h-8 rounded-md object-cover border shadow-2xs transition-colors ${
+              isDark ? 'border-[#263531] group-hover:border-[#3BD4AE]' : 'border-[#DCD5C9] group-hover:border-[#1E3A34]'
+            }`}
           />
-          <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-[#0F172A] leading-none">
-              L'Agence<span className="text-[#059669]">.</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className={`font-serif text-xl sm:text-2xl font-bold tracking-tight leading-none ${
+              isDark ? 'text-white' : 'text-[#1C1917]'
+            }`}>
+              L'Agence
             </span>
-            <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#69736F] mt-0.5">
-              Spain & International
+            <span className={`text-[10px] uppercase tracking-widest font-extrabold hidden sm:inline ${
+              isDark ? 'text-[#8A9692]' : 'text-[#78736B]'
+            }`}>
+              Real Estate
             </span>
           </div>
         </button>
 
-        {/* Desktop Navigation (Adaptive from lg up, with full breathing room and zero clipping) */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2.5 2xl:gap-3 flex-1 justify-center max-w-4xl px-2">
-          
-          {/* Primary Links */}
-          {primaryDesktopLinks.slice(0, 1).map((link) => {
+        {/* Zone 2: 4–5 Clean Single-Line Text Navigation Links */}
+        <nav className="hidden lg:flex items-center gap-7 text-sm font-bold tracking-tight text-[#5E5A54] shrink-0" aria-label="Main Navigation">
+          {primaryNavLinks.map((link) => {
             const isActive = currentPath === link.path || (link.path !== '/' && currentPath.startsWith(link.path));
-            const Icon = link.icon;
             return (
               <button
                 key={link.path}
                 onClick={() => handleNavClick(link.path)}
-                className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  isActive
-                    ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
-                    : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
+                className={`transition-colors whitespace-nowrap cursor-pointer relative py-1 hover:text-[#1C1917] ${
+                  isActive ? 'text-[#BEE179] font-black' : ''
                 }`}
               >
-                {Icon && <Icon className={`w-3.5 h-3.5 ${link.iconColor || ''}`} />}
                 <span>{link.label}</span>
-                {link.badge && (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full leading-tight hidden xl:inline-block ${link.badgeColor}`}>
-                    {link.badge}
-                  </span>
-                )}
                 {isActive && (
-                  <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-[#182D2A] rounded-full" />
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#BEE179] rounded-full" />
                 )}
               </button>
             );
           })}
 
-          {/* Top-Level Navigation Item: Real Estate Insights & Dossiers */}
+          {/* Insights Dropdown */}
           <div className="relative" ref={insightsDropdownRef}>
             <button
+              type="button"
               onClick={() => setInsightsDropdownOpen(!insightsDropdownOpen)}
-              className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                isInsightsActive || insightsDropdownOpen
-                  ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
-                  : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
+              aria-haspopup="true"
+              aria-expanded={insightsDropdownOpen}
+              aria-label="Insights & Intelligence menu"
+              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer relative py-1 hover:text-[#1C1917] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded ${
+                isInsightsActive || insightsDropdownOpen ? 'text-[#1E3A34] font-semibold' : ''
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-emerald-800" />
               <span>Insights</span>
-              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full leading-tight hidden xl:inline-block bg-[#0E1F1B] text-[#B7E36A]">
-                Dossiers
-              </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#69736F] transition-transform duration-200 ${insightsDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-[#8E8A83] transition-transform duration-200 ${insightsDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
               {isInsightsActive && (
-                <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-[#182D2A] rounded-full" />
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#1E3A34] rounded-full" />
               )}
             </button>
 
             {insightsDropdownOpen && (
-              <div 
-                className="absolute top-full left-0 mt-2 w-84 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 text-left"
-              >
-                <div className="px-3.5 py-1.5 border-b border-slate-100 mb-1 flex items-center justify-between">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-900">Real Estate Insights & Dossiers</p>
-                  <span className="text-[9px] font-mono font-bold text-slate-400">Immo Matin Structure</span>
+              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-[#d4e5f5] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-4 py-2 border-b border-[#F0EBE1] text-[10px] uppercase tracking-widest font-bold text-[#78736B]">
+                  Research &amp; Intelligence
                 </div>
-                {insightsSubmenuLinks.map((item) => {
-                  const isActive = currentPath === item.path;
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.path}
-                      onClick={() => handleNavClick(item.path)}
-                      className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 hover:bg-[#F6F7F4] transition-colors cursor-pointer group ${
-                        isActive ? 'bg-[#F2F6F1]' : ''
-                      }`}
-                    >
-                      <div className={`p-1.5 rounded-lg mt-0.5 ${isActive ? 'bg-[#182D2A] text-white' : 'bg-[#EEF2EC] text-emerald-800 group-hover:bg-[#182D2A] group-hover:text-white transition-colors'}`}>
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className={`text-xs font-bold leading-tight ${isActive ? 'text-[#182D2A]' : 'text-slate-800'}`}>
-                            {item.label}
-                          </p>
-                          {item.badge && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${item.badgeColor}`}>
-                              {item.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 leading-snug">
-                          {item.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                {insightsLinks.map((item) => (
+                  <button
+                    key={item.path}
+                    type="button"
+                    onClick={() => handleNavClick(item.path)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-[#f0f8fe] transition-colors cursor-pointer group"
+                  >
+                    <div className="text-xs font-semibold text-[#1C1917] group-hover:text-[#1E3A34]">
+                      {item.label}
+                    </div>
+                    <div className="text-[11px] text-[#78736B] line-clamp-1 mt-0.5">
+                      {item.desc}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Remaining Primary Links */}
-          {primaryDesktopLinks.slice(1).map((link) => {
-            const isActive = currentPath === link.path || (link.path !== '/' && currentPath.startsWith(link.path));
-            const Icon = link.icon;
-            return (
-              <button
-                key={link.path}
-                onClick={() => handleNavClick(link.path)}
-                className={`relative px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  isActive
-                    ? 'text-[#182D2A] bg-[#EEF2EC] font-bold shadow-xs'
-                    : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
-                }`}
-              >
-                {Icon && <Icon className={`w-3.5 h-3.5 ${link.iconColor || ''}`} />}
-                <span>{link.label}</span>
-                {link.badge && (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full leading-tight hidden xl:inline-block ${link.badgeColor}`}>
-                    {link.badge}
-                  </span>
-                )}
-                {isActive && (
-                  <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-[#182D2A] rounded-full" />
-                )}
-              </button>
-            );
-          })}
-
-          {/* Desktop "More" Dropdown Menu (Prevents any navbar overflow or missing links) */}
+          {/* More Institutional Links Dropdown */}
           <div className="relative" ref={moreDropdownRef}>
             <button
+              type="button"
               onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs xl:text-[13px] 2xl:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
-                isSecondaryActive || moreDropdownOpen
-                  ? 'text-[#182D2A] bg-[#EEF2EC] font-bold'
-                  : 'text-[#4A5551] hover:text-[#182D2A] hover:bg-[#F6F7F4]'
+              aria-haspopup="true"
+              aria-expanded={moreDropdownOpen}
+              aria-label="Advisory & Track Record menu"
+              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer relative py-1 hover:text-[#1C1917] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded ${
+                isMoreActive || moreDropdownOpen ? 'text-[#1E3A34] font-semibold' : ''
               }`}
             >
-              <span>Platform & Legal</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#69736F] transition-transform duration-200 ${moreDropdownOpen ? 'rotate-180' : ''}`} />
-              {isSecondaryActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 ml-0.5"></span>
+              <span>Advisory &amp; Track Record</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-[#8E8A83] transition-transform duration-200 ${moreDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+              {isMoreActive && (
+                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#1E3A34] rounded-full" />
               )}
             </button>
 
             {moreDropdownOpen && (
-              <div 
-                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 text-left"
-              >
-                <div className="px-3 py-1.5 border-b border-slate-100 mb-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Institutional Resources</p>
+              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-[#d4e5f5] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-4 py-2 border-b border-[#F0EBE1] text-[10px] uppercase tracking-widest font-bold text-[#78736B]">
+                  Private Advisory
                 </div>
-                {secondaryLinks.map((item) => {
-                  const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path));
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.path}
-                      onClick={() => handleNavClick(item.path)}
-                      className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 hover:bg-[#F6F7F4] transition-colors cursor-pointer group ${
-                        isActive ? 'bg-[#F2F6F1]' : ''
-                      }`}
-                    >
-                      <div className={`p-1.5 rounded-lg mt-0.5 ${isActive ? 'bg-[#182D2A] text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-[#182D2A] group-hover:text-white transition-colors'}`}>
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-bold leading-tight ${isActive ? 'text-[#182D2A]' : 'text-slate-800'}`}>
-                          {item.label}
-                        </p>
-                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 leading-snug">
-                          {item.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                {secondaryMenuLinks.map((item) => (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNavClick(item.path)}
+                    className="w-full text-left px-4 py-2.5 hover:bg-[#f0f8fe] transition-colors cursor-pointer group"
+                  >
+                    <div className="text-xs font-semibold text-[#1C1917] group-hover:text-[#1E3A34]">
+                      {item.label}
+                    </div>
+                    <div className="text-[11px] text-[#78736B] line-clamp-1 mt-0.5">
+                      {item.desc}
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </div>
-
         </nav>
 
-        {/* Actions Zone */}
-        <div className="header-actions flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Desktop View Mode Toggle Button */}
-          <button
-            onClick={() => {
-              const active = toggleDesktopMode();
-              setIsDesktopActive(active);
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
-              isDesktopActive
-                ? 'bg-[#182D2A] text-[#B7E36A] border-[#182D2A] shadow-xs'
-                : 'bg-white text-[#4A5551] border-[#DDE3DD] hover:text-[#182D2A] hover:border-[#182D2A]'
-            }`}
-            title={isDesktopActive ? "Desktop Site Active (1280px). Click to switch to Responsive View." : "Switch to Desktop Site View (1280px)"}
-          >
-            <Monitor className="w-3.5 h-3.5 text-[#059669]" />
-            <span className="hidden sm:inline">{isDesktopActive ? 'Desktop Mode' : 'Desktop Site'}</span>
-          </button>
+        {/* Zone 3: 1 Primary Action + Utility Controls */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          
+          {/* Language Switcher */}
+          <HeaderLanguageButton />
 
+          {/* User Account / Portal Access */}
           {user ? (
             <div className="relative" ref={userDropdownRef}>
-              <div className="flex items-center gap-2">
-                {/* Wallet Balance Chip */}
-                <button
-                  onClick={() => handleNavClick('/dashboard')}
-                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#EEF1EC] text-[#182D2A] text-xs font-bold hover:bg-[#E3E8E3] transition-colors cursor-pointer border border-[#Dce3db]"
-                  title="View Investor Dashboard"
-                >
-                  <Wallet className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>{formatCurrency(user.walletBalance)}</span>
-                </button>
+              <button
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-[#d4e5f5] bg-white hover:bg-[#f0f8fe] text-xs font-semibold text-[#1C1917] transition-colors cursor-pointer"
+              >
+                <div className="w-6 h-6 rounded-md bg-[#1E3A34] text-white flex items-center justify-center text-[10px] font-bold">
+                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <span className="hidden md:inline max-w-[120px] truncate">{user.fullName || 'Account'}</span>
+                <ChevronDown className="w-3 h-3 text-[#78736B]" />
+              </button>
 
-                {/* User menu trigger */}
-                <button
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#DDE3DD] hover:border-[#182D2A] bg-white text-xs font-bold text-[#182D2A] transition-all cursor-pointer shadow-2xs"
-                >
-                  <div className="w-5 h-5 rounded-full bg-[#182D2A] text-[#B7E36A] flex items-center justify-center text-[10px] font-black">
-                    {user.fullName.charAt(0)}
-                  </div>
-                  <span className="max-w-[100px] truncate hidden md:inline">{user.fullName.split(' ')[0]}</span>
-                  {user.role === 'admin' && (
-                    <span className="bg-[#182D2A] text-[#B7E36A] text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">
-                      Admin
-                    </span>
-                  )}
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
-                </button>
-              </div>
-
-              {/* User Dropdown */}
               {userDropdownOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-60 bg-white border border-[#E3E8E3] rounded-2xl shadow-2xl py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150"
-                >
-                  <div className="px-4 py-2.5 border-b border-[#E3E8E3] mb-1">
-                    <p className="text-[10px] uppercase font-bold text-[#69736F]">Signed in as</p>
-                    <p className="text-xs font-bold text-[#182D2A] truncate">{user.email}</p>
-                    <div className="flex items-center justify-between mt-2 text-[11px]">
-                      <span className="text-[10px] font-bold text-[#27845D] bg-[#27845D]/10 px-2 py-0.5 rounded-full">
-                        {getAccountTypeBadge(user.accountType, user.role)}
-                      </span>
-                      <span className="text-[#69736F] text-[10px]">KYC: <strong className="capitalize text-[#27845D]">{user.kycStatus}</strong></span>
-                    </div>
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-[#d4e5f5] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-4 py-2 border-b border-[#F0EBE1]">
+                    <div className="text-xs font-bold text-[#1C1917] truncate">{user.fullName}</div>
+                    <div className="text-[11px] text-[#78736B] truncate">{user.email}</div>
                   </div>
-
+                  
                   <button
-                    onClick={() => {
-                      handleNavClick('/dashboard');
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
+                    onClick={() => handleNavClick('/dashboard')}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-[#1C1917] hover:bg-[#f0f8fe] flex items-center gap-2 cursor-pointer"
                   >
-                    <Wallet className="w-4 h-4 text-[#27845D]" />
-                    Investor Dashboard
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleNavClick('/deposit');
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
-                  >
-                    <ArrowDownLeft className="w-4 h-4 text-[#27845D]" />
-                    <span>Deposit Funds</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleNavClick('/wallet');
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
-                  >
-                    <ArrowUpRight className="w-4 h-4 text-[#69736F]" />
-                    <span>Withdraw Funds</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleNavClick('/portfolio');
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
-                  >
-                    <Building2 className="w-4 h-4 text-[#69736F]" />
-                    My Portfolio
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleNavClick('/transactions');
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
-                  >
-                    <TrendingUp className="w-4 h-4 text-[#69736F]" />
-                    Transactions & Ledger
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      handleNavClick('/club');
-                      setUserDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs font-semibold text-[#18211F] hover:bg-[#F6F7F4] flex items-center gap-2 cursor-pointer"
-                  >
-                    <Crown className="w-4 h-4 text-[#D4AF37]" />
-                    Club Privé Membership
+                    <Wallet className="w-3.5 h-3.5 text-[#1E3A34]" />
+                    <span>Portfolio Dashboard</span>
                   </button>
 
                   {isAdmin && (
-                    <>
-                      <button
-                        onClick={() => {
-                          handleNavClick('/admin#deposits');
-                          setUserDropdownOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 flex items-center gap-2 cursor-pointer"
-                      >
-                        <ArrowDownLeft className="w-4 h-4 text-amber-700" />
-                        <span>Deposit Approvals</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          handleNavClick('/admin');
-                          setUserDropdownOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-xs font-bold text-[#182D2A] bg-emerald-50 hover:bg-emerald-100 flex items-center gap-2 cursor-pointer"
-                      >
-                        <Shield className="w-4 h-4 text-[#27845D]" />
-                        Admin Control Panel
-                      </button>
-                    </>
+                    <button
+                      onClick={() => handleNavClick('/admin')}
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-[#1C1917] hover:bg-[#f0f8fe] flex items-center gap-2 cursor-pointer"
+                    >
+                      <Shield className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Admin Control Center</span>
+                    </button>
                   )}
 
-                  <div className="border-t border-[#E3E8E3] my-1" />
+                  <div className="my-1 border-t border-[#F0EBE1]" />
 
                   <button
-                    onClick={async () => {
-                      await logout();
+                    onClick={() => {
+                      logout();
                       setUserDropdownOpen(false);
                       onNavigate('/');
                     }}
-                    className="w-full text-left px-4 py-2 text-xs font-bold text-[#C24141] hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
                   >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => handleNavClick('/login')}
-                className="hidden sm:inline-flex px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-bold text-[#182D2A] hover:bg-[#F6F7F4] rounded-full transition-all cursor-pointer whitespace-nowrap"
-              >
-                Log In
-              </button>
-              <button
-                onClick={() => handleNavClick('/register')}
-                className="px-3.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs font-bold bg-[#182D2A] text-white hover:bg-[#24423C] rounded-full shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
-              >
-                Register
-              </button>
-            </div>
+            <button
+              onClick={() => handleNavClick('/login')}
+              className="text-xs font-semibold text-[#5E5A54] hover:text-[#1C1917] px-2 py-1 transition-colors cursor-pointer hidden md:inline"
+            >
+              Sign In
+            </button>
           )}
 
-          {/* Mobile/Tablet Menu Button (Visible on screens < lg) */}
+
+          {/* Compact Mobile Menu Trigger with Accessible Attributes */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-[#182D2A] rounded-xl hover:bg-[#F6F7F4] border border-slate-200 cursor-pointer shrink-0 ml-1 sm:ml-2"
-            aria-label="Toggle navigation menu"
+            className={`p-2.5 min-h-[44px] min-w-[44px] rounded-lg border lg:hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] transition-colors cursor-pointer flex items-center justify-center ${
+              isDark 
+                ? 'bg-[#121E1B] border-[#263531] text-white hover:bg-[#182925]' 
+                : 'bg-white border-[#d4e5f5] text-[#1C1917] hover:bg-[#f0f8fe]'
+            }`}
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation-drawer"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileMenuOpen ? <X className="w-5 h-5" aria-hidden="true" /> : <Menu className="w-5 h-5" aria-hidden="true" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer (Compact, sleek single-column list format matching IMG_7053.jpeg) */}
+      {/* Compact Mobile Menu Drawer with ID and Role */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#F6F7F4] border-b border-[#E3E8E3] px-4 sm:px-6 py-3 flex flex-col shadow-2xl animate-in slide-in-from-top duration-200 max-h-[85vh] overflow-y-auto text-left">
-          
-          {/* Mobile Drawer Brand Header */}
-          <div className="pb-3 mb-2 border-b border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <img 
-                src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
-                alt="L'Agence Logo" 
-                className="w-8 h-8 rounded-xl object-cover shadow-xs border border-slate-300"
-                style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
-              />
-              <div className="flex flex-col">
-                <span className="text-sm font-black tracking-tight text-[#0F172A] leading-none">
-                  L'Agence<span className="text-[#059669]">.</span>
-                </span>
-                <span className="text-[8px] uppercase tracking-wider font-extrabold text-[#69736F] mt-0.5">
-                  Spain & International
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-1.5 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-200/50 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <div 
+          id="mobile-navigation-drawer"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile Navigation Drawer"
+          className="lg:hidden fixed inset-x-0 top-[74px] bottom-0 bg-black/60 backdrop-blur-xs z-40 animate-in fade-in duration-200"
+        >
+          <div className={`${
+            isDark 
+              ? 'bg-[#0B1412] text-white border-[#1E2B27]' 
+              : 'bg-[#f0f8fe] text-[#1C1917] border-[#d4e5f5]'
+          } border-b shadow-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 space-y-5 text-left`}>
 
-          <div className="flex flex-col">
-            {/* 1. Home */}
-            <button
-              onClick={() => handleNavClick('/')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Home</span>
-            </button>
-
-            {/* 2. Marketplace */}
-            <button
-              onClick={() => handleNavClick('/properties')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/properties' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Marketplace</span>
-            </button>
-
-            {/* 2.5 Real Estate Insights & Dossiers (Immo Matin Structure) */}
-            <div className="py-2 px-2 border-b border-slate-100/90 space-y-1.5 text-left">
+            {/* Primary Mobile Links */}
+            <div className="space-y-1">
+              <p className={`text-[10px] uppercase font-bold tracking-widest mb-2 ${isDark ? 'text-[#8A9692]' : 'text-[#78736B]'}`}>
+                Main Navigation
+              </p>
               <button
-                onClick={() => handleNavClick('/insights')}
-                className={`w-full text-xs sm:text-sm font-bold flex items-center justify-between transition-colors ${
-                  isInsightsActive ? 'text-[#182D2A]' : 'text-[#2C3734] hover:text-[#182D2A]'
+                onClick={() => handleNavClick('/properties')}
+                className={`w-full text-left py-2.5 text-base font-semibold border-b flex items-center justify-between ${
+                  isDark ? 'text-white border-[#1A2623]' : 'text-[#1C1917] border-[#EFEAE1]'
                 }`}
               >
-                <div className="flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-emerald-800" />
-                  <span>Real Estate Insights</span>
+                <span>Marketplace</span>
+                <ChevronRight className="w-4 h-4 text-[#8E8A83]" />
+              </button>
+              <button
+                onClick={() => handleNavClick('/investing')}
+                className={`w-full text-left py-2.5 text-base font-semibold border-b flex items-center justify-between ${
+                  isDark ? 'text-white border-[#1A2623]' : 'text-[#1C1917] border-[#EFEAE1]'
+                }`}
+              >
+                <span>How It Works</span>
+                <ChevronRight className="w-4 h-4 text-[#8E8A83]" />
+              </button>
+              <button
+                onClick={() => handleNavClick('/insights')}
+                className={`w-full text-left py-2.5 text-base font-semibold border-b flex items-center justify-between ${
+                  isDark ? 'text-white border-[#1A2623]' : 'text-[#1C1917] border-[#EFEAE1]'
+                }`}
+              >
+                <span>Insights &amp; Dossiers</span>
+                <ChevronRight className="w-4 h-4 text-[#8E8A83]" />
+              </button>
+              <button
+                onClick={() => handleNavClick('/agency')}
+                className={`w-full text-left py-2.5 text-base font-semibold border-b flex items-center justify-between ${
+                  isDark ? 'text-white border-[#1A2623]' : 'text-[#1C1917] border-[#EFEAE1]'
+                }`}
+              >
+                <span>The Agency</span>
+                <ChevronRight className="w-4 h-4 text-[#8E8A83]" />
+              </button>
+              <button
+                onClick={() => handleNavClick('/club')}
+                className={`w-full text-left py-2.5 text-base font-semibold border-b flex items-center justify-between ${
+                  isDark ? 'text-white border-[#1A2623]' : 'text-[#1C1917] border-[#EFEAE1]'
+                }`}
+              >
+                <span>Club Privé</span>
+                <ChevronRight className="w-4 h-4 text-[#8E8A83]" />
+              </button>
+            </div>
+
+            {/* Secondary Mobile Links */}
+            <div className={`space-y-2 pt-2 border-t ${isDark ? 'border-[#1E2B27]' : 'border-[#d4e5f5]'}`}>
+              <p className={`text-[10px] uppercase font-bold tracking-widest mb-2 ${isDark ? 'text-[#8A9692]' : 'text-[#78736B]'}`}>
+                Advisory &amp; Governance
+              </p>
+              <div className={`grid grid-cols-2 gap-2 text-xs font-medium ${isDark ? 'text-slate-300' : 'text-[#5E5A54]'}`}>
+                <button onClick={() => handleNavClick('/casos-de-exito')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Success Stories</button>
+                <button onClick={() => handleNavClick('/wealth')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Wealth Advisory</button>
+                <button onClick={() => handleNavClick('/news')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Company News</button>
+                <button onClick={() => handleNavClick('/token')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Token Model</button>
+                <button onClick={() => handleNavClick('/faq')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>FAQ &amp; Legal</button>
+                <button onClick={() => handleNavClick('/contact')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Contact Desk</button>
+              </div>
+            </div>
+
+            {/* Account CTA on Mobile */}
+            <div className={`pt-4 border-t space-y-3 ${isDark ? 'border-[#1E2B27]' : 'border-[#d4e5f5]'}`}>
+              {user ? (
+                <div className={`flex items-center justify-between p-3.5 rounded-xl border ${
+                  isDark ? 'bg-[#121E1B] border-[#263531]' : 'bg-white border-[#d4e5f5]'
+                }`}>
+                  <div>
+                    <div className="text-xs font-bold truncate max-w-[180px]">{user.fullName}</div>
+                    <div className={`text-[11px] truncate max-w-[180px] ${isDark ? 'text-[#8A9692]' : 'text-[#78736B]'}`}>{user.email}</div>
+                  </div>
+                  <button
+                    onClick={() => handleNavClick('/dashboard')}
+                    className="px-3 py-1.5 rounded-md bg-[#1E3A34] text-white text-xs font-semibold cursor-pointer"
+                  >
+                    Portal
+                  </button>
                 </div>
-                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-[#0E1F1B] text-[#B7E36A]">
-                  Dossiers
-                </span>
-              </button>
-
-              <div className="pl-4 space-y-1 pt-1 border-l-2 border-emerald-700/30 text-xs">
-                <button
-                  onClick={() => handleNavClick('/insights?type=dossiers')}
-                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold flex items-center justify-between"
-                >
-                  <span>• Major Dossiers & Investigations</span>
-                  <span className="text-[9px] text-emerald-800 font-mono font-bold">New</span>
-                </button>
-                <button
-                  onClick={() => handleNavClick('/insights?category=barometre-immobilier')}
-                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold"
-                >
-                  <span>• Market Barometer & Yields</span>
-                </button>
-                <button
-                  onClick={() => handleNavClick('/insights?category=proptech-tokenization')}
-                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold"
-                >
-                  <span>• PropTech & Asset Tokenization</span>
-                </button>
-                <button
-                  onClick={() => handleNavClick('/insights?category=reglementation-fiscalite')}
-                  className="w-full text-left py-1 text-slate-600 hover:text-emerald-900 font-semibold"
-                >
-                  <span>• Regulation, Tax & MiCA</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 3. Success Stories */}
-            <button
-              onClick={() => handleNavClick('/casos-de-exito')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/casos-de-exito' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Success Stories</span>
-            </button>
-
-            {/* 4. The Agency */}
-            <button
-              onClick={() => handleNavClick('/agency')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/agency' || currentPath === '/team' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>The Agency</span>
-            </button>
-
-            {/* Company News */}
-            <button
-              onClick={() => handleNavClick('/news')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/news' || currentPath === '/company-news' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span>Company News</span>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
-                  Broadcasts
-                </span>
-              </div>
-            </button>
-
-            {/* 5. Membership Club */}
-            <button
-              onClick={() => handleNavClick('/club')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/club' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Membership Club</span>
-            </button>
-
-            {/* 6. Wealth Advisory */}
-            <button
-              onClick={() => handleNavClick('/wealth')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/wealth' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Wealth Advisory</span>
-            </button>
-
-            {/* 7. How It Works */}
-            <button
-              onClick={() => handleNavClick('/investing')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/investing' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>How It Works</span>
-            </button>
-
-            {/* 8. Security Guide */}
-            <button
-              onClick={() => handleNavClick('/guide')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/guide' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Security Guide</span>
-            </button>
-
-            {/* 9. Tokenization */}
-            <button
-              onClick={() => handleNavClick('/token')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/token' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Tokenization</span>
-            </button>
-
-            {/* 10. FAQ */}
-            <button
-              onClick={() => handleNavClick('/faq')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/faq' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>FAQ</span>
-            </button>
-
-            {/* 11. Contact */}
-            <button
-              onClick={() => handleNavClick('/contact')}
-              className={`py-2 sm:py-2.5 px-2 text-xs sm:text-sm font-medium transition-colors text-left border-b border-slate-100/90 flex items-center justify-between cursor-pointer ${
-                currentPath === '/contact' ? 'text-[#182D2A] font-bold bg-slate-50/60' : 'text-[#2C3734] hover:text-[#182D2A]'
-              }`}
-            >
-              <span>Contact</span>
-            </button>
-          </div>
-
-          {/* User Auth Bottom Action Bar */}
-          {user ? (
-            <div className="pt-3 flex flex-col gap-2">
-              <button
-                onClick={() => handleNavClick('/dashboard')}
-                className="w-full py-2.5 px-4 rounded-full bg-[#182D2A] hover:bg-[#24423C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-              >
-                <Wallet className="w-3.5 h-3.5 text-[#B7E36A]" />
-                <span>Investor Dashboard ({formatCurrency(user.walletBalance)})</span>
-              </button>
-              {isAdmin && (
-                <button
-                  onClick={() => handleNavClick('/admin')}
-                  className="w-full py-2 px-4 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Shield className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Admin Control Panel</span>
-                </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleNavClick('/login')}
+                    className={`py-2.5 rounded-lg border text-xs font-semibold text-center cursor-pointer ${
+                      isDark ? 'bg-[#121E1B] border-[#263531] text-white' : 'bg-white border-[#D8D1C5] text-[#1C1917]'
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => handleNavClick('/register')}
+                    className="py-2.5 rounded-lg bg-[#1E3A34] text-xs font-semibold text-white text-center cursor-pointer hover:bg-[#254A42]"
+                  >
+                    Create Account
+                  </button>
+                </div>
               )}
-              <button
-                onClick={async () => {
-                  await logout();
-                  setMobileMenuOpen(false);
-                  onNavigate('/');
-                }}
-                className="text-xs text-red-600 font-bold py-1.5 text-center cursor-pointer hover:underline"
-              >
-                Sign Out
-              </button>
             </div>
-          ) : (
-            <div className="pt-3 flex flex-col items-center gap-2">
-              <button
-                onClick={() => handleNavClick('/login')}
-                className="w-full py-2.5 px-4 rounded-full border border-slate-300 hover:border-slate-400 bg-white text-[#18211F] text-xs sm:text-sm font-bold transition-all text-center shadow-2xs cursor-pointer"
-              >
-                Log In
-              </button>
-              <button
-                onClick={() => handleNavClick('/register')}
-                className="w-full py-2.5 px-4 rounded-full bg-[#182D2A] text-white text-xs sm:text-sm font-bold transition-all text-center shadow-xs cursor-pointer hover:bg-[#24423C]"
-              >
-                Register Account
-              </button>
-            </div>
-          )}
 
+          </div>
         </div>
       )}
     </header>

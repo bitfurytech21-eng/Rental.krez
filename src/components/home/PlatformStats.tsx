@@ -1,63 +1,51 @@
 import React from 'react';
-import { TrendingUp, ShieldCheck, Users, Building2 } from 'lucide-react';
 
 export const PlatformStats: React.FC = () => {
   const stats = [
     {
-      icon: Building2,
+      value: '€142.5M+',
+      label: 'Capitalized Asset Value',
+      detail: 'Trophy residential & prime commercial properties across Europe',
+    },
+    {
+      value: '11.2%',
+      label: 'Average Annualized Net Return',
+      detail: 'Historical rental dividends plus realized capital appreciation',
+    },
+    {
       value: '53 Assets',
-      label: 'Curated Property SPVs',
-      subtitle: '7 launching soon, 13 fully funded, pipeline active',
+      label: 'Curated European Offerings',
+      detail: 'France, Spain, Portugal, and international sunshine markets',
     },
     {
-      icon: TrendingUp,
-      value: '€100 / Unit',
-      label: 'Token Par Value',
-      subtitle: 'Fractional entry with €750 minimum investment',
-    },
-    {
-      icon: ShieldCheck,
-      value: '100% SPV',
-      label: 'Ring-Fenced Legal Custody',
-      subtitle: 'Individual corporate entity per property asset',
-    },
-    {
-      icon: Users,
-      value: 'Monthly',
-      label: 'Automated Cashflow Payouts',
-      subtitle: 'Net rental yield settled directly to investor balance',
+      value: '100%',
+      label: 'Independent SPV Protection',
+      detail: 'Ring-fenced corporate custody with audited physical deeds',
     },
   ];
 
   return (
-    <section className="bg-[#F8FAFC] text-[#18211F] border-b border-[#E2E8F0] py-10">
-      <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {stats.map((s, idx) => {
-            const Icon = s.icon;
-            return (
-              <div
-                key={idx}
-                className="p-4 sm:p-5 rounded-2xl bg-white border border-[#E3E8E3] shadow-xs text-left transition-colors hover:border-emerald-700"
-              >
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 mb-3">
-                  <Icon className="w-4 h-4" />
-                </div>
-                <span className="text-xl sm:text-2xl font-bold text-[#18211F] tracking-tight block mb-1 tabular-nums">
-                  {s.value}
-                </span>
-                <span className="text-xs font-semibold text-emerald-800 block mb-1">
-                  {s.label}
-                </span>
-                <span className="text-[11px] text-[#69736F] leading-normal block">
-                  {s.subtitle}
-                </span>
+    <section className="bg-[#0B1B30] border-b border-[#1A3358] py-12 sm:py-16">
+      <div className="container max-w-[1340px] mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-0 lg:divide-x lg:divide-[#1D3860]">
+          {stats.map((s, idx) => (
+            <div
+              key={idx}
+              className="text-left lg:px-8 first:lg:pl-0 last:lg:pr-0 space-y-2"
+            >
+              <div className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#BEE179] tracking-tight tabular-nums drop-shadow-xs">
+                {s.value}
               </div>
-            );
-          })}
+              <div className="text-xs uppercase tracking-wider font-extrabold text-white">
+                {s.label}
+              </div>
+              <p className="text-xs text-[#8EA7C7] font-medium leading-relaxed">
+                {s.detail}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
   );
 };
-

@@ -187,14 +187,14 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   return (
     <div className={`turnstile-security-wrapper space-y-2 ${className}`}>
       {label && (
-        <div className="flex items-center justify-between text-[11px] font-semibold text-[#69736F]">
+        <div className="flex items-center justify-between text-[11px] font-bold text-[#D1E2F7]">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#BEE179]" />
             <span>{label}</span>
           </span>
           {status === 'verified' && (
-            <span className="text-emerald-500 font-bold flex items-center gap-1 text-[10px]">
-              <CheckCircle2 className="w-3 h-3" />
+            <span className="text-[#BEE179] font-bold flex items-center gap-1 text-[10px]">
+              <CheckCircle2 className="w-3.5 h-3.5" />
               Verified Human
             </span>
           )}
