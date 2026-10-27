@@ -3,6 +3,7 @@ import { User, UserRole, AccountType } from '../types/user';
 import { ledger } from './ledger';
 import { supabase, isSupabaseConfigured, getAuthRedirectUrl } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
+import { setAuthToken, apiRequest } from './api';
 
 interface RegisterResult {
   user: any;
@@ -21,6 +22,7 @@ interface AuthContextType {
   isRecoveryMode: boolean;
   setIsRecoveryMode: (val: boolean) => void;
   login: (email: string, pass: string) => Promise<User>;
+  adminLogin: (email: string, pass: string) => Promise<User>;
   register: (
     email: string,
     pass: string,
@@ -80,7 +82,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const found = ledger.getUserById(storedId);
       if (found) {
         setUser(found);
-        setToken('sess_' + found.id);
+        const restoredToken = found.role === 'admin' ? 'admin_sess_' + found.id : 'sess_' + found.id;
+        setToken(restoredToken);
+        setAuthToken(restoredToken);
       }
     }
 
@@ -114,12 +118,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(synced);
           setSession(initialSession);
           setToken(initialSession.access_token);
+          setAuthToken(initialSession.access_token);
           localStorage.setItem(CURRENT_USER_KEY, synced.id);
         } else if (!storedId) {
           // No active Supabase session
           setUser(null);
           setSession(null);
           setToken(null);
+          setAuthToken(null);
           localStorage.removeItem(CURRENT_USER_KEY);
         }
       })
@@ -222,33 +228,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       } catch (e) {}
 
-      // If this is an executive administrator account (info@kretz.site) and cloud Supabase account is not yet seeded
-      if (isExecutiveEmail && (pass === 'admin123' || pass.length >= 6)) {
-        console.warn('Supabase Auth user not found in cloud project. Elevating verified local executive admin session.');
-        let found = ledger.getUserByEmail(cleanEmail);
-        if (!found) {
-          found = ledger.createUser({
-            email: cleanEmail,
-            fullName: "L'Agence Executive Admin",
-            role: 'admin',
-            accountType: 'admin'
-          });
-        }
-        setUser(found);
-        setToken('admin_sess_' + found.id);
-        localStorage.setItem(CURRENT_USER_KEY, found.id);
+      // If credentials failed on Supabase or it's unconfigured, attempt server-side environment-based admin login
+      if (isExecutiveEmail || cleanEmail.includes('admin')) {
         try {
-          ledger.recordAuditLog(
-            found.id,
-            found.email,
-            'LOGIN_SUCCESS',
-            `Executive admin session elevated for ${found.email}.`,
-            'auth',
-            'success',
-            { targetUserId: found.id, targetUserEmail: found.email }
-          );
-        } catch (e) {}
-        return found;
+          const verifiedAdmin = await adminLogin(cleanEmail, pass);
+          return verifiedAdmin;
+        } catch (adminErr: any) {
+          throw new Error('Invalid administrator credentials.');
+        }
       }
 
       if (error.message.toLowerCase().includes('email not confirmed')) {
@@ -274,7 +261,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     setUser(synced);
     setSession(data.session);
-    setToken(data.session?.access_token || null);
+    const standardToken = data.session?.access_token || (synced.role === 'admin' ? 'admin_sess_' + synced.id : 'sess_' + synced.id);
+    setToken(standardToken);
+    setAuthToken(standardToken);
     localStorage.setItem(CURRENT_USER_KEY, synced.id);
     try {
       ledger.recordAuditLog(
@@ -291,6 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Connect Register form to real Supabase account creation with user metadata and email verification
+  // Public registration is restricted to investor roles (no unauthorized administrator privilege escalation)
   const register = async (
     email: string,
     pass: string,
@@ -300,8 +290,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     country?: string,
     phoneNumber?: string
   ): Promise<RegisterResult> => {
-    const determinedAccountType: AccountType = accountType || (role as AccountType) || 'individual_investor';
-    const determinedRole: UserRole = role === 'admin' || determinedAccountType === 'admin' ? 'admin' : 'investor';
+    const determinedAccountType: AccountType = (accountType === 'admin' ? 'individual_investor' : accountType) || 'individual_investor';
+    const determinedRole: UserRole = 'investor';
 
     if (!isConfigured) {
       const cleanEmail = email.trim().toLowerCase();
@@ -431,6 +421,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       } catch (e) {}
     }
+    // Sign out on backend server to revoke active admin session token and clear HTTP-only cookie
+    try {
+      await apiRequest('/auth/admin-logout', { method: 'POST', skipAuth: true });
+    } catch (e) {}
+
     if (isConfigured) {
       try {
         await supabase.auth.signOut();
@@ -441,6 +436,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setSession(null);
     setToken(null);
+    setAuthToken(null);
     localStorage.removeItem(CURRENT_USER_KEY);
   };
 
@@ -564,33 +560,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Local demo session switcher (strictly labeled as preview mock mode when keys are unconfigured)
-  const quickDemoSession = async (role: 'investor' | 'admin', accountType?: AccountType): Promise<User> => {
-    const demoEmail = role === 'admin' ? 'info@kretz.site' : 'investor@kretz.com';
-    let existing = ledger.getUserByEmail(demoEmail);
-    if (!existing && role === 'admin') {
-      existing = ledger.getUserByEmail('admin@kretz.com');
+  // Dedicated Server-Side Administrator Authentication
+  const adminLogin = async (email: string, pass: string): Promise<User> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const res = await apiRequest<{ success: boolean; token: string; user: any; error?: string }>('/auth/admin-login', {
+      method: 'POST',
+      body: { email: cleanEmail, password: pass },
+      skipAuth: true
+    });
+
+    if (!res.success || !res.token) {
+      throw new Error(res.error || 'Invalid administrator email or security credentials.');
     }
-    if (!existing) {
-      throw new Error('Demo account not found in local ledger.');
-    }
-    if (accountType) {
-      existing.accountType = accountType;
-    }
-    setUser({ ...existing });
-    setToken('local_preview_' + existing.id);
-    localStorage.setItem(CURRENT_USER_KEY, existing.id);
+
+    const adminUser: User = {
+      id: res.user?.id || 'usr-admin-01',
+      email: res.user?.email || cleanEmail,
+      fullName: res.user?.fullName || 'Executive Administrator',
+      role: 'admin',
+      accountType: 'admin',
+      kycStatus: 'verified',
+      walletBalance: 500000,
+      investedBalance: 0,
+      totalEarned: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    setUser(adminUser);
+    setToken(res.token);
+    setAuthToken(res.token);
+    localStorage.setItem(CURRENT_USER_KEY, adminUser.id);
+
     try {
       ledger.recordAuditLog(
-        existing.id,
-        existing.email,
+        adminUser.id,
+        adminUser.email,
         'LOGIN_SUCCESS',
-        `Authenticated session established for ${existing.email} (${role}).`,
+        `Administrator ${adminUser.email} authenticated via environment-verified credentials.`,
         'auth',
         'success',
-        { targetUserId: existing.id, targetUserEmail: existing.email }
+        { targetUserId: adminUser.id, targetUserEmail: adminUser.email }
       );
     } catch (e) {}
+
+    return adminUser;
+  };
+
+  // Local demo session switcher (strictly investor preview - admin elevation disabled)
+  const quickDemoSession = async (role: 'investor' | 'admin', accountType?: AccountType): Promise<User> => {
+    if (role === 'admin') {
+      throw new Error('Administrator demo bypass is disabled. Please log in through the Administrator Portal.');
+    }
+    const demoEmail = 'investor@kretz.com';
+    let existing = ledger.getUserByEmail(demoEmail);
+    if (!existing) {
+      throw new Error('Investor account not found.');
+    }
+    setUser({ ...existing });
+    const demoToken = 'sess_' + existing.id;
+    setToken(demoToken);
+    setAuthToken(demoToken);
+    localStorage.setItem(CURRENT_USER_KEY, existing.id);
     return existing;
   };
 
@@ -607,6 +637,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isRecoveryMode,
         setIsRecoveryMode,
         login,
+        adminLogin,
         register,
         logout,
         refreshUser,

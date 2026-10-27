@@ -40,7 +40,8 @@ import {
   Tag,
   Sparkles,
   Check,
-  Mail
+  Mail,
+  LogOut
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
@@ -51,30 +52,15 @@ import { AdminUserManagement } from './AdminUserManagement';
 import { AdminInsightsCMS } from './AdminInsightsCMS';
 import { AdminAccountSettings } from './AdminAccountSettings';
 import { AdminReconciliationView } from './AdminReconciliationView';
-import { AdminPassGate } from './AdminPassGate';
 import { AdminAuditLogsView } from './AdminAuditLogsView';
 import { AdminEmailManager } from './AdminEmailManager';
 import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
-import { lockPassGate, isPassGateUnlocked } from '../../lib/passGate';
 
 export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
 
 export const AdminPanel: React.FC = () => {
-  const { user, quickDemoSession } = useAuth();
+  const { user, logout } = useAuth();
   const { navigateTo } = useNavigation();
-
-  // Ensure an active admin session is established only after the Pass Gate is cleared
-  React.useEffect(() => {
-    if (isPassGateUnlocked()) {
-      if (!user || user.role !== 'admin') {
-        quickDemoSession('admin').catch(() => {});
-      }
-    }
-  }, [user, quickDemoSession]);
-
-  const handleLockPassGate = () => {
-    lockPassGate();
-  };
 
   const fallbackAdmin = ledger.getUserById('usr-admin-1') || {
     id: 'usr-admin-1',
@@ -575,7 +561,7 @@ export const AdminPanel: React.FC = () => {
   const selectedTargetUser = users.find(u => u.id === selectedUserId);
 
   return (
-    <AdminPassGate>
+    <>
       <div className="bg-[#F6F7F4] min-h-screen py-10">
         <div className="container mx-auto px-4 sm:px-6">
         
@@ -600,12 +586,12 @@ export const AdminPanel: React.FC = () => {
 
             <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={handleLockPassGate}
-                className="btn bg-[#0D1815] text-amber-300 hover:bg-black/60 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-amber-500/30 transition-colors"
-                title="Lock Admin Pass Gate immediately"
+                onClick={() => logout()}
+                className="btn bg-[#0D1815] text-red-300 hover:bg-black/60 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-red-500/30 transition-colors"
+                title="Sign out of administrator session"
               >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Lock Pass Gate</span>
+                <LogOut className="w-3.5 h-3.5 text-red-400" />
+                <span>Sign Out Admin</span>
               </button>
               <button
                 onClick={handleRestoreDefaults}
@@ -2155,7 +2141,7 @@ export const AdminPanel: React.FC = () => {
                             className="btn text-xs font-bold px-3.5 py-1.5 bg-[#27845D] hover:bg-[#1f6b4b] text-white rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
                             title="Assign function and approve to appear on frontend"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Assign Function & Approve</span>
                           </button>
                         ) : (
@@ -2681,6 +2667,6 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
     </div>
-  </AdminPassGate>
+  </>
   );
 };

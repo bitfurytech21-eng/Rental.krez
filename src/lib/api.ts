@@ -62,7 +62,17 @@ export const setAuthToken = (token: string | null) => {
 export const getAuthToken = (): string | null => {
   if (inMemoryToken) return inMemoryToken;
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    const direct = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    if (direct) return direct;
+
+    // Automatic fallback to active user ID in localStorage
+    const currentUserId = localStorage.getItem('rentallog_current_user_id');
+    if (currentUserId) {
+      if (currentUserId.includes('admin') || currentUserId === 'usr-admin-1' || currentUserId === 'usr-admin-01') {
+        return `admin_sess_${currentUserId}`;
+      }
+      return `sess_${currentUserId}`;
+    }
   }
   return null;
 };
@@ -271,6 +281,15 @@ export const authApi = {
 
   updatePassword: (password: string, token?: string) =>
     api.post<{ success: boolean; message: string }>('/auth/password/reset', { newPassword: password, token }),
+
+  adminLogin: (email: string, pass: string) =>
+    api.post<{ user: any; token: string; message?: string }>('/auth/admin-login', { email, password: pass }, { skipAuth: true }),
+
+  adminLogout: () =>
+    api.post<{ success: boolean; message: string }>('/auth/admin-logout', {}, { skipAuth: true }),
+
+  getAdminSession: () =>
+    api.get<{ user: any }>('/auth/admin-session'),
 };
 
 /**

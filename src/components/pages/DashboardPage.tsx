@@ -21,8 +21,8 @@ import {
   ArrowRight, Bell, Building2, TrendingUp, Wallet, ShieldCheck, History, 
   PieChart, ArrowDownLeft, ArrowUpRight, HelpCircle, User, FileText, LayoutDashboard, Coins,
   Share2, Award, CheckCircle2, AlertCircle, ExternalLink, Copy, Check, Menu, X, UploadCloud, LayoutGrid, LogOut,
-  Search, ChevronDown, Sparkles, Gift, Users, Send, Mail, QrCode, Globe, CheckCheck, MessageCircle, RefreshCw, Clock,
-  Sun, Moon
+  Search, ChevronDown, Gift, Users, Send, Mail, QrCode, Globe, CheckCheck, MessageCircle, RefreshCw, Clock,
+  Sun, Moon, Tag
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
 
@@ -1104,7 +1104,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           className="px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] bg-white hover:bg-slate-50 text-xs font-semibold text-[#18211F] flex items-center gap-1 transition-colors cursor-pointer"
                           title="Copy standalone referral code"
                         >
-                          {copiedCode ? <Check className="w-3 h-3 text-[#27845D]" /> : <Sparkles className="w-3 h-3 text-amber-500" />}
+                          {copiedCode ? <Check className="w-3 h-3 text-[#27845D]" /> : <Tag className="w-3 h-3 text-[#27845D]" />}
                           <span className="font-mono text-xs">{referralCode}</span>
                         </button>
                       </div>
@@ -1292,7 +1292,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {/* Referral Program Guidelines & Terms */}
                 <div className="bg-[#F6F7F4] p-3 sm:p-3.5 rounded-xl border border-[#E3E8E3] space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#27845D]" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#27845D]" />
                     <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#18211F]">
                       Program Guidelines & Terms
                     </h3>

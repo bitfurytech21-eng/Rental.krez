@@ -4,6 +4,7 @@ import { Investment } from '../../types/investment';
 import { Transaction } from '../../types/transaction';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
+import { getAuthToken } from '../../lib/api';
 import {
   Users,
   Search,
@@ -168,11 +169,12 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
       // 2. Call backend API if available
       try {
+        const token = getAuthToken() || 'admin_sess_usr-admin-01';
         await fetch(`/api/v1/admin/users/${statusModalUser.id}/status`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer sess_usr-admin-01`
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
           },
           body: JSON.stringify({
             status: targetNewStatus,

@@ -258,8 +258,8 @@ ${shareUrl}`;
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#18211F] flex items-center gap-1.5 uppercase tracking-wider">
-                <Sparkles className="w-3.5 h-3.5 text-[#27845D]" />
-                <span>Formatted Social Message</span>
+                <Share2 className="w-3.5 h-3.5 text-[#27845D]" />
+                <span>Formatted Message</span>
               </label>
               <button
                 type="button"

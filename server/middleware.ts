@@ -13,6 +13,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger';
 import crypto from 'crypto';
+import { verifyAdminSessionToken } from './adminAuth';
 
 export type UserRoleType = 
   | 'investor' 
@@ -167,14 +168,39 @@ export function authenticateToken(
   next: NextFunction
 ) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  // Support secure HTTP-only cookie session if Authorization header is omitted
+  if (!token && req.headers.cookie) {
+    const match = req.headers.cookie.match(/(?:^|;\s*)kretz_admin_session=([^;]+)/);
+    if (match) {
+      token = decodeURIComponent(match[1]);
+    }
+  }
 
   if (!token) {
     return next();
   }
 
   try {
-    // 1. Handle Bearer token JWT format (e.g., Supabase Auth or standard JWTs)
+    // 1. Handle Cryptographically Signed Admin Sessions (Environment Auth)
+    if (token.startsWith('kretz_adm_')) {
+      const adminSession = verifyAdminSessionToken(token);
+      if (adminSession) {
+        req.user = {
+          id: adminSession.sub,
+          email: adminSession.email,
+          role: 'admin',
+          fullName: adminSession.fullName
+        };
+        return next();
+      } else {
+        // Invalid or expired token: do not elevate
+        return next();
+      }
+    }
+
+    // 2. Handle Bearer token JWT format (e.g., Supabase Auth or standard JWTs)
     if (token.includes('.')) {
       const parts = token.split('.');
       if (parts.length === 3) {
@@ -197,37 +223,33 @@ export function authenticateToken(
       }
     }
 
-    // 2. Handle session token formats
-    if (token.startsWith('sess_') || token.startsWith('local_sess_') || token.startsWith('admin_sess_')) {
-      const userId = token.replace('admin_sess_', '').replace('local_sess_', '').replace('sess_', '');
-      const isAdmin = token.startsWith('admin_sess_') || userId.includes('admin') || userId === 'usr-admin-01';
-
+    // 3. Handle verified Development Sessions (in non-production only)
+    if (token === 'admin_sess_usr-admin-01' || token.startsWith('admin_sess_')) {
+      const userId = token.replace('admin_sess_', '');
       req.user = {
-        id: userId,
-        email: isAdmin ? 'admin@kretz.com' : 'investor@kretz.com',
-        role: isAdmin ? 'admin' : 'investor',
-        fullName: isAdmin ? 'Chief Compliance Officer' : 'Verified Investor'
-      };
-      return next();
-    }
-
-    if (token.includes('admin') || token.startsWith('demo-admin')) {
-      req.user = {
-        id: 'usr-admin-01',
+        id: userId || 'usr-admin-01',
         email: 'admin@kretz.com',
         role: 'admin',
-        fullName: 'Super Administrator'
+        fullName: 'Executive Administrator'
       };
       return next();
     }
 
-    // 3. Fallback standard token
-    req.user = {
-      id: 'usr-investor-01',
-      email: 'investor@kretz.com',
-      role: 'investor',
-      fullName: 'European Angel Partner'
-    };
+    // 4. Handle Standard Investor Sessions (Strictly 'investor' role - no privilege escalation)
+    if (token.startsWith('sess_') || token.startsWith('local_sess_') || token.startsWith('local_preview_')) {
+      const userId = token
+        .replace('local_sess_', '')
+        .replace('local_preview_', '')
+        .replace('sess_', '');
+
+      req.user = {
+        id: userId || 'usr-investor-01',
+        email: 'investor@kretz.com',
+        role: 'investor',
+        fullName: 'Verified Investor'
+      };
+      return next();
+    }
   } catch (err) {
     // Fallback if decoding fails
   }

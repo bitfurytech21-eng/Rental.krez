@@ -605,7 +605,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 {referralCode ? (
                   <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl flex items-center justify-between text-xs text-white">
                     <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#BEE179] shrink-0" />
+                      <Tag className="w-4 h-4 text-[#BEE179] shrink-0" />
                       <div>
                         <div className="text-[10px] text-[#BEE179] font-bold">VIP Partner Invitation Active</div>
                         <div className="font-mono font-bold text-white text-xs">CODE: {referralCode}</div>

@@ -319,16 +319,6 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({
             <span>Sync</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleSeedSamples}
-            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Populate test compliance audit trail"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Seed Samples</span>
-          </button>
-
           {/* Export Dropdown */}
           <div className="relative inline-flex rounded-xl shadow-xs">
             <button

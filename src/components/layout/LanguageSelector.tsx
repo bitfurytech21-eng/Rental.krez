@@ -87,7 +87,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ variant = 'f
       case 'libretranslate':
         return <Shield className="w-4 h-4 text-blue-400" />;
       case 'deepl':
-        return <Sparkles className="w-4 h-4 text-purple-400" />;
+        return <Globe className="w-4 h-4 text-purple-400" />;
       case 'dictionary':
         return <Book className="w-4 h-4 text-amber-400" />;
       case 'auto':

@@ -12,6 +12,7 @@ import dotenv from 'dotenv';
 import v1Routes from './server/routes';
 import { correlationAndTimingMiddleware, authenticateToken, errorHandler } from './server/middleware';
 import { logger } from './server/logger';
+import { validateAdminEnvironment } from './server/adminAuth';
 
 dotenv.config();
 
@@ -42,6 +43,26 @@ async function startServer() {
     next();
   });
 
+  // Enforce HTTPS in production environments behind proxies
+  app.use((req, res, next) => {
+    if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(301, `https://${req.headers.host}${req.url}`);
+    }
+    next();
+  });
+
+  // Startup Administrator Environment Validation
+  const adminEnv = validateAdminEnvironment();
+  logger.log({
+    level: 'info',
+    category: 'security',
+    requestId: 'server-boot',
+    eventType: 'ADMIN_AUTH_VALIDATION',
+    outcome: 'success',
+    message: `Administrator authentication engine initialized in mode: ${adminEnv.mode}`,
+    metadata: { mode: adminEnv.mode, isProduction: process.env.NODE_ENV === 'production' }
+  });
+
   // Correlation IDs and Request Timing
   app.use(correlationAndTimingMiddleware);
 
@@ -49,7 +70,7 @@ async function startServer() {
   app.use(authenticateToken);
 
   // Health endpoint
-  app.get('/api/health', (req: Request, res: Response) => {
+  app.get(['/api/health', '/api/v1/health'], (req: Request, res: Response) => {
     const metrics = logger.computeMetrics();
     res.json({
       status: metrics.healthy ? 'healthy' : 'degraded',

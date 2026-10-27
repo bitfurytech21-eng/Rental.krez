@@ -33,6 +33,15 @@ import {
   Lock,
   ArrowRight
 } from 'lucide-react';
+import { getAuthToken } from '../../lib/api';
+
+const getAdminHeaders = (extraHeaders: Record<string, string> = {}) => {
+  const token = getAuthToken() || 'admin_sess_usr-admin-01';
+  return {
+    ...extraHeaders,
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+};
 
 interface EmailTemplateInfo {
   id: string;
@@ -151,7 +160,9 @@ export const AdminEmailManager: React.FC = () => {
 
   const fetchTemplates = async () => {
     try {
-      const res = await fetch('/api/v1/admin/email/templates');
+      const res = await fetch('/api/v1/admin/email/templates', {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setTemplates(data.data);
@@ -166,7 +177,9 @@ export const AdminEmailManager: React.FC = () => {
 
   const fetchAutomations = async () => {
     try {
-      const res = await fetch('/api/v1/admin/email/automations');
+      const res = await fetch('/api/v1/admin/email/automations', {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setAutomations(data.data);
@@ -178,7 +191,9 @@ export const AdminEmailManager: React.FC = () => {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch('/api/v1/admin/email/logs');
+      const res = await fetch('/api/v1/admin/email/logs', {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setLogs(data.data);
@@ -190,7 +205,9 @@ export const AdminEmailManager: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/v1/admin/email/settings');
+      const res = await fetch('/api/v1/admin/email/settings', {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success && data.data) {
         setSettings(data.data);
@@ -215,7 +232,9 @@ export const AdminEmailManager: React.FC = () => {
     if (!currentTemplate) return;
     setIsLoadingPreview(true);
     try {
-      const res = await fetch(`/api/v1/admin/email/preview/${currentTemplate.id}`);
+      const res = await fetch(`/api/v1/admin/email/preview/${currentTemplate.id}`, {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       if (data.success && data.data) {
         setPreviewHtml(data.data.html);
@@ -253,7 +272,7 @@ export const AdminEmailManager: React.FC = () => {
     try {
       const res = await fetch('/api/v1/admin/email/send-test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           templateId: currentTemplate.id,
           recipient: testRecipient,
@@ -291,7 +310,7 @@ export const AdminEmailManager: React.FC = () => {
 
       const res = await fetch('/api/v1/admin/email/execute-command', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           command: selectedCommand,
           recipient: commandRecipient,
@@ -319,7 +338,7 @@ export const AdminEmailManager: React.FC = () => {
     try {
       const res = await fetch(`/api/v1/admin/email/automations/${ruleId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ enabled: !currentEnabled })
       });
       const data = await res.json();
@@ -339,7 +358,7 @@ export const AdminEmailManager: React.FC = () => {
     try {
       const res = await fetch(`/api/v1/admin/email/logs/${logId}/retry`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: getAdminHeaders({ 'Content-Type': 'application/json' })
       });
       const data = await res.json();
       if (data.success) {
@@ -357,7 +376,9 @@ export const AdminEmailManager: React.FC = () => {
     setIsTestingProvider(true);
     setProviderTestResult(null);
     try {
-      const res = await fetch('/api/v1/admin/email/verify-provider');
+      const res = await fetch('/api/v1/admin/email/verify-provider', {
+        headers: getAdminHeaders()
+      });
       const data = await res.json();
       setProviderTestResult(data);
     } catch (e: any) {

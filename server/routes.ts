@@ -38,6 +38,15 @@ import {
   getProviderConfig
 } from './emailService';
 import crypto from 'crypto';
+import {
+  getAdminConfig,
+  verifyAdminCredentials,
+  createAdminSession,
+  revokeAdminSession,
+  checkAdminRateLimit,
+  recordAdminFailedAttempt,
+  resetAdminFailedAttempts
+} from './adminAuth';
 
 const router = Router();
 
@@ -379,120 +388,199 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
 });
 
 /**
- * POST /api/v1/admin/login & /api/v1/auth/admin/login
- * Dedicated administrative login endpoint with role enforcement and security logging
+ * POST /api/v1/admin/login & /api/v1/auth/admin/login & /api/v1/auth/admin-login
+ * Environment-configured administrator authentication with rate limiting and secure sessions
  */
-const handleAdminLogin = (req: AuthenticatedRequest, res: Response) => {
+const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   const { email, password, pass } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
   const inputPass = password || pass;
 
-  if (!normalizedEmail || !inputPass) {
+  const rawHeader = req.headers['x-forwarded-for'];
+  const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
+
+  // 1. Check Rate Limiter & Lockout
+  const rateLimitStatus = checkAdminRateLimit(ip);
+  if (rateLimitStatus.isLocked) {
     logger.log({
       level: 'warn',
       category: 'security',
-      requestId: req.id || 'req-admin-login-err',
+      requestId: req.id || 'req-admin-locked',
       method: 'POST',
       route: req.originalUrl,
-      statusCode: 400,
-      eventType: 'ADMIN_AUTH_VALIDATION_FAILURE',
+      statusCode: 429,
+      eventType: 'ADMIN_LOGIN_LOCKED_OUT',
       outcome: 'failure',
-      message: 'Admin login attempted without required email or passphrase.',
-      errorCode: 'MISSING_CREDENTIALS'
+      message: `Admin login blocked: IP ${ip} is temporarily locked for ${rateLimitStatus.remainingSeconds}s due to repeated failures.`,
+      metadata: { ip, remainingSeconds: rateLimitStatus.remainingSeconds }
     });
 
+    return res.status(429).json({
+      success: false,
+      error: `Too many failed attempts. Administrative login is locked for ${rateLimitStatus.remainingSeconds} seconds.`,
+      code: 'RATE_LIMIT_EXCEEDED',
+      remainingSeconds: rateLimitStatus.remainingSeconds,
+      requestId: req.id
+    });
+  }
+
+  // 2. Validate input presence
+  if (!normalizedEmail || !inputPass) {
     return res.status(400).json({
       success: false,
-      error: 'Please provide administrator email address and passphrase.',
+      error: 'Please provide administrator email address and security password.',
       code: 'MISSING_FIELDS',
       requestId: req.id
     });
   }
 
-  // Look up user
-  const found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+  // 3. Load administrator configuration from environment
+  const config = getAdminConfig();
 
-  if (!found || inputPass.length < 4) {
+  // 4. Validate credentials
+  const emailMatches = normalizedEmail === config.adminEmail;
+  const passwordMatches = await verifyAdminCredentials(inputPass);
+
+  if (!emailMatches || !passwordMatches) {
+    const failureRecord = recordAdminFailedAttempt(ip);
+
     logger.log({
       level: 'warn',
       category: 'security',
-      requestId: req.id || 'req-admin-login-fail',
+      requestId: req.id || 'req-admin-fail',
       method: 'POST',
       route: req.originalUrl,
       statusCode: 401,
-      eventType: 'ADMIN_LOGIN_INVALID_CREDENTIALS',
+      eventType: 'ADMIN_LOGIN_FAILED',
       outcome: 'failure',
-      message: `Failed admin login attempt for account ${normalizedEmail}`,
+      message: `Failed admin login attempt from ${ip} for account ${normalizedEmail}. Failed attempts: ${failureRecord.attempts}`,
       errorCode: 'INVALID_CREDENTIALS',
-      metadata: { attemptedEmail: normalizedEmail }
+      metadata: { ip, attempts: failureRecord.attempts, isLocked: failureRecord.isLocked }
     });
 
     return res.status(401).json({
       success: false,
-      error: 'Invalid administrator credentials.',
+      error: 'Invalid administrator email or security credentials.',
       code: 'INVALID_CREDENTIALS',
+      remainingAttempts: Math.max(0, 5 - failureRecord.attempts),
       requestId: req.id
     });
   }
 
-  // Enforce Administrator Role
-  if (found.role !== 'admin') {
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-admin-unauthorized',
-      method: 'POST',
-      route: req.originalUrl,
-      statusCode: 403,
-      userId: found.id,
-      userRole: found.role,
-      eventType: 'UNAUTHORIZED_ADMIN_PORTAL_ACCESS',
-      outcome: 'failure',
-      message: `Access denied: Account ${found.email} with role '${found.role}' attempted admin portal login.`,
-      errorCode: 'FORBIDDEN_NOT_ADMIN',
-      metadata: { role: found.role }
-    });
+  // 5. Success: reset failed attempts
+  resetAdminFailedAttempts(ip);
 
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied. Only authorized platform administrators may access this portal.',
-      code: 'ADMIN_ACCESS_REQUIRED',
-      requestId: req.id
-    });
-  }
+  // 6. Establish secure server session
+  const session = createAdminSession(config.adminEmail);
 
-  // Issue dedicated admin session token
-  const token = `admin_sess_${found.id}`;
+  // 7. Set HTTP-only secure SameSite cookie
+  res.cookie('kretz_admin_session', session.token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000
+  });
 
   logger.log({
     level: 'info',
     category: 'admin',
-    requestId: req.id || 'req-admin-login',
+    requestId: req.id || 'req-admin-login-ok',
     method: 'POST',
     route: req.originalUrl,
     statusCode: 200,
-    userId: found.id,
+    userId: session.payload.sub,
     userRole: 'admin',
-    eventType: 'ADMIN_PORTAL_LOGIN_SUCCESS',
+    eventType: 'ADMIN_LOGIN_SUCCESS',
     outcome: 'success',
-    message: `Administrator ${found.email} authenticated successfully to control panel.`,
-    metadata: { role: 'admin', authMethod: 'admin-portal' }
+    message: `Administrator ${session.payload.email} authenticated successfully via environment credentials.`,
+    metadata: { role: 'admin', authMode: 'environment-secret' }
   });
 
   return res.json({
     success: true,
     data: {
-      user: found,
-      token,
-      expiresAt: new Date(Date.now() + 86400000).toISOString()
+      user: {
+        id: session.payload.sub,
+        email: session.payload.email,
+        role: 'admin',
+        fullName: session.payload.fullName
+      },
+      token: session.token,
+      expiresAt: new Date(session.payload.exp).toISOString()
+    },
+    token: session.token,
+    user: {
+      id: session.payload.sub,
+      email: session.payload.email,
+      role: 'admin',
+      fullName: session.payload.fullName
     },
     message: 'Administrative authentication successful.',
     requestId: req.id
   });
 };
 
-router.post('/admin/login', authLimiter, requireTurnstile, handleAdminLogin);
-router.post('/auth/admin/login', authLimiter, requireTurnstile, handleAdminLogin);
+router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, requireTurnstile, handleAdminLogin);
+
+/**
+ * POST /api/v1/admin/logout & /api/v1/auth/admin-logout
+ */
+router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req: AuthenticatedRequest, res: Response) => {
+  const authHeader = req.headers['authorization'];
+  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token && req.headers.cookie) {
+    const match = req.headers.cookie.match(/(?:^|;\s*)kretz_admin_session=([^;]+)/);
+    if (match) token = decodeURIComponent(match[1]);
+  }
+
+  if (token) {
+    revokeAdminSession(token);
+  }
+
+  res.clearCookie('kretz_admin_session', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+
+  logger.log({
+    level: 'info',
+    category: 'admin',
+    requestId: req.id || 'req-admin-logout',
+    method: 'POST',
+    route: req.originalUrl,
+    statusCode: 200,
+    eventType: 'ADMIN_LOGOUT_SUCCESS',
+    outcome: 'success',
+    message: 'Administrator session revoked successfully.'
+  });
+
+  res.json({
+    success: true,
+    message: 'Administrator session terminated successfully.',
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/admin/session & /api/v1/auth/admin-session
+ */
+router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest, res: Response) => {
+  if (req.user && req.user.role === 'admin') {
+    return res.json({
+      success: true,
+      data: req.user,
+      requestId: req.id
+    });
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: 'No active administrator session.',
+    code: 'UNAUTHORIZED',
+    requestId: req.id
+  });
+});
 
 /**
  * POST /api/v1/auth/register
@@ -1256,9 +1344,9 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], (req: Authenticated
 });
 
 /**
- * POST /api/v1/marketplace/listings (Admin Only)
+ * POST /api/v1/marketplace/listings & /api/v1/properties & /api/v1/admin/properties (Admin Only)
  */
-router.post(['/marketplace/listings', '/properties'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   const body = req.body || {};
   if (!body.title || !body.location || !body.targetAmount) {
     return res.status(400).json({
@@ -1271,21 +1359,21 @@ router.post(['/marketplace/listings', '/properties'], requireAdmin, (req: Authen
 
   const slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   const newProp = {
-    id: `prop-${crypto.randomBytes(4).toString('hex')}`,
+    id: body.id || `prop-${crypto.randomBytes(4).toString('hex')}`,
     slug,
     title: body.title,
     location: body.location,
     type: body.type || 'Luxury Villa',
     status: body.status || 'funding',
-    fundedAmount: 0,
+    fundedAmount: body.fundedAmount || 0,
     targetAmount: Number(body.targetAmount),
-    tokenPrice: 364,
-    totalTokens: Math.round(Number(body.targetAmount) / 364),
-    availableTokens: Math.round(Number(body.targetAmount) / 364),
+    tokenPrice: body.tokenPrice || 364,
+    totalTokens: Math.round(Number(body.targetAmount) / (body.tokenPrice || 364)),
+    availableTokens: Math.round(Number(body.targetAmount) / (body.tokenPrice || 364)),
     monthlyTargetRate: Number(body.monthlyTargetRate || 6.0),
     projectedYield: Number(body.projectedYield || 72.0),
     capitalAppreciation: Number(body.capitalAppreciation || 4.5),
-    minimumInvestment: 1000,
+    minimumInvestment: body.minimumInvestment || 1000,
     holdingPeriodMonths: Number(body.holdingPeriodMonths || 36),
     images: body.images || ['https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80'],
     specs: body.specs || { bedrooms: 5, bathrooms: 6, builtAreaM2: 750, plotAreaM2: 2500 },
@@ -1299,7 +1387,7 @@ router.post(['/marketplace/listings', '/properties'], requireAdmin, (req: Authen
     category: 'marketplace',
     requestId: req.id || 'req-prop-create',
     method: 'POST',
-    route: '/api/v1/marketplace/listings',
+    route: req.path,
     statusCode: 201,
     userId: req.user?.id,
     eventType: 'PROPERTY_LISTED',
@@ -1312,6 +1400,49 @@ router.post(['/marketplace/listings', '/properties'], requireAdmin, (req: Authen
     success: true,
     data: newProp,
     message: 'Property listing published successfully.',
+    requestId: req.id
+  });
+});
+
+/**
+ * PUT /api/v1/marketplace/listings/:id & /api/v1/properties/:id & /api/v1/admin/properties/:id (Admin Only)
+ */
+router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const targetIndex = mockListings.findIndex(p => p.id === id || p.slug === id);
+
+  if (targetIndex === -1) {
+    return res.status(404).json({
+      success: false,
+      error: `Property listing with ID or slug '${id}' was not found.`,
+      code: 'PROPERTY_NOT_FOUND',
+      requestId: req.id
+    });
+  }
+
+  mockListings[targetIndex] = {
+    ...mockListings[targetIndex],
+    ...req.body
+  };
+
+  logger.log({
+    level: 'info',
+    category: 'marketplace',
+    requestId: req.id || 'req-prop-update',
+    method: 'PUT',
+    route: req.path,
+    statusCode: 200,
+    userId: req.user?.id,
+    eventType: 'PROPERTY_UPDATED',
+    outcome: 'success',
+    message: `Admin ${req.user?.email} updated property: ${mockListings[targetIndex].title}`,
+    metadata: { propertyId: id }
+  });
+
+  res.json({
+    success: true,
+    data: mockListings[targetIndex],
+    message: 'Property updated successfully.',
     requestId: req.id
   });
 });
@@ -1344,7 +1475,7 @@ router.get('/user/profile', requireAuth, (req: AuthenticatedRequest, res: Respon
 /**
  * GET /api/v1/portfolio
  */
-router.get('/portfolio', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const userInvestments = [
     {
       id: 'inv-001',
@@ -1367,8 +1498,26 @@ router.get('/portfolio', requireAuth, (req: AuthenticatedRequest, res: Response)
     data: {
       holdings: userInvestments,
       totalHoldingsValue: totalPortfolioValue,
+      totalPortfolioValue,
       totalTokensHeld: 100,
       activePropertiesCount: 1,
+      totalDividendsReceived: 320,
+      currency: 'EUR'
+    },
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/wallet/balance
+ */
+router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const user = mockUsers.find(u => u.id === req.user?.id || u.email === req.user?.email);
+  const bal = user ? user.balance : (req.user?.balance ?? 15000);
+  res.json({
+    success: true,
+    data: {
+      balance: bal,
       currency: 'EUR'
     },
     requestId: req.id
@@ -1951,40 +2100,66 @@ router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => 
   });
 });
 
+let paymentConfig = {
+  traditional: {
+    beneficiary: 'Kretz Escrow Services S.L.',
+    iban: 'ES91 2100 0418 4502 0005 1829',
+    bic: 'CAIXESBBXXX',
+    bankName: 'CaixaBank Institutional Escrow',
+    instructions: 'Include your unique investor reference in the concept wire transfer.'
+  },
+  cryptoNetworks: [
+    {
+      id: 'net-usdt-erc20',
+      name: 'Ethereum (ERC20)',
+      token: 'USDT',
+      network: 'Ethereum',
+      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
+      contractEnd: '831ec7',
+      enabled: true
+    },
+    {
+      id: 'net-usdt-base',
+      name: 'Base Network',
+      token: 'USDC',
+      network: 'Base',
+      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
+      enabled: true
+    }
+  ]
+};
+
 /**
  * GET /api/v1/payments/config (Public view of escrow instructions)
  */
 router.get('/payments/config', (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
-    data: {
-      traditional: {
-        beneficiary: 'Kretz Escrow Services S.L.',
-        iban: 'ES91 2100 0418 4502 0005 1829',
-        bic: 'CAIXESBBXXX',
-        bankName: 'CaixaBank Institutional Escrow',
-        instructions: 'Include your unique investor reference in the concept concept wire transfer.'
-      },
-      cryptoNetworks: [
-        {
-          id: 'net-usdt-erc20',
-          name: 'Ethereum (ERC20)',
-          token: 'USDT',
-          network: 'Ethereum',
-          walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-          contractEnd: '831ec7',
-          enabled: true
-        },
-        {
-          id: 'net-usdt-base',
-          name: 'Base Network',
-          token: 'USDC',
-          network: 'Base',
-          walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-          enabled: true
-        }
-      ]
-    },
+    data: paymentConfig,
+    requestId: req.id
+  });
+});
+
+/**
+ * GET & PUT /api/v1/admin/payment-config
+ */
+router.get('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: paymentConfig,
+    requestId: req.id
+  });
+});
+
+router.put('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  paymentConfig = {
+    ...paymentConfig,
+    ...req.body
+  };
+  res.json({
+    success: true,
+    data: paymentConfig,
+    message: 'Payment configuration updated successfully.',
     requestId: req.id
   });
 });
@@ -2117,7 +2292,7 @@ router.get('/investment-plans/:planId', (req: AuthenticatedRequest, res: Respons
 });
 
 // Admin Control Contract Endpoints
-router.get('/admin/dashboard', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
     data: {

@@ -59,7 +59,7 @@ import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 import { ArrowRight, ShieldCheck, UserCheck, Plus } from 'lucide-react';
 
 function MainApp() {
-  const { user, isConfigured, quickDemoSession } = useAuth();
+  const { user, isConfigured } = useAuth();
   const { currentPath, navigateTo } = useNavigation();
   const { currentLanguage } = useLanguage();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -132,14 +132,6 @@ function MainApp() {
       navigateTo(dest);
     } else {
       navigateTo('/dashboard');
-    }
-  };
-
-  const handleQuickRoleSwitch = async (role: 'investor' | 'admin') => {
-    try {
-      await quickDemoSession(role);
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -470,7 +462,14 @@ function MainApp() {
       case '/admin':
       case '/admin/deposits':
       case '/admin/withdrawals':
-        return <AdminPanel />;
+        return (
+          <ProtectedRoute
+            requireAdmin
+            onNavigateLogin={() => navigateTo('/admin/login')}
+          >
+            <AdminPanel />
+          </ProtectedRoute>
+        );
 
       // Default: Homepage
       case '/':

@@ -72,8 +72,8 @@ export const MonthlyYieldRecharts: React.FC<MonthlyYieldRechartsProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E4EEEA] pb-5">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-[#087F5B] uppercase tracking-wider mb-1">
-            <Sparkles className="w-4 h-4 text-[#087F5B]" />
-            <span>Recharts Financial Engine · 12-Month Monthly Rental Yield</span>
+            <TrendingUp className="w-4 h-4 text-[#087F5B]" />
+            <span>Yield Schedule · 12-Month Projected Distribution</span>
           </div>
           <h3 className="text-xl sm:text-2xl font-bold text-[#172B2A]">
             12-Month Projected Rental Yield Growth

@@ -349,8 +349,8 @@ export const ProjectedYieldChart: React.FC<ProjectedYieldChartProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-[#27845D] uppercase tracking-wider mb-1">
-            <Sparkles className="w-4 h-4 text-[#27845D]" />
-            <span>Interactive D3 Financial Projection Engine</span>
+            <TrendingUp className="w-4 h-4 text-[#27845D]" />
+            <span>Financial Projection Model · Long-Term Forecast</span>
           </div>
           <h3 className="text-xl font-black text-[#18211F]">
             10-Year Rental Yield & Capital Growth Projections
