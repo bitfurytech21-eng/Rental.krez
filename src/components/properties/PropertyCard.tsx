@@ -109,14 +109,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   return (
     <article 
       aria-label={`${property.title}, ${property.city}, ${property.country}`}
-      className={`property-card flex flex-col group rounded-xl bg-white overflow-hidden transition-all duration-300 ${
+      className={`property-card flex flex-col group rounded-2xl sm:rounded-3xl bg-white overflow-hidden transition-all duration-300 ${
         isOwnedOrOccupied 
-          ? 'border-2 border-[#1E3A34] shadow-md ring-1 ring-[#1E3A34]/20' 
-          : 'border border-[#d4e5f5] hover:border-[#1E3A34]/40 hover:shadow-lg'
+          ? 'border-2 border-[#087F5B] shadow-md ring-2 ring-[#087F5B]/20' 
+          : 'border border-[#E4EEEA] hover:border-[#087F5B]/40 shadow-xs hover:shadow-md'
       }`}
     >
       {/* Property Hero Image with Architectural Framing */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-[#e4f1fb]">
+      <div className="relative aspect-[16/10] overflow-hidden bg-[#EAF8F4]">
         <img
           src={property.images[0] || property.bannerImage}
           alt={`Architectural view of ${property.title} in ${property.city}, ${property.country}`}
@@ -146,12 +146,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
               type="button"
               onClick={handleOpenBrochure}
               aria-label={`View and download official brochure for ${property.title}`}
-              className="bg-black/50 hover:bg-[#1E3A34] focus-visible:ring-2 focus-visible:ring-white backdrop-blur-md text-white text-[10px] font-medium px-2.5 py-1 rounded border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer min-h-[30px]"
+              className="bg-black/50 hover:bg-[#087F5B] focus-visible:ring-2 focus-visible:ring-white backdrop-blur-md text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer min-h-[30px]"
             >
-              <FileText className="w-3 h-3 opacity-80" aria-hidden="true" />
+              <FileText className="w-3 h-3 opacity-90" aria-hidden="true" />
               <span>Brochure</span>
             </button>
-            <span className="bg-black/50 backdrop-blur-md text-stone-200 text-[10px] font-medium px-2 py-1 rounded border border-white/20">
+            <span className="bg-black/50 backdrop-blur-md text-stone-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-white/20">
               {property.type}
             </span>
           </div>
@@ -160,12 +160,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         {/* Bottom Image Overlay: ISO Country Code, Location & Token Ticker */}
         <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between text-xs text-white">
           <div className="flex items-center gap-2 font-medium drop-shadow-sm truncate">
-            <span className="font-mono text-[10px] tracking-widest font-semibold px-1.5 py-0.5 rounded bg-black/40 border border-white/20 uppercase text-stone-200">
+            <span className="font-mono text-[10px] tracking-widest font-bold px-1.5 py-0.5 rounded-md bg-black/50 border border-white/20 uppercase text-white">
               {getCountryCode(property.country)}
             </span>
-            <span className="truncate text-[13px] tracking-wide">{property.city}, {property.country}</span>
+            <span className="truncate text-[13px] tracking-wide font-medium">{property.city}, {property.country}</span>
           </div>
-          <span className="text-[10px] font-mono tracking-widest bg-black/40 backdrop-blur-md px-2 py-0.5 rounded uppercase text-white/90 border border-white/15 shrink-0">
+          <span className="text-[10px] font-mono tracking-widest bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-md uppercase text-white font-semibold border border-white/20 shrink-0">
             {property.tokenTicker}
           </span>
         </div>
@@ -175,18 +175,18 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
       <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
         {/* Title and Specs */}
         <div>
-          <div className="flex items-center justify-between text-xs text-[#78716C] mb-1.5">
+          <div className="flex items-center justify-between text-xs text-[#71817D] mb-1.5 font-medium">
             <span className="truncate max-w-[200px]">{property.location}</span>
             {property.surfaceAreaM2 && (
-              <span className="font-mono text-[11px] text-[#57534E] shrink-0">{property.surfaceAreaM2} m²</span>
+              <span className="font-mono text-[11px] text-[#172B2A] font-semibold shrink-0">{property.surfaceAreaM2} m²</span>
             )}
           </div>
 
-          <h3 className="font-serif text-lg sm:text-xl font-bold text-[#1C1917] leading-snug line-clamp-1">
+          <h3 className="font-serif text-lg sm:text-xl font-bold text-[#172B2A] leading-snug line-clamp-1">
             <button
               type="button"
               onClick={() => onSelect(property)}
-              className="text-left hover:text-[#1E3A34] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded transition-colors cursor-pointer w-full"
+              className="text-left hover:text-[#087F5B] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#087F5B] rounded transition-colors cursor-pointer w-full"
             >
               {property.title}
             </button>
@@ -194,12 +194,12 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
 
           {/* User Holdings Banner if user has active tokens */}
           {tokensHeld > 0 && (
-            <div className="mt-2.5 p-2.5 rounded-lg bg-[#e9f4fd] border border-[#1E3A34]/20 flex items-center justify-between text-xs">
-              <span className="font-medium text-[#1C1917] flex items-center gap-1.5">
-                <Crown className="w-3.5 h-3.5 text-[#1E3A34]" aria-hidden="true" />
+            <div className="mt-2.5 p-2.5 rounded-xl bg-[#DDF5EC]/70 border border-[#BCE8D7] flex items-center justify-between text-xs">
+              <span className="font-bold text-[#075B46] flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-[#087F5B]" aria-hidden="true" />
                 <span>Your Position:</span>
               </span>
-              <span className="font-semibold text-[#1E3A34] tabular-nums">
+              <span className="font-bold text-[#075B46] tabular-nums font-mono">
                 {tokensHeld} Tokens ({formatCurrency(amountInvested)})
               </span>
             </div>
@@ -207,16 +207,16 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         {/* Editorial Funding Progress Indicator */}
-        <div className="space-y-1.5 bg-[#f0f8fe] p-3 rounded-lg border border-[#d4e5f5]">
+        <div className="space-y-1.5 bg-[#F6FAF8] p-3 rounded-xl border border-[#E4EEEA]">
           <div className="flex justify-between items-center text-xs">
-            <span className="text-[#57534E]">
-              Funded <strong className="text-[#1C1917] font-semibold">{formatCurrency(property.fundedAmount)}</strong>
+            <span className="text-[#71817D]">
+              Funded <strong className="text-[#172B2A] font-bold">{formatCurrency(property.fundedAmount)}</strong>
             </span>
-            <span className="font-mono text-xs font-semibold text-[#1E3A34] tabular-nums">{fundingPercent}%</span>
+            <span className="font-mono text-xs font-bold text-[#087F5B] tabular-nums">{fundingPercent}%</span>
           </div>
 
           <div 
-            className="w-full bg-[#d4e5f5] h-1.5 rounded-full overflow-hidden"
+            className="w-full bg-[#E4EEEA] h-2 rounded-full overflow-hidden"
             role="progressbar"
             aria-valuenow={fundingPercent}
             aria-valuemin={0}
@@ -224,66 +224,66 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             aria-label={`Funding progress for ${property.title}: ${fundingPercent}%`}
           >
             <div 
-              className="bg-[#1E3A34] h-full rounded-full transition-all duration-700"
+              className="bg-[#087F5B] h-full rounded-full transition-all duration-700"
               style={{ width: `${fundingPercent}%` }}
             />
           </div>
 
-          <div className="flex justify-between items-center text-[10px] text-[#78716C] pt-0.5">
+          <div className="flex justify-between items-center text-[10px] text-[#71817D] pt-0.5">
             <span>Target: {formatCurrency(property.targetAmount)}</span>
-            <span className="font-mono">{property.availableTokens} tokens remain</span>
+            <span className="font-mono font-medium">{property.availableTokens} tokens remain</span>
           </div>
         </div>
 
         {/* Refined Financial Metrics Grid */}
         <div className="grid grid-cols-3 gap-2 py-1">
-          {/* 1. Monthly Target */}
-          <div className="p-2.5 sm:p-3 rounded-lg bg-[#f0f8fe] border border-[#d4e5f5] flex flex-col justify-between">
-            <span className="text-[10px] uppercase tracking-wider text-[#78716C] font-semibold block truncate">
-              Monthly Yield
+          {/* 1. Projected Annual Yield */}
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#F6FAF8] border border-[#E4EEEA] flex flex-col justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-[#71817D] font-bold block truncate">
+              Projected Yield
             </span>
-            <span className="font-mono text-base font-bold text-[#1E3A34] block tabular-nums my-0.5 truncate">
+            <span className="font-mono text-base font-bold text-[#087F5B] block tabular-nums my-0.5 truncate">
               {formatPercent(property.monthlyTargetRate || 6.0)}
             </span>
-            <span className="text-[10px] text-[#78716C] block truncate">
-              Annualized
+            <span className="text-[10px] text-[#087F5B] block truncate font-medium">
+              Pro-Forma Target
             </span>
           </div>
 
           {/* 2. Projected Term */}
-          <div className="p-2.5 sm:p-3 rounded-lg bg-[#f0f8fe] border border-[#d4e5f5] flex flex-col justify-between">
-            <span className="text-[10px] uppercase tracking-wider text-[#78716C] font-semibold block truncate">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#F6FAF8] border border-[#E4EEEA] flex flex-col justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-[#71817D] font-bold block truncate">
               Time Frame
             </span>
-            <span className="font-mono text-base font-bold text-[#1C1917] block tabular-nums my-0.5 truncate">
+            <span className="font-mono text-base font-bold text-[#172B2A] block tabular-nums my-0.5 truncate">
               {property.durationMonths || 21} Mo.
             </span>
-            <span className="text-[10px] text-[#78716C] block truncate">
+            <span className="text-[10px] text-[#71817D] block truncate font-medium">
               Target Term
             </span>
           </div>
 
           {/* 3. Minimum Investment */}
-          <div className="p-2.5 sm:p-3 rounded-lg bg-[#f0f8fe] border border-[#d4e5f5] flex flex-col justify-between">
-            <span className="text-[10px] uppercase tracking-wider text-[#78716C] font-semibold block truncate">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#F6FAF8] border border-[#E4EEEA] flex flex-col justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-[#71817D] font-bold block truncate">
               Entry Ticket
             </span>
-            <span className="font-mono text-base font-bold text-[#1C1917] block tabular-nums my-0.5 truncate">
+            <span className="font-mono text-base font-bold text-[#172B2A] block tabular-nums my-0.5 truncate">
               {formatCurrency(property.minimumInvestment)}
             </span>
-            <span className="text-[10px] text-[#1E3A34] font-medium block truncate">
+            <span className="text-[10px] text-[#087F5B] font-bold block truncate">
               100% SPV
             </span>
           </div>
         </div>
 
         {/* Action Buttons with 44px Minimum Touch Targets & Keyboard Accessibility */}
-        <div className="pt-2 flex items-center gap-2">
+        <div className="pt-2 flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => onSelect(property)}
             aria-label={`View details for ${property.title}`}
-            className="flex-1 min-h-[44px] py-2.5 px-3 rounded-lg border border-[#d4e5f5] hover:border-[#1C1917] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] text-[#1C1917] text-xs font-semibold flex items-center justify-center cursor-pointer transition-colors bg-white hover:bg-[#f0f8fe]"
+            className="flex-1 min-h-[44px] py-2.5 px-3 rounded-xl border border-[#E4EEEA] hover:border-[#087F5B] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#087F5B] text-[#172B2A] text-xs font-bold flex items-center justify-center cursor-pointer transition-colors bg-white hover:bg-[#F6FAF8] shadow-2xs"
           >
             See Details
           </button>
@@ -292,10 +292,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             type="button"
             onClick={() => onInvest ? onInvest(property) : onSelect(property)}
             aria-label={isOwnedOrOccupied ? `Manage position in ${property.title}` : `Invest now in ${property.title}`}
-            className={`flex-1 min-h-[44px] py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] ${
+            className={`flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#087F5B] ${
               isOwnedOrOccupied
-                ? 'bg-[#1E3A34] hover:bg-[#142622] text-white'
-                : 'bg-[#1C1917] hover:bg-[#1E3A34] text-white'
+                ? 'bg-[#075B46] hover:bg-[#054636] text-white'
+                : 'bg-[#087F5B] hover:bg-[#075B46] text-white'
             }`}
           >
             <span>{isOwnedOrOccupied ? 'Manage Asset' : 'Invest Now'}</span>

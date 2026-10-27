@@ -15,25 +15,25 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (type) {
       case 'deposit':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#27845D] bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
-            <ArrowDownLeft className="w-2.5 h-2.5" /> Deposit
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#087F5B] bg-[#DDF5EC] border border-[#BCE8D7] px-2 py-0.5 rounded-full">
+            <ArrowDownLeft className="w-2.5 h-2.5 stroke-[2.5]" /> Deposit
           </span>
         );
       case 'withdrawal':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#C24141] bg-red-50 border border-red-200 px-1.5 py-0.2 rounded">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#C24141] bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
             <ArrowUpRight className="w-2.5 h-2.5" /> Withdrawal
           </span>
         );
       case 'investment':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#182D2A] bg-[#EEF1EC] border border-[#DCE4DA] px-1.5 py-0.2 rounded">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#075B46] bg-[#F6FAF8] border border-[#E4EEEA] px-2 py-0.5 rounded-full">
             <Coins className="w-2.5 h-2.5" /> Investment
           </span>
         );
       case 'distribution':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#27845D] bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#087F5B] bg-[#DDF5EC] border border-[#BCE8D7] px-2 py-0.5 rounded-full">
             <RefreshCw className="w-2.5 h-2.5" /> Dividend
           </span>
         );
@@ -46,20 +46,20 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (status) {
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#27845D]">
-            <CheckCircle2 className="w-2.5 h-2.5" /> Completed
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#087F5B]">
+            <CheckCircle2 className="w-3 h-3 text-[#087F5B]" /> Completed
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#B7791F]">
-            <Clock className="w-2.5 h-2.5" /> Pending Review
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600">
+            <Clock className="w-3 h-3" /> Pending Review
           </span>
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#C24141]">
-            <AlertCircle className="w-2.5 h-2.5" /> Declined
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-rose-600">
+            <AlertCircle className="w-3 h-3" /> Declined
           </span>
         );
       default:
@@ -98,7 +98,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               </div>
 
               <div className="text-right shrink-0">
-                <div className={`font-black text-xs tabular-nums ${isNegative ? 'dash-text' : 'text-[#27845D]'}`}>
+                <div className={`font-black text-xs tabular-nums ${isNegative ? 'dash-text' : 'text-[#087F5B]'}`}>
                   {isNegative ? '-' : '+'}
                   {formatCurrency(tx.amount, tx.currency)}
                 </div>
@@ -112,47 +112,47 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
       </div>
 
       {/* Desktop / Tablet Compact Table (>= 640px) */}
-      <div className="hidden sm:block dashboard-table-wrapper border rounded-xl overflow-hidden">
+      <div className="hidden sm:block dashboard-table-wrapper border border-[#E4EEEA] rounded-2xl overflow-hidden bg-white shadow-xs">
         <table className="dashboard-table">
           <thead>
-            <tr>
-              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Type</th>
-              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Description & Reference</th>
-              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Date</th>
-              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Method</th>
-              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px]">Status</th>
-              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px] text-right">Amount</th>
-              <th className="py-2 px-2.5 text-[10px] sm:text-[10.5px] text-right">Balance After</th>
+            <tr className="bg-[#F6FAF8]">
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Type</th>
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Description & Reference</th>
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Date</th>
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Method</th>
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Status</th>
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-right text-[#71817D]">Amount</th>
+              <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-right text-[#71817D]">Balance After</th>
             </tr>
           </thead>
-          <tbody className="divide-y border-inherit/30">
+          <tbody className="divide-y divide-[#E4EEEA]">
             {displayList.map((tx) => {
               const isNegative = tx.type === 'withdrawal' || tx.type === 'investment';
               return (
-                <tr key={tx.id} className="hover:opacity-85 transition-opacity">
-                  <td className="py-2 px-2.5">{getTypeBadge(tx.type)}</td>
-                  <td className="py-2 px-2.5 max-w-xs">
-                    <span className="font-semibold dash-text block text-xs truncate">
+                <tr key={tx.id} className="hover:bg-[#F6FAF8]/70 transition-colors">
+                  <td className="py-2.5 px-3">{getTypeBadge(tx.type)}</td>
+                  <td className="py-2.5 px-3 max-w-xs">
+                    <span className="font-semibold text-[#172B2A] block text-xs truncate">
                       {tx.description}
                     </span>
-                    <span className="font-mono text-[10px] dash-muted">
+                    <span className="font-mono text-[10px] text-[#71817D]">
                       Ref: {tx.reference} {tx.txHash ? `· ${formatShortHash(tx.txHash)}` : ''}
                     </span>
                   </td>
-                  <td className="py-2 px-2.5 text-xs dash-muted whitespace-nowrap font-mono">
+                  <td className="py-2.5 px-3 text-xs text-[#71817D] whitespace-nowrap font-mono">
                     {formatDate(tx.createdAt)}
                   </td>
-                  <td className="py-2 px-2.5 text-xs dash-text font-medium whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-xs text-[#172B2A] font-medium whitespace-nowrap">
                     {tx.paymentMethod}
                   </td>
-                  <td className="py-2 px-2.5">{getStatusBadge(tx.status)}</td>
-                  <td className="py-2 px-2.5 text-right font-bold font-mono tabular-nums text-xs sm:text-[13px] whitespace-nowrap">
-                    <span className={isNegative ? 'dash-text' : 'text-[#27845D]'}>
+                  <td className="py-2.5 px-3">{getStatusBadge(tx.status)}</td>
+                  <td className="py-2.5 px-3 text-right font-bold font-mono tabular-nums text-xs sm:text-[13px] whitespace-nowrap">
+                    <span className={isNegative ? 'text-[#172B2A]' : 'text-[#087F5B]'}>
                       {isNegative ? '-' : '+'}
                       {formatCurrency(tx.amount, tx.currency)}
                     </span>
                   </td>
-                  <td className="py-2 px-2.5 text-right font-medium font-mono tabular-nums text-xs dash-muted whitespace-nowrap">
+                  <td className="py-2.5 px-3 text-right font-medium font-mono tabular-nums text-xs text-[#71817D] whitespace-nowrap">
                     {formatCurrency(tx.balanceAfter)}
                   </td>
                 </tr>

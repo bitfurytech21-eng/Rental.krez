@@ -22,13 +22,20 @@ import {
 import {
   emailTemplates,
   sendEmail,
+  executeEmailCommand,
+  handleEmailWebhook,
+  retryFailedEmail,
   getEmailLogs,
+  clearEmailLogs,
   getEmailSettings,
   updateEmailSettings,
+  getAutomationRules,
+  updateAutomationRule,
   generateExpiringToken,
   verifyAndConsumeToken,
   verifySmtpConnection,
-  getSmtpCredentials
+  getSmtpCredentials,
+  getProviderConfig
 } from './emailService';
 import crypto from 'crypto';
 
@@ -2481,7 +2488,7 @@ router.delete('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, r
 
 /**
  * GET /api/v1/admin/email/templates
- * List all available email templates with descriptions, categories, and variables
+ * List all available email templates with descriptions, categories, commands, and variables
  */
 router.get('/admin/email/templates', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   res.json({
@@ -2492,6 +2499,8 @@ router.get('/admin/email/templates', requireAdmin, (req: AuthenticatedRequest, r
       category: t.category,
       description: t.description,
       defaultSubject: t.defaultSubject,
+      supportedCommand: t.supportedCommand,
+      defaultVariables: t.defaultVariables,
       sampleData: t.sampleData
     })),
     requestId: req.id
@@ -2522,8 +2531,8 @@ router.get('/admin/email/preview/:templateId', requireAdmin, (req: Authenticated
     subject = subject.replace(new RegExp(`{{${k}}}`, 'g'), String(customData[k] || ''));
   });
 
-  const html = template.generateHtml(customData);
-  const text = template.generateText(customData);
+  const html = template.generateHtml(customData, settings);
+  const text = template.generateText(customData, settings);
 
   res.json({
     success: true,
@@ -2531,13 +2540,54 @@ router.get('/admin/email/preview/:templateId', requireAdmin, (req: Authenticated
       id: template.id,
       name: template.name,
       category: template.category,
+      supportedCommand: template.supportedCommand,
       subject,
       html,
       text,
-      sampleData: template.sampleData
+      sampleData: template.sampleData,
+      defaultVariables: template.defaultVariables
     },
     requestId: req.id
   });
+});
+
+/**
+ * POST /api/v1/admin/email/execute-command
+ * Executes an authenticated command-based email notification
+ */
+router.post('/admin/email/execute-command', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { command, recipient, payload, idempotencyKey, eventId } = req.body || {};
+
+  if (!command || !recipient) {
+    return res.status(400).json({
+      success: false,
+      error: 'Command name and recipient email address are required.',
+      requestId: req.id
+    });
+  }
+
+  try {
+    const result = await executeEmailCommand({
+      command,
+      recipient,
+      payload,
+      idempotencyKey,
+      eventId,
+      callerRole: req.user?.role || 'admin'
+    });
+
+    res.json({
+      success: result.success,
+      data: result,
+      requestId: req.id
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: err.message || `Failed to execute email command '${command}'.`,
+      requestId: req.id
+    });
+  }
 });
 
 /**
@@ -2590,30 +2640,123 @@ router.post('/admin/email/send-test', requireAdmin, async (req: AuthenticatedReq
 });
 
 /**
- * GET /api/v1/admin/email/logs
- * Retrieve recent email transmission audit logs
+ * GET /api/v1/admin/email/automations
+ * Retrieve all event-driven email automation trigger rules
  */
-router.get('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/automations', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
-    data: getEmailLogs(),
+    data: getAutomationRules(),
+    requestId: req.id
+  });
+});
+
+/**
+ * PATCH /api/v1/admin/email/automations/:id
+ * Toggle or update an event automation rule
+ */
+router.patch('/admin/email/automations/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  try {
+    const updated = updateAutomationRule(id, req.body || {});
+    res.json({
+      success: true,
+      data: updated,
+      message: `Automation rule '${id}' updated.`,
+      requestId: req.id
+    });
+  } catch (err: any) {
+    res.status(404).json({
+      success: false,
+      error: err.message || 'Automation rule not found.',
+      requestId: req.id
+    });
+  }
+});
+
+/**
+ * GET /api/v1/admin/email/logs
+ * Retrieve recent email transmission activity logs
+ */
+router.get('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { recipient, status, templateId, search } = req.query;
+  let logs = getEmailLogs();
+
+  if (recipient && typeof recipient === 'string') {
+    logs = logs.filter(l => l.recipient.toLowerCase().includes(recipient.toLowerCase()));
+  }
+  if (status && typeof status === 'string' && status !== 'all') {
+    logs = logs.filter(l => l.status === status);
+  }
+  if (templateId && typeof templateId === 'string' && templateId !== 'all') {
+    logs = logs.filter(l => l.templateId === templateId);
+  }
+  if (search && typeof search === 'string') {
+    const q = search.toLowerCase();
+    logs = logs.filter(l => 
+      l.recipient.toLowerCase().includes(q) || 
+      l.subject.toLowerCase().includes(q) ||
+      (l.commandName && l.commandName.toLowerCase().includes(q)) ||
+      (l.reference && l.reference.toLowerCase().includes(q))
+    );
+  }
+
+  res.json({
+    success: true,
+    data: logs,
+    requestId: req.id
+  });
+});
+
+/**
+ * POST /api/v1/admin/email/logs/:id/retry
+ * Safely retry failed message delivery
+ */
+router.post('/admin/email/logs/:id/retry', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  try {
+    const result = await retryFailedEmail(id);
+    res.json({
+      success: result.success,
+      data: result.log,
+      message: result.success ? `Email ${id} retried successfully.` : `Retry failed: ${result.error}`,
+      requestId: req.id
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to retry email delivery.',
+      requestId: req.id
+    });
+  }
+});
+
+/**
+ * DELETE /api/v1/admin/email/logs
+ * Clear in-memory log buffer
+ */
+router.delete('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  clearEmailLogs();
+  res.json({
+    success: true,
+    message: 'Email audit activity logs cleared.',
     requestId: req.id
   });
 });
 
 /**
  * GET /api/v1/admin/email/settings
- * Retrieve sender metadata, support info, and SMTP transport status
+ * Retrieve sender metadata, support info, and provider transport status
  */
 router.get('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const isSmtp = Boolean(process.env.SMTP_HOST);
+  const prov = getProviderConfig();
   res.json({
     success: true,
     data: {
       ...getEmailSettings(),
-      smtpConfigured: isSmtp,
-      smtpHost: process.env.SMTP_HOST || 'Sandbox Engine (Instant Simulated Delivery)',
-      smtpPort: process.env.SMTP_PORT || 'N/A'
+      providerType: prov.type,
+      providerName: prov.name,
+      providerConfigured: prov.configured
     },
     requestId: req.id
   });
@@ -2637,7 +2780,7 @@ router.post('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, r
 
 /**
  * GET /api/v1/admin/email/verify-smtp
- * Test real SMTP connection, authentication, and return SPF/DMARC recommendations
+ * Test provider connection and return SPF/DMARC/DKIM recommendations
  */
 router.get('/admin/email/verify-smtp', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const result = await verifySmtpConnection();
@@ -2645,6 +2788,29 @@ router.get('/admin/email/verify-smtp', requireAdmin, async (req: AuthenticatedRe
     success: result.connected,
     data: result,
     requestId: req.id
+  });
+});
+
+router.get('/admin/email/verify-provider', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const result = await verifySmtpConnection();
+  res.json({
+    success: result.connected,
+    data: result,
+    requestId: req.id
+  });
+});
+
+/**
+ * POST /api/v1/webhooks/email
+ * Ingest delivery status webhooks from Resend, SendGrid, or local simulation
+ */
+router.post('/webhooks/email', (req, res) => {
+  const result = handleEmailWebhook(req.body);
+  res.json({
+    success: true,
+    processed: result.processed,
+    updatedCount: result.updatedCount,
+    timestamp: new Date().toISOString()
   });
 });
 

@@ -605,11 +605,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* 1. OVERVIEW TAB */}
             {activeTab === 'overview' && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                {/* Welcome Back Widget - Compact & Professional */}
-                <div className="bg-[#182D2A] text-white p-3 sm:p-3.5 rounded-xl shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 relative overflow-hidden border border-[#24423C]">
-                  <div className="flex items-center gap-3 z-10 min-w-0">
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#B7E36A] text-[#182D2A] flex items-center justify-center font-bold text-xs shadow-2xs shrink-0 overflow-hidden">
+              <div className="space-y-4 animate-in fade-in duration-200">
+                {/* Welcome Back Widget - Finora Deep Emerald Finish */}
+                <div className="bg-gradient-to-r from-[#075B46] via-[#087F5B] to-[#0A8F67] text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-[0_6px_24px_rgba(8,127,91,0.15)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative overflow-hidden border border-[#087F5B]/30">
+                  <div className="flex items-center gap-3.5 z-10 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#DDF5EC] text-[#075B46] flex items-center justify-center font-bold text-sm shadow-xs shrink-0 overflow-hidden">
                       {user.avatarUrl ? (
                         <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
                       ) : (
@@ -617,20 +617,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[8.5px] font-semibold uppercase tracking-wider text-emerald-300">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#DDF5EC]">
                           Active Investor Portal
                         </span>
                         {user.kycStatus === 'verified' && (
-                          <span className="inline-flex items-center gap-0.5 text-[8px] font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 px-1 py-0.2 rounded">
+                          <span className="inline-flex items-center gap-0.5 text-[8.5px] font-semibold text-[#075B46] bg-[#DDF5EC] px-1.5 py-0.2 rounded-full shadow-2xs">
                             <ShieldCheck className="w-2.5 h-2.5" /> Verified
                           </span>
                         )}
                       </div>
-                      <h2 className="text-sm sm:text-base font-bold text-white tracking-tight truncate leading-tight">
+                      <h2 className="text-base sm:text-lg font-bold text-white tracking-tight truncate leading-tight">
                         Welcome back, {user.fullName}
                       </h2>
-                      <p className="text-[10.5px] text-[#A0A8A5] mt-0.5 leading-tight truncate sm:whitespace-normal">
+                      <p className="text-xs text-[#DDF5EC]/85 mt-0.5 leading-normal truncate sm:whitespace-normal font-medium">
                         Your real estate portfolio is generating monthly rental distributions across {investments.length} notarized properties.
                       </p>
                     </div>
@@ -639,7 +639,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="flex items-center gap-2 z-10 shrink-0">
                     <button
                       onClick={() => setActiveTab('properties')}
-                      className="bg-white/10 hover:bg-white/15 text-white border border-white/20 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      className="bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer backdrop-blur-xs shadow-2xs"
                     >
                       Explore Properties
                     </button>
@@ -650,17 +650,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   const unreadList = notifications.filter(n => !n.read);
                   const firstUnread = unreadList[0];
                   return (
-                    <div className="bg-[#EEF1EC] border border-[#E3E8E3] px-3 py-1.5 rounded-lg flex items-center justify-between gap-2.5 shadow-2xs text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-5 h-5 rounded bg-white text-[#27845D] flex items-center justify-center shrink-0 shadow-2xs">
+                    <div className="bg-[#DDF5EC]/60 border border-[#BCE8D7] px-3.5 py-2 rounded-xl sm:rounded-2xl flex items-center justify-between gap-3 shadow-2xs text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-6 h-6 rounded-lg bg-[#087F5B] text-white flex items-center justify-center shrink-0 shadow-2xs">
                           <Bell className="w-3 h-3" />
                         </div>
-                        <div className="text-[11px] leading-tight truncate">
-                          <span className="font-bold text-[#18211F] mr-1">{firstUnread.title}:</span>
-                          <span className="text-[#69736F]">{firstUnread.message}</span>
+                        <div className="text-xs leading-tight truncate">
+                          <span className="font-bold text-[#172B2A] mr-1.5">{firstUnread.title}:</span>
+                          <span className="text-[#71817D]">{firstUnread.message}</span>
                         </div>
                       </div>
-                      <button onClick={() => setActiveTab('notifications')} className="text-[10.5px] font-bold text-[#182D2A] hover:underline whitespace-nowrap shrink-0">
+                      <button onClick={() => setActiveTab('notifications')} className="text-xs font-bold text-[#087F5B] hover:underline whitespace-nowrap shrink-0">
                         View Unread ({unreadList.length})
                       </button>
                     </div>
@@ -673,15 +673,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   onWithdraw={() => setIsWithdrawOpen(true)}
                 />
 
-                <div className="bg-white p-3 sm:p-3.5 rounded-xl border border-[#E3E8E3] shadow-2xs space-y-2.5">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm space-y-3">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="text-xs sm:text-sm font-bold text-[#18211F]">Your Tokenized Assets</h3>
-                      <p className="text-[10px] text-[#69736F]">Active real estate properties generating monthly rental yield</p>
+                      <h3 className="text-sm sm:text-base font-bold text-[#172B2A]">Your Tokenized Assets</h3>
+                      <p className="text-xs text-[#71817D]">Active real estate properties generating monthly rental yield</p>
                     </div>
                     <button
                       onClick={() => setActiveTab('portfolio')}
-                      className="text-xs font-semibold text-[#182D2A] hover:text-[#27845D] flex items-center gap-1 cursor-pointer"
+                      className="text-xs font-semibold text-[#087F5B] hover:text-[#075B46] flex items-center gap-1 cursor-pointer"
                     >
                       View Full Portfolio <ArrowRight className="w-3 h-3" />
                     </button>
@@ -694,15 +694,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
                 </div>
 
-                <div className="bg-white p-3 sm:p-3.5 rounded-xl border border-[#E3E8E3] shadow-2xs space-y-2.5">
+                <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm space-y-3">
                   <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="text-xs sm:text-sm font-bold text-[#18211F]">Recent Transactions & Distributions</h3>
-                      <p className="text-[10px] text-[#69736F]">Verifiable double-entry ledger record</p>
+                      <h3 className="text-sm sm:text-base font-bold text-[#172B2A]">Recent Transactions & Distributions</h3>
+                      <p className="text-xs text-[#71817D]">Verifiable double-entry ledger record</p>
                     </div>
                     <button
                       onClick={() => setActiveTab('transactions')}
-                      className="text-xs font-semibold text-[#182D2A] hover:text-[#27845D] flex items-center gap-1 cursor-pointer"
+                      className="text-xs font-semibold text-[#087F5B] hover:text-[#075B46] flex items-center gap-1 cursor-pointer"
                     >
                       All Transactions ({transactions.length}) <ArrowRight className="w-3 h-3" />
                     </button>
@@ -714,15 +714,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             )}
 
             {/* 2. MY PORTFOLIO TAB */}
-            {/* 2. MY PORTFOLIO TAB */}
             {activeTab === 'portfolio' && (
-              <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#E3E8E3] shadow-2xs space-y-3 animate-in fade-in duration-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[#E3E8E3]">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4EEEA]">
                   <div>
-                    <h2 className="text-sm sm:text-base font-bold text-[#18211F]">My Property Investments</h2>
-                    <p className="text-[10px] sm:text-[11px] text-[#69736F]">Owned fractional property units, circular yield tracking, and notarized contracts.</p>
+                    <h2 className="text-base sm:text-lg font-bold text-[#172B2A]">My Property Investments</h2>
+                    <p className="text-xs text-[#71817D]">Owned fractional property units, circular yield tracking, and notarized contracts.</p>
                   </div>
-                  <button onClick={() => setActiveTab('properties')} className="btn btn-primary btn-sm text-xs font-semibold py-1.5 px-3 cursor-pointer">
+                  <button onClick={() => setActiveTab('properties')} className="btn btn-primary btn-sm text-xs font-semibold py-2 px-4 rounded-xl cursor-pointer">
                     Browse Real Estate
                   </button>
                 </div>
@@ -745,13 +744,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* 3. EXPLORE PROPERTIES TAB */}
             {activeTab === 'properties' && (
-              <div className="space-y-3 animate-in fade-in duration-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3 sm:p-3.5 rounded-xl border border-[#E3E8E3] shadow-2xs">
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm">
                   <div>
-                    <h2 className="text-sm sm:text-base font-bold text-[#18211F]">Investment Marketplace</h2>
-                    <p className="text-[10px] sm:text-[11px] text-[#69736F]">Institutional-grade European real estate tokenized from €100/unit.</p>
+                    <h2 className="text-base sm:text-lg font-bold text-[#172B2A]">Investment Marketplace</h2>
+                    <p className="text-xs text-[#71817D]">Institutional-grade European real estate tokenized from €100/unit.</p>
                   </div>
-                  <button onClick={onExploreProperties} className="btn btn-secondary btn-sm text-xs font-semibold py-1.5 px-3">
+                  <button onClick={onExploreProperties} className="btn btn-secondary btn-sm text-xs font-semibold py-2 px-4 rounded-xl">
                     Open Full Marketplace
                   </button>
                 </div>
@@ -776,10 +775,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* 4. TRANSACTIONS TAB */}
             {activeTab === 'transactions' && (
-              <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#E3E8E3] shadow-2xs space-y-3 animate-in fade-in duration-200">
-                <div className="pb-2 border-b border-[#E3E8E3]">
-                  <h2 className="text-sm sm:text-base font-bold text-[#18211F]">Transactions & Audit Ledger</h2>
-                  <p className="text-[10px] sm:text-[11px] text-[#69736F]">Immutable history of all deposits, withdrawals, property investments, and dividends.</p>
+              <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm space-y-4 animate-in fade-in duration-200">
+                <div className="pb-3 border-b border-[#E4EEEA]">
+                  <h2 className="text-base sm:text-lg font-bold text-[#172B2A]">Transactions & Audit Ledger</h2>
+                  <p className="text-xs text-[#71817D]">Immutable history of all deposits, withdrawals, property investments, and dividends.</p>
                 </div>
                 <TransactionTable transactions={transactions} />
               </div>
@@ -820,63 +819,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
 
                   {/* Action Cards: Deposit, Withdrawal & Document Upload */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Deposit Action Card */}
-                    <div className="p-3 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between space-y-2 text-left">
-                      <div className="space-y-1">
-                        <div className="w-7 h-7 rounded-md bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shadow-2xs">
-                          <ArrowDownLeft className="w-3.5 h-3.5" />
+                    <div className="p-4 rounded-2xl bg-[#F6FAF8] border border-[#E4EEEA] flex flex-col justify-between space-y-3 text-left">
+                      <div className="space-y-1.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#087F5B] text-white flex items-center justify-center font-bold shadow-2xs">
+                          <ArrowDownLeft className="w-4 h-4" />
                         </div>
-                        <h3 className="text-xs sm:text-sm font-bold text-[#18211F]">Deposit Capital</h3>
-                        <p className="text-[10.5px] text-[#69736F] leading-relaxed">
+                        <h3 className="text-sm font-bold text-[#172B2A]">Deposit Capital</h3>
+                        <p className="text-xs text-[#71817D] leading-relaxed">
                           Add funds via SEPA wire transfer (CaixaBank Escrow) or crypto stablecoins (USDT, USDC, ETH).
                         </p>
                       </div>
                       <button
                         onClick={() => setIsDepositOpen(true)}
-                        className="btn btn-primary text-xs font-semibold py-1.5 px-3 flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                        className="btn btn-primary text-xs font-semibold py-2 px-3.5 flex items-center justify-center gap-1.5 rounded-xl shadow-xs cursor-pointer"
                       >
-                        <ArrowDownLeft className="w-3 h-3 text-[#B7E36A]" />
+                        <ArrowDownLeft className="w-3.5 h-3.5 text-white" />
                         <span>Deposit Funds</span>
                       </button>
                     </div>
 
                     {/* Withdrawal Action Card */}
-                    <div className="p-3 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between space-y-2 text-left">
-                      <div className="space-y-1">
-                        <div className="w-7 h-7 rounded-md bg-slate-200 text-slate-700 flex items-center justify-center font-bold">
-                          <ArrowUpRight className="w-3.5 h-3.5" />
+                    <div className="p-4 rounded-2xl bg-[#F6FAF8] border border-[#E4EEEA] flex flex-col justify-between space-y-3 text-left">
+                      <div className="space-y-1.5">
+                        <div className="w-8 h-8 rounded-xl bg-white text-[#172B2A] border border-[#E4EEEA] flex items-center justify-center font-bold shadow-2xs">
+                          <ArrowUpRight className="w-4 h-4 text-[#087F5B]" />
                         </div>
-                        <h3 className="text-xs sm:text-sm font-bold text-[#18211F]">Withdraw Funds</h3>
-                        <p className="text-[10.5px] text-[#69736F] leading-relaxed">
+                        <h3 className="text-sm font-bold text-[#172B2A]">Withdraw Funds</h3>
+                        <p className="text-xs text-[#71817D] leading-relaxed">
                           Redeem your uninvested liquid capital directly to your verified European bank IBAN or crypto wallet.
                         </p>
                       </div>
                       <button
                         onClick={() => setIsWithdrawOpen(true)}
-                        className="btn btn-secondary text-xs font-semibold py-1.5 px-3 border-[#CBD5E1] bg-white hover:bg-slate-50 text-[#18211F] flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                        className="btn btn-secondary text-xs font-semibold py-2 px-3.5 border-[#E4EEEA] bg-white hover:bg-[#F6FAF8] text-[#172B2A] flex items-center justify-center gap-1.5 rounded-xl cursor-pointer shadow-2xs"
                       >
-                        <ArrowUpRight className="w-3 h-3 text-[#27845D]" />
+                        <ArrowUpRight className="w-3.5 h-3.5 text-[#087F5B]" />
                         <span>Request Withdrawal</span>
                       </button>
                     </div>
 
                     {/* Profile Settings Card */}
-                    <div className="p-3 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col justify-between space-y-2 text-left">
-                      <div className="space-y-1">
-                        <div className="w-7 h-7 rounded-md bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shadow-2xs">
-                          <User className="w-3.5 h-3.5" />
+                    <div className="p-4 rounded-2xl bg-[#F6FAF8] border border-[#E4EEEA] flex flex-col justify-between space-y-3 text-left">
+                      <div className="space-y-1.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#DDF5EC] text-[#075B46] flex items-center justify-center font-bold shadow-2xs">
+                          <User className="w-4 h-4" />
                         </div>
-                        <h3 className="text-xs sm:text-sm font-bold text-[#18211F]">Profile Settings</h3>
-                        <p className="text-[10.5px] text-[#69736F] leading-relaxed">
+                        <h3 className="text-sm font-bold text-[#172B2A]">Profile Settings</h3>
+                        <p className="text-xs text-[#71817D] leading-relaxed">
                           Manage your investor profile, contact information, password, and security preferences.
                         </p>
                       </div>
                       <button
                         onClick={() => setActiveTab('verification')}
-                        className="btn btn-secondary text-xs font-semibold py-1.5 px-3 border-[#CBD5E1] bg-white hover:bg-slate-50 text-[#18211F] flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                        className="btn btn-secondary text-xs font-semibold py-2 px-3.5 border-[#E4EEEA] bg-white hover:bg-[#F6FAF8] text-[#172B2A] flex items-center justify-center gap-1.5 rounded-xl cursor-pointer shadow-2xs"
                       >
-                        <User className="w-3 h-3 text-[#27845D]" />
+                        <User className="w-3.5 h-3.5 text-[#087F5B]" />
                         <span>Profile & KYC</span>
                       </button>
                     </div>

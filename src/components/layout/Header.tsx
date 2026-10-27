@@ -186,8 +186,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             </button>
 
             {insightsDropdownOpen && (
-              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-[#d4e5f5] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-4 py-2 border-b border-[#F0EBE1] text-[10px] uppercase tracking-widest font-bold text-[#78736B]">
+              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-[#E4EEEA] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-4 py-2 border-b border-[#E4EEEA] text-[10px] uppercase tracking-widest font-bold text-[#71817D]">
                   Research &amp; Intelligence
                 </div>
                 {insightsLinks.map((item) => (
@@ -195,12 +195,12 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                     key={item.path}
                     type="button"
                     onClick={() => handleNavClick(item.path)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-[#f0f8fe] transition-colors cursor-pointer group"
+                    className="w-full text-left px-4 py-2.5 hover:bg-[#F6FAF8] transition-colors cursor-pointer group"
                   >
-                    <div className="text-xs font-semibold text-[#1C1917] group-hover:text-[#1E3A34]">
+                    <div className="text-xs font-semibold text-[#172B2A] group-hover:text-[#087F5B]">
                       {item.label}
                     </div>
-                    <div className="text-[11px] text-[#78736B] line-clamp-1 mt-0.5">
+                    <div className="text-[11px] text-[#71817D] line-clamp-1 mt-0.5">
                       {item.desc}
                     </div>
                   </button>
@@ -229,20 +229,20 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             </button>
 
             {moreDropdownOpen && (
-              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-[#d4e5f5] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-4 py-2 border-b border-[#F0EBE1] text-[10px] uppercase tracking-widest font-bold text-[#78736B]">
+              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-[#E4EEEA] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-4 py-2 border-b border-[#E4EEEA] text-[10px] uppercase tracking-widest font-bold text-[#71817D]">
                   Private Advisory
                 </div>
                 {secondaryMenuLinks.map((item) => (
                   <button
                     key={item.path}
                     onClick={() => handleNavClick(item.path)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-[#f0f8fe] transition-colors cursor-pointer group"
+                    className="w-full text-left px-4 py-2.5 hover:bg-[#F6FAF8] transition-colors cursor-pointer group"
                   >
-                    <div className="text-xs font-semibold text-[#1C1917] group-hover:text-[#1E3A34]">
+                    <div className="text-xs font-semibold text-[#172B2A] group-hover:text-[#087F5B]">
                       {item.label}
                     </div>
-                    <div className="text-[11px] text-[#78736B] line-clamp-1 mt-0.5">
+                    <div className="text-[11px] text-[#71817D] line-clamp-1 mt-0.5">
                       {item.desc}
                     </div>
                   </button>
@@ -353,7 +353,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
           <div className={`${
             isDark 
               ? 'bg-[#0B1412] text-white border-[#1E2B27]' 
-              : 'bg-[#f0f8fe] text-[#1C1917] border-[#d4e5f5]'
+              : 'bg-[#EAF8F4] text-[#172B2A] border-[#E4EEEA]'
           } border-b shadow-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 space-y-5 text-left`}>
 
             {/* Primary Mobile Links */}

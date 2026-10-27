@@ -41,34 +41,34 @@
    POLISHED DASHBOARD BACKGROUND SYSTEM (LIGHT & DARK MODES)
    ========================================================================== */
 
-/* 1. Default Light Mode: Cohesive #f0f8fe base with architectural depth & subtle layering */
+/* 1. Default Light Mode: Finora-inspired soft aqua/mint canvas with clean white cards and emerald accents */
 :root,
 .dashboard-light {
-  --dash-bg: #f0f8fe;
-  --dash-bg-gradient: radial-gradient(1200px circle at 50% -80px, rgba(212, 235, 253, 0.55) 0%, rgba(240, 248, 254, 0.96) 60%, #f0f8fe 100%);
-  --dash-sidebar: #ffffff;
-  --dash-sidebar-border: #d4e5f5;
-  --dash-sidebar-card: #f2f8fd;
-  --dash-sidebar-active-bg: #1E3A34;
-  --dash-sidebar-active-text: #ffffff;
-  --dash-sidebar-hover-bg: #eaf4fd;
-  --dash-header: rgba(255, 255, 255, 0.94);
-  --dash-header-border: #d4e5f5;
-  --dash-header-controls: #f0f8fe;
-  --dash-header-controls-border: #d4e5f5;
-  --dash-card: #ffffff;
-  --dash-card-border: #d4e5f5;
-  --dash-card-hover: #f7fbff;
-  --dash-card-shadow: 0 1px 3px rgba(0, 40, 74, 0.04), 0 10px 24px -8px rgba(0, 40, 74, 0.04);
-  --dash-inner: #f4f9fd;
-  --dash-inner-border: #dbeaf7;
-  --dash-text: #0f172a;
-  --dash-text-secondary: #475569;
-  --dash-text-muted: #64748b;
-  --dash-hover: rgba(240, 248, 254, 0.85);
-  --dash-accent: #1E3A34;
-  --dash-accent-gold: #c59b4c;
-  --dash-highlight: #e9f4fd;
+  --dash-bg: #EAF8F4;
+  --dash-bg-gradient: radial-gradient(1200px circle at 50% -80px, rgba(221, 245, 236, 0.75) 0%, rgba(234, 248, 244, 0.98) 60%, #EAF8F4 100%);
+  --dash-sidebar: #FFFFFF;
+  --dash-sidebar-border: #E4EEEA;
+  --dash-sidebar-card: #F6FAF8;
+  --dash-sidebar-active-bg: #087F5B;
+  --dash-sidebar-active-text: #FFFFFF;
+  --dash-sidebar-hover-bg: #EAF8F4;
+  --dash-header: rgba(255, 255, 255, 0.95);
+  --dash-header-border: #E4EEEA;
+  --dash-header-controls: #F6FAF8;
+  --dash-header-controls-border: #E4EEEA;
+  --dash-card: #FFFFFF;
+  --dash-card-border: #E4EEEA;
+  --dash-card-hover: #F6FAF8;
+  --dash-card-shadow: 0 4px 20px -2px rgba(8, 127, 91, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --dash-inner: #F6FAF8;
+  --dash-inner-border: #E4EEEA;
+  --dash-text: #172B2A;
+  --dash-text-secondary: #71817D;
+  --dash-text-muted: #8EA09B;
+  --dash-hover: rgba(234, 248, 244, 0.85);
+  --dash-accent: #087F5B;
+  --dash-accent-gold: #075B46;
+  --dash-highlight: #DDF5EC;
 }
 
 /* 2. Default Dark Mode: Cohesive midnight obsidian-slate foundation with subtle ambient depth */
@@ -482,26 +482,26 @@ html, body, #root {
 }
 
 .btn-primary {
-  background: #1E3A34;
+  background: #087F5B;
   color: #ffffff;
-  border-color: #1E3A34;
-  box-shadow: 0 1px 3px rgba(30, 58, 52, 0.16);
+  border-color: #087F5B;
+  box-shadow: 0 2px 6px rgba(8, 127, 91, 0.2);
 }
 
 .btn-primary:hover {
-  background: #152B26;
-  border-color: #152B26;
-  box-shadow: 0 4px 12px rgba(30, 58, 52, 0.22);
+  background: #075B46;
+  border-color: #075B46;
+  box-shadow: 0 4px 14px rgba(8, 127, 91, 0.28);
 }
 
 .btn-accent {
-  background: #2C534A;
+  background: #075B46;
   color: #ffffff;
-  border-color: #2C534A;
+  border-color: #075B46;
 }
 
 .btn-accent:hover {
-  background: #22433C;
+  background: #054636;
 }
 
 .btn-secondary {

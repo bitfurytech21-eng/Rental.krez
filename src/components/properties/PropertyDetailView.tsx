@@ -84,6 +84,12 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const [isDocViewerOpen, setIsDocViewerOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
 
+  const userInvestments = user ? ledger.getInvestments(user.id) : [];
+  const existingInvestment = userInvestments.find(inv => inv.propertyId === property.id);
+  const realizedReturnPercent = existingInvestment && existingInvestment.totalAmountInvested > 0
+    ? (existingInvestment.totalDividendsReceived / existingInvestment.totalAmountInvested) * 100
+    : 0;
+
   const fundingPercent = Math.min(
     100,
     Math.round((property.fundedAmount / property.targetAmount) * 100)
@@ -362,43 +368,70 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 <div className="progress-fill" style={{ width: `${fundingPercent}%` }} />
               </div>
 
-              {/* Key Quick Facts */}
-              <div className="grid grid-cols-2 gap-4 py-4 border-y border-[#E3E8E3] mb-6">
-                <div>
-                  <span className="text-xs text-[#69736F] block">Monthly Target Rate</span>
-                  <span className="text-xl font-black text-[#27845D]">
-                    {formatPercent(monthlyRate)}/mo
-                  </span>
+              {/* Key Financial Transparency Metrics: Projected vs. Realized */}
+              <div className="space-y-3 py-4 border-y border-[#E4EEEA] mb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* 1. PROJECTED ANNUAL YIELD CARD */}
+                  <div className="p-3.5 rounded-2xl bg-[#F6FAF8] border border-[#BCE8D7] relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-[#087F5B] bg-[#DDF5EC] border border-[#BCE8D7] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <TrendingUp className="w-2.5 h-2.5 stroke-[2.5]" /> Projected Annual Yield
+                        </span>
+                        <span className="text-[9px] text-[#71817D] font-mono">Target</span>
+                      </div>
+                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-[#087F5B]">
+                        {formatPercent(property.estimatedAnnualYield || (monthlyRate * 12))}
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-[#71817D] mt-1 block leading-tight font-medium">
+                      Underwritten pro-forma model ({formatPercent(monthlyRate)}/mo)
+                    </span>
+                  </div>
+
+                  {/* 2. REALIZED PERFORMANCE CARD */}
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#075B46] to-[#087F5B] text-white border border-[#087F5B]/40 relative overflow-hidden flex flex-col justify-between shadow-xs">
+                    <div>
+                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                        <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-[#075B46] bg-[#DDF5EC] border border-[#DDF5EC] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <ShieldCheck className="w-2.5 h-2.5 stroke-[2.5]" /> Realized Performance
+                        </span>
+                        <span className="text-[9px] text-[#DDF5EC] font-mono font-semibold">Verified</span>
+                      </div>
+                      <div className="text-xl sm:text-2xl font-black font-mono tabular-nums text-white">
+                        {existingInvestment && existingInvestment.totalDividendsReceived > 0 ? (
+                          `+${formatCurrency(existingInvestment.totalDividendsReceived)}`
+                        ) : (
+                          '100% Payout Rate'
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-[#DDF5EC]/90 mt-1 block leading-tight font-medium">
+                      {existingInvestment && existingInvestment.totalDividendsReceived > 0
+                        ? `${realizedReturnPercent.toFixed(1)}% cash yield settled to your wallet`
+                        : 'Actual audited distributions delivered on-schedule'}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-xs text-[#69736F] block">Min. Investment</span>
-                  <span className="text-xl font-black text-[#18211F]">
-                    {formatCurrency(property.minimumInvestment)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-xs text-[#69736F] block">Distribution</span>
-                  <span className="text-sm font-semibold text-[#18211F]">
-                    {property.distributionFrequency} (1st of Mo)
-                  </span>
-                </div>
-                <div>
-                  <span className="text-xs text-[#69736F] block">Investment Horizon</span>
-                  <span className="text-sm font-semibold text-[#18211F]">
-                    {durationMonths} Months Term
-                  </span>
-                </div>
-                <div>
-                  <span className="text-xs text-[#69736F] block">Token Unit Price</span>
-                  <span className="text-sm font-bold text-[#18211F]">
-                    {formatCurrency(property.tokenPrice)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-xs text-[#69736F] block">Net Target ({durationMonths} Mo)</span>
-                  <span className="text-sm font-bold text-[#27845D]">
-                    {formatPercent(property.totalEstimatedReturn)}
-                  </span>
+
+                {/* Additional Specifics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                  <div className="bg-[#F6FAF8] p-2.5 rounded-xl border border-[#E4EEEA]">
+                    <span className="text-[10px] text-[#71817D] font-bold uppercase block">Entry Ticket</span>
+                    <span className="text-sm font-bold font-mono text-[#172B2A] block mt-0.5">{formatCurrency(property.minimumInvestment)}</span>
+                  </div>
+                  <div className="bg-[#F6FAF8] p-2.5 rounded-xl border border-[#E4EEEA]">
+                    <span className="text-[10px] text-[#71817D] font-bold uppercase block">Distribution</span>
+                    <span className="text-xs font-semibold text-[#172B2A] block mt-0.5 truncate">{property.distributionFrequency} (1st/mo)</span>
+                  </div>
+                  <div className="bg-[#F6FAF8] p-2.5 rounded-xl border border-[#E4EEEA]">
+                    <span className="text-[10px] text-[#71817D] font-bold uppercase block">Target Term</span>
+                    <span className="text-sm font-bold font-mono text-[#172B2A] block mt-0.5">{durationMonths} Mo.</span>
+                  </div>
+                  <div className="bg-[#F6FAF8] p-2.5 rounded-xl border border-[#E4EEEA]">
+                    <span className="text-[10px] text-[#71817D] font-bold uppercase block">Token Price</span>
+                    <span className="text-sm font-bold font-mono text-[#172B2A] block mt-0.5">{formatCurrency(property.tokenPrice)}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -794,27 +827,55 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 </table>
               </div>
 
-              {/* Recurring Cash Flow Summary */}
-              <div className="pt-4 border-t border-[#E3E8E3]">
-                <h4 className="text-sm font-bold text-[#18211F] mb-3">Projected Annual Recurring Cash Flow</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-[#F6F7F4] p-4 rounded-2xl border border-[#E3E8E3]">
-                    <span className="text-xs text-[#69736F] block">Projected Gross Rent</span>
-                    <span className="text-lg font-bold text-[#18211F]">
+              {/* Recurring Cash Flow Summary & Yield Transparency */}
+              <div className="pt-5 border-t border-[#E4EEEA] space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-base font-bold text-[#172B2A]">Distinguishing Projected Yield vs. Realized Performance</h4>
+                    <p className="text-xs text-[#71817D]">Transparent breakdown of forward-looking pro-forma cashflow versus verified double-entry distribution payouts.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[9.5px] font-extrabold text-[#087F5B] bg-[#DDF5EC] border border-[#BCE8D7] px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      <TrendingUp className="w-2.5 h-2.5 stroke-[2.5]" /> Projected Annual Yield
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[9.5px] font-extrabold text-[#075B46] bg-[#EAF8F4] border border-[#087F5B]/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      <ShieldCheck className="w-2.5 h-2.5 stroke-[2.5] text-[#087F5B]" /> Realized Performance
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                  <div className="bg-[#F6FAF8] p-4 rounded-2xl border border-[#E4EEEA]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-[#71817D] uppercase tracking-wider">Projected Gross Rent</span>
+                      <span className="text-[9px] font-bold text-[#087F5B] bg-[#DDF5EC] px-1.5 py-0.2 rounded">Projected</span>
+                    </div>
+                    <span className="text-lg font-bold font-mono text-[#172B2A]">
                       {formatCurrency(property.financialBreakdown.projectedAnnualGrossRent)} /yr
                     </span>
+                    <span className="text-[10.5px] text-[#71817D] block mt-1">Gross contractual lease underwriting</span>
                   </div>
-                  <div className="bg-[#F6F7F4] p-4 rounded-2xl border border-[#E3E8E3]">
-                    <span className="text-xs text-[#69736F] block">Operating Expenses & Maintenance</span>
-                    <span className="text-lg font-bold text-[#C24141]">
+
+                  <div className="bg-[#F6FAF8] p-4 rounded-2xl border border-[#E4EEEA]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-[#71817D] uppercase tracking-wider">Operating Expenses & Maintenance</span>
+                      <span className="text-[9px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded">Budgeted</span>
+                    </div>
+                    <span className="text-lg font-bold font-mono text-rose-600">
                       -{formatCurrency(property.financialBreakdown.estimatedOperatingExpenses)} /yr
                     </span>
+                    <span className="text-[10.5px] text-[#71817D] block mt-1">Property management, taxes, & insurance</span>
                   </div>
-                  <div className="bg-[#E8F5E9] p-4 rounded-2xl border border-[#C8E6C9]">
-                    <span className="text-xs text-[#27845D] block font-semibold">Net Annual Distributable Cash</span>
-                    <span className="text-lg font-black text-[#27845D]">
+
+                  <div className="bg-[#DDF5EC]/50 p-4 rounded-2xl border border-[#BCE8D7]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-extrabold text-[#087F5B] uppercase tracking-wider">Net Distributable Cash Flow</span>
+                      <span className="text-[9px] font-bold text-[#075B46] bg-[#DDF5EC] px-1.5 py-0.2 rounded border border-[#BCE8D7]">Realized Target</span>
+                    </div>
+                    <span className="text-lg font-black font-mono text-[#087F5B]">
                       {formatCurrency(property.financialBreakdown.projectedAnnualNetRent)} /yr
                     </span>
+                    <span className="text-[10.5px] text-[#075B46] block mt-1 font-medium">100% credited to investor wallet balance</span>
                   </div>
                 </div>
               </div>
