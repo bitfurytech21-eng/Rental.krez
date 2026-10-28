@@ -22,9 +22,19 @@ import {
   PieChart, ArrowDownLeft, ArrowUpRight, HelpCircle, User, FileText, LayoutDashboard, Coins,
   Share2, Award, CheckCircle2, AlertCircle, ExternalLink, Copy, Check, Menu, X, UploadCloud, LayoutGrid, LogOut,
   Search, ChevronDown, Gift, Users, Send, Mail, QrCode, Globe, CheckCheck, MessageCircle, RefreshCw, Clock,
-  Sun, Moon, Tag
+  Sun, Moon, Tag, Table as TableIcon
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { ColoredPipeline, PipelineStage } from '../visuals/ColoredPipeline';
+import { PortfolioPerformanceChart } from '../visuals/PortfolioPerformanceChart';
+import { AssetAllocationChart } from '../visuals/AssetAllocationChart';
+import { YieldPayoutTrendsChart } from '../visuals/YieldPayoutTrendsChart';
+import { TokenizationArchitectureDiagram } from '../visuals/TokenizationArchitectureDiagram';
+import { YieldDistributionFlowDiagram } from '../visuals/YieldDistributionFlowDiagram';
+import { RechartsPropertyDashboard } from '../visuals/RechartsPropertyDashboard';
+import { SolanaWalletManager } from '../wallet/SolanaWalletManager';
+import { TaxReportGenerator } from '../documents/TaxReportGenerator';
+import { TreasuryConverterModal } from '../dashboard/TreasuryConverterModal';
 
 interface DashboardPageProps {
   defaultTab?: string;
@@ -50,6 +60,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [isDepositOpen, setIsDepositOpen] = useState(defaultTab === 'deposit');
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(defaultTab === 'withdraw');
+  const [isTreasuryConverterOpen, setIsTreasuryConverterOpen] = useState<boolean>(false);
   const [selectedDocInvestment, setSelectedDocInvestment] = useState<any | null>(null);
   const [brochureProperty, setBrochureProperty] = useState<Property | null>(null);
   const [buyModalProperty, setBuyModalProperty] = useState<Property | null>(null);
@@ -242,6 +253,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'verification', label: 'Profile Settings', icon: User },
     { id: 'documents', label: 'Documents', icon: FileText, count: investments.length },
+    { id: 'tax_statements', label: 'Tax & Fiscal Reports', icon: Award },
     { id: 'referrals', label: 'Referrals', icon: Share2 },
     { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter(n => !n.read).length },
     { id: 'support', label: 'Help & Support', icon: HelpCircle },
@@ -667,10 +679,62 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   );
                 })()}
 
+                {/* Account Onboarding & Investment Pipeline */}
+                <ColoredPipeline
+                  title="Investor Account & Investment Lifecycle"
+                  subtitle="Regulated European participatory model progression"
+                  stages={[
+                    {
+                      id: 'stg-1',
+                      title: 'Account Registered',
+                      description: 'Investor profile created and authenticated on L\'Agence platform.',
+                      status: 'completed',
+                      timestamp: 'Verified',
+                      metrics: { label: 'Account Tier', value: 'VIP Client' },
+                    },
+                    {
+                      id: 'stg-2',
+                      title: 'Identity (KYC/AML)',
+                      description: 'Spanish/EU regulatory anti-money laundering verification.',
+                      status: user.kycStatus === 'verified' ? 'completed' : 'active',
+                      timestamp: user.kycStatus === 'verified' ? 'Verified' : 'In Review',
+                      metrics: { label: 'Compliance', value: user.kycStatus === 'verified' ? 'EU Passed' : 'Pending Docs' },
+                    },
+                    {
+                      id: 'stg-3',
+                      title: 'Wallet Funded',
+                      description: 'SEPA bank transfer or crypto deposit cleared in CaixaBank escrow.',
+                      status: user.walletBalance > 0 ? 'completed' : 'pending',
+                      metrics: { label: 'Available Cash', value: formatCurrency(user.walletBalance) },
+                    },
+                    {
+                      id: 'stg-4',
+                      title: 'Asset Tokens Held',
+                      description: 'Notarized SPV property shares allocated to your private wallet.',
+                      status: investments.length > 0 ? 'completed' : 'upcoming',
+                      metrics: { label: 'Holdings', value: `${investments.length} Properties` },
+                    },
+                    {
+                      id: 'stg-5',
+                      title: 'Monthly Yields',
+                      description: 'Automated dividend payouts credited on the 1st of every month.',
+                      status: investments.length > 0 ? 'active' : 'upcoming',
+                      metrics: { label: 'Est. APY', value: '7.8% - 9.2%' },
+                    },
+                  ]}
+                />
+
                 <BalanceCard
                   user={user}
                   onDeposit={() => setIsDepositOpen(true)}
                   onWithdraw={() => setIsWithdrawOpen(true)}
+                />
+
+                {/* Recharts Live Property Analytics & Funding Progress */}
+                <RechartsPropertyDashboard
+                  properties={properties}
+                  investments={investments}
+                  transactions={transactions}
                 />
 
                 <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm space-y-3">
@@ -693,6 +757,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onExploreMore={() => setActiveTab('properties')}
                   />
                 </div>
+
+                {/* Monthly Dividend Yield Trends Chart */}
+                <YieldPayoutTrendsChart />
 
                 <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm space-y-3">
                   <div className="flex justify-between items-center">
@@ -817,6 +884,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     onDeposit={() => setIsDepositOpen(true)}
                     onWithdraw={() => setIsWithdrawOpen(true)}
                   />
+
+                  {/* Solana Wallet & On-Chain Asset Manager */}
+                  <SolanaWalletManager
+                    user={user}
+                    properties={properties}
+                    investments={investments}
+                  />
+
+                  {/* Multi-Currency & FX Crypto Converter Desk Banner */}
+                  <div className="p-4 rounded-2xl bg-[#0F1E1B] text-white flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-[#27845D] text-white flex items-center justify-center font-bold shrink-0">
+                        <RefreshCw className="w-5 h-5 text-[#B7E36A]" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-xs sm:text-sm font-bold text-white">Multi-Currency & FX Crypto Desk</h3>
+                        <p className="text-[11px] text-slate-300">Instant zero-spread conversions across EUR (€), USD ($), GBP (£), CHF, SOL, USDC, and USDT.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsTreasuryConverterOpen(true)}
+                      className="btn btn-primary text-xs font-bold py-2 px-4 shrink-0 cursor-pointer shadow-sm"
+                    >
+                      Open Treasury Desk
+                    </button>
+                  </div>
 
                   {/* Action Cards: Deposit, Withdrawal & Document Upload */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -993,6 +1086,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 7.5 TAX & FISCAL STATEMENTS TAB */}
+            {activeTab === 'tax_statements' && (
+              <div className="animate-in fade-in duration-200">
+                <TaxReportGenerator />
               </div>
             )}
 
@@ -1685,6 +1785,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Treasury FX & Crypto Converter Desk Modal */}
+      {isTreasuryConverterOpen && (
+        <TreasuryConverterModal
+          isOpen={isTreasuryConverterOpen}
+          onClose={() => setIsTreasuryConverterOpen(false)}
+          onSuccessConversion={() => refreshUser()}
+        />
+      )}
+
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, KeyRound, Lock, Smartphone, Laptop, CheckCircle2, AlertTriangle, ArrowRight, BookOpen, Sparkles, HelpCircle } from 'lucide-react';
+import { TokenizationArchitectureDiagram } from '../visuals/TokenizationArchitectureDiagram';
 
 interface InvestmentGuidePageProps {
   onNavigateHome: () => void;
@@ -28,6 +29,9 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
             Inspired by advanced institutional web3 security standards (comparable to Reental's passkey framework), discover how cryptographic passkeys protect your tokenized property portfolio against phishing, SIM-swaps, and unauthorized access.
           </p>
         </div>
+
+        {/* Tokenization Architectural Diagram */}
+        <TokenizationArchitectureDiagram />
 
         {/* Quick Nav Tabs */}
         <div className="flex flex-wrap gap-2 border-b border-[#E3E8E3] pb-4">

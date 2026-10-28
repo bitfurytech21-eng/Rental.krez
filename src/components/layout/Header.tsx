@@ -5,7 +5,7 @@ import {
   Wallet, Crown, ChevronDown, ChevronRight, 
   BookOpen, HelpCircle, PhoneCall, Layers, 
   TrendingUp, Compass, ArrowUpRight,
-  Tv, Monitor, Building2, Globe
+  Tv, Monitor, Building2, Globe, Table as TableIcon
 } from 'lucide-react';
 import { formatCurrency } from '../../lib/utils';
 import { isDesktopModeEnabled, toggleDesktopMode } from '../../lib/desktopMode';
@@ -105,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
     { label: 'Success Stories', path: '/casos-de-exito', desc: 'Historical exits and 15.4% average realized IRR' },
     { label: 'Wealth Advisory', path: '/wealth', desc: 'Cross-border estate structuring & family office advisory' },
     { label: 'Company News & Media', path: '/news', desc: 'Official broadcasts, TV interviews and press releases' },
-    { label: 'Token Model & Liquidity', path: '/token', desc: 'Polygon ERC-20 architecture and secondary transfer desk' },
+    { label: 'Token Model & Liquidity', path: '/token', desc: 'Solana SPL Token architecture & secondary transfer desk' },
     { label: 'FAQ & Disclosures', path: '/faq', desc: 'Legal structuring, KYC and investor protection notice' },
     { label: 'Contact & Advisory Desk', path: '/contact', desc: 'Barcelona & Paris client desks for private consultations' },
   ];
@@ -147,20 +147,22 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
         </button>
 
         {/* Zone 2: 4–5 Clean Single-Line Text Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-7 text-sm font-bold tracking-tight text-[#5E5A54] shrink-0" aria-label="Main Navigation">
+        <nav className="hidden lg:flex items-center gap-7 text-sm font-bold tracking-tight shrink-0" aria-label="Main Navigation">
           {primaryNavLinks.map((link) => {
             const isActive = currentPath === link.path || (link.path !== '/' && currentPath.startsWith(link.path));
             return (
               <button
                 key={link.path}
                 onClick={() => handleNavClick(link.path)}
-                className={`transition-colors whitespace-nowrap cursor-pointer relative py-1 hover:text-[#1C1917] ${
-                  isActive ? 'text-[#BEE179] font-black' : ''
+                className={`transition-colors whitespace-nowrap cursor-pointer relative py-1 ${
+                  isDark
+                    ? (isActive ? 'text-[#BEE179] font-black' : 'text-[#8A9692] hover:text-white')
+                    : (isActive ? 'text-[#1E3A34] font-black' : 'text-[#5E5A54] hover:text-[#1C1917]')
                 }`}
               >
                 <span>{link.label}</span>
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#BEE179] rounded-full" />
+                  <span className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${isDark ? 'bg-[#BEE179]' : 'bg-[#1E3A34]'}`} />
                 )}
               </button>
             );
@@ -174,20 +176,28 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               aria-haspopup="true"
               aria-expanded={insightsDropdownOpen}
               aria-label="Insights & Intelligence menu"
-              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer relative py-1 hover:text-[#1C1917] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded ${
-                isInsightsActive || insightsDropdownOpen ? 'text-[#1E3A34] font-semibold' : ''
+              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer relative py-1 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded ${
+                isDark
+                  ? (isInsightsActive || insightsDropdownOpen ? 'text-[#BEE179] font-black' : 'text-[#8A9692] hover:text-white')
+                  : (isInsightsActive || insightsDropdownOpen ? 'text-[#1E3A34] font-black' : 'text-[#5E5A54] hover:text-[#1C1917]')
               }`}
             >
               <span>Insights</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#8E8A83] transition-transform duration-200 ${insightsDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${insightsDropdownOpen ? 'rotate-180' : ''} ${
+                isDark ? 'text-[#8A9692]' : 'text-[#78736B]'
+              }`} aria-hidden="true" />
               {isInsightsActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#1E3A34] rounded-full" />
+                <span className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${isDark ? 'bg-[#BEE179]' : 'bg-[#1E3A34]'}`} />
               )}
             </button>
 
             {insightsDropdownOpen && (
-              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-[#E4EEEA] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-4 py-2 border-b border-[#E4EEEA] text-[10px] uppercase tracking-widest font-bold text-[#71817D]">
+              <div className={`absolute top-full left-0 mt-3 w-80 rounded-2xl shadow-xl border py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                isDark ? 'bg-[#0E1A17] border-[#1E2B27] text-white' : 'bg-white border-[#E4EEEA] text-[#172B2A]'
+              }`}>
+                <div className={`px-4 py-2 border-b text-[10px] uppercase tracking-widest font-bold ${
+                  isDark ? 'border-[#1E2B27] text-[#8A9692]' : 'border-[#E4EEEA] text-[#71817D]'
+                }`}>
                   Research &amp; Intelligence
                 </div>
                 {insightsLinks.map((item) => (
@@ -195,12 +205,14 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                     key={item.path}
                     type="button"
                     onClick={() => handleNavClick(item.path)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-[#F6FAF8] transition-colors cursor-pointer group"
+                    className={`w-full text-left px-4 py-2.5 transition-colors cursor-pointer group ${
+                      isDark ? 'hover:bg-[#152622]' : 'hover:bg-[#F6FAF8]'
+                    }`}
                   >
-                    <div className="text-xs font-semibold text-[#172B2A] group-hover:text-[#087F5B]">
+                    <div className={`text-xs font-semibold ${isDark ? 'text-white group-hover:text-[#3BD4AE]' : 'text-[#172B2A] group-hover:text-[#087F5B]'}`}>
                       {item.label}
                     </div>
-                    <div className="text-[11px] text-[#71817D] line-clamp-1 mt-0.5">
+                    <div className={`text-[11px] line-clamp-1 mt-0.5 ${isDark ? 'text-[#8A9692]' : 'text-[#71817D]'}`}>
                       {item.desc}
                     </div>
                   </button>
@@ -217,32 +229,42 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               aria-haspopup="true"
               aria-expanded={moreDropdownOpen}
               aria-label="Advisory & Track Record menu"
-              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer relative py-1 hover:text-[#1C1917] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded ${
-                isMoreActive || moreDropdownOpen ? 'text-[#1E3A34] font-semibold' : ''
+              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer relative py-1 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1E3A34] rounded ${
+                isDark
+                  ? (isMoreActive || moreDropdownOpen ? 'text-[#BEE179] font-black' : 'text-[#8A9692] hover:text-white')
+                  : (isMoreActive || moreDropdownOpen ? 'text-[#1E3A34] font-black' : 'text-[#5E5A54] hover:text-[#1C1917]')
               }`}
             >
               <span>Advisory &amp; Track Record</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#8E8A83] transition-transform duration-200 ${moreDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${moreDropdownOpen ? 'rotate-180' : ''} ${
+                isDark ? 'text-[#8A9692]' : 'text-[#78736B]'
+              }`} aria-hidden="true" />
               {isMoreActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#1E3A34] rounded-full" />
+                <span className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${isDark ? 'bg-[#BEE179]' : 'bg-[#1E3A34]'}`} />
               )}
             </button>
 
             {moreDropdownOpen && (
-              <div className="absolute top-full left-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-[#E4EEEA] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-4 py-2 border-b border-[#E4EEEA] text-[10px] uppercase tracking-widest font-bold text-[#71817D]">
+              <div className={`absolute top-full left-0 mt-3 w-80 rounded-2xl shadow-xl border py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                isDark ? 'bg-[#0E1A17] border-[#1E2B27] text-white' : 'bg-white border-[#E4EEEA] text-[#172B2A]'
+              }`}>
+                <div className={`px-4 py-2 border-b text-[10px] uppercase tracking-widest font-bold ${
+                  isDark ? 'border-[#1E2B27] text-[#8A9692]' : 'border-[#E4EEEA] text-[#71817D]'
+                }`}>
                   Private Advisory
                 </div>
                 {secondaryMenuLinks.map((item) => (
                   <button
                     key={item.path}
                     onClick={() => handleNavClick(item.path)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-[#F6FAF8] transition-colors cursor-pointer group"
+                    className={`w-full text-left px-4 py-2.5 transition-colors cursor-pointer group ${
+                      isDark ? 'hover:bg-[#152622]' : 'hover:bg-[#F6FAF8]'
+                    }`}
                   >
-                    <div className="text-xs font-semibold text-[#172B2A] group-hover:text-[#087F5B]">
+                    <div className={`text-xs font-semibold ${isDark ? 'text-white group-hover:text-[#3BD4AE]' : 'text-[#172B2A] group-hover:text-[#087F5B]'}`}>
                       {item.label}
                     </div>
-                    <div className="text-[11px] text-[#71817D] line-clamp-1 mt-0.5">
+                    <div className={`text-[11px] line-clamp-1 mt-0.5 ${isDark ? 'text-[#8A9692]' : 'text-[#71817D]'}`}>
                       {item.desc}
                     </div>
                   </button>
@@ -253,8 +275,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
         </nav>
 
         {/* Zone 3: 1 Primary Action + Utility Controls */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+
           {/* Language Switcher */}
           <HeaderLanguageButton />
 
@@ -273,31 +295,39 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               </button>
 
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-[#d4e5f5] py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-4 py-2 border-b border-[#F0EBE1]">
-                    <div className="text-xs font-bold text-[#1C1917] truncate">{user.fullName}</div>
-                    <div className="text-[11px] text-[#78736B] truncate">{user.email}</div>
+                <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-xl border py-2 z-50 text-left animate-in fade-in zoom-in-95 duration-150 ${
+                  isDark ? 'bg-[#0E1A17] border-[#1E2B27] text-white' : 'bg-white border-[#d4e5f5] text-[#1C1917]'
+                }`}>
+                  <div className={`px-4 py-2 border-b ${isDark ? 'border-[#1E2B27]' : 'border-[#F0EBE1]'}`}>
+                    <div className={`text-xs font-bold truncate ${isDark ? 'text-white' : 'text-[#1C1917]'}`}>{user.fullName}</div>
+                    <div className={`text-[11px] truncate ${isDark ? 'text-[#8A9692]' : 'text-[#78736B]'}`}>{user.email}</div>
                   </div>
                   
                   <button
                     onClick={() => handleNavClick('/dashboard')}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-[#1C1917] hover:bg-[#f0f8fe] flex items-center gap-2 cursor-pointer"
+                    className={`w-full text-left px-4 py-2 text-xs font-medium flex items-center gap-2 cursor-pointer ${
+                      isDark ? 'text-slate-200 hover:bg-[#152622]' : 'text-[#1C1917] hover:bg-[#f0f8fe]'
+                    }`}
                   >
-                    <Wallet className="w-3.5 h-3.5 text-[#1E3A34]" />
+                    <Wallet className={`w-3.5 h-3.5 ${isDark ? 'text-[#3BD4AE]' : 'text-[#1E3A34]'}`} />
                     <span>Portfolio Dashboard</span>
                   </button>
+
+
 
                   {isAdmin && (
                     <button
                       onClick={() => handleNavClick('/admin')}
-                      className="w-full text-left px-4 py-2 text-xs font-medium text-[#1C1917] hover:bg-[#f0f8fe] flex items-center gap-2 cursor-pointer"
+                      className={`w-full text-left px-4 py-2 text-xs font-medium flex items-center gap-2 cursor-pointer ${
+                        isDark ? 'text-slate-200 hover:bg-[#152622]' : 'text-[#1C1917] hover:bg-[#f0f8fe]'
+                      }`}
                     >
-                      <Shield className="w-3.5 h-3.5 text-amber-600" />
+                      <Shield className="w-3.5 h-3.5 text-amber-500" />
                       <span>Admin Control Center</span>
                     </button>
                   )}
 
-                  <div className="my-1 border-t border-[#F0EBE1]" />
+                  <div className={`my-1 border-t ${isDark ? 'border-[#1E2B27]' : 'border-[#F0EBE1]'}`} />
 
                   <button
                     onClick={() => {
@@ -305,7 +335,9 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                       setUserDropdownOpen(false);
                       onNavigate('/');
                     }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-rose-700 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                    className={`w-full text-left px-4 py-2 text-xs font-medium text-rose-500 flex items-center gap-2 cursor-pointer ${
+                      isDark ? 'hover:bg-rose-950/30' : 'hover:bg-rose-50'
+                    }`}
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sign Out</span>
@@ -423,6 +455,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               </div>
             </div>
 
+
+
             {/* Account CTA on Mobile */}
             <div className={`pt-4 border-t space-y-3 ${isDark ? 'border-[#1E2B27]' : 'border-[#d4e5f5]'}`}>
               {user ? (
@@ -463,6 +497,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
           </div>
         </div>
       )}
+
     </header>
   );
 };

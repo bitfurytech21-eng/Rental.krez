@@ -7082,8 +7082,23 @@ export const INITIAL_PROPERTIES: Property[] = rawProperties
       version: 'v2.1-audited',
     }));
 
+    const solanaAddressChars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+    let mintHash = 0;
+    const seed = `sol_mint_${p.id}_${p.tokenTicker}`;
+    for (let i = 0; i < seed.length; i++) {
+      mintHash = ((mintHash << 5) - mintHash) + seed.charCodeAt(i);
+      mintHash |= 0;
+    }
+    let computedMint = '';
+    for (let i = 0; i < 44; i++) {
+      computedMint += solanaAddressChars[Math.abs((mintHash + i * 37) % solanaAddressChars.length)];
+    }
+
     return {
       ...p,
+      blockchainNetwork: 'Solana SPL',
+      solanaMintAddress: p.solanaMintAddress || computedMint,
+      solanaProgramId: p.solanaProgramId || 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',
       targetAmount: metrics.targetAmount,
       fundedAmount: metrics.fundedAmount,
       tokenPrice: metrics.tokenPrice,

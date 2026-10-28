@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Transaction } from '../../types/transaction';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
-import { ArrowDownLeft, ArrowUpRight, Coins, RefreshCw, CheckCircle2, Clock, AlertCircle, Printer } from 'lucide-react';
+import { 
+  ArrowDownLeft, ArrowUpRight, Coins, RefreshCw, CheckCircle2, 
+  Clock, AlertCircle, Printer, Table as TableIcon, ExternalLink 
+} from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { printTransactionReceipt, ReceiptPrintData } from '../../lib/printService';
+import { getSolanaExplorerUrl } from '../../lib/solanaService';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -14,22 +18,25 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
   const { user } = useAuth();
   const displayList = maxRows ? transactions.slice(0, maxRows) : transactions;
 
+  const getReceiptData = (tx: Transaction): ReceiptPrintData => ({
+    receiptId: tx.reference || tx.id,
+    transactionHash: tx.txHash || `0x${tx.id.replace(/-/g, '').slice(0, 32)}`,
+    date: formatDate(tx.createdAt),
+    userName: user?.fullName || 'Verified Investor',
+    userEmail: user?.email || 'investor@lagence.com',
+    propertyTitle: tx.description,
+    tokensPurchased: tx.type === 'investment' ? Math.max(1, Math.floor(tx.amount / 100)) : 1,
+    tokenPrice: tx.type === 'investment' ? 100 : tx.amount,
+    totalPaid: tx.amount,
+    paymentMethod: tx.paymentMethod || 'Bank Wire / SEPA Instant',
+    status: tx.status === 'completed' ? 'Completed' : tx.status === 'pending' ? 'Pending' : 'Verified'
+  });
+
   const handlePrintReceipt = (tx: Transaction) => {
-    const receiptData: ReceiptPrintData = {
-      receiptId: tx.reference || tx.id,
-      transactionHash: tx.txHash || `0x${tx.id.replace(/-/g, '').slice(0, 32)}`,
-      date: formatDate(tx.createdAt),
-      userName: user?.fullName || 'Verified Investor',
-      userEmail: user?.email || 'investor@lagence.com',
-      propertyTitle: tx.description,
-      tokensPurchased: tx.type === 'investment' ? Math.max(1, Math.floor(tx.amount / 100)) : 1,
-      tokenPrice: tx.type === 'investment' ? 100 : tx.amount,
-      totalPaid: tx.amount,
-      paymentMethod: tx.paymentMethod || 'Bank Wire / SEPA Instant',
-      status: tx.status === 'completed' ? 'Completed' : tx.status === 'pending' ? 'Pending' : 'Verified'
-    };
-    printTransactionReceipt(receiptData);
+    printTransactionReceipt(getReceiptData(tx));
   };
+
+
 
   const getTypeBadge = (type: Transaction['type']) => {
     switch (type) {
@@ -97,6 +104,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
 
   return (
     <div>
+      {/* Table Bar */}
+      <div className="flex items-center justify-between mb-2.5 px-1">
+        <span className="text-[11px] font-semibold text-[#71817D]">
+          Ledger Records: {displayList.length} of {transactions.length}
+        </span>
+      </div>
+
       {/* Mobile-First Compact Transaction Feed (< 640px) */}
       <div className="sm:hidden divide-y border border-inherit/40 rounded-xl overflow-hidden dash-card">
         {displayList.map((tx) => {
@@ -113,6 +127,20 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                     <span>{formatDate(tx.createdAt)}</span>
                     <span>·</span>
                     <span className="font-mono">{tx.paymentMethod}</span>
+                    {tx.txHash && (
+                      <>
+                        <span>·</span>
+                        <a
+                          href={getSolanaExplorerUrl(tx.txHash, 'tx', 'devnet')}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-[#087F5B] hover:underline inline-flex items-center gap-0.5"
+                        >
+                          <span>{formatShortHash(tx.txHash)}</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -156,8 +184,22 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                     <span className="font-semibold text-[#172B2A] block text-xs truncate">
                       {tx.description}
                     </span>
-                    <span className="font-mono text-[10px] text-[#71817D]">
-                      Ref: {tx.reference} {tx.txHash ? `· ${formatShortHash(tx.txHash)}` : ''}
+                    <span className="font-mono text-[10px] text-[#71817D] flex items-center gap-1 mt-0.5">
+                      <span>Ref: {tx.reference}</span>
+                      {tx.txHash && (
+                        <>
+                          <span>·</span>
+                          <a
+                            href={getSolanaExplorerUrl(tx.txHash, 'tx', 'devnet')}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#087F5B] hover:underline inline-flex items-center gap-0.5"
+                          >
+                            <span>{formatShortHash(tx.txHash)}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </>
+                      )}
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-xs text-[#71817D] whitespace-nowrap font-mono">

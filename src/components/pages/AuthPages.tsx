@@ -320,7 +320,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
             style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
           />
           <h2 className="text-2xl font-black text-white">
-            {mode === 'login' && (preservedProperty ? 'Sign In to Complete Investment' : 'Welcome to Rental·log')}
+            {mode === 'login' && (preservedProperty ? 'Sign In to Complete Investment' : "Welcome to L'Agence Real Estate")}
             {mode === 'register' && (preservedProperty ? 'Register to Invest in Asset' : 'Create Supabase Account')}
             {mode === 'forgot-password' && 'Password Recovery'}
             {mode === 'reset-password' && 'Set New Password'}

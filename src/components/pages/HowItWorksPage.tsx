@@ -1,6 +1,8 @@
 import React from 'react';
 import { HowItWorks } from '../home/HowItWorks';
 import { ShieldCheck, FileText, ArrowRight, Wallet, CheckCircle2 } from 'lucide-react';
+import { TokenizationArchitectureDiagram } from '../visuals/TokenizationArchitectureDiagram';
+import { CompoundYieldVisualizer } from '../visuals/CompoundYieldVisualizer';
 
 interface HowItWorksPageProps {
   onExplore: () => void;
@@ -25,8 +27,14 @@ export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({ onExplore, onReg
           </p>
         </div>
 
+        {/* Tokenization Architectural Diagram Visual */}
+        <TokenizationArchitectureDiagram />
+
         {/* 6 Step Interactive Architecture */}
         <HowItWorks />
+
+        {/* Compound Yield & Wealth Calculator */}
+        <CompoundYieldVisualizer />
 
         {/* Legal & SPV Deep Dive */}
         <div className="bg-[#102442] p-8 sm:p-12 rounded-3xl border border-[#1D3860] shadow-xl text-left">

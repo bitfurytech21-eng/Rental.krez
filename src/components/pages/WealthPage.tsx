@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Crown, ShieldCheck, CheckCircle2, ArrowRight, Building2, TrendingUp, Users, Headphones, Lock, Sparkles, PhoneCall } from 'lucide-react';
+import { CompoundYieldVisualizer } from '../visuals/CompoundYieldVisualizer';
 
 interface WealthPageProps {
   onExplore: () => void;
@@ -93,6 +94,11 @@ export const WealthPage: React.FC<WealthPageProps> = ({ onExplore, onContact }) 
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Interactive Compound Yield Calculator */}
+      <section className="py-12 container max-w-[1240px] mx-auto px-4">
+        <CompoundYieldVisualizer />
       </section>
 
       {/* Perks Grid */}

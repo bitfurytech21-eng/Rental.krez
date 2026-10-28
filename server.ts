@@ -100,6 +100,7 @@ async function startServer() {
         host: '0.0.0.0',
         port: PORT,
         hmr: false,
+        ws: false,
         watch: null
       },
       appType: 'custom',
@@ -130,6 +131,24 @@ async function startServer() {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[server] Port ${PORT} already in use. A process is already listening.`);
+    } else {
+      console.error('[server] Unhandled server error:', err);
+    }
+  });
+
+  const handleShutdown = () => {
+    server.close(() => {
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(0), 1000);
+  };
+
+  process.on('SIGTERM', handleShutdown);
+  process.on('SIGINT', handleShutdown);
 
   server.listen(PORT, '0.0.0.0', () => {
     logger.log({

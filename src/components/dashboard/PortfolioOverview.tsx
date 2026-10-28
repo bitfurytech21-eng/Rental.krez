@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Investment } from '../../types/investment';
 import { formatCurrency, formatPercent, formatDate } from '../../lib/utils';
-import { Building2, Award, Calendar, ArrowRight, FileText, Printer } from 'lucide-react';
+import { Building2, Award, Calendar, ArrowRight, Printer, Table as TableIcon, FileText } from 'lucide-react';
 import { DocumentViewerModal } from './DocumentViewerModal';
 import { printPortfolioReport, PortfolioPrintData } from '../../lib/printService';
 import { useAuth } from '../../lib/auth';
@@ -20,12 +20,12 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   const { user } = useAuth();
   const [selectedInvestmentForDocs, setSelectedInvestmentForDocs] = useState<Investment | null>(null);
 
-  const handlePrintPortfolio = () => {
+  const getReportData = (): PortfolioPrintData => {
     const totalValue = investments.reduce((sum, inv) => sum + (inv.currentValuation || inv.totalAmountInvested), 0);
     const totalTokens = investments.reduce((sum, inv) => sum + inv.tokensPurchased, 0);
     const totalDividends = investments.reduce((sum, inv) => sum + (inv.totalDividendsReceived || 0), 0);
 
-    const reportData: PortfolioPrintData = {
+    return {
       investor: {
         fullName: user?.fullName || 'Verified Investor',
         email: user?.email || 'investor@lagence.com',
@@ -52,9 +52,14 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         certificateId: inv.certificateId || `CERT-${inv.id.slice(0, 8)}`
       }))
     };
+  };
 
+  const handlePrintPortfolio = () => {
+    const reportData = getReportData();
     printPortfolioReport(reportData);
   };
+
+
 
   if (investments.length === 0) {
     return (
@@ -88,14 +93,17 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handlePrintPortfolio}
-          className="py-1.5 px-3 bg-white hover:bg-[#EAF8F4] border border-[#E4EEEA] text-[#087F5B] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          title="Print official Portfolio Performance Report"
-        >
-          <Printer className="w-3.5 h-3.5" />
-          <span>Print Portfolio Report</span>
-        </button>
+        <div className="flex items-center gap-2">
+
+          <button
+            onClick={handlePrintPortfolio}
+            className="py-1.5 px-3 bg-white hover:bg-[#EAF8F4] border border-[#E4EEEA] text-[#087F5B] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title="Print official Portfolio Performance Report"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print Report</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

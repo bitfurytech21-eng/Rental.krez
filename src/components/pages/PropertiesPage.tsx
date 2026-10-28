@@ -11,6 +11,7 @@ import {
   HelpCircle, Layers, Coins, Calendar, Info, Lock, ArrowRight,
   List, LayoutGrid
 } from 'lucide-react';
+import { SecondaryMarketplace } from '../properties/SecondaryMarketplace';
 
 interface PropertiesPageProps {
   properties: Property[];
@@ -37,7 +38,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
   useEffect(() => {
     setProperties(initialProperties.filter(isFrontendEligible));
   }, [initialProperties]);
-  const [activeTab, setActiveTab] = useState<'all' | 'funding' | 'funded' | 'returned' | 'my_properties'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'funding' | 'funded' | 'returned' | 'my_properties' | 'secondary_p2p'>('all');
   const [brochureProperty, setBrochureProperty] = useState<Property | null>(null);
   
   // Search & Filters
@@ -238,6 +239,19 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
               <Crown className="w-3.5 h-3.5" />
               <span>My Properties ({myProperties.length})</span>
             </button>
+
+            {/* Secondary P2P Order Book Tab */}
+            <button
+              onClick={() => setActiveTab('secondary_p2p')}
+              className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'secondary_p2p'
+                  ? 'bg-[#087F5B] text-white shadow-xs'
+                  : 'text-[#087F5B] hover:bg-emerald-50'
+              }`}
+            >
+              <Coins className="w-3.5 h-3.5" />
+              <span>Secondary P2P Order Book</span>
+            </button>
           </div>
         </div>
 
@@ -383,9 +397,21 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                 </p>
               </div>
             </div>
-
           </div>
         )}
+
+        {/* Secondary P2P Order Book View */}
+        {activeTab === 'secondary_p2p' ? (
+          <SecondaryMarketplace
+            properties={properties}
+            onSelectProperty={(propId) => {
+              const match = properties.find((p) => p.id === propId);
+              if (match) onSelectProperty(match);
+            }}
+          />
+        ) : (
+          /* Primary Property Grid */
+          <>
 
         {/* Property Grid */}
         {filteredProperties.length === 0 ? (
@@ -421,6 +447,9 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
             ))}
           </div>
         )}
+        </>
+        )}
+
       </section>
 
       {/* Remodeled Official Property Brochure Modal */}

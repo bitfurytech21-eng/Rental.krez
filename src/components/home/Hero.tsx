@@ -36,8 +36,8 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, onHowItWorks }) => {
           {/* Left Column: Editorial Proposition & CTA */}
           <div className="lg:col-span-7 space-y-6 sm:space-y-8 text-left">
             
-            {/* Pill Container Kicker matching reference */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#122846] border border-[#23436D] shadow-xs text-xs">
+            {/* Institutional Kicker */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#122846] border border-[#23436D] shadow-xs text-xs">
               <ShieldCheck className="w-4 h-4 text-[#BEE179] shrink-0 stroke-[2.5]" />
               <span className="text-[#BEE179] font-black tracking-wider uppercase text-[11px]">
                 L'AGENCE INSTITUTIONAL REAL ESTATE

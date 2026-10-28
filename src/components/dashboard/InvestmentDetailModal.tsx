@@ -5,6 +5,7 @@ import { CircularProgressRing } from '../common/CircularProgressRing';
 import { ButtonLoader } from '../common/ButtonLoader';
 import { X, ShieldCheck, Crown, ExternalLink, Calendar, Building2, Wallet, ArrowUpRight, CheckCircle2, Copy, Printer, Download, FileText, Loader2 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
+import { getSolanaExplorerUrl } from '../../lib/solanaService';
 import { 
   buildInvestmentAgreementData, 
   downloadAgreementPdf, 
@@ -217,14 +218,16 @@ export const InvestmentDetailModal: React.FC<InvestmentDetailModalProps> = ({
             </div>
 
             <div className="flex justify-between items-center text-xs">
-              <span className="font-medium text-slate-300">Blockchain Tx Hash:</span>
-              <button
-                onClick={() => copyToClipboard(investment.transactionHash)}
-                className="flex items-center gap-1 font-mono text-[11px] text-emerald-300 hover:underline truncate max-w-[200px] cursor-pointer"
+              <span className="font-medium text-slate-300">Solana Tx Signature:</span>
+              <a
+                href={getSolanaExplorerUrl(investment.transactionHash, 'tx', 'devnet')}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 font-mono text-[11px] text-emerald-300 hover:underline truncate max-w-[200px]"
               >
                 <span>{investment.transactionHash.slice(0, 16)}...</span>
                 <ExternalLink className="w-3 h-3" />
-              </button>
+              </a>
             </div>
 
             <div className="flex justify-between items-center text-[10.5px] text-slate-400">

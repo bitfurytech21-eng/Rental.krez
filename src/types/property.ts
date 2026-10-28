@@ -86,8 +86,10 @@ export interface Property {
   minimumInvestment: number; // Strictly >= €750
   distributionFrequency: 'Monthly' | 'Quarterly';
   tokenTicker: string; // e.g. RENT-VAL01
-  blockchainNetwork: string; // e.g. 'Polygon POS'
+  blockchainNetwork: string; // e.g. 'Solana Mainnet-Beta / Devnet'
   tokenContractAddress: string;
+  solanaMintAddress?: string;
+  solanaProgramId?: string;
   description: string;
   investmentStructure: string;
   highlights: string[];

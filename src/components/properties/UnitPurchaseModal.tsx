@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
-import { X, ShieldCheck, AlertCircle, ArrowRight, Wallet, RefreshCw, CheckCircle2, Building2, Crown, Sparkles, Plus, Minus, Printer, Download, FileText, Loader2, Award } from 'lucide-react';
+import { X, ShieldCheck, AlertCircle, ArrowRight, Wallet, RefreshCw, CheckCircle2, Building2, Crown, Sparkles, Plus, Minus, Printer, Download, FileText, Loader2, Award, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
+import { getSolanaExplorerUrl } from '../../lib/solanaService';
 import { 
   buildInvestmentAgreementData, 
   downloadAgreementPdf, 
@@ -234,6 +235,20 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                   <span className="text-[#69736F]">Wallet Balance:</span>
                   <span className="font-bold font-mono text-[#142421]">{formatCurrency(userBalance)}</span>
                 </div>
+                {successResult.transactionHash && (
+                  <div className="flex justify-between items-center pt-1 border-t border-[#E3E8E3]">
+                    <span className="text-[#69736F]">Solana Signature:</span>
+                    <a
+                      href={getSolanaExplorerUrl(successResult.transactionHash, 'tx', 'devnet')}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-[#27845D] hover:underline font-bold text-[11px] inline-flex items-center gap-1"
+                    >
+                      <span>{successResult.transactionHash.slice(0, 10)}...{successResult.transactionHash.slice(-8)}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Prominent Legal Agreement & Instant Print Section */}

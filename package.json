@@ -22,6 +22,7 @@
     "d3": "^7.9.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "firebase": "^13.1.0",
     "i18next": "^26.5.3",
     "jimp": "^1.6.1",
     "jspdf": "^4.2.1",
@@ -51,6 +52,7 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.27.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vite-plugin-pwa": "^2.0.0"
   }
 }

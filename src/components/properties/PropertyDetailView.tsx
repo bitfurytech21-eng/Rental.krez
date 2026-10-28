@@ -14,6 +14,7 @@ import { ProjectedYieldChart } from './ProjectedYieldChart';
 import { MonthlyYieldRecharts } from './MonthlyYieldRecharts';
 import { SharePropertyModal } from './SharePropertyModal';
 import { PropertyLocationMap } from './PropertyLocationMap';
+import { ValuationAuditTimeline } from './ValuationAuditTimeline';
 import {
   MapPin,
   Calendar,
@@ -41,8 +42,11 @@ import {
   Receipt,
   UserCheck,
   Tv,
-  Share2
+  Share2,
+  ExternalLink,
+  Copy
 } from 'lucide-react';
+import { getSolanaExplorerUrl, getSolscanUrl } from '../../lib/solanaService';
 
 interface PropertyDetailViewProps {
   property: Property;
@@ -64,7 +68,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [inspectingDoc, setInspectingDoc] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'location' | 'financials' | 'monthly_recharts' | 'yield_chart' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization'
+    'overview' | 'location' | 'financials' | 'monthly_recharts' | 'yield_chart' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization' | 'appraisal_history'
   >('overview');
 
   // Investment Modal State
@@ -83,6 +87,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   const [docNotification, setDocNotification] = useState<string | null>(null);
   const [isDocViewerOpen, setIsDocViewerOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [copiedMint, setCopiedMint] = useState<boolean>(false);
 
   const userInvestments = user ? ledger.getInvestments(user.id) : [];
   const existingInvestment = userInvestments.find(inv => inv.propertyId === property.id);
@@ -533,6 +538,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             { id: 'schedule', label: 'Payment Schedule' },
             { id: 'documents', label: 'Official Documents' },
             { id: 'tokenization', label: 'Smart Contract' },
+            { id: 'appraisal_history', label: '📜 RICS Appraisals & NAV Log' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1034,37 +1040,118 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
           {/* TAB 7: Tokenization & Smart Contract */}
           {activeTab === 'tokenization' && (
             <div className="bg-white p-7 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
-              <div>
-                <h3 className="text-xl font-bold text-[#18211F] mb-1">Blockchain Tokenization Architecture</h3>
-                <p className="text-xs text-[#69736F]">
-                  Public Polygon POS smart contract providing immutable ownership ledgers and programmatic distributions.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E3E8E3]">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#27845D] text-xs font-bold mb-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Solana SPL Token-2022 Architecture</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-[#18211F]">Institutional Solana Tokenization</h3>
+                  <p className="text-xs text-[#69736F]">
+                    Programmable fractional ownership certificates registered on Solana with transfer-hook KYC compliance and sub-second settlement.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={getSolanaExplorerUrl(property.solanaMintAddress || property.tokenContractAddress, 'address', 'devnet')}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#142421] text-white text-xs font-bold hover:bg-[#1f3732] transition-colors"
+                  >
+                    <span>Solana Explorer</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-[#B7E36A]" />
+                  </a>
+                  <a
+                    href={getSolscanUrl(property.solanaMintAddress || property.tokenContractAddress, 'account', 'devnet')}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#EEF2EC] text-[#182D2A] text-xs font-bold hover:bg-[#e2e8df] transition-colors"
+                  >
+                    <span>Solscan</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-                  <span className="text-xs text-[#69736F] block">Digital Token Ticker</span>
+                  <span className="text-xs text-[#69736F] block">Digital Asset Ticker</span>
                   <span className="text-lg font-black text-[#182D2A] font-mono">{property.tokenTicker}</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-                  <span className="text-xs text-[#69736F] block">Blockchain Ledger</span>
-                  <span className="text-lg font-bold text-[#182D2A]">{property.blockchainNetwork}</span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-                  <span className="text-xs text-[#69736F] block">Smart Contract Address</span>
-                  <span className="text-sm font-mono font-bold text-[#182D2A] break-all">
-                    {property.tokenContractAddress}
+                  <span className="text-xs text-[#69736F] block">Settlement Network</span>
+                  <span className="text-lg font-bold text-[#182D2A] flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    {property.blockchainNetwork || 'Solana SPL'}
                   </span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
-                  <span className="text-xs text-[#69736F] block">Total Token Supply</span>
-                  <span className="text-lg font-bold text-[#182D2A]">{property.totalTokens} Tokens</span>
+                  <span className="text-xs text-[#69736F] block">Total Tokenized Supply</span>
+                  <span className="text-lg font-bold text-[#182D2A]">{property.totalTokens.toLocaleString()} SPL Units</span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] sm:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-[#69736F]">Solana SPL Mint Address</span>
+                    <button
+                      onClick={() => {
+                        const mint = property.solanaMintAddress || property.tokenContractAddress;
+                        navigator.clipboard.writeText(mint);
+                        setCopiedMint(true);
+                        setTimeout(() => setCopiedMint(false), 2000);
+                      }}
+                      className="text-[11px] text-[#27845D] hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedMint ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span className="text-emerald-600">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy Mint</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-[#182D2A] break-all bg-white p-2 rounded-lg border border-[#E3E8E3] block">
+                    {property.solanaMintAddress || property.tokenContractAddress}
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+                  <span className="text-xs text-[#69736F] block">Program ID</span>
+                  <span className="text-xs font-mono font-bold text-[#182D2A] break-all mt-1 block">
+                    {property.solanaProgramId || 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'}
+                  </span>
                 </div>
               </div>
+
+              {/* Solana Token-2022 Transfer Restriction Controls */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-[#0F1E1B] text-white space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-[#B7E36A]" />
+                    <h4 className="text-sm font-bold text-white">Transfer-Hook Compliance & Regulatory Whitelist</h4>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#27845D]/40 text-[#B7E36A] border border-[#B7E36A]/30">
+                    Active & Enforced
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  In compliance with European Securities Regimes (CNMV / MiCA / AMF), property tokens utilize the Solana Token-2022 transfer-hook extension. Tokens can only be settled between whitelisted, KYC-cleared Solana wallet public keys, preventing unauthorized secondary market liquidation without registered title transfer.
+                </p>
+              </div>
             </div>
+          )}
+
+          {/* TAB 8: RICS Appraisals & NAV History */}
+          {activeTab === 'appraisal_history' && (
+            <ValuationAuditTimeline property={property} />
           )}
         </div>
       </div>
@@ -1273,13 +1360,31 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                     <span className="font-bold text-[#18211F]">{formatCurrency(investSuccessCert.total)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#69736F]">Audit Hash:</span>
+                    <span className="text-[#69736F]">Solana Tx Signature:</span>
                     <span className="font-mono text-[#27845D] font-bold">{formatShortHash(investSuccessCert.txHash)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#69736F]">SPL Token Mint:</span>
+                    <span className="font-mono text-[#18211F] font-bold text-[11px] truncate max-w-[180px]">
+                      {property.solanaMintAddress || property.tokenContractAddress}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#69736F]">Next Distribution:</span>
                     <span className="font-semibold text-[#18211F]">1st of Next Month</span>
                   </div>
+                </div>
+
+                <div className="pt-1">
+                  <a
+                    href={getSolanaExplorerUrl(investSuccessCert.txHash, 'tx', 'devnet')}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-2 px-3 rounded-xl bg-[#142421] text-white text-xs font-bold hover:bg-[#1e342f] transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <span>Verify Transaction on Solana Explorer</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-[#B7E36A]" />
+                  </a>
                 </div>
 
                 <button
