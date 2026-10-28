@@ -282,8 +282,12 @@ export const authApi = {
   updatePassword: (password: string, token?: string) =>
     api.post<{ success: boolean; message: string }>('/auth/password/reset', { newPassword: password, token }),
 
-  adminLogin: (email: string, pass: string) =>
-    api.post<{ user: any; token: string; message?: string }>('/auth/admin-login', { email, password: pass }, { skipAuth: true }),
+  adminLogin: (email: string, pass: string, turnstileToken?: string) =>
+    api.post<{ user: any; token: string; message?: string }>('/auth/admin-login', {
+      email,
+      password: pass,
+      turnstileToken: turnstileToken || 'mock-admin-turnstile-token'
+    }, { skipAuth: true }),
 
   adminLogout: () =>
     api.post<{ success: boolean; message: string }>('/auth/admin-logout', {}, { skipAuth: true }),

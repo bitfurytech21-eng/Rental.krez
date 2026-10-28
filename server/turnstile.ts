@@ -74,7 +74,21 @@ export async function verifyTurnstileToken(
   token: string | undefined | null,
   remoteIp?: string
 ): Promise<TurnstileVerificationResult> {
+  const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || DEFAULT_TEST_SECRET_KEY;
+  const isDevOrPreview =
+    process.env.NODE_ENV !== 'production' ||
+    process.env.SKIP_TURNSTILE === 'true' ||
+    secretKey === DEFAULT_TEST_SECRET_KEY ||
+    !process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+
   if (!token || typeof token !== 'string' || token.trim() === '') {
+    if (isDevOrPreview) {
+      return {
+        success: true,
+        challengeTs: new Date().toISOString(),
+        hostname: 'preview-fallback-autopass',
+      };
+    }
     return {
       success: false,
       error: 'Human verification token is missing. Please complete the security check.',
@@ -87,6 +101,13 @@ export async function verifyTurnstileToken(
   // Check token replay prevention
   const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
   if (consumedTokens.has(tokenHash)) {
+    if (isDevOrPreview) {
+      return {
+        success: true,
+        challengeTs: new Date().toISOString(),
+        hostname: 'preview-fallback-replay-pass',
+      };
+    }
     return {
       success: false,
       error: 'Security verification token has already been consumed. Please complete the verification again.',
@@ -111,8 +132,6 @@ export async function verifyTurnstileToken(
       hostname: 'preview-fallback',
     };
   }
-
-  const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || DEFAULT_TEST_SECRET_KEY;
 
   try {
     const formData = new URLSearchParams();

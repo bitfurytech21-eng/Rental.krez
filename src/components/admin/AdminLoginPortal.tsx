@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { Shield, Lock, ArrowRight, Building2, AlertCircle } from 'lucide-react';
+import { TurnstileWidget } from '../security/TurnstileWidget';
 
 interface AdminLoginPortalProps {
   onLoginSuccess: () => void;
@@ -16,6 +17,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   const { adminLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,10 +32,11 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
     setError(null);
 
     try {
-      await adminLogin(email.trim(), password);
+      await adminLogin(email.trim(), password, turnstileToken || undefined);
       onLoginSuccess();
     } catch (err: any) {
       setError(err?.message || 'Authentication failed: Invalid administrator credentials.');
+      setTurnstileToken(null);
     } finally {
       setLoading(false);
     }
@@ -88,6 +91,19 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
               placeholder="••••••••••••"
               required
               className="w-full px-4 py-3 rounded-xl bg-[#0B1513] border border-[#233530] text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B] transition-all"
+            />
+          </div>
+
+          <div className="pt-1">
+            <TurnstileWidget
+              onVerify={(token) => {
+                setTurnstileToken(token);
+                setError(null);
+              }}
+              onExpire={() => setTurnstileToken(null)}
+              onError={(msg) => setError(msg)}
+              action="admin_login"
+              theme="dark"
             />
           </div>
 

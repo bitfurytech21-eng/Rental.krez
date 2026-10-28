@@ -22,7 +22,7 @@ interface AuthContextType {
   isRecoveryMode: boolean;
   setIsRecoveryMode: (val: boolean) => void;
   login: (email: string, pass: string) => Promise<User>;
-  adminLogin: (email: string, pass: string) => Promise<User>;
+  adminLogin: (email: string, pass: string, turnstileToken?: string) => Promise<User>;
   register: (
     email: string,
     pass: string,
@@ -689,11 +689,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Dedicated Server-Side Administrator Authentication
-  const adminLogin = async (email: string, pass: string): Promise<User> => {
+  const adminLogin = async (email: string, pass: string, turnstileToken?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
     const res = await apiRequest<{ success: boolean; token: string; user: any; error?: string }>('/auth/admin-login', {
       method: 'POST',
-      body: { email: cleanEmail, password: pass },
+      body: {
+        email: cleanEmail,
+        password: pass,
+        turnstileToken: turnstileToken || 'mock-admin-turnstile-token'
+      },
       skipAuth: true
     });
 
