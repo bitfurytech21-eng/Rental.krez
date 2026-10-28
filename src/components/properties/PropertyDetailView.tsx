@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Property } from '../../types/property';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
+import { investmentsApi, userApi } from '../../lib/api';
+import { useToast } from '../../context/ToastContext';
 import { formatCurrency, formatPercent, formatShortHash } from '../../lib/utils';
-import { calculateInvestmentProjection, generateTokenPurchaseQuote, formatEUR } from '../../lib/financialService';
+import {
+  PAYMENT_FEE_TIERS,
+  calculateLiveInvestmentBreakdown,
+} from '../../lib/financialService';
 import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
 import { PropertyEvidenceRoom } from '../documents/PropertyEvidenceRoom';
 import { PropertyLegalDocumentModal } from '../documents/PropertyLegalDocumentModal';
@@ -19,34 +24,30 @@ import {
   MapPin,
   Calendar,
   ShieldCheck,
-  Download,
   AlertTriangle,
   Coins,
   ChevronLeft,
   ChevronRight,
   Maximize2,
   X,
-  Bed,
-  Bath,
   Check,
-  Compass,
   ArrowLeft,
   CheckCircle2,
   TrendingUp,
   FileText,
   Building,
-  HelpCircle,
   Wallet,
   Clock,
-  Layers,
   Receipt,
-  UserCheck,
-  Tv,
   Share2,
   ExternalLink,
-  Copy
+  Copy,
+  Heart,
+  Calculator,
+  Plus,
+  Minus,
 } from 'lucide-react';
-import { getSolanaExplorerUrl, getSolscanUrl } from '../../lib/solanaService';
+import { getSolanaExplorerUrl, getSolscanUrl, isValidSolanaAddress } from '../../lib/solanaService';
 
 interface PropertyDetailViewProps {
   property: Property;
@@ -57,13 +58,25 @@ interface PropertyDetailViewProps {
 }
 
 export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
-  property,
+  property: initialProp,
   onBack,
   onNavigateDeposit,
   onNavigateAuthForInvestment,
   onInvestmentSuccess,
 }) => {
   const { user, refreshUser } = useAuth();
+  const { showToast } = useToast();
+  const [liveTick, setLiveTick] = useState<number>(0);
+
+  useEffect(() => {
+    return ledger.subscribe(() => setLiveTick((t) => t + 1));
+  }, []);
+
+  const property = useMemo(() => {
+    void liveTick;
+    return ledger.getPropertyById(initialProp.id) || initialProp;
+  }, [initialProp, liveTick]);
+
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [inspectingDoc, setInspectingDoc] = useState<any>(null);
@@ -71,61 +84,156 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
     'overview' | 'location' | 'financials' | 'monthly_recharts' | 'yield_chart' | 'sensitivity' | 'evidence' | 'structure' | 'exit_policy' | 'fees' | 'schedule' | 'documents' | 'tokenization' | 'appraisal_history'
   >('overview');
 
+  // Interactive Page-Level Investment Simulator State
+  const minTokens = Math.max(1, Math.ceil(property.minimumInvestment / property.tokenPrice));
+  const [simMode, setSimMode] = useState<'amount' | 'tokens'>('amount');
+  const [simAmountEUR, setSimAmountEUR] = useState<number>(property.minimumInvestment);
+  const [simTokens, setSimTokens] = useState<number>(minTokens);
+  const [simFeeTierId, setSimFeeTierId] = useState<string>(PAYMENT_FEE_TIERS[0].id);
+
+  useEffect(() => {
+    const newMinTokens = Math.max(1, Math.ceil(initialProp.minimumInvestment / initialProp.tokenPrice));
+    setSimAmountEUR(initialProp.minimumInvestment);
+    setSimTokens(newMinTokens);
+    setSelectedImageIndex(0);
+  }, [initialProp.id]);
+
   // Investment Modal State
   const [isInvestModalOpen, setIsInvestModalOpen] = useState<boolean>(false);
   const [isRiskModalOpen, setIsRiskModalOpen] = useState<boolean>(false);
-  const minTokens = Math.max(1, Math.ceil(property.minimumInvestment / property.tokenPrice));
+  const [modalMode, setModalMode] = useState<'tokens' | 'amount'>('tokens');
   const [tokenCount, setTokenCount] = useState<number>(minTokens);
+  const [modalAmountEUR, setModalAmountEUR] = useState<number>(minTokens * property.tokenPrice);
+  const [modalFeeTierId, setModalFeeTierId] = useState<string>(PAYMENT_FEE_TIERS[0].id);
+  const [orderIdempotencyKey, setOrderIdempotencyKey] = useState<string>('');
   const [investError, setInvestError] = useState<string | null>(null);
   const [investSuccessCert, setInvestSuccessCert] = useState<{
     id: string;
     txHash: string;
     tokens: number;
+    subtotal: number;
+    feeAmount: number;
     total: number;
   } | null>(null);
+  const [copiedTxHash, setCopiedTxHash] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [docNotification, setDocNotification] = useState<string | null>(null);
   const [isDocViewerOpen, setIsDocViewerOpen] = useState<boolean>(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [copiedMint, setCopiedMint] = useState<boolean>(false);
+  const [favPending, setFavPending] = useState<boolean>(false);
+
+  const isSaved = useMemo(() => {
+    void liveTick;
+    return ledger.isFavorite(user?.id, property.id);
+  }, [user?.id, property.id, liveTick]);
+
+  const handleToggleFavorite = async () => {
+    if (favPending) return;
+    const prevFavorites = ledger.getFavorites(user?.id);
+    const { saved } = ledger.toggleFavorite(user?.id, property.id);
+    showToast(
+      saved ? `Saved "${property.title}" to your watchlist.` : `Removed "${property.title}" from watchlist.`,
+      'info'
+    );
+
+    if (user) {
+      setFavPending(true);
+      try {
+        if (saved) {
+          await userApi.addFavorite(property.id);
+        } else {
+          await userApi.removeFavorite(property.id);
+        }
+      } catch (err: any) {
+        if (err?.status && err.status >= 400) {
+          ledger.setFavorites(user.id, prevFavorites);
+          showToast('Failed to save watchlist change on server. Reverted.', 'error');
+        }
+      } finally {
+        setFavPending(false);
+      }
+    }
+  };
+
+  // Keyboard navigation for Lightbox and Invest Modal
+  useEffect(() => {
+    if (!lightboxOpen && !isInvestModalOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (lightboxOpen) {
+        if (e.key === 'Escape') setLightboxOpen(false);
+        if (e.key === 'ArrowLeft' && property.images.length > 1) {
+          setSelectedImageIndex((prev) => (prev === 0 ? property.images.length - 1 : prev - 1));
+        }
+        if (e.key === 'ArrowRight' && property.images.length > 1) {
+          setSelectedImageIndex((prev) => (prev === property.images.length - 1 ? 0 : prev + 1));
+        }
+      } else if (isInvestModalOpen && e.key === 'Escape' && !isSubmitting && !isRiskModalOpen) {
+        setIsInvestModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [lightboxOpen, isInvestModalOpen, isSubmitting, isRiskModalOpen, property.images.length]);
 
   const userInvestments = user ? ledger.getInvestments(user.id) : [];
-  const existingInvestment = userInvestments.find(inv => inv.propertyId === property.id);
-  const realizedReturnPercent = existingInvestment && existingInvestment.totalAmountInvested > 0
-    ? (existingInvestment.totalDividendsReceived / existingInvestment.totalAmountInvested) * 100
-    : 0;
+  const existingInvestment = userInvestments.find((inv) => inv.propertyId === property.id);
+  const realizedReturnPercent =
+    existingInvestment && existingInvestment.totalAmountInvested > 0
+      ? (existingInvestment.totalDividendsReceived / existingInvestment.totalAmountInvested) * 100
+      : 0;
 
-  const fundingPercent = Math.min(
-    100,
-    Math.round((property.fundedAmount / property.targetAmount) * 100)
-  );
-  const totalCost = tokenCount * property.tokenPrice;
-  const monthlyRate = property.monthlyTargetRate || 6.0;
+  const fundingPercent = Math.min(100, Math.round((property.fundedAmount / property.targetAmount) * 100));
+  const monthlyRate =
+    property.monthlyTargetRate || Number(((property.estimatedAnnualYield || 8.4) / 12).toFixed(2));
   const durationMonths = property.durationMonths || 36;
+  const totalSupply = property.totalTokens || Math.max(1, Math.floor(property.targetAmount / property.tokenPrice));
 
-  const projection = calculateInvestmentProjection({
-    investmentAmountEUR: totalCost,
-    tokenPriceEUR: property.tokenPrice,
-    monthlyTargetRatePercent: monthlyRate,
-    durationMonths: durationMonths,
-    capitalAppreciationYieldPercent: property.capitalAppreciationYield || 0,
-  });
+  const activeSimFeeTier =
+    PAYMENT_FEE_TIERS.find((t) => t.id === simFeeTierId) || PAYMENT_FEE_TIERS[0];
 
-  const purchaseQuote = generateTokenPurchaseQuote({
-    requestedAmountEUR: totalCost,
+  const simCalc = calculateLiveInvestmentBreakdown({
+    mode: simMode,
+    tokenCountInput: simTokens,
+    investmentAmountInputEUR: simAmountEUR,
     tokenPriceEUR: property.tokenPrice,
+    totalPropertyTokens: totalSupply,
+    availableTokens: property.availableTokens,
     minimumInvestmentEUR: property.minimumInvestment,
-    targetAmountEUR: property.targetAmount,
-    fundedAmountEUR: property.fundedAmount,
+    monthlyTargetRatePercent: monthlyRate,
+    durationMonths,
+    capitalAppreciationYieldPercent: property.capitalAppreciationYield || 0,
+    feePercent: activeSimFeeTier.feePercent,
+    fixedFeeEUR: activeSimFeeTier.fixedFeeEUR || 0,
   });
 
-  const projectedMonthlyDividend = projection.monthlyDistributionEUR;
-  const annualTarget = projection.monthlyDistributionEUR * 12;
-  const netMonthlyTarget = projection.totalMonthlyDistributionsEUR;
-  const totalWithPrincipal = projection.totalProceedsAtExitEUR;
+  const activeModalFeeTier =
+    PAYMENT_FEE_TIERS.find((t) => t.id === modalFeeTierId) || PAYMENT_FEE_TIERS[0];
 
-  const handleStartInvest = (prefillAmount?: number) => {
-    // Requirement 7: direct signed-out users to Login or Register and preserve selected property
+  const modalCalc = calculateLiveInvestmentBreakdown({
+    mode: modalMode,
+    tokenCountInput: tokenCount,
+    investmentAmountInputEUR: modalAmountEUR,
+    tokenPriceEUR: property.tokenPrice,
+    totalPropertyTokens: totalSupply,
+    availableTokens: property.availableTokens,
+    minimumInvestmentEUR: property.minimumInvestment,
+    monthlyTargetRatePercent: monthlyRate,
+    durationMonths,
+    capitalAppreciationYieldPercent: property.capitalAppreciationYield || 0,
+    feePercent: activeModalFeeTier.feePercent,
+    fixedFeeEUR: activeModalFeeTier.fixedFeeEUR || 0,
+    walletBalanceEUR: user?.walletBalance,
+  });
+
+  const totalCost = modalCalc.subtotalEUR;
+  const totalPayable = modalCalc.totalPayableEUR;
+  const projectedMonthlyDividend = modalCalc.monthlyDividendEUR;
+  const annualTarget = modalCalc.annualDividendEUR;
+  const netMonthlyTarget = modalCalc.netProjectedProfitEUR;
+  const totalWithPrincipal = modalCalc.totalExitProceedsEUR;
+
+  const handleStartInvest = (prefillAmount?: number, prefillTokens?: number, prefillFeeTierId?: string) => {
     if (!user) {
       if (onNavigateAuthForInvestment) {
         onNavigateAuthForInvestment(property);
@@ -133,18 +241,24 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
       return;
     }
 
-    if (prefillAmount) {
-      const calculatedTokens = Math.max(minTokens, Math.floor(prefillAmount / property.tokenPrice));
-      setTokenCount(calculatedTokens);
-    } else {
-      setTokenCount(minTokens);
-    }
+    const chosenTokens = prefillTokens
+      ? Math.max(minTokens, Math.min(property.availableTokens || minTokens, prefillTokens))
+      : prefillAmount
+      ? Math.max(minTokens, Math.floor(prefillAmount / property.tokenPrice))
+      : minTokens;
+
+    setTokenCount(chosenTokens);
+    setModalAmountEUR(Number((chosenTokens * property.tokenPrice).toFixed(2)));
+    setModalMode('tokens');
+    setModalFeeTierId(prefillFeeTierId || PAYMENT_FEE_TIERS[0].id);
+    setOrderIdempotencyKey(`inv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
     setInvestError(null);
     setInvestSuccessCert(null);
     setIsInvestModalOpen(true);
   };
 
   const handleConfirmInvestment = async () => {
+    if (isSubmitting) return;
     if (!user) {
       if (onNavigateAuthForInvestment) {
         onNavigateAuthForInvestment(property);
@@ -154,15 +268,35 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
     setInvestError(null);
     setIsSubmitting(true);
 
+    const activeKey = orderIdempotencyKey || `inv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
     try {
-      const inv = await ledger.executeInvestment(user.id, property.id, tokenCount);
-      refreshUser();
+      const inv = await ledger.executeInvestment(user.id, property.id, modalCalc.tokenCount, {
+        feePercent: activeModalFeeTier.feePercent,
+        paymentMethod: activeModalFeeTier.label,
+        idempotencyKey: activeKey,
+      });
+
+      investmentsApi
+        .executeInvestment({
+          propertyId: property.id,
+          tokensCount: modalCalc.tokenCount,
+          paymentMethod: activeModalFeeTier.label,
+          feePercent: activeModalFeeTier.feePercent,
+          idempotencyKey: activeKey,
+        })
+        .catch(() => {});
+
+      await refreshUser();
       setInvestSuccessCert({
         id: inv.certificateId,
         txHash: inv.transactionHash,
         tokens: inv.tokensPurchased,
-        total: inv.totalAmountInvested,
+        subtotal: modalCalc.subtotalEUR,
+        feeAmount: modalCalc.feeAmountEUR,
+        total: modalCalc.totalPayableEUR,
       });
+      showToast(`Confirmed acquisition of ${inv.tokensPurchased} ${property.tokenTicker} tokens.`, 'success');
       if (onInvestmentSuccess) onInvestmentSuccess();
     } catch (err: any) {
       setInvestError(err.message || 'Investment execution failed.');
@@ -219,8 +353,24 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
+              type="button"
+              onClick={handleToggleFavorite}
+              aria-pressed={isSaved}
+              aria-label={isSaved ? 'Remove property from watchlist' : 'Save property to watchlist'}
+              className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${
+                isSaved
+                  ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                  : 'border-[#E3E8E3] bg-[#F6F7F4] hover:bg-white text-[#18211F]'
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${isSaved ? 'fill-rose-600 text-rose-600' : 'text-[#27845D]'}`} />
+              <span>{isSaved ? 'Saved' : 'Save'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsShareModalOpen(true)}
               className="px-4 py-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-white text-[#18211F] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
               title="Share Property via Direct Link, Social Platforms or QR Code"
@@ -230,16 +380,18 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={() => setIsDocViewerOpen(true)}
               className="px-5 py-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-white text-[#18211F] text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
               title="Generate, Preview and Inspect Official 7-Document Package"
             >
               <FileText className="w-4 h-4 text-[#27845D]" />
-              <span>Official Documents & Brochure</span>
+              <span>Official Documents &amp; Brochure</span>
             </button>
 
-            {property.status === 'funding' && (
+            {property.status === 'funding' && property.availableTokens > 0 && (
               <button
+                type="button"
                 onClick={() => handleStartInvest()}
                 className="btn btn-primary px-7 text-xs font-bold shadow-md shadow-[#182D2A]/10"
               >
@@ -521,6 +673,226 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
         )}
 
 
+
+        {/* Interactive Live Investment & Return Simulator */}
+        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-[#E3E8E3] shadow-sm mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E3E8E3] mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[#EEF1EC] text-[#27845D] flex items-center justify-center shrink-0">
+                <Calculator className="w-4.5 h-4.5" />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-[#18211F]">
+                  Live Investment &amp; Fee Return Calculator
+                </h3>
+                <p className="text-xs text-[#69736F]">
+                  Adjust investment capital, token quantity, or settlement rail to inspect real-time SPV ownership and net cashflows.
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-bold text-[#27845D] bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg self-start sm:self-auto">
+              {property.availableTokens.toLocaleString()} / {totalSupply.toLocaleString()} Units Available
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Inputs Column */}
+            <div className="lg:col-span-5 space-y-3.5">
+              {/* EUR Amount Input */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <label htmlFor="detail-sim-amount" className="font-bold text-[#18211F]">
+                    Investment Capital (€)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    {[property.minimumInvestment, 2500, 5000, 10000]
+                      .filter((v, idx, arr) => v >= property.minimumInvestment && arr.indexOf(v) === idx)
+                      .slice(0, 3)
+                      .map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => {
+                            setSimMode('amount');
+                            setSimAmountEUR(preset);
+                            setSimTokens(Math.max(1, Math.floor(preset / property.tokenPrice)));
+                          }}
+                          className="px-2 py-0.5 rounded bg-[#F6F7F4] hover:bg-[#EEF1EC] border border-[#E3E8E3] text-[10px] font-mono font-bold text-[#18211F] cursor-pointer"
+                        >
+                          €{preset.toLocaleString()}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold font-mono text-[#69736F]">
+                    €
+                  </span>
+                  <input
+                    id="detail-sim-amount"
+                    type="number"
+                    min={property.tokenPrice}
+                    step={property.tokenPrice}
+                    value={simMode === 'amount' ? simAmountEUR : simCalc.subtotalEUR}
+                    onChange={(e) => {
+                      const val = Math.max(0, parseFloat(e.target.value) || 0);
+                      setSimMode('amount');
+                      setSimAmountEUR(val);
+                      setSimTokens(Math.floor(val / property.tokenPrice));
+                    }}
+                    className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:bg-white text-sm font-bold font-mono text-[#18211F] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
+                  />
+                </div>
+              </div>
+
+              {/* Token Units Stepper */}
+              <div className="space-y-1">
+                <div className="flex justify-between items-center text-xs">
+                  <label htmlFor="detail-sim-tokens" className="font-bold text-[#18211F]">
+                    SPL Token Quantity
+                  </label>
+                  <span className="font-mono text-[11px] text-[#69736F]">
+                    {formatCurrency(property.tokenPrice)} / unit
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Decrease simulated tokens"
+                    onClick={() => {
+                      const next = Math.max(1, simCalc.tokenCount - 1);
+                      setSimMode('tokens');
+                      setSimTokens(next);
+                      setSimAmountEUR(Number((next * property.tokenPrice).toFixed(2)));
+                    }}
+                    className="p-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#EEF1EC] text-[#18211F] cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    id="detail-sim-tokens"
+                    type="number"
+                    min={1}
+                    max={Math.max(1, property.availableTokens)}
+                    value={simMode === 'tokens' ? simTokens : simCalc.tokenCount}
+                    onChange={(e) => {
+                      const next = Math.max(0, parseInt(e.target.value, 10) || 0);
+                      setSimMode('tokens');
+                      setSimTokens(next);
+                      setSimAmountEUR(Number((next * property.tokenPrice).toFixed(2)));
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:bg-white text-center text-sm font-bold font-mono text-[#18211F] focus:outline-none focus:ring-2 focus:ring-[#27845D]"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Increase simulated tokens"
+                    onClick={() => {
+                      const next = Math.min(Math.max(1, property.availableTokens), simCalc.tokenCount + 1);
+                      setSimMode('tokens');
+                      setSimTokens(next);
+                      setSimAmountEUR(Number((next * property.tokenPrice).toFixed(2)));
+                    }}
+                    className="p-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] hover:bg-[#EEF1EC] text-[#18211F] cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Settlement Fee Tier */}
+              <div className="space-y-1">
+                <label htmlFor="detail-sim-fee" className="text-xs font-bold text-[#18211F] block">
+                  Settlement Rail &amp; Applicable Fee
+                </label>
+                <select
+                  id="detail-sim-fee"
+                  value={simFeeTierId}
+                  onChange={(e) => setSimFeeTierId(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] text-xs font-semibold text-[#18211F] focus:outline-none focus:ring-2 focus:ring-[#27845D] cursor-pointer"
+                >
+                  {PAYMENT_FEE_TIERS.map((tier) => (
+                    <option key={tier.id} value={tier.id}>
+                      {tier.label} ({tier.feePercent.toFixed(2)}% fee)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Live Computed Breakdown Column */}
+            <div className="lg:col-span-7 bg-[#F6FAF8] rounded-2xl border border-[#BCE8D7] p-4 sm:p-5 space-y-3.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-white p-3 rounded-xl border border-[#E4EEEA]">
+                  <span className="text-[10px] font-bold uppercase text-[#71817D] block">Allocated Units</span>
+                  <span className="text-base font-black font-mono text-[#172B2A] mt-0.5 block">
+                    {simCalc.tokenCount} {property.tokenTicker}
+                  </span>
+                  <span className="text-[10px] text-[#087F5B] font-mono font-semibold">
+                    {simCalc.ownershipSharePercent}% SPV Share
+                  </span>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-[#E4EEEA]">
+                  <span className="text-[10px] font-bold uppercase text-[#71817D] block">Subtotal + Fee</span>
+                  <span className="text-base font-black font-mono text-[#172B2A] mt-0.5 block">
+                    {formatCurrency(simCalc.totalPayableEUR)}
+                  </span>
+                  <span className="text-[10px] text-[#71817D] font-mono">
+                    Fee: {formatCurrency(simCalc.feeAmountEUR)} ({simCalc.feePercent}%)
+                  </span>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-[#E4EEEA]">
+                  <span className="text-[10px] font-bold uppercase text-[#71817D] block">Monthly Dividend</span>
+                  <span className="text-base font-black font-mono text-[#087F5B] mt-0.5 block">
+                    +{formatCurrency(simCalc.monthlyDividendEUR)}/mo
+                  </span>
+                  <span className="text-[10px] text-[#71817D] font-mono">
+                    +{formatCurrency(simCalc.annualDividendEUR)}/yr
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-white border border-[#E4EEEA] text-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-[#71817D] block">
+                    Net Projected Profit ({durationMonths} Mo, After Fee)
+                  </span>
+                  <span className="text-sm font-black font-mono text-[#087F5B]">
+                    +{formatCurrency(simCalc.netProjectedProfitEUR)} ({simCalc.netAnnualizedReturnPercent}% net p.a.)
+                  </span>
+                </div>
+                <div className="sm:text-right">
+                  <span className="text-[10px] font-bold uppercase text-[#71817D] block">
+                    Total Exit Proceeds (incl. Principal)
+                  </span>
+                  <span className="text-sm font-black font-mono text-[#172B2A]">
+                    {formatCurrency(simCalc.totalExitProceedsEUR)}
+                  </span>
+                </div>
+              </div>
+
+              {!simCalc.isValid && simCalc.validationError && (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
+                  {simCalc.validationError}
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={!simCalc.isValid || property.status !== 'funding'}
+                onClick={() => handleStartInvest(simCalc.subtotalEUR, simCalc.tokenCount, simFeeTierId)}
+                className="btn btn-primary w-full text-xs font-bold py-3 disabled:bg-gray-200 disabled:text-gray-500 disabled:border-gray-300 disabled:cursor-not-allowed"
+              >
+                {property.status !== 'funding' || property.availableTokens <= 0
+                  ? 'Offering 100% Fully Funded'
+                  : user
+                  ? `Acquire ${simCalc.tokenCount} Units (${formatCurrency(simCalc.totalPayableEUR)})`
+                  : `Sign In to Acquire ${simCalc.tokenCount} Units (${formatCurrency(simCalc.totalPayableEUR)})`}
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Tab Navigation (Requirement 6: Description, Investment Structure, Financial Terms, Fees, Documents, Risks, Payment Schedule, Exit Conditions) */}
         <div className="flex flex-wrap border-b border-[#E3E8E3] mb-6 gap-3 sm:gap-6 text-xs sm:text-sm font-bold">
@@ -1158,14 +1530,17 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
 
       {/* Investment Modal */}
       {isInvestModalOpen && (
-        <div 
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="property-detail-invest-modal-title"
           className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setIsInvestModalOpen(false);
+            if (e.target === e.currentTarget && !isSubmitting) setIsInvestModalOpen(false);
           }}
         >
-          <div 
-            className="bg-white rounded-2xl w-[92vw] sm:w-full max-w-[440px] max-h-[82vh] sm:max-h-[85vh] p-3.5 sm:p-4.5 shadow-2xl border border-[#E3E8E3] relative animate-in zoom-in-95 duration-150 my-auto overflow-y-auto"
+          <div
+            className="bg-white rounded-2xl w-[92vw] sm:w-full max-w-[460px] max-h-[85vh] p-3.5 sm:p-4.5 shadow-2xl border border-[#E3E8E3] relative animate-in zoom-in-95 duration-150 my-auto overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {!investSuccessCert ? (
@@ -1173,12 +1548,16 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 <div className="flex justify-between items-start mb-3 pb-2 border-b border-[#F0F2EE]">
                   <div>
                     <span className="text-[10px] font-semibold text-[#27845D] uppercase tracking-wider block">
-                      Participatory Offering
+                      Participatory Offering · {property.tokenTicker}
                     </span>
-                    <h3 className="text-base sm:text-lg font-bold text-[#18211F]">{property.title}</h3>
+                    <h3 id="property-detail-invest-modal-title" className="text-base sm:text-lg font-bold text-[#18211F]">
+                      {property.title}
+                    </h3>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setIsInvestModalOpen(false)}
+                    disabled={isSubmitting}
                     className="text-gray-400 hover:text-gray-600 text-lg font-bold p-1 cursor-pointer"
                     aria-label="Close"
                   >
@@ -1190,130 +1569,216 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 <div className="bg-[#F6F7F4] p-2.5 rounded-xl border border-[#E3E8E3] mb-3 flex items-center justify-between">
                   <div>
                     <span className="text-xs text-[#69736F] block">Available Cash Balance</span>
-                    <span className="text-lg font-bold text-[#182D2A]">
+                    <span className="text-lg font-bold font-mono text-[#182D2A]">
                       {user ? formatCurrency(user.walletBalance) : '€0.00'}
                     </span>
                   </div>
                   <button
+                    type="button"
                     onClick={() => {
                       setIsInvestModalOpen(false);
                       onNavigateDeposit();
                     }}
-                    className="text-xs text-[#27845D] font-bold hover:underline flex items-center gap-1"
+                    className="text-xs text-[#27845D] font-bold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Wallet className="w-3.5 h-3.5" />
                     Deposit Funds
                   </button>
                 </div>
 
-                {/* Token Selector (Enforces minimumInvestment >= €1,000) */}
-                <div className="space-y-2 mb-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <label className="text-[11px] font-bold text-[#18211F]">
-                      Quantity (Min: {minTokens} = {formatCurrency(property.minimumInvestment)})
-                    </label>
-                    <span className="text-[11px] text-[#69736F]">
-                      €{property.tokenPrice}/token
+                {/* Bidirectional Token / Amount Selector */}
+                <div className="space-y-2.5 mb-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="inline-flex rounded-lg bg-[#F6F7F4] p-0.5 border border-[#E3E8E3]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModalMode('tokens');
+                          setModalAmountEUR(Number((modalCalc.tokenCount * property.tokenPrice).toFixed(2)));
+                        }}
+                        className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${
+                          modalMode === 'tokens' ? 'bg-[#182D2A] text-white' : 'text-[#69736F]'
+                        }`}
+                      >
+                        By Units
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModalMode('amount');
+                          setModalAmountEUR(Number((modalCalc.tokenCount * property.tokenPrice).toFixed(2)));
+                        }}
+                        className={`px-2 py-1 rounded text-[11px] font-bold cursor-pointer ${
+                          modalMode === 'amount' ? 'bg-[#182D2A] text-white' : 'text-[#69736F]'
+                        }`}
+                      >
+                        By EUR (€)
+                      </button>
+                    </div>
+                    <span className="text-[11px] font-mono text-[#69736F]">
+                      €{property.tokenPrice}/unit · {property.availableTokens} avail.
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setTokenCount(Math.max(minTokens, tokenCount - 1))}
-                      className="w-8 h-8 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-base hover:bg-gray-100 cursor-pointer"
+                  {modalMode === 'tokens' ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = Math.max(minTokens, modalCalc.tokenCount - 1);
+                          setTokenCount(next);
+                          setModalAmountEUR(Number((next * property.tokenPrice).toFixed(2)));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-base hover:bg-gray-100 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        aria-label="Token quantity"
+                        min={minTokens}
+                        max={property.availableTokens}
+                        value={tokenCount || ''}
+                        onChange={(e) => {
+                          const next = Math.max(0, parseInt(e.target.value, 10) || 0);
+                          setTokenCount(next);
+                          setModalAmountEUR(Number((next * property.tokenPrice).toFixed(2)));
+                        }}
+                        className="flex-1 text-center font-bold font-mono text-base py-1 border border-[#E3E8E3] rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = Math.min(property.availableTokens, modalCalc.tokenCount + 1);
+                          setTokenCount(next);
+                          setModalAmountEUR(Number((next * property.tokenPrice).toFixed(2)));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-base hover:bg-gray-100 cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold font-mono text-[#69736F]">
+                        €
+                      </span>
+                      <input
+                        type="number"
+                        aria-label="Investment amount in EUR"
+                        min={property.minimumInvestment}
+                        step={property.tokenPrice}
+                        value={modalAmountEUR || ''}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseFloat(e.target.value) || 0);
+                          setModalAmountEUR(val);
+                          setTokenCount(Math.floor(val / property.tokenPrice));
+                        }}
+                        className="w-full py-1.5 pl-7 pr-24 border border-[#E3E8E3] rounded-lg font-bold font-mono text-base"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-bold text-[#27845D]">
+                        = {modalCalc.tokenCount} Units
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Settlement Rail & Fee Selector */}
+                  <div>
+                    <label htmlFor="modal-fee-tier" className="text-[11px] font-bold text-[#18211F] flex justify-between mb-1">
+                      <span>Settlement Rail &amp; Fee</span>
+                      <span className="font-mono text-[#27845D]">
+                        {activeModalFeeTier.feePercent.toFixed(2)}% ({formatCurrency(modalCalc.feeAmountEUR)})
+                      </span>
+                    </label>
+                    <select
+                      id="modal-fee-tier"
+                      value={modalFeeTierId}
+                      onChange={(e) => setModalFeeTierId(e.target.value)}
+                      className="w-full p-2 rounded-lg border border-[#E3E8E3] bg-[#F6F7F4] text-xs font-semibold text-[#18211F] cursor-pointer"
                     >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      min={minTokens}
-                      max={property.availableTokens}
-                      value={tokenCount}
-                      onChange={(e) =>
-                        setTokenCount(Math.max(minTokens, parseInt(e.target.value) || minTokens))
-                      }
-                      className="flex-1 text-center font-bold text-base py-1 border border-[#E3E8E3] rounded-lg"
-                    />
-                    <button
-                      onClick={() =>
-                        setTokenCount(Math.min(property.availableTokens, tokenCount + 1))
-                      }
-                      className="w-8 h-8 rounded-lg bg-[#F6F7F4] border border-[#E3E8E3] font-bold text-base hover:bg-gray-100 cursor-pointer"
-                    >
-                      +
-                    </button>
+                      {PAYMENT_FEE_TIERS.map((tier) => (
+                        <option key={tier.id} value={tier.id}>
+                          {tier.label} — {tier.feePercent.toFixed(2)}%
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Investment Projection Grid */}
                   <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-[#EEF1EC] border border-[#E3E8E3] text-xs">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                        Target Monthly Pay ({monthlyRate}% Projected)
+                        Target Monthly ({monthlyRate}%)
                       </span>
-                      <span className="text-sm font-black text-[#27845D] block mt-0.5 tabular-nums">
+                      <span className="text-sm font-black font-mono text-[#27845D] block mt-0.5 tabular-nums">
                         +{formatCurrency(projectedMonthlyDividend)}/mo
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                        Annual Target Return
+                        Annual Return
                       </span>
-                      <span className="text-sm font-black text-[#142421] block mt-0.5 tabular-nums">
+                      <span className="text-sm font-black font-mono text-[#142421] block mt-0.5 tabular-nums">
                         +{formatCurrency(annualTarget)}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                        Net-Monthly Target ({durationMonths} Mo)
+                        Net Profit ({durationMonths} Mo)
                       </span>
-                      <span className="text-xs font-bold text-[#27845D] block mt-0.5 tabular-nums">
+                      <span className="text-xs font-bold font-mono text-[#27845D] block mt-0.5 tabular-nums">
                         +{formatCurrency(netMonthlyTarget)}
                       </span>
                     </div>
 
                     <div>
                       <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wide">
-                        Total Acquisition Cost
+                        Total Payable ({modalCalc.ownershipSharePercent}% SPV)
                       </span>
-                      <span className="text-xs font-bold text-[#142421] block mt-0.5 tabular-nums">
-                        {formatCurrency(totalCost)}
+                      <span className="text-xs font-bold font-mono text-[#142421] block mt-0.5 tabular-nums">
+                        {formatCurrency(totalPayable)}
                       </span>
                     </div>
                   </div>
 
                   {/* Principal Repayment Projection */}
                   <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200/90 text-[11px] text-emerald-950 flex items-center justify-between font-semibold">
-                    <span className="text-[#52605C]">Total incl. separately returned principal (Projected):</span>
-                    <span className="font-black text-[#27845D] text-xs tabular-nums">{formatCurrency(totalWithPrincipal)}</span>
+                    <span className="text-[#52605C]">Total incl. returned principal (Projected):</span>
+                    <span className="font-black font-mono text-[#27845D] text-xs tabular-nums">
+                      {formatCurrency(totalWithPrincipal)}
+                    </span>
                   </div>
                 </div>
 
-                {investError && (
-                  <div className="p-3 mb-4 rounded-xl bg-red-50 text-red-700 text-xs font-medium border border-red-200">
-                    {investError}
+                {(investError || (!modalCalc.isValid && modalCalc.validationError)) && (
+                  <div className="p-3 mb-3 rounded-xl bg-red-50 text-red-700 text-xs font-medium border border-red-200">
+                    {investError || modalCalc.validationError}
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  {user && user.walletBalance < totalCost ? (
-                    <div>
-                      <button
-                        onClick={() => {
-                          setIsInvestModalOpen(false);
-                          onNavigateDeposit();
-                        }}
-                        className="btn btn-primary w-full text-xs font-bold"
-                      >
-                        Deposit {formatCurrency(totalCost - user.walletBalance)} to Continue
-                      </button>
-                    </div>
+                <div className="space-y-2.5">
+                  {user && totalPayable > 0 && user.walletBalance < totalPayable ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsInvestModalOpen(false);
+                        onNavigateDeposit();
+                      }}
+                      className="btn btn-primary w-full text-xs font-bold"
+                    >
+                      Deposit {formatCurrency(totalPayable - user.walletBalance)} to Continue
+                    </button>
                   ) : (
                     <button
-                      onClick={() => setIsRiskModalOpen(true)}
-                      disabled={isSubmitting}
-                      className="btn btn-primary w-full text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                      type="button"
+                      onClick={() => {
+                        setTokenCount(modalCalc.tokenCount);
+                        setIsRiskModalOpen(true);
+                      }}
+                      disabled={isSubmitting || !modalCalc.isValid}
+                      className="btn btn-primary w-full text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
                         <>
@@ -1321,13 +1786,15 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                           <span>Processing investment...</span>
                         </>
                       ) : (
-                        `Review Terms & Acquire ${formatCurrency(totalCost)}`
+                        `Review Terms & Acquire ${formatCurrency(totalPayable)}`
                       )}
                     </button>
                   )}
 
                   <button
+                    type="button"
                     onClick={() => setIsInvestModalOpen(false)}
+                    disabled={isSubmitting}
                     className="btn btn-secondary w-full text-xs font-medium"
                   >
                     Cancel
@@ -1343,7 +1810,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
 
                 <h3 className="text-2xl font-black text-[#18211F]">Acquisition Confirmed!</h3>
                 <p className="text-xs text-[#69736F]">
-                  Your participation in <span className="font-semibold text-[#18211F]">{property.title}</span> has been securely recorded on the auditable ledger.
+                  Your participation in <span className="font-semibold text-[#18211F]">{property.title}</span> has been
+                  securely recorded on the auditable ledger.
                 </p>
 
                 <div className="bg-[#F6F7F4] p-5 rounded-2xl border border-[#E3E8E3] text-left space-y-2 text-xs">
@@ -1356,12 +1824,35 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                     <span className="font-bold text-[#18211F]">{investSuccessCert.tokens} Tokens</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#69736F]">Amount Invested:</span>
-                    <span className="font-bold text-[#18211F]">{formatCurrency(investSuccessCert.total)}</span>
+                    <span className="text-[#69736F]">Net Asset Capital:</span>
+                    <span className="font-bold text-[#18211F]">{formatCurrency(investSuccessCert.subtotal)}</span>
                   </div>
+                  {investSuccessCert.feeAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-[#69736F]">Settlement Fee:</span>
+                      <span className="font-mono font-semibold text-[#18211F]">
+                        {formatCurrency(investSuccessCert.feeAmount)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
-                    <span className="text-[#69736F]">Solana Tx Signature:</span>
-                    <span className="font-mono text-[#27845D] font-bold">{formatShortHash(investSuccessCert.txHash)}</span>
+                    <span className="text-[#69736F]">Total Debited:</span>
+                    <span className="font-bold text-[#27845D]">{formatCurrency(investSuccessCert.total)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#69736F]">Audit Ledger Hash:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(investSuccessCert.txHash);
+                        setCopiedTxHash(true);
+                        setTimeout(() => setCopiedTxHash(false), 2000);
+                      }}
+                      className="font-mono text-[#27845D] font-bold inline-flex items-center gap-1 cursor-pointer hover:underline"
+                    >
+                      <span>{formatShortHash(investSuccessCert.txHash)}</span>
+                      {copiedTxHash ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    </button>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#69736F]">SPL Token Mint:</span>
@@ -1375,19 +1866,36 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-1">
-                  <a
-                    href={getSolanaExplorerUrl(investSuccessCert.txHash, 'tx', 'devnet')}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full py-2 px-3 rounded-xl bg-[#142421] text-white text-xs font-bold hover:bg-[#1e342f] transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    <span>Verify Transaction on Solana Explorer</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-[#B7E36A]" />
-                  </a>
-                </div>
+                {!investSuccessCert.txHash.startsWith('0x') &&
+                investSuccessCert.txHash.length >= 64 &&
+                isValidSolanaAddress(investSuccessCert.txHash.slice(0, 44)) ? (
+                  <div className="pt-1">
+                    <a
+                      href={getSolanaExplorerUrl(investSuccessCert.txHash, 'tx', 'devnet')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 px-3 rounded-xl bg-[#142421] text-white text-xs font-bold hover:bg-[#1e342f] transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <span>Verify Transaction on Solana Explorer</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#B7E36A]" />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="pt-1">
+                    <a
+                      href={getSolanaExplorerUrl(property.solanaMintAddress || property.tokenContractAddress, 'address', 'devnet')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2 px-3 rounded-xl bg-[#142421] text-white text-xs font-bold hover:bg-[#1e342f] transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <span>Inspect SPL Asset Mint on Solana Explorer</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-[#B7E36A]" />
+                    </a>
+                  </div>
+                )}
 
                 <button
+                  type="button"
                   onClick={() => setIsInvestModalOpen(false)}
                   className="btn btn-primary w-full text-xs font-bold"
                 >
@@ -1509,8 +2017,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
       {isRiskModalOpen && (
         <RiskAndTermsAcknowledgementModal
           property={property}
-          investmentAmountEUR={totalCost}
-          tokensCount={tokenCount}
+          investmentAmountEUR={totalPayable}
+          tokensCount={modalCalc.tokenCount}
           isSubmitting={isSubmitting}
           onConfirm={() => {
             setIsRiskModalOpen(false);

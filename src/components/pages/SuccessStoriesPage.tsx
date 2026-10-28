@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { CASE_STUDIES, CaseStudy, INVESTOR_TESTIMONIALS } from '../../data/caseStudies';
+import React, { useState, useEffect } from 'react';
+import { CASE_STUDIES, CaseStudy } from '../../data/caseStudies';
 import { formatCurrency } from '../../lib/utils';
+import heroFallbackImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
 import { 
   Trophy, TrendingUp, CheckCircle2, Calendar, MapPin, 
   Users, ArrowRight, ShieldCheck, FileCheck, Filter, 
@@ -24,6 +25,15 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
   const [activeModalStudy, setActiveModalStudy] = useState<CaseStudy | null>(null);
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
   const [copiedContract, setCopiedContract] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!activeModalStudy) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveModalStudy(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeModalStudy]);
 
   const cities = ['all', ...Array.from(new Set(CASE_STUDIES.map(c => c.city)))];
   const strategies = ['all', ...Array.from(new Set(CASE_STUDIES.map(c => c.strategy)))];
@@ -93,7 +103,7 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
       {/* Real-Time KPI Performance Metrics Bar */}
       <section className="bg-white border-b border-[#E3E8E3] py-8">
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6 text-left">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6 text-left tabular-nums">
             <div className="p-4 sm:p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Projects Liquidated</p>
               <p className="text-2xl sm:text-3xl font-black text-[#18211F] mt-1">129+</p>
@@ -226,6 +236,30 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
           </div>
 
           {/* Case Studies Container: Vertical Feed or Grid */}
+          {filtered.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-10 text-center space-y-4 mb-16">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-[#182D2A] flex items-center justify-center mx-auto">
+                <Search className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-extrabold text-[#18211F]">No Exited Case Records Match Your Filters</h3>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+                  Adjust or clear your city, strategy, or search criteria to inspect all verified liquidated SPV properties.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCity('all');
+                  setSelectedStrategy('all');
+                  setSearchQuery('');
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
           <div className={viewMode === 'feed' ? "max-w-2xl mx-auto flex flex-col gap-8 mb-16 text-left w-full" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16 text-left"}>
             {filtered.map((study) => (
               <div
@@ -244,7 +278,7 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
                         const target = e.target as HTMLImageElement;
                         if (!target.dataset.fallback) {
                           target.dataset.fallback = 'true';
-                          target.src = '/assets/images/hero_real_estate_1791998371047.jpg';
+                          target.src = heroFallbackImg;
                         }
                       }}
                     />
@@ -328,6 +362,7 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
               </div>
             ))}
           </div>
+          )}
 
         </div>
       </section>
@@ -395,8 +430,19 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
 
       {/* Case Study Detail Modal (With Real-Time Photos Gallery & Full Statistics) */}
       {activeModalStudy && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-2xl w-full my-6 overflow-hidden shadow-2xl border border-slate-200 text-left relative max-h-[92vh] flex flex-col">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={activeModalStudy.title}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActiveModalStudy(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full my-6 overflow-hidden shadow-2xl border border-slate-200 text-left relative max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             
             {/* Gallery Image Display */}
             <div className="relative aspect-[16/9] overflow-hidden bg-slate-950 shrink-0">
@@ -409,15 +455,17 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
                   const target = e.target as HTMLImageElement;
                   if (!target.dataset.fallback) {
                     target.dataset.fallback = 'true';
-                    target.src = '/assets/images/hero_real_estate_1791998371047.jpg';
+                    target.src = heroFallbackImg;
                   }
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
               
               <button
+                type="button"
+                aria-label="Close case study record"
                 onClick={() => setActiveModalStudy(null)}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer z-10"
+                className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer z-10"
               >
                 ✕
               </button>

@@ -22,9 +22,13 @@ import {
   Layers,
   ArrowUpRight,
   CheckCircle2,
-  Bookmark
+  Bookmark,
+  AlertCircle
 } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
+import { newsletterApi } from '../../lib/api';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface InsightsEditorialHomeProps {
   onSelectArticle: (slug: string) => void;
@@ -44,6 +48,9 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
   const [onlyDossiers, setOnlyDossiers] = useState<boolean>(initialType === 'dossiers');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const [newsletterMessage, setNewsletterMessage] = useState<string | null>(null);
+  const [newsletterError, setNewsletterError] = useState<string | null>(null);
+  const [isSubscribing, setIsSubscribing] = useState(false);
   const [compendiumDownloadNotice, setCompendiumDownloadNotice] = useState(false);
 
   const categories = useMemo(() => insightsService.getCategories(), []);
@@ -78,13 +85,31 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
     return [...list].sort((a, b) => (b.viewsCount || 0) - (a.viewsCount || 0)).slice(0, 5);
   }, []);
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newsletterEmail && newsletterEmail.includes('@')) {
+    if (isSubscribing) return;
+    setNewsletterError(null);
+
+    const normalized = newsletterEmail.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(normalized)) {
+      setNewsletterError('Please enter a valid corporate or personal email address.');
+      return;
+    }
+
+    setIsSubscribing(true);
+    try {
+      const res = await newsletterApi.subscribe(normalized, 'editorial_dispatch');
       setNewsletterSubscribed(true);
-      setTimeout(() => {
-        setNewsletterEmail('');
-      }, 3000);
+      setNewsletterMessage(
+        res.data?.alreadySubscribed
+          ? `${normalized} is already registered (${res.data.reference}).`
+          : `Confirmed (${res.data?.reference || 'Active'}). Weekly Thursday briefings enabled.`
+      );
+      setNewsletterEmail('');
+    } catch (err: any) {
+      setNewsletterError(err?.message || 'Unable to process subscription right now. Please try again.');
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -108,13 +133,12 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
           {/* Ticker Bar */}
           <div className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-6 border-b border-[#1D3860] text-[11px] text-[#8EA7C7]">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#BEE179] animate-pulse" />
               <span className="font-bold tracking-wider uppercase text-[#BEE179]">Kretz Editorial Wire</span>
               <span className="text-[#1D3860]">|</span>
               <span>European Real Estate Intelligence & Dossiers</span>
             </div>
 
-            <div className="hidden md:flex items-center gap-6 font-mono text-[11px]">
+            <div className="hidden md:flex items-center gap-6 font-mono tabular-nums text-[11px]">
               <div>
                 <span className="text-[#8EA7C7] mr-1.5">Euribor 3M:</span>
                 <span className="font-bold text-white">3.18%</span>
@@ -657,25 +681,41 @@ export const InsightsEditorialHome: React.FC<InsightsEditorialHomeProps> = ({
               </div>
 
               {newsletterSubscribed ? (
-                <div className="p-3 bg-[#0B1B30] border border-[#BEE179] rounded-xl text-[#BEE179] text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#BEE179] shrink-0" />
-                  <span>You are subscribed to the Kretz Dispatch.</span>
+                <div className="p-3 bg-[#0B1B30] border border-[#BEE179] rounded-xl text-[#BEE179] text-xs space-y-1">
+                  <div className="font-bold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#BEE179] shrink-0" />
+                    <span>Subscribed to Kretz Dispatch</span>
+                  </div>
+                  {newsletterMessage && (
+                    <p className="text-[11px] text-[#D1E2F7] leading-snug">{newsletterMessage}</p>
+                  )}
                 </div>
               ) : (
-                <form onSubmit={handleNewsletterSubmit} className="space-y-2">
+                <form onSubmit={handleNewsletterSubmit} noValidate className="space-y-2">
+                  {newsletterError && (
+                    <div role="alert" className="p-2.5 rounded-xl bg-rose-950/70 border border-rose-500/40 text-rose-200 text-[11px] font-semibold flex items-start gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                      <span>{newsletterError}</span>
+                    </div>
+                  )}
                   <input
                     type="email"
                     required
+                    aria-label="Corporate email for editorial dispatch"
                     value={newsletterEmail}
-                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    onChange={(e) => {
+                      setNewsletterEmail(e.target.value);
+                      if (newsletterError) setNewsletterError(null);
+                    }}
                     placeholder="Enter your corporate email..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#1D3860] bg-[#0B1B30] text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#BEE179]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#1D3860] bg-[#0B1B30] text-base sm:text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#BEE179]"
                   />
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold transition-colors cursor-pointer"
+                    disabled={isSubscribing}
+                    className="w-full min-h-[40px] py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] disabled:opacity-60 disabled:cursor-not-allowed text-[#0B1B30] text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    Subscribe to Dispatch
+                    {isSubscribing ? 'Subscribing...' : 'Subscribe to Dispatch'}
                   </button>
                 </form>
               )}

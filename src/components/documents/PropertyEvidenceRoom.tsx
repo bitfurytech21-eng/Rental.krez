@@ -252,18 +252,18 @@ export const PropertyEvidenceRoom: React.FC<PropertyEvidenceRoomProps> = ({
   };
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
+    <div className="bg-white text-[#18211F] [color-scheme:light] p-5 sm:p-8 rounded-2xl border border-[#E3E8E3] shadow-sm space-y-6">
       {/* Evidence Room Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E3E8E3]">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="status-badge funding font-semibold uppercase text-[11px]">
               Property Evidence Room
             </span>
-            <span className="text-xs font-mono font-bold text-[#182D2A] bg-[#EEF1EC] px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-mono font-bold text-[#182D2A] bg-[#EEF1EC] px-2.5 py-0.5 rounded-md">
               Canonical: {canonicalRef}
             </span>
-            <span className="text-xs font-mono text-[#69736F] bg-gray-100 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-mono text-[#69736F] bg-gray-100 px-2.5 py-0.5 rounded-md">
               Legal Alias: {legalAliasRef}
             </span>
           </div>
@@ -276,7 +276,7 @@ export const PropertyEvidenceRoom: React.FC<PropertyEvidenceRoomProps> = ({
         </div>
 
         {/* Alias Reconciliation Badge */}
-        <div className="p-3 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] text-xs flex items-center gap-3">
+        <div className="p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] text-xs flex items-center gap-3">
           <Info className="w-4 h-4 text-[#27845D] shrink-0" />
           <div>
             <span className="font-bold text-[#18211F] block">Alias Reconciled</span>
@@ -288,30 +288,30 @@ export const PropertyEvidenceRoom: React.FC<PropertyEvidenceRoomProps> = ({
       </div>
 
       {notification && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between animate-in fade-in">
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between animate-in fade-in">
           <span>{notification}</span>
-          <button onClick={() => setNotification(null)} className="text-emerald-700 hover:text-emerald-900 font-bold">✕</button>
+          <button onClick={() => setNotification(null)} className="text-emerald-700 hover:text-emerald-900 font-bold min-w-[32px] min-h-[32px]">✕</button>
         </div>
       )}
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3]">
         <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search documents by title or issuer..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-white border border-[#E3E8E3] focus:outline-none focus:border-[#182D2A]"
+            className="w-full h-10 pl-9 pr-4 rounded-xl text-base sm:text-xs bg-white text-[#18211F] placeholder:text-slate-400 border border-[#CBD5E1] focus:outline-none focus:border-[#182D2A]"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="text-xs font-semibold p-2 rounded-xl bg-white border border-[#E3E8E3] focus:outline-none flex-1 sm:flex-none"
+            className="h-10 text-base sm:text-xs font-semibold px-3 rounded-xl bg-white text-[#18211F] border border-[#CBD5E1] focus:outline-none focus:border-[#182D2A] flex-1 sm:flex-none"
           >
             <option value="all">All Document Categories</option>
             <option value="title_deed">Notary Title Deed</option>
@@ -325,7 +325,7 @@ export const PropertyEvidenceRoom: React.FC<PropertyEvidenceRoomProps> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs font-semibold p-2 rounded-xl bg-white border border-[#E3E8E3] focus:outline-none flex-1 sm:flex-none"
+            className="h-10 text-base sm:text-xs font-semibold px-3 rounded-xl bg-white text-[#18211F] border border-[#CBD5E1] focus:outline-none focus:border-[#182D2A] flex-1 sm:flex-none"
           >
             <option value="all">All Verification Statuses</option>
             <option value="independently_verified">Independently Verified</option>

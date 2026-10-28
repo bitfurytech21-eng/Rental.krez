@@ -34,6 +34,7 @@ export const AdminNewsManager: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CompanyNewsItem | null>(null);
   const [previewVideo, setPreviewVideo] = useState<CompanyNewsItem | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Form states
   const [formYoutubeUrl, setFormYoutubeUrl] = useState('');
@@ -195,11 +196,10 @@ export const AdminNewsManager: React.FC = () => {
     refreshList();
   };
 
-  const handleDelete = (id: string, title: string) => {
-    if (window.confirm(`Are you sure you want to remove news video: "${title}"?`)) {
-      ledger.deleteNews(id);
-      refreshList();
-    }
+  const handleDelete = (id: string) => {
+    ledger.deleteNews(id);
+    setConfirmDeleteId(null);
+    refreshList();
   };
 
   // Filtered news list for admin table
@@ -465,13 +465,33 @@ export const AdminNewsManager: React.FC = () => {
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(item.id, item.title)}
-                          className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
-                          title="Delete Video"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {confirmDeleteId === item.id ? (
+                          <div className="inline-flex items-center gap-1 ml-1">
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(item.id)}
+                              className="px-2 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold cursor-pointer"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(item.id)}
+                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer"
+                            title="Delete Video"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

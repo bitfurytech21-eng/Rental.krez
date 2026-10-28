@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
 import {
@@ -41,6 +41,15 @@ ${shareUrl}`;
 
   const [customMessage, setCustomMessage] = useState(defaultMessage);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleCopyLink = () => {
@@ -55,43 +64,22 @@ ${shareUrl}`;
     setTimeout(() => setCopiedMessage(false), 2500);
   };
 
-  // Social Sharing Launchers
-  const shareWhatsApp = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(customMessage)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const shareTwitter = () => {
-    const text = `Explore ${property.title} in ${property.location}! Target Yield: ${formatPercent(property.estimatedAnnualYield)} p.a. Min. Investment: ${formatCurrency(property.minimumInvestment)}`;
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const shareLinkedIn = () => {
-    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const shareTelegram = () => {
-    const url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(customMessage)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const shareFacebook = () => {
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const shareEmail = () => {
-    const subject = `Investment Opportunity: ${property.title}`;
-    const body = `${customMessage}`;
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  };
+  // Safe Anchor Share URLs (iframe-compatible without window.open)
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(customMessage)}`;
+  const twitterText = `Explore ${property.title} in ${property.location}! Target Yield: ${formatPercent(property.estimatedAnnualYield)} p.a. Min. Investment: ${formatCurrency(property.minimumInvestment)}`;
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}&url=${encodeURIComponent(shareUrl)}`;
+  const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(customMessage)}`;
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+  const emailUrl = `mailto:?subject=${encodeURIComponent(`Investment Opportunity: ${property.title}`)}&body=${encodeURIComponent(customMessage)}`;
 
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Share ${property.title}`}
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -187,70 +175,74 @@ ${shareUrl}`;
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {/* WhatsApp */}
-              <button
-                type="button"
-                onClick={shareWhatsApp}
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 text-[#128C7E] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
                 title="Share on WhatsApp"
               >
                 <MessageSquare className="w-4 h-4 text-[#25D366]" />
                 <span className="text-[10px] font-bold">WhatsApp</span>
-              </button>
+              </a>
 
               {/* Telegram */}
-              <button
-                type="button"
-                onClick={shareTelegram}
+              <a
+                href={telegramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 rounded-xl bg-[#0088cc]/10 hover:bg-[#0088cc]/20 border border-[#0088cc]/30 text-[#0088cc] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
                 title="Share on Telegram"
               >
                 <Send className="w-4 h-4 text-[#0088cc]" />
                 <span className="text-[10px] font-bold">Telegram</span>
-              </button>
+              </a>
 
               {/* Twitter / X */}
-              <button
-                type="button"
-                onClick={shareTwitter}
+              <a
+                href={twitterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 rounded-xl bg-slate-900/10 hover:bg-slate-900/20 border border-slate-900/20 text-slate-900 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
                 title="Share on X (Twitter)"
               >
                 <span className="font-mono font-bold text-xs">𝕏</span>
                 <span className="text-[10px] font-bold">X / Tweet</span>
-              </button>
+              </a>
 
               {/* LinkedIn */}
-              <button
-                type="button"
-                onClick={shareLinkedIn}
+              <a
+                href={linkedInUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 rounded-xl bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 border border-[#0A66C2]/30 text-[#0A66C2] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
                 title="Share on LinkedIn"
               >
                 <ExternalLink className="w-4 h-4 text-[#0A66C2]" />
                 <span className="text-[10px] font-bold">LinkedIn</span>
-              </button>
+              </a>
 
               {/* Facebook */}
-              <button
-                type="button"
-                onClick={shareFacebook}
+              <a
+                href={facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2.5 rounded-xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 border border-[#1877F2]/30 text-[#1877F2] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
                 title="Share on Facebook"
               >
                 <Share2 className="w-4 h-4 text-[#1877F2]" />
                 <span className="text-[10px] font-bold">Facebook</span>
-              </button>
+              </a>
 
               {/* Email */}
-              <button
-                type="button"
-                onClick={shareEmail}
+              <a
+                href={emailUrl}
                 className="p-2.5 rounded-xl bg-slate-700/10 hover:bg-slate-700/20 border border-slate-700/30 text-slate-800 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all"
                 title="Share via Email"
               >
                 <Mail className="w-4 h-4 text-slate-700" />
                 <span className="text-[10px] font-bold">Email</span>
-              </button>
+              </a>
             </div>
           </div>
 

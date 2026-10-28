@@ -72,6 +72,18 @@ function MainApp() {
     return subscribePassGate(setPassGateUnlocked);
   }, []);
 
+  // Keep properties and selectedProperty synchronized with ledger mutations
+  useEffect(() => {
+    return ledger.subscribe(() => {
+      const updatedList = ledger.getProperties();
+      setProperties(updatedList);
+      setSelectedProperty((prev) => {
+        if (!prev) return prev;
+        return updatedList.find((p) => p.id === prev.id || p.slug === prev.slug) || prev;
+      });
+    });
+  }, []);
+
   // Synchronize selectedProperty whenever route changes to a property page
   useEffect(() => {
     if (currentPath.startsWith('/property/')) {
@@ -594,7 +606,7 @@ function MainApp() {
   const currentBasePath = rawBasePath.length > 1 ? rawBasePath.replace(/\/$/, '') : rawBasePath;
   const isDashboardView = [
     '/dashboard', '/portfolio', '/transactions', '/distributions', 
-    '/wallet', '/deposit', '/documents', '/referrals', '/notifications', 
+    '/wallet', '/deposit', '/withdraw', '/documents', '/referrals', '/notifications', 
     '/profile', '/support'
   ].includes(currentBasePath) || currentBasePath.startsWith('/dashboard');
 

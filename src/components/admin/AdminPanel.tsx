@@ -92,6 +92,7 @@ export const AdminPanel: React.FC = () => {
   const [paymentConfig, setPaymentConfig] = useState(ledger.getPaymentConfig());
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmDeleteNetId, setConfirmDeleteNetId] = useState<string | null>(null);
 
   // Document proof preview modal
   const [previewProofModalDoc, setPreviewProofModalDoc] = useState<{
@@ -237,12 +238,11 @@ export const AdminPanel: React.FC = () => {
   };
 
   const handleDeleteCryptoNetwork = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to remove ${name} from payment settings?`)) {
-      ledger.deleteCryptoNetwork(id);
-      refreshAll();
-      setActionSuccess(`Treasury network ${name} removed.`);
-      setTimeout(() => setActionSuccess(null), 3000);
-    }
+    ledger.deleteCryptoNetwork(id);
+    setConfirmDeleteNetId(null);
+    refreshAll();
+    setActionSuccess(`Treasury network ${name} removed.`);
+    setTimeout(() => setActionSuccess(null), 3000);
   };
 
   const handleToggleCryptoNetwork = (id: string) => {
@@ -1583,14 +1583,33 @@ export const AdminPanel: React.FC = () => {
                             )}
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCryptoNetwork(net.id, net.name)}
-                            title="Delete Network"
-                            className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {confirmDeleteNetId === net.id ? (
+                            <div className="inline-flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCryptoNetwork(net.id, net.name)}
+                                className="px-2 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold cursor-pointer"
+                              >
+                                Remove
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteNetId(null)}
+                                className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteNetId(net.id)}
+                              title="Delete Network"
+                              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

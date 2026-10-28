@@ -174,20 +174,30 @@ export const UserMembershipCard: React.FC<UserMembershipCardProps> = ({
 
       {/* Perquisites Modal */}
       {showPerksModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 text-left border border-slate-200 shadow-2xl space-y-5">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowPerksModal(false)}
+        >
+          <div
+            className="bg-white text-slate-900 [color-scheme:light] rounded-2xl max-w-lg w-full p-5 sm:p-7 text-left border border-slate-200 shadow-2xl space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-emerald-800" />
+                <Crown className="w-5 h-5 text-emerald-800 shrink-0" />
                 <h3 className="text-lg font-bold text-[#18211F]">
                   {membership.tierName} Perquisites
                 </h3>
               </div>
-              <button 
+              <button
+                type="button"
+                aria-label="Close perquisites dialog"
                 onClick={() => setShowPerksModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 flex items-center justify-center cursor-pointer"
+                className="min-w-[44px] min-h-[44px] -mr-1 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-950 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

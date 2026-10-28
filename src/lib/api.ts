@@ -300,8 +300,54 @@ export const authApi = {
  * Direct Investor Desk & Contact API
  */
 export const contactApi = {
-  submit: (payload: { fullName: string; email: string; topic?: string; message: string; turnstileToken?: string }) =>
-    api.post<{ success: boolean; message: string }>('/contact', payload),
+  submit: (payload: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    topic?: string;
+    advisorName?: string;
+    investmentCapacity?: string;
+    country?: string;
+    message: string;
+    turnstileToken?: string;
+  }) =>
+    api.post<{ success: boolean; data?: { ticketId: string; createdAt?: string }; message: string }>('/contact', payload),
+};
+
+export const newsletterApi = {
+  subscribe: (email: string, source: string = 'editorial_dispatch') =>
+    api.post<{
+      success: boolean;
+      data: { email: string; alreadySubscribed: boolean; subscribedAt: string; reference: string };
+      message: string;
+    }>('/newsletter/subscribe', { email, source }),
+};
+
+export const membershipApi = {
+  apply: (payload: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    tierId: 'atelier' | 'sovereign' | 'patron' | 'black_circle' | 'heritage' | string;
+    billingCycle: 'annual' | 'monthly';
+    paymentMethod: 'wallet_balance' | 'bank_wire' | 'credit_card' | 'complimentary_invitation';
+    preferredRegion?: string;
+    invitationCode?: string;
+    specialRequests?: string;
+    turnstileToken?: string;
+  }) =>
+    api.post<{
+      success: boolean;
+      data: {
+        applicationId: string;
+        status: string;
+        tierId: string;
+        billingCycle: string;
+        paymentMethod: string;
+        createdAt: string;
+      };
+      message: string;
+    }>('/memberships/apply', payload),
 };
 
 /**
@@ -338,14 +384,86 @@ export const userApi = {
   getProfile: () =>
     api.get<any>('/user/profile'),
 
+  updateProfile: (updates: Record<string, any>) =>
+    api.patch<{ success: boolean; data: any; message?: string }>('/users/me', updates),
+
   getPortfolio: () =>
     api.get<any>('/portfolio'),
+
+  getDashboardSummary: () =>
+    api.get<any>('/dashboard/summary'),
 
   getTransactions: () =>
     api.get<any[]>('/transactions'),
 
   getNotifications: () =>
-    api.get<any[]>('/notifications'),
+    api.get<any>('/notifications'),
+
+  markNotificationRead: (id: string) =>
+    api.patch<any>(`/notifications/${id}/read`),
+
+  markAllNotificationsRead: () =>
+    api.post<any>('/notifications/read-all'),
+
+  getFavorites: () =>
+    api.get<{ success: boolean; data: { favorites: string[] } }>('/user/favorites'),
+
+  addFavorite: (propertyId: string) =>
+    api.post<{ success: boolean; data: { favorites: string[]; saved: boolean } }>('/user/favorites', { propertyId }),
+
+  removeFavorite: (propertyId: string) =>
+    api.delete<{ success: boolean; data: { favorites: string[]; saved: boolean } }>(`/user/favorites/${encodeURIComponent(propertyId)}`),
+
+  getPreferences: () =>
+    api.get<{ success: boolean; data: Record<string, any> }>('/user/preferences'),
+
+  savePreferences: (prefs: Record<string, any>) =>
+    api.put<{ success: boolean; data: Record<string, any> }>('/user/preferences', prefs),
+
+  getReferrals: () =>
+    api.get<{
+      success: boolean;
+      data: {
+        referrals: Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number; referralCode?: string }>;
+      };
+    }>('/user/referrals'),
+
+  sendReferralInvite: (email: string, referralCode?: string, inviterEmail?: string) =>
+    api.post<{
+      success: boolean;
+      data: {
+        referral: { id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number; referralCode?: string };
+        referrals: Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number; referralCode?: string }>;
+      };
+      message: string;
+    }>('/user/referrals/invite', { email, referralCode, inviterEmail }),
+};
+
+/**
+ * Multi-Currency Treasury & FX Conversion Endpoints
+ */
+export const treasuryApi = {
+  getRates: () =>
+    api.get<{ success: boolean; data: { base: string; ratesToEur: Record<string, number>; feePercent: number; updatedAt: string } }>('/treasury/rates'),
+
+  getBalances: () =>
+    api.get<{ success: boolean; data: { balances: Record<string, number> } }>('/treasury/balances'),
+
+  convert: (payload: { fromCurrency: string; toCurrency: string; amount: number; clientEurBalance?: number }) =>
+    api.post<{
+      success: boolean;
+      data: {
+        reference: string;
+        fromCurrency: string;
+        toCurrency: string;
+        fromAmount: number;
+        toAmount: number;
+        feeEur: number;
+        balances: Record<string, number>;
+        transaction: any;
+      };
+      message?: string;
+    }>('/treasury/convert', payload),
 };
 
 /**
@@ -358,7 +476,7 @@ export const financialApi = {
   withdraw: (payload: { amount: number; destination: string; method?: string }) =>
     api.post<any>('/withdrawals', payload),
 
-  invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; idempotencyKey?: string }) =>
+  invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string }) =>
     api.post<any>('/investments', payload),
 };
 
@@ -366,7 +484,7 @@ export const investmentsApi = {
   getMyInvestments: () =>
     api.get<any>('/portfolio'),
 
-  executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; idempotencyKey?: string }) =>
+  executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; feePercent?: number; idempotencyKey?: string }) =>
     api.post<any>('/investments', payload),
 
   reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
@@ -378,7 +496,7 @@ export const investmentsApi = {
  */
 export const walletApi = {
   getBalance: () =>
-    api.get<{ balance: number; currency: string }>('/wallet/balance'),
+    api.get<{ balance: number; subBalances?: Record<string, number>; currency: string }>('/wallet/balance'),
 
   getTransactions: (params?: { limit?: number; offset?: number }) =>
     api.get<any[]>('/transactions', { params }),

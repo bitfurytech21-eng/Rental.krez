@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BLOG_POSTS, BlogPost } from '../../data/blogPosts';
 import { 
   BookOpen, Search, Filter, Clock, Calendar, 
@@ -17,6 +17,15 @@ export const BlogPage: React.FC<BlogPageProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeArticle, setActiveArticle] = useState<BlogPost | null>(null);
+
+  useEffect(() => {
+    if (!activeArticle) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveArticle(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeArticle]);
 
   const categories = ['all', 'Guides & Education', 'Market Insights', 'Regulation & Legal'];
 
@@ -81,11 +90,22 @@ export const BlogPage: React.FC<BlogPageProps> = ({
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                aria-label="Search articles, tags, or topics"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search articles, tags, or topics..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-[#182D2A] focus:outline-none"
+                className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 text-base sm:text-xs text-slate-900 bg-white focus:ring-2 focus:ring-[#182D2A] focus:outline-none"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  aria-label="Clear article search"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-slate-400 hover:text-slate-800 text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
@@ -151,6 +171,29 @@ export const BlogPage: React.FC<BlogPageProps> = ({
           )}
 
           {/* Grid of Articles */}
+          {filteredPosts.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 p-10 text-center space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-[#182D2A] flex items-center justify-center mx-auto">
+                <Search className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-extrabold text-[#18211F]">No Matching Articles Found</h3>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+                  No insights match your current search or category selection. Reset your filters to browse the full academy archive.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedCategory('all');
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Reset Search & Filters
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredPosts.map((post) => (
               <div
@@ -205,22 +248,36 @@ export const BlogPage: React.FC<BlogPageProps> = ({
               </div>
             ))}
           </div>
+          )}
 
         </div>
       </section>
 
       {/* Article Detail View / Reader Modal */}
       {activeArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-3xl w-full my-8 overflow-hidden shadow-2xl border border-slate-200 text-left relative max-h-[90vh] flex flex-col">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={activeArticle.title}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setActiveArticle(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-3xl w-full my-8 overflow-hidden shadow-2xl border border-slate-200 text-left relative max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             
             {/* Header Image */}
             <div className="relative aspect-[21/9] overflow-hidden bg-slate-900 shrink-0">
-              <img src={activeArticle.image} alt={activeArticle.title} className="w-full h-full object-cover" />
+              <img src={activeArticle.image} alt={activeArticle.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
               <button
+                type="button"
+                aria-label="Close article reader"
                 onClick={() => setActiveArticle(null)}
-                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer"
+                className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-black transition-colors cursor-pointer"
               >
                 ✕
               </button>

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../context/NavigationContext';
+import { useToast } from '../../context/ToastContext';
 import { ledger } from '../../lib/ledger';
+import { contactApi, userApi } from '../../lib/api';
 import { BalanceCard } from '../dashboard/BalanceCard';
 import { PortfolioOverview } from '../dashboard/PortfolioOverview';
 import { MyPropertyInvestments } from '../dashboard/MyPropertyInvestments';
@@ -57,6 +59,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 }) => {
   const { user, refreshUser, logout } = useAuth();
   const { navigateTo } = useNavigation();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [isDepositOpen, setIsDepositOpen] = useState(defaultTab === 'deposit');
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(defaultTab === 'withdraw');
@@ -69,10 +72,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [mobileHeaderMenuOpen, setMobileHeaderMenuOpen] = useState(false);
-  const [exploringLoading, setExploringLoading] = useState(false);
-  const [notifRefresh, setNotifRefresh] = useState(0);
+  const [, setLedgerVersion] = useState(0);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  const supportSubjectRef = useRef<HTMLInputElement | null>(null);
+
+  // Support Inquiry States
+  const [supportSubject, setSupportSubject] = useState('');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
+  const [supportFeedback, setSupportFeedback] = useState<string | null>(null);
+  const [supportError, setSupportError] = useState<string | null>(null);
 
   const [dashboardMode, setDashboardMode] = useState<'light' | 'dark'>(() => {
     try {
@@ -92,7 +104,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return 'slate';
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
+    return ledger.subscribe(() => {
+      setLedgerVersion((v) => v + 1);
+    });
+  }, []);
+
+  useEffect(() => {
     const handleThemeChange = (e: any) => {
       if (e?.detail) {
         setDashboardTheme(e.detail);
@@ -102,15 +120,42 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return () => window.removeEventListener('dashboard-theme-changed', handleThemeChange);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setUserDropdownOpen(false);
+        setMobileHeaderMenuOpen(false);
+        setIsMoreMenuOpen(false);
+        setIsSearchFocused(false);
+        setShowQrModal(false);
+      }
+    };
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const toggleDashboardMode = () => {
     const nextMode = dashboardMode === 'light' ? 'dark' : 'light';
     setDashboardMode(nextMode);
     try {
       localStorage.setItem('dashboard_mode', nextMode);
     } catch {}
+    if (user) {
+      ledger.updateUserPreferences(user.id, { dashboardMode: nextMode });
+      userApi.savePreferences({ dashboardMode: nextMode }).catch(() => {});
+    }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (defaultTab === 'deposit') {
       setActiveTab('wallet');
       setIsDepositOpen(true);
@@ -121,6 +166,54 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setActiveTab(defaultTab);
     }
   }, [defaultTab]);
+
+  // Referral states & link generation
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [useCurrentOrigin, setUseCurrentOrigin] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [inviteSentToast, setInviteSentToast] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [referralsList, setReferralsList] = useState<Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number }>>(() => {
+    if (!user) return [];
+    try {
+      const saved = localStorage.getItem(`kretz_referrals_${user.id}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    if (user.id === 'usr-investor-1') {
+      return [
+        { id: 'ref-1', email: 'arthur.vance@vanceholdings.ch', date: '2025-02-14', status: 'funded', reward: 500 },
+        { id: 'ref-2', email: 'claire.delacroix@elysee-partners.fr', date: '2025-02-28', status: 'registered', reward: 0 },
+      ];
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    userApi
+      .getReferrals()
+      .then((res) => {
+        if (!active || !Array.isArray(res?.data?.referrals) || res.data.referrals.length === 0) return;
+        setReferralsList((prev) => {
+          const seen = new Set(res.data.referrals.map((r) => r.email.toLowerCase()));
+          const merged = [
+            ...res.data.referrals,
+            ...prev.filter((p) => !seen.has(p.email.toLowerCase())),
+          ];
+          try {
+            localStorage.setItem(`kretz_referrals_${user.id}`, JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   if (!user) {
     return (
@@ -133,100 +226,90 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const investments = ledger.getInvestments(user.id);
   const transactions = ledger.getTransactions(user.id);
   const notifications = ledger.getNotifications(user.id);
-  void notifRefresh;
   const properties = ledger.getProperties();
+  const frontendProperties = ledger.getFrontendProperties();
   const verificationDocs = ledger.getVerificationDocuments(user.id);
-  const pendingDocsCount = verificationDocs.filter(d => d.status === 'pending').length;
+  void verificationDocs;
 
   const handleWithdrawalSuccess = () => {
     refreshUser();
   };
 
-  // Referral states & link generation
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [useCurrentOrigin, setUseCurrentOrigin] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteSentToast, setInviteSentToast] = useState<string | null>(null);
-  const [referralsList, setReferralsList] = useState<Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number }>>(() => {
-    try {
-      const saved = localStorage.getItem(`kretz_referrals_${user.id}`);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return [
-      { id: 'ref-1', email: 'arthur.vance@vanceholdings.ch', date: '2025-02-14', status: 'funded', reward: 500 },
-      { id: 'ref-2', email: 'claire.delacroix@elysee-partners.fr', date: '2025-02-28', status: 'registered', reward: 0 },
-    ];
-  });
-
   const referralCode = `KRETZ-${(user.email ? user.email.split('@')[0] : user.id.slice(0, 6) || 'VIP').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)}`;
-  
-  // Official production URL (kretzdespain.com)
+
   const productionReferralLink = `https://kretzdespain.com/register?ref=${referralCode}`;
-  
-  // Dynamic current preview/environment URL for instant browser testing
   const currentOrigin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://kretzdespain.com';
   const previewReferralLink = `${currentOrigin}/register?ref=${referralCode}`;
-  
-  // Active link based on domain selection
   const referralLink = useCurrentOrigin ? previewReferralLink : productionReferralLink;
 
   const copyReferral = (textToCopy?: string) => {
     const text = textToCopy || referralLink;
     navigator.clipboard.writeText(text);
     setCopiedLink(true);
+    toast.success('Referral link copied to clipboard.');
     setTimeout(() => setCopiedLink(false), 2200);
   };
 
   const copyReferralCode = () => {
     navigator.clipboard.writeText(referralCode);
     setCopiedCode(true);
+    toast.success(`Referral code ${referralCode} copied.`);
     setTimeout(() => setCopiedCode(false), 2200);
   };
 
-  const handleSendInvite = (e: React.FormEvent) => {
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmail || !inviteEmail.includes('@')) return;
-    const newRef = {
-      id: `ref-${Date.now()}`,
-      email: inviteEmail.trim().toLowerCase(),
-      date: new Date().toISOString().split('T')[0],
-      status: 'invited' as const,
-      reward: 0,
-    };
-    const updated = [newRef, ...referralsList];
-    setReferralsList(updated);
+    if (isSendingInvite) return;
+    setInviteError(null);
+    const normalizedEmail = inviteEmail.trim().toLowerCase();
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setInviteError('Please enter a valid associate email address.');
+      return;
+    }
+    if (normalizedEmail === user.email.toLowerCase()) {
+      setInviteError('You cannot dispatch a referral invitation to your own registered email.');
+      return;
+    }
+    if (referralsList.some((r) => r.email.toLowerCase() === normalizedEmail)) {
+      setInviteError(`${normalizedEmail} has already been invited.`);
+      return;
+    }
+
+    setIsSendingInvite(true);
     try {
-      localStorage.setItem(`kretz_referrals_${user.id}`, JSON.stringify(updated));
-    } catch {}
-    setInviteSentToast(`VIP invitation link dispatched to ${inviteEmail}`);
-    setInviteEmail('');
-    setTimeout(() => setInviteSentToast(null), 4000);
+      const res = await userApi.sendReferralInvite(normalizedEmail, referralCode, user.email);
+      const created = res?.data?.referral || {
+        id: `ref-${Date.now()}`,
+        email: normalizedEmail,
+        date: new Date().toISOString().split('T')[0],
+        status: 'invited' as const,
+        reward: 0,
+      };
+      const updated = [created, ...referralsList.filter((r) => r.email.toLowerCase() !== normalizedEmail)];
+      setReferralsList(updated);
+      try {
+        localStorage.setItem(`kretz_referrals_${user.id}`, JSON.stringify(updated));
+      } catch {}
+      setInviteSentToast(`VIP invitation dispatched to ${normalizedEmail}`);
+      toast.success(`Referral invitation dispatched to ${normalizedEmail}`);
+      setInviteEmail('');
+      setTimeout(() => setInviteSentToast(null), 4000);
+    } catch (err: any) {
+      setInviteError(err?.message || 'Unable to dispatch referral invitation right now. Please retry.');
+    } finally {
+      setIsSendingInvite(false);
+    }
   };
 
   const shareMessage = `I invite you to explore European prime real estate tokenization with L'Agence / Kretz & De Spain. Register with my private referral link to receive a €500 allocation credit on your first notarized SPV property investment:`;
 
-  const shareViaWhatsApp = () => {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareMessage} ${referralLink}`)}`, '_blank');
-  };
-
-  const shareViaTelegram = () => {
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareMessage)}`, '_blank');
-  };
-
-  const shareViaEmail = () => {
-    const subject = `Private Invitation: L'Agence | Kretz & De Spain Real Estate Tokenization`;
-    const body = `Dear Partner,\n\nI invite you to explore European prime real estate tokenization with L'Agence / Kretz & De Spain.\n\nBy registering with my private investor referral link, you will receive an immediate €500 allocation credit on your first notarized SPV acquisition:\n\n${referralLink}\n\nReferral Partner Code: ${referralCode}\n\nKind regards,\n${user.fullName || 'Private Client'}\nL'Agence / Kretz & De Spain Real Estate`;
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  };
-
-  const shareViaTwitter = () => {
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}&url=${encodeURIComponent(referralLink)}`, '_blank');
-  };
-
-  const shareViaLinkedIn = () => {
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`, '_blank');
-  };
+  const whatsappShareHref = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareMessage} ${referralLink}`)}`;
+  const telegramShareHref = `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(shareMessage)}`;
+  const twitterShareHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}&url=${encodeURIComponent(referralLink)}`;
+  const linkedInShareHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`;
+  const emailShareSubject = `Private Invitation: L'Agence | Kretz & De Spain Real Estate Tokenization`;
+  const emailShareBody = `Dear Partner,\n\nI invite you to explore European prime real estate tokenization with L'Agence / Kretz & De Spain.\n\nBy registering with my private investor referral link, you will receive an immediate €500 allocation credit on your first notarized SPV acquisition:\n\n${referralLink}\n\nReferral Partner Code: ${referralCode}\n\nKind regards,\n${user.fullName || 'Private Client'}\nL'Agence / Kretz & De Spain Real Estate`;
+  const mailtoShareHref = `mailto:?subject=${encodeURIComponent(emailShareSubject)}&body=${encodeURIComponent(emailShareBody)}`;
 
   const shareNative = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -244,6 +327,51 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
+  const handleSupportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmittingSupport) return;
+    setSupportError(null);
+    setSupportFeedback(null);
+
+    const cleanSubject = supportSubject.trim();
+    const cleanMsg = supportMessage.trim();
+    if (cleanSubject.length < 3) {
+      setSupportError('Please provide a clear subject line (at least 3 characters).');
+      return;
+    }
+    if (cleanMsg.length < 10) {
+      setSupportError('Please describe your inquiry in at least 10 characters so an advisor can assist.');
+      return;
+    }
+
+    setIsSubmittingSupport(true);
+    try {
+      const response = await contactApi.submit({
+        fullName: user.fullName || 'Verified Investor',
+        email: user.email,
+        topic: cleanSubject,
+        message: cleanMsg,
+      });
+      ledger.addUserNotification(
+        user.id,
+        'Support Inquiry Logged',
+        `Your inquiry "${cleanSubject}" was received by our Investor Desk (info@kretz.site).`,
+        'info'
+      );
+      setSupportSubject('');
+      setSupportMessage('');
+      const msg = response?.message || 'Your support inquiry has been logged with our Investor Desk. Reference notification added.';
+      setSupportFeedback(msg);
+      toast.success('Support inquiry dispatched to Investor Desk.');
+    } catch (err: any) {
+      const errMsg = err?.message || 'Unable to submit support inquiry right now. Please retry or email info@kretz.site.';
+      setSupportError(errMsg);
+      toast.error(errMsg);
+    } finally {
+      setIsSubmittingSupport(false);
+    }
+  };
+
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'portfolio', label: 'My Portfolio', icon: Building2, count: investments.length },
@@ -251,13 +379,67 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { id: 'transactions', label: 'Transactions', icon: History, count: transactions.length },
     { id: 'distributions', label: 'Distributions', icon: Coins },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
-    { id: 'verification', label: 'Profile Settings', icon: User },
+    { id: 'verification', label: 'Compliance Vault', icon: ShieldCheck },
+    { id: 'profile', label: 'Profile Settings', icon: User },
     { id: 'documents', label: 'Documents', icon: FileText, count: investments.length },
     { id: 'tax_statements', label: 'Tax & Fiscal Reports', icon: Award },
     { id: 'referrals', label: 'Referrals', icon: Share2 },
     { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter(n => !n.read).length },
     { id: 'support', label: 'Help & Support', icon: HelpCircle },
   ];
+
+  const trimmedSearch = searchQuery.trim().toLowerCase();
+  const searchResults = useMemo(() => {
+    if (!trimmedSearch) {
+      return { properties: [], holdings: [], txs: [], sections: [] };
+    }
+    const matchedProps = frontendProperties
+      .filter((p) =>
+        [p.title, p.location, p.city, p.country, p.tokenTicker, p.type]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(trimmedSearch)
+      )
+      .slice(0, 4);
+
+    const matchedHoldings = investments
+      .filter((inv) =>
+        [inv.propertyTitle, inv.propertyLocation]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(trimmedSearch)
+      )
+      .slice(0, 3);
+
+    const matchedTxs = transactions
+      .filter((tx) =>
+        [tx.reference, tx.description, tx.paymentMethod, tx.txHash]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(trimmedSearch)
+      )
+      .slice(0, 3);
+
+    const matchedSections = navItems
+      .filter((item) => item.label.toLowerCase().includes(trimmedSearch))
+      .slice(0, 3);
+
+    return {
+      properties: matchedProps,
+      holdings: matchedHoldings,
+      txs: matchedTxs,
+      sections: matchedSections,
+    };
+  }, [trimmedSearch, frontendProperties, investments, transactions]);
+
+  const totalSearchHits =
+    searchResults.properties.length +
+    searchResults.holdings.length +
+    searchResults.txs.length +
+    searchResults.sections.length;
 
   return (
     <div className={`app-shell dashboard-${dashboardMode} dashboard-theme-${dashboardTheme}`}>
@@ -423,16 +605,145 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           {/* Right Side: Compact search field, mode toggle, notification bell, and user profile menu */}
           <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Compact Search Field */}
-            <div className="hidden xl:flex items-center relative">
+            {/* Compact Search Field with Live Interactive Results Popover */}
+            <div ref={searchContainerRef} className="hidden xl:flex items-center relative">
               <Search className="w-3.5 h-3.5 text-[var(--dash-text-muted)] absolute left-2.5 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search assets, txs..."
+                aria-label="Search dashboard assets, holdings, and transactions"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-40 sm:w-44 bg-[var(--dash-header-controls)] text-xs text-[var(--dash-text)] placeholder-[var(--dash-text-muted)] rounded-lg pl-8 pr-2.5 py-1.5 border border-[var(--dash-header-controls-border)] focus:outline-none focus:border-[#1E3A34] dark:focus:border-[#D6A15D] transition-all shadow-xs"
+                onFocus={() => setIsSearchFocused(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchFocused(true);
+                }}
+                className="w-44 sm:w-52 bg-[var(--dash-header-controls)] text-xs text-[var(--dash-text)] placeholder-[var(--dash-text-muted)] rounded-lg pl-8 pr-7 py-1.5 border border-[var(--dash-header-controls-border)] focus:outline-none focus:border-[#1E3A34] dark:focus:border-[#D6A15D] transition-all shadow-xs"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search query"
+                  className="absolute right-2 text-[var(--dash-text-muted)] hover:text-[var(--dash-text)] cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+
+              {isSearchFocused && trimmedSearch.length > 0 && (
+                <div className="absolute right-0 top-full mt-1.5 w-80 max-h-96 overflow-y-auto bg-[var(--dash-card)] border border-[var(--dash-card-border)] rounded-xl shadow-2xl p-2 z-50 text-left space-y-2">
+                  {totalSearchHits === 0 ? (
+                    <div className="p-3 text-center text-xs text-[var(--dash-text-muted)]">
+                      No matching properties, holdings, or ledger records for &ldquo;{searchQuery.trim()}&rdquo;.
+                    </div>
+                  ) : (
+                    <>
+                      {searchResults.properties.length > 0 && (
+                        <div>
+                          <div className="px-2 py-1 text-[9.5px] font-bold uppercase tracking-wider text-[var(--dash-text-muted)]">
+                            Marketplace Assets
+                          </div>
+                          {searchResults.properties.map((prop) => (
+                            <button
+                              key={prop.id}
+                              type="button"
+                              onClick={() => {
+                                setIsSearchFocused(false);
+                                setSearchQuery('');
+                                onSelectProperty(prop.id);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--dash-hover)] flex items-center justify-between gap-2 text-xs cursor-pointer"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-bold text-[var(--dash-text)] block truncate">{prop.title}</span>
+                                <span className="text-[10px] text-[var(--dash-text-muted)] block truncate">{prop.location}</span>
+                              </div>
+                              <span className="font-mono text-[10.5px] font-bold text-[#087F5B] shrink-0">
+                                {formatCurrency(prop.tokenPrice)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {searchResults.holdings.length > 0 && (
+                        <div>
+                          <div className="px-2 py-1 text-[9.5px] font-bold uppercase tracking-wider text-[var(--dash-text-muted)]">
+                            My Portfolio Holdings
+                          </div>
+                          {searchResults.holdings.map((inv) => (
+                            <button
+                              key={inv.id}
+                              type="button"
+                              onClick={() => {
+                                setIsSearchFocused(false);
+                                setSearchQuery('');
+                                setActiveTab('portfolio');
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--dash-hover)] flex items-center justify-between gap-2 text-xs cursor-pointer"
+                            >
+                              <span className="font-semibold text-[var(--dash-text)] truncate">{inv.propertyTitle}</span>
+                              <span className="font-mono text-[10px] text-[#087F5B] shrink-0">{inv.tokensPurchased} units</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {searchResults.txs.length > 0 && (
+                        <div>
+                          <div className="px-2 py-1 text-[9.5px] font-bold uppercase tracking-wider text-[var(--dash-text-muted)]">
+                            Ledger Transactions
+                          </div>
+                          {searchResults.txs.map((tx) => (
+                            <button
+                              key={tx.id}
+                              type="button"
+                              onClick={() => {
+                                setIsSearchFocused(false);
+                                setSearchQuery('');
+                                setActiveTab('transactions');
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--dash-hover)] flex items-center justify-between gap-2 text-xs cursor-pointer"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-semibold text-[var(--dash-text)] block truncate">{tx.description}</span>
+                                <span className="font-mono text-[9.5px] text-[var(--dash-text-muted)]">{tx.reference}</span>
+                              </div>
+                              <span className="font-mono text-[10.5px] font-bold text-[var(--dash-text)] shrink-0">
+                                {formatCurrency(tx.amount, tx.currency)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {searchResults.sections.length > 0 && (
+                        <div>
+                          <div className="px-2 py-1 text-[9.5px] font-bold uppercase tracking-wider text-[var(--dash-text-muted)]">
+                            Dashboard Sections
+                          </div>
+                          {searchResults.sections.map((sec) => (
+                            <button
+                              key={sec.id}
+                              type="button"
+                              onClick={() => {
+                                setIsSearchFocused(false);
+                                setSearchQuery('');
+                                setActiveTab(sec.id);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--dash-hover)] flex items-center gap-2 text-xs font-semibold text-[var(--dash-text)] cursor-pointer"
+                            >
+                              <ArrowRight className="w-3 h-3 text-[#087F5B]" />
+                              <span>{sec.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Light / Dark Mode Toggle Button */}
@@ -500,11 +811,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <p className="text-[9.5px] font-mono font-semibold text-[#1E3A34] dark:text-[#D6A15D] mt-0.5">Wallet: {formatCurrency(user.walletBalance)}</p>
                   </div>
                   <button
-                    onClick={() => { setActiveTab('verification'); setUserDropdownOpen(false); }}
+                    onClick={() => { setActiveTab('profile'); setUserDropdownOpen(false); }}
                     className="w-full text-left px-3 py-2 text-xs text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)] flex items-center gap-2 transition-colors cursor-pointer"
                   >
                     <User className="w-3.5 h-3.5 text-[#1E3A34] dark:text-[#D6A15D]" />
-                    <span>Profile &amp; Security</span>
+                    <span>Profile &amp; Banking</span>
                   </button>
                   <button
                     onClick={() => { setActiveTab('wallet'); setUserDropdownOpen(false); }}
@@ -554,7 +865,72 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* Mobile Collapsible Navigation Menu */}
         {mobileHeaderMenuOpen && (
-          <div className="lg:hidden bg-[var(--dash-header)] border-b border-[var(--dash-header-border)] px-4 py-3 space-y-1.5 z-30 animate-in slide-in-from-top-2 duration-150 shadow-lg">
+          <div className="lg:hidden bg-[var(--dash-header)] border-b border-[var(--dash-header-border)] px-4 py-3 space-y-2 z-30 animate-in slide-in-from-top-2 duration-150 shadow-lg">
+            {/* Mobile Quick Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[var(--dash-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search properties, holdings, ledger..."
+                aria-label="Search dashboard on mobile"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[var(--dash-header-controls)] text-xs text-[var(--dash-text)] placeholder-[var(--dash-text-muted)] rounded-xl pl-8 pr-8 py-2 border border-[var(--dash-header-controls-border)] focus:outline-none focus:border-[#087F5B]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--dash-text-muted)] cursor-pointer"
+                  aria-label="Clear mobile search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {trimmedSearch.length > 0 && (
+              <div className="rounded-xl border border-[var(--dash-card-border)] bg-[var(--dash-card)] p-2 space-y-1 max-h-52 overflow-y-auto">
+                {totalSearchHits === 0 ? (
+                  <p className="text-xs text-[var(--dash-text-muted)] px-2 py-1.5">
+                    No matches for &ldquo;{searchQuery.trim()}&rdquo;.
+                  </p>
+                ) : (
+                  <>
+                    {searchResults.properties.map((prop) => (
+                      <button
+                        key={prop.id}
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setMobileHeaderMenuOpen(false);
+                          onSelectProperty(prop.id);
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--dash-hover)] flex items-center justify-between text-xs cursor-pointer"
+                      >
+                        <span className="font-semibold text-[var(--dash-text)] truncate">{prop.title}</span>
+                        <span className="font-mono text-[10.5px] text-[#087F5B]">{formatCurrency(prop.tokenPrice)}</span>
+                      </button>
+                    ))}
+                    {searchResults.txs.map((tx) => (
+                      <button
+                        key={tx.id}
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setMobileHeaderMenuOpen(false);
+                          setActiveTab('transactions');
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-[var(--dash-hover)] flex items-center justify-between text-xs cursor-pointer"
+                      >
+                        <span className="font-semibold text-[var(--dash-text)] truncate">{tx.reference}</span>
+                        <span className="font-mono text-[10.5px] text-[var(--dash-text)]">{formatCurrency(tx.amount, tx.currency)}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+
             {[
               { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'properties', label: 'Investments', icon: TrendingUp },
@@ -562,7 +938,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               { id: 'documents', label: 'Reports', icon: FileText },
               { id: 'portfolio', label: 'Portfolio', icon: Building2 },
               { id: 'wallet', label: 'Wallet', icon: Wallet },
-              { id: 'verification', label: 'Profile Settings', icon: User },
+              { id: 'profile', label: 'Profile Settings', icon: User },
+              { id: 'verification', label: 'Compliance Vault', icon: ShieldCheck },
               { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter(n => !n.read).length },
             ].map((item) => {
               const Icon = item.icon;
@@ -823,10 +1200,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 </div>
 
                 <div className="property-grid">
-                  {properties.map((property) => (
+                  {frontendProperties.map((property) => (
                     <PropertyCard
                       key={property.id}
                       property={property}
+                      isFavorite={ledger.isFavorite(user.id, property.id)}
                       onSelect={(prop) => onSelectProperty(prop.id)}
                       onInvest={(prop) => {
                         setBuyModalProperty(prop);
@@ -965,11 +1343,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </p>
                       </div>
                       <button
-                        onClick={() => setActiveTab('verification')}
+                        onClick={() => setActiveTab('profile')}
                         className="btn btn-secondary text-xs font-semibold py-2 px-3.5 border-[#E4EEEA] bg-white hover:bg-[#F6FAF8] text-[#172B2A] flex items-center justify-center gap-1.5 rounded-xl cursor-pointer shadow-2xs"
                       >
                         <User className="w-3.5 h-3.5 text-[#087F5B]" />
-                        <span>Profile & KYC</span>
+                        <span>Profile &amp; KYC</span>
                       </button>
                     </div>
                   </div>
@@ -1210,52 +1588,55 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                     </div>
 
-                    {/* Social & Direct Messenger Sharing */}
+                    {/* Social & Direct Messenger Sharing (Standards-compliant external anchors) */}
                     <div className="pt-1.5 border-t border-[#E3E8E3]/60 flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] font-bold text-[#69736F] mr-1">Share:</span>
-                      
-                      <button
-                        type="button"
-                        onClick={shareViaWhatsApp}
+
+                      <a
+                        href={whatsappShareHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="px-2 py-1 rounded bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] text-[10.5px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <MessageCircle className="w-3 h-3" />
                         <span>WhatsApp</span>
-                      </button>
+                      </a>
 
-                      <button
-                        type="button"
-                        onClick={shareViaTelegram}
+                      <a
+                        href={telegramShareHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="px-2 py-1 rounded bg-[#0088cc]/10 hover:bg-[#0088cc]/20 text-[#0088cc] text-[10.5px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Send className="w-3 h-3" />
                         <span>Telegram</span>
-                      </button>
+                      </a>
 
-                      <button
-                        type="button"
-                        onClick={shareViaEmail}
+                      <a
+                        href={mailtoShareHref}
                         className="px-2 py-1 rounded bg-[#182D2A]/10 hover:bg-[#182D2A]/20 text-[#182D2A] text-[10.5px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Mail className="w-3 h-3" />
                         <span>Email</span>
-                      </button>
+                      </a>
 
-                      <button
-                        type="button"
-                        onClick={shareViaLinkedIn}
+                      <a
+                        href={linkedInShareHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="px-2 py-1 rounded bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 text-[#0A66C2] text-[10.5px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <span>LinkedIn</span>
-                      </button>
+                      </a>
 
-                      <button
-                        type="button"
-                        onClick={shareViaTwitter}
+                      <a
+                        href={twitterShareHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="px-2 py-1 rounded bg-slate-200/60 hover:bg-slate-200 text-slate-800 text-[10.5px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <span>X</span>
-                      </button>
+                      </a>
 
                       <button
                         type="button"
@@ -1271,27 +1652,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   {/* Direct VIP Invitation Dispatch Form */}
                   <form onSubmit={handleSendInvite} className="mt-3 p-2.5 rounded-lg border border-dashed border-[#E3E8E3] bg-white space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-semibold text-[#18211F] flex items-center gap-1">
+                      <label htmlFor="referral-invite-email" className="text-[11px] font-semibold text-[#18211F] flex items-center gap-1">
                         <Send className="w-3 h-3 text-[#27845D]" />
-                        <span>Direct VIP Email Dispatch</span>
+                        <span>Log Associate Invitation</span>
                       </label>
-                      <span className="text-[10px] text-[#69736F]">Send an invitation directly to an associate</span>
+                      <span className="text-[10px] text-[#69736F]">Track invited partners &amp; allocation eligibility</span>
                     </div>
+                    {inviteError && (
+                      <p className="text-[11px] font-semibold text-rose-600">{inviteError}</p>
+                    )}
                     <div className="flex gap-2">
                       <input
+                        id="referral-invite-email"
                         type="email"
                         required
                         placeholder="colleague@familyoffice.com"
                         value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-xs bg-[#F6F7F4] focus:bg-white focus:outline-none focus:border-[#182D2A]"
+                        onChange={(e) => {
+                          setInviteEmail(e.target.value);
+                          if (inviteError) setInviteError(null);
+                        }}
+                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-base sm:text-xs bg-[#F6F7F4] focus:bg-white focus:outline-none focus:border-[#182D2A]"
                       />
                       <button
                         type="submit"
-                        className="px-3 py-1.5 bg-[#182D2A] hover:bg-[#122220] text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                        disabled={isSendingInvite}
+                        className="px-3 py-1.5 bg-[#182D2A] hover:bg-[#122220] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer shrink-0"
                       >
                         <Send className="w-3 h-3" />
-                        <span>Send Invite</span>
+                        <span>{isSendingInvite ? 'Sending...' : 'Send Invite'}</span>
                       </button>
                     </div>
                   </form>
@@ -1449,7 +1838,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       <button
                         onClick={() => {
                           ledger.markAllNotificationsAsRead(user.id);
-                          setNotifRefresh(prev => prev + 1);
+                          userApi.markAllNotificationsRead().catch(() => {});
+                          toast.info('All notifications marked as read.');
                         }}
                         className="px-2.5 py-1 rounded-lg bg-[#182D2A] text-white text-xs font-semibold hover:bg-[#24423C] transition-colors cursor-pointer shadow-2xs"
                       >
@@ -1497,7 +1887,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                               <button
                                 onClick={() => {
                                   ledger.markNotificationAsRead(notif.id);
-                                  setNotifRefresh(prev => prev + 1);
+                                  userApi.markNotificationRead(notif.id).catch(() => {});
                                 }}
                                 className="text-[10px] font-semibold text-[#27845D] hover:text-[#182D2A] cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded transition-colors inline-flex items-center gap-1"
                               >
@@ -1532,19 +1922,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <h2 className="text-sm sm:text-base font-bold text-[#18211F]">Investor Support Desk</h2>
-                      <p className="text-[10px] sm:text-[11px] text-[#69736F]">Direct Counsel & Concierge · Email: <strong className="text-[#182D2A]">info@kretz.site</strong></p>
+                      <p className="text-[10px] sm:text-[11px] text-[#69736F]">Direct Counsel &amp; Concierge · Email: <strong className="text-[#182D2A]">info@kretz.site</strong></p>
                     </div>
                     <button
+                      type="button"
                       onClick={() => {
                         if (typeof window !== 'undefined' && (window as any).smartsupp) {
-                          try { (window as any).smartsupp('chat:open'); } catch { }
+                          try {
+                            (window as any).smartsupp('chat:open');
+                            toast.info('Opening live concierge chat window.');
+                            return;
+                          } catch {}
                         }
-                        alert('Support Live Chat is active! Email info@kretz.site for priority assistance.');
+                        supportSubjectRef.current?.focus();
+                        setSupportFeedback('Live chat widget is currently offline in this browser session. Submit a priority inquiry below or email info@kretz.site.');
                       }}
                       className="px-2.5 py-1 rounded-lg bg-[#182D2A] text-white font-semibold text-xs hover:bg-[#24423C] transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer shrink-0"
                     >
-                      <Bell className="w-3 h-3 text-[#B7E36A]" />
-                      <span>Start Live Chat</span>
+                      <MessageCircle className="w-3 h-3 text-[#B7E36A]" />
+                      <span>Open Concierge Desk</span>
                     </button>
                   </div>
                 </div>
@@ -1579,19 +1975,94 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </ul>
                   </div>
 
-                  <div className="p-3 rounded-lg border border-[#E3E8E3] bg-white space-y-2">
+                  <div className="p-3 rounded-lg border border-[#E3E8E3] bg-white space-y-2.5">
                     <h3 className="font-bold text-[#18211F] text-xs">Direct Support Inquiry</h3>
-                    <form onSubmit={(e) => { e.preventDefault(); alert('Inquiry sent to info@kretz.site! An advisor will respond shortly.'); }} className="space-y-1.5">
+
+                    {supportFeedback && (
+                      <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#27845D] shrink-0" />
+                          <span>{supportFeedback}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSupportFeedback(null)}
+                          className="text-emerald-800/70 hover:text-emerald-950 cursor-pointer"
+                          aria-label="Dismiss support message"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {supportError && (
+                      <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs font-semibold flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                          <span>{supportError}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleSupportSubmit(e as any)}
+                          disabled={isSubmittingSupport}
+                          className="px-2 py-0.5 rounded bg-rose-600 text-white text-[10.5px] font-bold hover:bg-rose-700 cursor-pointer shrink-0"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSupportSubmit} className="space-y-2">
                       <div>
-                        <label className="block text-[9.5px] font-semibold text-[#69736F] mb-0.5">Subject</label>
-                        <input type="text" placeholder="e.g. Question regarding SEPA deposit or SPV contract" required className="w-full px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-xs focus:outline-none focus:border-[#182D2A]" />
+                        <label htmlFor="support-subject-input" className="block text-[10px] font-semibold text-[#69736F] mb-0.5">
+                          Subject *
+                        </label>
+                        <input
+                          ref={supportSubjectRef}
+                          id="support-subject-input"
+                          type="text"
+                          value={supportSubject}
+                          onChange={(e) => {
+                            setSupportSubject(e.target.value);
+                            if (supportError) setSupportError(null);
+                          }}
+                          placeholder="e.g. Question regarding SEPA deposit or SPV contract"
+                          required
+                          disabled={isSubmittingSupport}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-xs text-[#18211F] focus:outline-none focus:border-[#182D2A]"
+                        />
                       </div>
                       <div>
-                        <label className="block text-[9.5px] font-semibold text-[#69736F] mb-0.5">Inquiry Details</label>
-                        <textarea rows={2} placeholder="Describe your question..." required className="w-full px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-xs focus:outline-none focus:border-[#182D2A]" />
+                        <label htmlFor="support-details-input" className="block text-[10px] font-semibold text-[#69736F] mb-0.5">
+                          Inquiry Details *
+                        </label>
+                        <textarea
+                          id="support-details-input"
+                          rows={3}
+                          value={supportMessage}
+                          onChange={(e) => {
+                            setSupportMessage(e.target.value);
+                            if (supportError) setSupportError(null);
+                          }}
+                          placeholder="Describe your question or include your transaction reference..."
+                          required
+                          disabled={isSubmittingSupport}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-xs text-[#18211F] focus:outline-none focus:border-[#182D2A]"
+                        />
                       </div>
-                      <button type="submit" className="btn btn-primary text-xs font-semibold px-3 py-1.5">
-                        Submit Inquiry
+                      <button
+                        type="submit"
+                        disabled={isSubmittingSupport}
+                        className="btn btn-primary text-xs font-semibold px-3.5 py-1.5 inline-flex items-center gap-1.5 disabled:opacity-55"
+                      >
+                        {isSubmittingSupport ? (
+                          <ButtonLoader text="Submitting Inquiry..." />
+                        ) : (
+                          <>
+                            <Send className="w-3 h-3" />
+                            <span>Submit Inquiry</span>
+                          </>
+                        )}
                       </button>
                     </form>
                   </div>
@@ -1792,6 +2263,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           isOpen={isTreasuryConverterOpen}
           onClose={() => setIsTreasuryConverterOpen(false)}
           onSuccessConversion={() => refreshUser()}
+          onOpenDeposit={() => {
+            setIsTreasuryConverterOpen(false);
+            setActiveTab('wallet');
+            setIsDepositOpen(true);
+          }}
         />
       )}
 

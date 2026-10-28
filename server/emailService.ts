@@ -1275,10 +1275,14 @@ ${data.action_url || `${settings.platformUrl}/dashboard`}
 // Backwards compatibility map for legacy endpoints
 export const legacyTemplateAliases: Record<string, string> = {
   welcome_verification: 'welcome',
+  deposit_received: 'payment_notification',
   deposit_confirmed: 'payment_notification',
+  withdrawal_requested: 'payment_notification',
   withdrawal_completed: 'payment_notification',
   investment_confirmed: 'transaction_receipt',
   distribution_credited: 'payment_notification',
+  contact_receipt: 'command_confirmation',
+  admin_alert: 'security_alert',
   kyc_approved: 'status_update',
   kyc_rejected: 'status_update'
 };

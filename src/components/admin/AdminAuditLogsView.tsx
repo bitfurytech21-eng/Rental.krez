@@ -49,6 +49,7 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({
   const [inspectModalLog, setInspectModalLog] = useState<AuditLog | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [confirmPurge, setConfirmPurge] = useState(false);
 
   const refreshLogs = () => {
     setLogs(ledger.getAuditLogs());
@@ -75,18 +76,18 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({
   };
 
   const handleClearLogs = () => {
-    if (window.confirm('Are you sure you want to purge local audit logs? This action will reset the local audit storage.')) {
-      ledger.clearAuditLogs();
-      setLogs([]);
-      setActionNotice('Audit logs purged from local storage.');
-      setTimeout(() => setActionNotice(null), 3000);
-    }
+    ledger.clearAuditLogs();
+    setLogs([]);
+    setConfirmPurge(false);
+    setActionNotice('Audit logs purged from local storage.');
+    setTimeout(() => setActionNotice(null), 3000);
   };
 
   const handleExport = (format: 'json' | 'csv') => {
     const dataToExport = filteredLogs;
     if (dataToExport.length === 0) {
-      alert('No audit logs available to export under current filters.');
+      setActionNotice('No audit logs available to export under current filters.');
+      setTimeout(() => setActionNotice(null), 3000);
       return;
     }
 
@@ -362,14 +363,34 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleClearLogs}
-            className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-700 border border-gray-200 text-xs font-bold transition-colors cursor-pointer"
-            title="Clear all audit logs"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          {confirmPurge ? (
+            <div className="inline-flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleClearLogs}
+                className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Confirm Purge
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmPurge(false)}
+                className="px-2.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmPurge(true)}
+              disabled={logs.length === 0}
+              className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-700 border border-gray-200 text-xs font-bold transition-colors cursor-pointer disabled:opacity-40"
+              title="Clear all audit logs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

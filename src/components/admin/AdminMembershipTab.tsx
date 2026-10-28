@@ -375,47 +375,62 @@ export const AdminMembershipTab: React.FC = () => {
 
       {/* Grant Honorary Membership Modal */}
       {showGrantModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 text-left border border-slate-200 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setShowGrantModal(false)}
+        >
+          <div
+            className="bg-white text-slate-900 [color-scheme:light] rounded-2xl max-w-md w-full p-5 sm:p-6 text-left border border-slate-200 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <Crown className="w-4 h-4 text-emerald-800" />
+                <Crown className="w-4 h-4 text-emerald-800 shrink-0" />
                 Grant Honorary Membership Pass
               </h4>
-              <button onClick={() => setShowGrantModal(false)} className="text-slate-500 hover:text-slate-800">✕</button>
+              <button
+                type="button"
+                aria-label="Close modal"
+                onClick={() => setShowGrantModal(false)}
+                className="min-w-[36px] min-h-[36px] rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleGrantMembership} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Legal Name</label>
+                <label className="font-bold text-slate-800 block mb-1">Full Legal Name</label>
                 <input
                   type="text"
                   required
                   value={grantName}
                   onChange={(e) => setGrantName(e.target.value)}
                   placeholder="e.g. Elena Rostova"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-xs font-medium focus:border-[#182D2A] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Email Address</label>
+                <label className="font-bold text-slate-800 block mb-1">Email Address</label>
                 <input
                   type="email"
                   required
                   value={grantEmail}
                   onChange={(e) => setGrantEmail(e.target.value)}
                   placeholder="elena@familyoffice.es"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-xs font-medium focus:border-[#182D2A] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Membership Tier</label>
+                <label className="font-bold text-slate-800 block mb-1">Membership Tier</label>
                 <select
                   value={grantTier}
                   onChange={(e) => setGrantTier(e.target.value as MembershipTierId)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white text-slate-900 text-base sm:text-xs font-medium focus:border-[#182D2A] focus:outline-none"
                 >
                   <option value="heritage">Resident Heritage</option>
                   <option value="sovereign">Sovereign Privilège</option>
@@ -424,12 +439,13 @@ export const AdminMembershipTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Internal Notes</label>
+                <label className="font-bold text-slate-800 block mb-1">Internal Notes</label>
                 <input
                   type="text"
                   value={grantNotes}
                   onChange={(e) => setGrantNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  placeholder="Optional partner referral note"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-xs font-medium focus:border-[#182D2A] focus:outline-none"
                 />
               </div>
 
@@ -437,13 +453,13 @@ export const AdminMembershipTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowGrantModal(false)}
-                  className="px-4 py-2 rounded-xl border text-slate-600 hover:bg-slate-50"
+                  className="min-h-[40px] px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#182D2A] text-white font-bold hover:bg-[#24423C]"
+                  className="min-h-[40px] px-5 py-2 rounded-xl bg-[#182D2A] text-white font-bold hover:bg-[#24423C] cursor-pointer"
                 >
                   Issue Pass
                 </button>
@@ -455,32 +471,40 @@ export const AdminMembershipTab: React.FC = () => {
 
       {/* Edit Tier Modal */}
       {editingTier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-left border border-slate-200 shadow-2xl space-y-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setEditingTier(null)}
+        >
+          <div
+            className="bg-white text-slate-900 [color-scheme:light] rounded-2xl max-w-sm w-full p-5 sm:p-6 text-left border border-slate-200 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h4 className="font-bold text-slate-900 text-sm">
               Update Rates for {editingTier.name}
             </h4>
 
             <form onSubmit={handleUpdateTierConfig} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Annual Fee (€)</label>
+                <label className="font-bold text-slate-800 block mb-1">Annual Fee (€)</label>
                 <input
                   type="number"
                   required
                   value={editAnnualPrice}
                   onChange={(e) => setEditAnnualPrice(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-mono tabular-nums text-base sm:text-xs font-semibold focus:border-[#182D2A] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Monthly Fee (€)</label>
+                <label className="font-bold text-slate-800 block mb-1">Monthly Fee (€)</label>
                 <input
                   type="number"
                   required
                   value={editMonthlyPrice}
                   onChange={(e) => setEditMonthlyPrice(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-mono tabular-nums text-base sm:text-xs font-semibold focus:border-[#182D2A] focus:outline-none"
                 />
               </div>
 
@@ -488,13 +512,13 @@ export const AdminMembershipTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setEditingTier(null)}
-                  className="px-4 py-2 rounded-xl border text-slate-600 hover:bg-slate-50"
+                  className="min-h-[40px] px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#182D2A] text-white font-bold hover:bg-[#24423C]"
+                  className="min-h-[40px] px-5 py-2 rounded-xl bg-[#182D2A] text-white font-bold hover:bg-[#24423C] cursor-pointer"
                 >
                   Save Rates
                 </button>

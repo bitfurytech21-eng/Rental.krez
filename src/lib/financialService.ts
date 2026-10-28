@@ -302,3 +302,155 @@ export function computeCanonicalPropertyMetrics(p: {
     legalDocRef,
   };
 }
+
+export interface PaymentFeeTier {
+  id: string;
+  label: string;
+  description: string;
+  feePercent: number;
+  fixedFeeEUR?: number;
+}
+
+export const PAYMENT_FEE_TIERS: PaymentFeeTier[] = [
+  {
+    id: 'eur_wallet',
+    label: 'Internal EUR Wallet (SEPA Settled)',
+    description: '0.00% platform settlement fee',
+    feePercent: 0,
+    fixedFeeEUR: 0,
+  },
+  {
+    id: 'solana_usdc',
+    label: 'Solana SPL / Stablecoin Settlement',
+    description: '0.25% network & custody clearing fee',
+    feePercent: 0.25,
+    fixedFeeEUR: 0,
+  },
+  {
+    id: 'instant_fx_card',
+    label: 'Instant Multi-Currency / Card Desk',
+    description: '1.50% instant FX & card processing fee',
+    feePercent: 1.5,
+    fixedFeeEUR: 0,
+  },
+];
+
+export interface LiveInvestmentCalculation {
+  tokenCount: number;
+  tokenPriceEUR: number;
+  subtotalEUR: number;
+  feePercent: number;
+  fixedFeeEUR: number;
+  feeAmountEUR: number;
+  totalPayableEUR: number;
+  ownershipSharePercent: number;
+  monthlyDividendEUR: number;
+  annualDividendEUR: number;
+  totalTermDividendsEUR: number;
+  projectedCapitalGainEUR: number;
+  netProjectedProfitEUR: number;
+  netTotalReturnPercent: number;
+  netAnnualizedReturnPercent: number;
+  totalExitProceedsEUR: number;
+  isValid: boolean;
+  validationError?: string;
+}
+
+/**
+ * Live reactive investment & yield calculation that updates immediately
+ * when investment amount (€), token quantity, or applicable fee changes.
+ */
+export function calculateLiveInvestmentBreakdown(options: {
+  mode: 'tokens' | 'amount';
+  tokenCountInput?: number;
+  investmentAmountInputEUR?: number;
+  tokenPriceEUR: number;
+  totalPropertyTokens: number;
+  availableTokens: number;
+  minimumInvestmentEUR: number;
+  monthlyTargetRatePercent: number;
+  durationMonths: number;
+  capitalAppreciationYieldPercent?: number;
+  feePercent?: number;
+  fixedFeeEUR?: number;
+  walletBalanceEUR?: number;
+}): LiveInvestmentCalculation {
+  const unitPrice = Math.max(1, options.tokenPriceEUR || 100);
+  const totalSupply = Math.max(1, options.totalPropertyTokens || 1);
+  const avail = Math.max(0, options.availableTokens);
+  const minInv = Math.max(unitPrice, options.minimumInvestmentEUR || unitPrice);
+  const feePct = Math.max(0, options.feePercent ?? 0);
+  const fixedFee = Math.max(0, options.fixedFeeEUR ?? 0);
+  const duration = Math.max(1, options.durationMonths || 36);
+  const monthlyRate = Math.max(0, options.monthlyTargetRatePercent || 0);
+  const capAppreciation = Math.max(0, options.capitalAppreciationYieldPercent ?? 0);
+
+  let tokenCount = 0;
+  if (options.mode === 'amount') {
+    const rawAmount = Math.max(0, options.investmentAmountInputEUR || 0);
+    tokenCount = Math.floor(rawAmount / unitPrice);
+  } else {
+    tokenCount = Math.max(0, Math.floor(options.tokenCountInput || 0));
+  }
+
+  const subtotalEUR = roundDecimal(tokenCount * unitPrice, 2);
+  const feeAmountEUR = tokenCount > 0 ? roundDecimal(subtotalEUR * (feePct / 100) + fixedFee, 2) : 0;
+  const totalPayableEUR = roundDecimal(subtotalEUR + feeAmountEUR, 2);
+  const ownershipSharePercent = totalSupply > 0 ? roundDecimal((tokenCount / totalSupply) * 100, 4) : 0;
+
+  const monthlyDividendEUR = roundDecimal(subtotalEUR * (monthlyRate / 100), 2);
+  const annualDividendEUR = roundDecimal(monthlyDividendEUR * 12, 2);
+  const totalTermDividendsEUR = roundDecimal(monthlyDividendEUR * duration, 2);
+  const durationYears = duration / 12;
+  const projectedCapitalGainEUR = roundDecimal(subtotalEUR * (capAppreciation / 100) * durationYears, 2);
+
+  // Net profit accounts for the applicable transaction/settlement fee
+  const netProjectedProfitEUR = roundDecimal(totalTermDividendsEUR + projectedCapitalGainEUR - feeAmountEUR, 2);
+  const netTotalReturnPercent = totalPayableEUR > 0
+    ? roundDecimal((netProjectedProfitEUR / totalPayableEUR) * 100, 2)
+    : 0;
+  const netAnnualizedReturnPercent = durationYears > 0
+    ? roundDecimal(netTotalReturnPercent / durationYears, 2)
+    : 0;
+  const totalExitProceedsEUR = roundDecimal(subtotalEUR + totalTermDividendsEUR + projectedCapitalGainEUR, 2);
+
+  let isValid = true;
+  let validationError: string | undefined;
+
+  if (avail <= 0) {
+    isValid = false;
+    validationError = 'This property offering has 0 tokens remaining.';
+  } else if (tokenCount < 1 || subtotalEUR < minInv) {
+    isValid = false;
+    const minTokens = Math.ceil(minInv / unitPrice);
+    validationError = `Minimum allocation is ${formatEUR(minInv)} (${minTokens} tokens at ${formatEUR(unitPrice)}/token).`;
+  } else if (tokenCount > avail) {
+    isValid = false;
+    validationError = `Requested ${tokenCount} tokens exceeds available supply (${avail} tokens remaining).`;
+  } else if (options.walletBalanceEUR !== undefined && totalPayableEUR > options.walletBalanceEUR) {
+    isValid = false;
+    validationError = `Insufficient wallet balance (${formatEUR(options.walletBalanceEUR)}) to cover total payable ${formatEUR(totalPayableEUR)}.`;
+  }
+
+  return {
+    tokenCount,
+    tokenPriceEUR: unitPrice,
+    subtotalEUR,
+    feePercent: feePct,
+    fixedFeeEUR: fixedFee,
+    feeAmountEUR,
+    totalPayableEUR,
+    ownershipSharePercent,
+    monthlyDividendEUR,
+    annualDividendEUR,
+    totalTermDividendsEUR,
+    projectedCapitalGainEUR,
+    netProjectedProfitEUR,
+    netTotalReturnPercent,
+    netAnnualizedReturnPercent,
+    totalExitProceedsEUR,
+    isValid,
+    validationError,
+  };
+}
+

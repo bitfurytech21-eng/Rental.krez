@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, Users, ShieldCheck, Mail, Phone, Calendar, ArrowRight, 
   Sparkles, CheckCircle2, Award, Globe, Heart, Send, X, ExternalLink,
-  ChevronRight, Compass, KeyRound, Star, Tv, Search, MapPin
+  ChevronRight, Compass, KeyRound, Star, Tv, Search, MapPin, AlertCircle
 } from 'lucide-react';
 import { ALL_KRETZ_MEMBERS, TeamMember } from '../../data/kretzTeam';
+import { useAuth } from '../../lib/auth';
+import { contactApi } from '../../lib/api';
+import { TurnstileWidget } from '../security/TurnstileWidget';
 
+import kretzHeadquartersImg from '../../assets/images/kretz_agency_headquarters_1792092491560.jpg';
 import olivierImg from '../../assets/images/team/olivier_kretz.jpg';
 import sandrineImg from '../../assets/images/team/sandrine_kretz.jpg';
 import martinImg from '../../assets/images/team/martin_kretz.jpg';
@@ -22,6 +26,8 @@ import mathildeImg from '../../assets/images/team/mathilde_mas.jpg';
 import amandineImg from '../../assets/images/team/amandine_landois.jpg';
 import jorgeImg from '../../assets/images/team/jorge_de_andres.jpg';
 import camilleImg from '../../assets/images/team/camille_richard.jpg';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const LOCAL_PHOTOS: Record<string, string> = {
   'olivier-kretz': olivierImg,
@@ -48,13 +54,41 @@ interface TeamPageProps {
 }
 
 export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
+  const { user } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [contactingMember, setContactingMember] = useState<TeamMember | null>(null);
+  const [inquiryFullName, setInquiryFullName] = useState<string>(user?.fullName || '');
+  const [inquiryPhone, setInquiryPhone] = useState<string>(user?.phoneNumber || '');
+  const [inquiryEmail, setInquiryEmail] = useState<string>(user?.email || '');
   const [inquirySubject, setInquirySubject] = useState<string>('private_consultation');
   const [inquiryMessage, setInquiryMessage] = useState<string>('');
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const [inquiryError, setInquiryError] = useState<string | null>(null);
+  const [inquiryTicketId, setInquiryTicketId] = useState<string | null>(null);
   const [inquirySuccess, setInquirySuccess] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!contactingMember) return;
+    setInquiryError(null);
+    setInquirySuccess(false);
+    setInquiryTicketId(null);
+    if (user?.fullName && !inquiryFullName) setInquiryFullName(user.fullName);
+    if (user?.email && !inquiryEmail) setInquiryEmail(user.email);
+    if (user?.phoneNumber && !inquiryPhone) setInquiryPhone(user.phoneNumber);
+  }, [contactingMember, user]);
+
+  useEffect(() => {
+    if (!contactingMember) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        setContactingMember(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [contactingMember, isSubmitting]);
 
   const teamMembers: TeamMember[] = ALL_KRETZ_MEMBERS;
 
@@ -68,18 +102,60 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleSendInquiry = (e: React.FormEvent) => {
+  const subjectLabels: Record<string, string> = {
+    private_consultation: 'Confidential Property Acquisition / Search',
+    property_valuation: 'Appraisal & Entrusting a Luxury Property',
+    tokenization_inquiry: 'Real Estate Tokenization & Fractional Syndication',
+    monaco_riviera: 'French Riviera & Monaco Private Mandates',
+  };
+
+  const handleSendInquiry = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || !contactingMember) return;
+    setInquiryError(null);
+
+    const trimmedName = inquiryFullName.trim();
+    const trimmedEmail = inquiryEmail.trim().toLowerCase();
+    const trimmedPhone = inquiryPhone.trim();
+    const trimmedNote = inquiryMessage.trim();
+
+    if (!trimmedName) {
+      setInquiryError('Please enter your full name.');
+      return;
+    }
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setInquiryError('Please enter a valid email address.');
+      return;
+    }
+    if (!trimmedPhone || trimmedPhone.length < 6) {
+      setInquiryError('Please provide a direct phone or WhatsApp contact number.');
+      return;
+    }
+    if (trimmedNote.length < 10) {
+      setInquiryError('Please provide at least 10 characters describing your property criteria or request.');
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const response = await contactApi.submit({
+        fullName: trimmedName,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        advisorName: contactingMember.name,
+        topic: `Direct Mandate (${contactingMember.name}) — ${subjectLabels[inquirySubject] || inquirySubject}`,
+        message: `[Advisor: ${contactingMember.name} · ${contactingMember.role}]\n[Phone: ${trimmedPhone}]\n${trimmedNote}`,
+        turnstileToken: turnstileToken || undefined,
+      });
+
+      setInquiryTicketId(response.data?.ticketId || null);
       setInquirySuccess(true);
-      setTimeout(() => {
-        setInquirySuccess(false);
-        setContactingMember(null);
-        setInquiryMessage('');
-      }, 2500);
-    }, 700);
+      setInquiryMessage('');
+    } catch (err: any) {
+      setInquiryError(err?.message || 'Unable to transmit your inquiry right now. Please retry.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -88,8 +164,9 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
       <section className="relative overflow-hidden bg-[#0B1B30] text-white pt-24 pb-20 border-b border-[#1D3860]">
         <div className="absolute inset-0 z-0 opacity-25 mix-blend-luminosity">
           <img 
-            src="/src/assets/images/kretz_agency_headquarters_1792092491560.jpg" 
+            src={kretzHeadquartersImg} 
             alt="Kretz Agency Boulogne Headquarters" 
+            referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
           />
         </div>
@@ -185,8 +262,9 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
             <div className="lg:col-span-5">
               <div className="relative rounded-3xl overflow-hidden border border-[#1D3860] shadow-2xl bg-[#102442] group">
                 <img 
-                  src="/src/assets/images/kretz_agency_headquarters_1792092491560.jpg" 
+                  src={kretzHeadquartersImg} 
                   alt="Kretz Paris Agency Interior" 
+                  referrerPolicy="no-referrer"
                   className="w-full h-[460px] object-cover group-hover:scale-103 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
@@ -265,6 +343,29 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
         </div>
 
         {/* Team Grid */}
+        {filteredMembers.length === 0 ? (
+          <div className="mt-10 p-10 rounded-3xl bg-[#102442] border border-[#1D3860] text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center mx-auto">
+              <Search className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-extrabold text-white">No Matching Advisors Found</h3>
+              <p className="text-xs sm:text-sm text-[#8EA7C7] max-w-md mx-auto">
+                No advisors match "{searchQuery}" in the selected network division. Clear your search or switch divisions to view all partners.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCategory('all');
+              }}
+              className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] text-xs font-extrabold transition-colors cursor-pointer"
+            >
+              Reset Search & Filters
+            </button>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-10">
           {filteredMembers.map((member) => {
             const memberPhoto = LOCAL_PHOTOS[member.id] || member.image || member.remoteImage;
@@ -353,6 +454,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
           );
         })}
         </div>
+        )}
       </section>
 
       {/* The Kretz Private Club & Property Owner Mandates */}
@@ -401,49 +503,106 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
 
       {/* Interactive Direct Advisor Contact Modal */}
       {contactingMember && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 relative shadow-2xl border border-[#E3E8E3] space-y-5">
-            <button
-              onClick={() => setContactingMember(null)}
-              className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {inquirySuccess ? (
-              <div className="py-8 text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-emerald-100 text-[#27845D] flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-8 h-8" />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="advisor-contact-title"
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSubmitting) setContactingMember(null);
+          }}
+        >
+          <div
+            className="bg-white text-slate-900 [color-scheme:light] rounded-t-3xl sm:rounded-3xl max-w-lg w-full max-h-[92dvh] sm:max-h-[88vh] flex flex-col relative shadow-2xl border border-[#E3E8E3] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Pinned Header */}
+            <div className="px-5 py-4 sm:px-7 sm:py-5 border-b border-[#E3E8E3] bg-white flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <img
+                  src={LOCAL_PHOTOS[contactingMember.id] || contactingMember.image || contactingMember.remoteImage}
+                  alt={contactingMember.name}
+                  referrerPolicy="no-referrer"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover border border-[#E3E8E3] shrink-0"
+                />
+                <div className="min-w-0 text-left">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#27845D] block">
+                    Direct Advisory Mandate
+                  </span>
+                  <h3 id="advisor-contact-title" className="text-lg sm:text-xl font-black text-[#142421] truncate">
+                    {contactingMember.name}
+                  </h3>
+                  <p className="text-xs text-[#69736F] truncate">{contactingMember.role}</p>
                 </div>
-                <h3 className="text-xl font-black text-[#142421]">Inquiry Transmitted</h3>
-                <p className="text-xs sm:text-sm text-[#52605C] max-w-sm mx-auto">
-                  Your confidential request has been personally routed to <strong>{contactingMember.name}</strong> and the Kretz executive office. We will reply within 4 hours.
-                </p>
               </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-4 pb-4 border-b border-[#E3E8E3]">
-                  <img
-                    src={contactingMember.image}
-                    alt={contactingMember.name}
-                    className="w-16 h-16 rounded-2xl object-cover border border-[#E3E8E3]"
-                  />
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#27845D]">
-                      Direct Advisory Mandate
-                    </span>
-                    <h3 className="text-xl font-black text-[#142421]">{contactingMember.name}</h3>
-                    <p className="text-xs text-[#69736F]">{contactingMember.role}</p>
+
+              <button
+                type="button"
+                onClick={() => setContactingMember(null)}
+                disabled={isSubmitting}
+                aria-label="Close advisor inquiry dialog"
+                className="min-w-[44px] min-h-[44px] -mr-1 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-7 overflow-y-auto overscroll-contain flex-1 text-left">
+              {inquirySuccess ? (
+                <div className="py-6 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 text-[#27845D] flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h4 className="text-xl font-black text-[#142421]">Inquiry Transmitted</h4>
+                    <p className="text-xs sm:text-sm text-[#52605C] max-w-sm mx-auto">
+                      Your confidential request has been routed to <strong>{contactingMember.name}</strong> and the Kretz executive desk. Confirmation was sent to <strong>{inquiryEmail}</strong>.
+                    </p>
+                  </div>
+                  {inquiryTicketId && (
+                    <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono font-bold text-slate-900 tabular-nums">
+                      <span>Desk Reference:</span>
+                      <span className="text-[#27845D]">{inquiryTicketId}</span>
+                    </div>
+                  )}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setContactingMember(null)}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#142421] hover:bg-[#1E332E] text-white text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Close Window
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInquirySuccess(false);
+                        setInquiryTicketId(null);
+                      }}
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Send Follow-Up Note
+                    </button>
                   </div>
                 </div>
+              ) : (
+                <form onSubmit={handleSendInquiry} noValidate className="space-y-4">
+                  {inquiryError && (
+                    <div role="alert" className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <span>{inquiryError}</span>
+                    </div>
+                  )}
 
-                <form onSubmit={handleSendInquiry} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-[#142421] mb-1">Inquiry Purpose</label>
+                    <label htmlFor="advisor-inquiry-purpose" className="block text-xs font-bold text-[#142421] mb-1">
+                      Inquiry Purpose
+                    </label>
                     <select
+                      id="advisor-inquiry-purpose"
                       value={inquirySubject}
                       onChange={(e) => setInquirySubject(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs bg-[#F9FAF8] focus:outline-none focus:border-[#142421]"
+                      className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 bg-white focus:outline-none focus:border-[#142421] focus:ring-2 focus:ring-[#142421]/10"
                     >
                       <option value="private_consultation">Confidential Property Acquisition / Search</option>
                       <option value="property_valuation">Appraisal & Entrusting a Luxury Property</option>
@@ -452,57 +611,99 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-[#142421] mb-1">Your Full Name</label>
+                      <label htmlFor="advisor-full-name" className="block text-xs font-bold text-[#142421] mb-1">
+                        Your Full Name
+                      </label>
                       <input
+                        id="advisor-full-name"
                         type="text"
                         required
+                        value={inquiryFullName}
+                        onChange={(e) => {
+                          setInquiryFullName(e.target.value);
+                          if (inquiryError) setInquiryError(null);
+                        }}
                         placeholder="e.g. Jean de Montfort"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs bg-[#F9FAF8] focus:outline-none focus:border-[#142421]"
+                        className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:outline-none focus:border-[#142421] focus:ring-2 focus:ring-[#142421]/10"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-[#142421] mb-1">Direct Phone / WhatsApp</label>
+                      <label htmlFor="advisor-phone" className="block text-xs font-bold text-[#142421] mb-1">
+                        Direct Phone / WhatsApp
+                      </label>
                       <input
+                        id="advisor-phone"
                         type="tel"
                         required
+                        value={inquiryPhone}
+                        onChange={(e) => {
+                          setInquiryPhone(e.target.value);
+                          if (inquiryError) setInquiryError(null);
+                        }}
                         placeholder="+33 6 00 00 00 00"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs bg-[#F9FAF8] focus:outline-none focus:border-[#142421]"
+                        className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:outline-none focus:border-[#142421] focus:ring-2 focus:ring-[#142421]/10"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#142421] mb-1">Email Address</label>
+                    <label htmlFor="advisor-email" className="block text-xs font-bold text-[#142421] mb-1">
+                      Email Address
+                    </label>
                     <input
+                      id="advisor-email"
                       type="email"
                       required
+                      value={inquiryEmail}
+                      onChange={(e) => {
+                        setInquiryEmail(e.target.value);
+                        if (inquiryError) setInquiryError(null);
+                      }}
                       placeholder="investor@familyoffice.com"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs bg-[#F9FAF8] focus:outline-none focus:border-[#142421]"
+                      className="w-full h-11 px-3.5 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:outline-none focus:border-[#142421] focus:ring-2 focus:ring-[#142421]/10"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#142421] mb-1">Confidential Note / Property Details</label>
+                    <label htmlFor="advisor-message" className="block text-xs font-bold text-[#142421] mb-1">
+                      Confidential Note / Property Details
+                    </label>
                     <textarea
+                      id="advisor-message"
                       rows={3}
                       required
                       value={inquiryMessage}
-                      onChange={(e) => setInquiryMessage(e.target.value)}
+                      onChange={(e) => {
+                        setInquiryMessage(e.target.value);
+                        if (inquiryError) setInquiryError(null);
+                      }}
                       placeholder={`Describe your acquisition criteria or property location for ${contactingMember.name.split(' ')[0]}...`}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs bg-[#F9FAF8] focus:outline-none focus:border-[#142421]"
+                      className="w-full p-3.5 rounded-xl border border-slate-300 text-base sm:text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:outline-none focus:border-[#142421] focus:ring-2 focus:ring-[#142421]/10"
                     />
                   </div>
 
-                  <div className="pt-2">
+                  {!user && (
+                    <TurnstileWidget
+                      theme="light"
+                      action="advisor_contact"
+                      onVerify={(token) => setTurnstileToken(token)}
+                      onExpire={() => setTurnstileToken('')}
+                    />
+                  )}
+
+                  <div className="pt-1">
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full btn btn-primary py-3 rounded-xl font-bold text-xs bg-[#142421] text-white hover:bg-[#1E332E] flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                      className="w-full min-h-[44px] py-3 rounded-xl font-bold text-xs sm:text-sm bg-[#142421] text-white hover:bg-[#1E332E] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-md transition-colors"
                     >
                       {isSubmitting ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Transmitting Inquiry...</span>
+                        </>
                       ) : (
                         <>
                           <Send className="w-4 h-4 text-[#B7E36A]" />
@@ -515,8 +716,8 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
                     </p>
                   </div>
                 </form>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

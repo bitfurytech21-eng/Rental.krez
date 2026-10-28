@@ -29,6 +29,7 @@ export const AdminFrontendErrorLogView: React.FC = () => {
   const [selectedError, setSelectedError] = useState<FrontendErrorEntry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const refreshLogs = () => {
     setErrors(getFrontendErrors());
@@ -57,12 +58,11 @@ export const AdminFrontendErrorLogView: React.FC = () => {
   }, []);
 
   const handleClear = () => {
-    if (window.confirm('Are you sure you want to clear the local frontend error buffer?')) {
-      clearFrontendErrors();
-      refreshLogs();
-      setNotice('Frontend error buffer cleared.');
-      setTimeout(() => setNotice(null), 3000);
-    }
+    clearFrontendErrors();
+    setConfirmClear(false);
+    refreshLogs();
+    setNotice('Frontend error buffer cleared.');
+    setTimeout(() => setNotice(null), 3000);
   };
 
   const handleCopy = (id: string, text: string) => {
@@ -140,14 +140,34 @@ export const AdminFrontendErrorLogView: React.FC = () => {
             <span>Export JSON</span>
           </button>
 
-          <button
-            onClick={handleClear}
-            disabled={errors.length === 0}
-            className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-40"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Clear Buffer</span>
-          </button>
+          {confirmClear ? (
+            <div className="inline-flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Confirm Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmClear(true)}
+              disabled={errors.length === 0}
+              className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear Buffer</span>
+            </button>
+          )}
         </div>
       </div>
 

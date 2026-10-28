@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
-import { ArrowRight, CheckCircle2, Crown, Clock, FileText } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Crown, Clock, FileText, Heart, Scale } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
+import { userApi } from '../../lib/api';
+import { useToast } from '../../context/ToastContext';
 import { PropertyBrochureModal } from './PropertyBrochureModal';
 
 interface PropertyCardProps {
@@ -14,6 +16,10 @@ interface PropertyCardProps {
   userInvestmentTokens?: number;
   userInvestedAmount?: number;
   isUserOccupied?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: (property: Property) => void;
+  isCompared?: boolean;
+  onToggleCompare?: (property: Property) => void;
 }
 
 export const PropertyCard: React.FC<PropertyCardProps> = ({ 
@@ -23,10 +29,62 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   onOpenBrochure,
   userInvestmentTokens,
   userInvestedAmount,
-  isUserOccupied
+  isUserOccupied,
+  isFavorite,
+  onToggleFavorite,
+  isCompared = false,
+  onToggleCompare,
 }) => {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [isInternalBrochureOpen, setIsInternalBrochureOpen] = useState(false);
+  const [localFavorite, setLocalFavorite] = useState<boolean>(() =>
+    ledger.isFavorite(user?.id, property.id)
+  );
+
+  useEffect(() => {
+    setLocalFavorite(ledger.isFavorite(user?.id, property.id));
+    return ledger.subscribe(() => {
+      setLocalFavorite(ledger.isFavorite(user?.id, property.id));
+    });
+  }, [user?.id, property.id]);
+
+  const effectiveFavorite = isFavorite !== undefined ? isFavorite : localFavorite;
+
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleFavorite) {
+      onToggleFavorite(property);
+      return;
+    }
+    const previous = ledger.getFavorites(user?.id);
+    const { saved } = ledger.toggleFavorite(user?.id, property.id);
+    showToast(
+      saved ? `Saved "${property.title}" to favorites.` : `Removed "${property.title}" from favorites.`,
+      'info'
+    );
+    if (user) {
+      try {
+        if (saved) {
+          await userApi.addFavorite(property.id);
+        } else {
+          await userApi.removeFavorite(property.id);
+        }
+      } catch (err: any) {
+        if (err?.status && err.status >= 400) {
+          ledger.setFavorites(user.id, previous);
+          showToast(err.message || 'Could not sync favorite with server. Reverted change.', 'error');
+        }
+      }
+    }
+  };
+
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleCompare) {
+      onToggleCompare(property);
+    }
+  };
 
   const handleOpenBrochure = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -142,16 +200,47 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           {getStatusBadge()}
 
           <div className="flex items-center gap-1.5">
+            {onToggleCompare && (
+              <button
+                type="button"
+                onClick={handleCompareClick}
+                aria-pressed={isCompared}
+                aria-label={isCompared ? `Remove ${property.title} from comparison` : `Compare ${property.title}`}
+                title={isCompared ? 'Remove from comparison' : 'Compare side-by-side'}
+                className={`backdrop-blur-md text-[10px] font-semibold px-2 py-1 rounded-lg border flex items-center gap-1 transition-all active:scale-95 cursor-pointer min-h-[30px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white ${
+                  isCompared
+                    ? 'bg-[#087F5B] text-white border-[#B7E36A]/60 shadow-xs'
+                    : 'bg-black/50 hover:bg-black/75 text-white border-white/20'
+                }`}
+              >
+                <Scale className="w-3 h-3" aria-hidden="true" />
+                <span className="hidden sm:inline">{isCompared ? 'Compared' : 'Compare'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleFavoriteClick}
+              aria-pressed={effectiveFavorite}
+              aria-label={effectiveFavorite ? `Remove ${property.title} from saved favorites` : `Save ${property.title} to favorites`}
+              title={effectiveFavorite ? 'Saved in Favorites' : 'Save to Favorites'}
+              className={`backdrop-blur-md p-1.5 rounded-lg border flex items-center justify-center transition-all active:scale-95 cursor-pointer min-h-[30px] min-w-[30px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white ${
+                effectiveFavorite
+                  ? 'bg-rose-600/90 text-white border-rose-300/50 shadow-xs'
+                  : 'bg-black/50 hover:bg-black/75 text-white border-white/20'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${effectiveFavorite ? 'fill-current' : ''}`} aria-hidden="true" />
+            </button>
             <button
               type="button"
               onClick={handleOpenBrochure}
               aria-label={`View and download official brochure for ${property.title}`}
-              className="bg-black/50 hover:bg-[#087F5B] focus-visible:ring-2 focus-visible:ring-white backdrop-blur-md text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer min-h-[30px]"
+              className="bg-black/50 hover:bg-[#087F5B] focus-visible:ring-2 focus-visible:ring-white backdrop-blur-md text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer min-h-[30px]"
             >
               <FileText className="w-3 h-3 opacity-90" aria-hidden="true" />
               <span>Brochure</span>
             </button>
-            <span className="bg-black/50 backdrop-blur-md text-stone-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-white/20">
+            <span className="bg-black/50 backdrop-blur-md text-stone-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg border border-white/20 hidden xs:inline-block">
               {property.type}
             </span>
           </div>
@@ -290,15 +379,39 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
           
           <button
             type="button"
-            onClick={() => onInvest ? onInvest(property) : onSelect(property)}
-            aria-label={isOwnedOrOccupied ? `Manage position in ${property.title}` : `Invest now in ${property.title}`}
+            onClick={() => {
+              if (property.status === 'funding' && property.availableTokens > 0 && onInvest) {
+                onInvest(property);
+              } else {
+                onSelect(property);
+              }
+            }}
+            aria-label={
+              isOwnedOrOccupied
+                ? `Manage position in ${property.title}`
+                : property.status === 'funded' || property.availableTokens <= 0
+                ? `Inspect fully funded dossier for ${property.title}`
+                : property.status === 'upcoming'
+                ? `Preview upcoming dossier for ${property.title}`
+                : `Invest now in ${property.title}`
+            }
             className={`flex-1 min-h-[44px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#087F5B] ${
               isOwnedOrOccupied
                 ? 'bg-[#075B46] hover:bg-[#054636] text-white'
+                : property.status === 'funded' || property.availableTokens <= 0
+                ? 'bg-[#172B2A] hover:bg-[#243E3B] text-white'
                 : 'bg-[#087F5B] hover:bg-[#075B46] text-white'
             }`}
           >
-            <span>{isOwnedOrOccupied ? 'Manage Asset' : 'Invest Now'}</span>
+            <span>
+              {isOwnedOrOccupied
+                ? 'Manage Asset'
+                : property.status === 'funded' || property.availableTokens <= 0
+                ? '100% Funded'
+                : property.status === 'upcoming'
+                ? 'Preview Dossier'
+                : 'Invest Now'}
+            </span>
             <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>

@@ -208,7 +208,7 @@ export function authenticateToken(
         const payload = JSON.parse(payloadBuf);
         if (payload && (payload.sub || payload.id)) {
           const userId = payload.sub || payload.id;
-          const userEmail = payload.email || 'investor@kretz.com';
+          const userEmail = payload.email || '';
           const role = payload.user_metadata?.role || (userEmail.includes('admin') ? 'admin' : 'investor');
           const fullName = payload.user_metadata?.full_name || payload.email?.split('@')[0] || 'Verified Investor';
 
@@ -241,10 +241,12 @@ export function authenticateToken(
         .replace('local_sess_', '')
         .replace('local_preview_', '')
         .replace('sess_', '');
+      const resolvedId = userId || 'usr-investor-01';
+      const isSeedInvestor = resolvedId === 'usr-investor-01' || resolvedId === 'usr-investor-1';
 
       req.user = {
-        id: userId || 'usr-investor-01',
-        email: 'investor@kretz.com',
+        id: resolvedId,
+        email: isSeedInvestor ? 'investor@kretz.com' : '',
         role: 'investor',
         fullName: 'Verified Investor'
       };

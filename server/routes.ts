@@ -58,9 +58,16 @@ router.post('/translate/test', handleTestTranslation);
 
 const contactLimiter = rateLimiter({
   windowMs: 60 * 1000,
-  max: 5,
+  max: 12,
   category: 'security',
   message: 'Too many contact inquiries from this IP address. Please wait 1 minute.'
+});
+
+const publicSubmissionLimiter = rateLimiter({
+  windowMs: 60 * 1000,
+  max: 15,
+  category: 'security',
+  message: 'Too many submissions from this IP address. Please wait 1 minute.'
 });
 
 const securityLimiter = rateLimiter({
@@ -274,6 +281,81 @@ let mockAuditLogs = [
 
 // Processed webhook idempotency set to prevent duplicate financial processing
 const processedWebhooks = new Set<string>();
+
+// Per-user favorites, preferences, notifications, referrals, and multi-currency treasury sub-balances
+const userFavoritesStore = new Map<string, Set<string>>();
+const userPreferencesStore = new Map<string, Record<string, any>>();
+const userSubBalancesStore = new Map<string, Record<string, number>>();
+const contactInquiriesStore: Array<Record<string, any>> = [];
+const newsletterSubscribersStore = new Map<string, { email: string; source: string; subscribedAt: string; reference: string }>();
+const membershipApplicationsStore: Array<Record<string, any>> = [];
+const userReferralsStore = new Map<string, Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number; referralCode?: string }>>();
+const userNotificationsStore = new Map<string, any[]>([
+  [
+    'usr-investor-01',
+    [
+      {
+        id: 'notif-1',
+        title: 'Monthly Distribution Credited',
+        message: 'Your €320 rental yield for Villa El Mirador has been credited to your available balance.',
+        type: 'financial',
+        read: false,
+        createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
+      },
+      {
+        id: 'notif-2',
+        title: 'KYC Document Verified',
+        message: 'Your European investor accredited identity verification has been confirmed.',
+        type: 'success',
+        read: true,
+        createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
+      }
+    ]
+  ]
+]);
+
+const TREASURY_FX_RATES_TO_EUR: Record<string, number> = {
+  EUR: 1.0,
+  USD: 0.92,
+  GBP: 1.18,
+  CHF: 1.06,
+  USDC: 0.92,
+  USDT: 0.92,
+  SOL: 158.4
+};
+const TREASURY_FX_FEE_PERCENT = 0.15;
+
+function getOrInitUserSubBalances(userId: string, eurBalance: number): Record<string, number> {
+  let balances = userSubBalancesStore.get(userId);
+  if (!balances) {
+    balances = {
+      EUR: eurBalance,
+      USD: 0,
+      GBP: 0,
+      CHF: 0,
+      USDC: 0,
+      USDT: 0,
+      SOL: 0
+    };
+    userSubBalancesStore.set(userId, balances);
+  } else {
+    balances.EUR = eurBalance;
+  }
+  return balances;
+}
+
+function pushUserNotification(userId: string, notif: { title: string; message: string; type: string }) {
+  const list = userNotificationsStore.get(userId) || [];
+  list.unshift({
+    id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    title: notif.title,
+    message: notif.message,
+    type: notif.type,
+    read: false,
+    createdAt: new Date().toISOString()
+  });
+  userNotificationsStore.set(userId, list);
+}
 
 // ============================================================================
 // 1. AUTHENTICATION ROUTES (/api/v1/auth)
@@ -787,13 +869,23 @@ router.post('/auth/password/forgot', authLimiter, requireTurnstile, (req: Authen
 
 /**
  * POST /api/v1/contact
- * Enforces Turnstile human verification and rate limiting on investor inquiries
+ * Enforces Turnstile human verification on public requests; allows authenticated session requests directly
  */
-router.post('/contact', contactLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
-  const { fullName, email, topic, message } = req.body || {};
-  const normalizedEmail = (email || '').toLowerCase().trim();
+const requireTurnstileUnlessAuthed = (req: AuthenticatedRequest, res: Response, next: any) => {
+  if (req.user && req.user.id) {
+    return next();
+  }
+  return requireTurnstile(req, res, next);
+};
 
-  if (!fullName || !normalizedEmail || !message) {
+router.post('/contact', contactLimiter, requireTurnstileUnlessAuthed, (req: AuthenticatedRequest, res: Response) => {
+  const { fullName, name, email, phone, topic, subject, message, advisorName, investmentCapacity, country } = req.body || {};
+  const resolvedName = String(fullName || name || '').trim();
+  const resolvedTopic = String(topic || subject || 'Investor Inquiries').trim();
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  const trimmedMessage = String(message || '').trim();
+
+  if (!resolvedName || !normalizedEmail || !trimmedMessage) {
     return res.status(400).json({
       success: false,
       error: 'Full name, valid email address, and inquiry message are required.',
@@ -802,18 +894,42 @@ router.post('/contact', contactLimiter, requireTurnstile, (req: AuthenticatedReq
     });
   }
 
-  const ticketId = `KZ-INQ-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter a valid email address.',
+      code: 'INVALID_EMAIL',
+      requestId: req.id,
+    });
+  }
+
+  const ticketId = `KZ-INQ-${new Date().getFullYear()}-${100 + contactInquiriesStore.length + Math.floor(Math.random() * 800)}`;
+  const createdAt = new Date().toISOString();
+
+  contactInquiriesStore.unshift({
+    ticketId,
+    userId: req.user?.id || null,
+    fullName: resolvedName,
+    email: normalizedEmail,
+    phone: phone ? String(phone).trim() : undefined,
+    topic: resolvedTopic,
+    advisorName: advisorName ? String(advisorName).trim() : undefined,
+    investmentCapacity: investmentCapacity ? String(investmentCapacity).trim() : undefined,
+    country: country ? String(country).trim() : undefined,
+    message: trimmedMessage,
+    createdAt,
+  });
 
   // Auto-dispatch branded inquiry receipt to the investor
   sendEmail({
     templateId: 'contact_receipt',
     recipient: normalizedEmail,
     data: {
-      fullName,
+      fullName: resolvedName,
       email: normalizedEmail,
-      topic: topic || 'Investor Inquiries',
+      topic: resolvedTopic,
       ticketId,
-      messageSnippet: typeof message === 'string' ? message.slice(0, 160) : '',
+      messageSnippet: trimmedMessage.slice(0, 160),
       slaHours: '4 business hours'
     }
   }).catch(err => {
@@ -836,14 +952,317 @@ router.post('/contact', contactLimiter, requireTurnstile, (req: AuthenticatedReq
     statusCode: 200,
     eventType: 'CONTACT_INQUIRY_RECEIVED',
     outcome: 'success',
-    message: `Direct investor desk inquiry received from ${fullName} (${normalizedEmail})`,
-    metadata: { email: normalizedEmail, topic: topic || 'Investor Inquiries', ticketId }
+    message: `Direct investor desk inquiry received from ${resolvedName} (${normalizedEmail})`,
+    metadata: { email: normalizedEmail, topic: resolvedTopic, ticketId, advisorName }
   });
 
   return res.json({
     success: true,
-    data: { ticketId },
+    data: { ticketId, createdAt },
     message: 'Your inquiry has been successfully received by the Kretz Investor Relations Desk.',
+    requestId: req.id,
+  });
+});
+
+/**
+ * POST /api/v1/newsletter/subscribe
+ * Subscribes an email to the Kretz Editorial Dispatch with idempotency and confirmation email
+ */
+router.post('/newsletter/subscribe', publicSubmissionLimiter, (req: AuthenticatedRequest, res: Response) => {
+  const normalizedEmail = String(req.body?.email || '').toLowerCase().trim();
+  const source = String(req.body?.source || 'editorial_dispatch').trim().slice(0, 64);
+
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter a valid corporate or personal email address.',
+      code: 'INVALID_EMAIL',
+      requestId: req.id,
+    });
+  }
+
+  const existing = newsletterSubscribersStore.get(normalizedEmail);
+  if (existing) {
+    return res.status(200).json({
+      success: true,
+      data: {
+        email: existing.email,
+        alreadySubscribed: true,
+        subscribedAt: existing.subscribedAt,
+        reference: existing.reference,
+      },
+      message: 'This email address is already subscribed to the Kretz Editorial Dispatch.',
+      requestId: req.id,
+    });
+  }
+
+  const subscribedAt = new Date().toISOString();
+  const reference = `KZ-DSP-${1000 + newsletterSubscribersStore.size + 1}`;
+  newsletterSubscribersStore.set(normalizedEmail, {
+    email: normalizedEmail,
+    source,
+    subscribedAt,
+    reference,
+  });
+
+  sendEmail({
+    templateId: 'contact_receipt',
+    recipient: normalizedEmail,
+    data: {
+      fullName: 'Subscriber',
+      email: normalizedEmail,
+      topic: 'Kretz Editorial Dispatch Subscription',
+      ticketId: reference,
+      messageSnippet: 'Confirmed weekly European Real Estate Intelligence & Dossiers briefing subscription.',
+      slaHours: 'Every Thursday 08:00 CET',
+    },
+  }).catch(() => {});
+
+  logger.log({
+    level: 'info',
+    category: 'system',
+    requestId: req.id || 'req-newsletter',
+    method: 'POST',
+    route: '/api/v1/newsletter/subscribe',
+    statusCode: 201,
+    eventType: 'NEWSLETTER_SUBSCRIBED',
+    outcome: 'success',
+    message: `Editorial dispatch subscription registered for ${normalizedEmail}`,
+    metadata: { email: normalizedEmail, source, reference },
+  });
+
+  return res.status(201).json({
+    success: true,
+    data: {
+      email: normalizedEmail,
+      alreadySubscribed: false,
+      subscribedAt,
+      reference,
+    },
+    message: 'Subscribed to the Kretz Editorial Dispatch.',
+    requestId: req.id,
+  });
+});
+
+/**
+ * POST /api/v1/memberships/apply
+ * Records and validates L'Agence Club Privé membership applications
+ */
+router.post('/memberships/apply', publicSubmissionLimiter, requireTurnstileUnlessAuthed, (req: AuthenticatedRequest, res: Response) => {
+  const {
+    fullName,
+    email,
+    phone,
+    tierId,
+    billingCycle,
+    paymentMethod,
+    preferredRegion,
+    invitationCode,
+    specialRequests,
+  } = req.body || {};
+
+  const resolvedName = String(fullName || '').trim();
+  const normalizedEmail = String(email || '').toLowerCase().trim();
+  const validTiers = ['atelier', 'sovereign', 'patron', 'black_circle', 'heritage'];
+  const validCycles = ['annual', 'monthly'];
+  const validMethods = ['wallet_balance', 'bank_wire', 'credit_card', 'complimentary_invitation'];
+
+  if (!resolvedName || !normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Valid full legal name and email address are required.',
+      code: 'INVALID_APPLICANT',
+      requestId: req.id,
+    });
+  }
+
+  if (!validTiers.includes(tierId) || !validCycles.includes(billingCycle) || !validMethods.includes(paymentMethod)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid membership tier, billing cadence, or payment arrangement.',
+      code: 'INVALID_MEMBERSHIP_CONFIG',
+      requestId: req.id,
+    });
+  }
+
+  if (paymentMethod === 'complimentary_invitation' && !String(invitationCode || '').trim()) {
+    return res.status(400).json({
+      success: false,
+      error: "A valid L'Agence Partners invitation code is required for complimentary onboarding.",
+      code: 'MISSING_INVITATION_CODE',
+      requestId: req.id,
+    });
+  }
+
+  const applicationId = `KZ-CLUB-${new Date().getFullYear()}-${1000 + membershipApplicationsStore.length + 1}`;
+  const status = paymentMethod === 'wallet_balance' || paymentMethod === 'credit_card' ? 'active' : 'pending_payment';
+  const createdAt = new Date().toISOString();
+
+  const record = {
+    applicationId,
+    userId: req.user?.id || null,
+    fullName: resolvedName,
+    email: normalizedEmail,
+    phone: phone ? String(phone).trim() : '',
+    tierId,
+    billingCycle,
+    paymentMethod,
+    preferredRegion: preferredRegion ? String(preferredRegion).trim() : 'Madrid & Balearic Islands',
+    specialRequests: specialRequests ? String(specialRequests).trim() : '',
+    status,
+    createdAt,
+  };
+
+  membershipApplicationsStore.unshift(record);
+
+  if (req.user?.id) {
+    pushUserNotification(req.user.id, {
+      title: `Club Privé ${String(tierId).charAt(0).toUpperCase() + String(tierId).slice(1)} Application`,
+      message: `Reference ${applicationId} recorded (${status === 'active' ? 'Active Membership' : 'Awaiting Settlement'}).`,
+      type: 'success',
+    });
+  }
+
+  sendEmail({
+    templateId: 'contact_receipt',
+    recipient: normalizedEmail,
+    data: {
+      fullName: resolvedName,
+      email: normalizedEmail,
+      topic: `Club Privé Membership (${String(tierId).toUpperCase()})`,
+      ticketId: applicationId,
+      messageSnippet: `Billing: ${billingCycle} · Arrangement: ${paymentMethod}`,
+      slaHours: '2 business hours',
+    },
+  }).catch(() => {});
+
+  logger.log({
+    level: 'info',
+    category: 'system',
+    requestId: req.id || 'req-membership',
+    method: 'POST',
+    route: '/api/v1/memberships/apply',
+    statusCode: 201,
+    eventType: 'MEMBERSHIP_APPLICATION_SUBMITTED',
+    outcome: 'success',
+    message: `Club Privé ${tierId} application ${applicationId} submitted by ${normalizedEmail}`,
+    metadata: { applicationId, tierId, billingCycle, paymentMethod, status },
+  });
+
+  return res.status(201).json({
+    success: true,
+    data: record,
+    message: 'Club Privé membership application processed.',
+    requestId: req.id,
+  });
+});
+
+/**
+ * GET /api/v1/user/referrals
+ * Retrieve server-synced referral invitations for the authenticated user
+ */
+router.get('/user/referrals', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const list = userReferralsStore.get(userId) || [];
+  return res.json({
+    success: true,
+    data: { referrals: list },
+    requestId: req.id,
+  });
+});
+
+/**
+ * POST /api/v1/user/referrals/invite
+ * Dispatches and logs an investor referral invitation with duplicate and self-referral checks
+ */
+router.post('/user/referrals/invite', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const normalizedEmail = String(req.body?.email || '').toLowerCase().trim();
+  const referralCode = String(req.body?.referralCode || '').trim();
+  const serverUser = mockUsers.find((u) => u.id === userId);
+  const ownEmails = new Set(
+    [serverUser?.email, req.user?.email, req.body?.inviterEmail]
+      .map((e) => String(e || '').toLowerCase().trim())
+      .filter(Boolean)
+  );
+
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter a valid associate email address.',
+      code: 'INVALID_EMAIL',
+      requestId: req.id,
+    });
+  }
+
+  if (ownEmails.has(normalizedEmail)) {
+    return res.status(400).json({
+      success: false,
+      error: 'You cannot dispatch a referral invitation to your own registered email.',
+      code: 'SELF_REFERRAL',
+      requestId: req.id,
+    });
+  }
+
+  const existingList = userReferralsStore.get(userId) || [];
+  if (existingList.some((r) => r.email.toLowerCase() === normalizedEmail)) {
+    return res.status(409).json({
+      success: false,
+      error: `${normalizedEmail} has already been invited.`,
+      code: 'ALREADY_INVITED',
+      requestId: req.id,
+    });
+  }
+
+  const referral = {
+    id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    email: normalizedEmail,
+    date: new Date().toISOString().split('T')[0],
+    status: 'invited' as const,
+    reward: 0,
+    referralCode: referralCode || undefined,
+  };
+
+  const updated = [referral, ...existingList];
+  userReferralsStore.set(userId, updated);
+
+  pushUserNotification(userId, {
+    title: 'VIP Referral Invitation Dispatched',
+    message: `Partner invitation sent to ${normalizedEmail}. €500 allocation bonus tracks automatically upon their first SPV investment.`,
+    type: 'info',
+  });
+
+  sendEmail({
+    templateId: 'contact_receipt',
+    recipient: normalizedEmail,
+    data: {
+      fullName: 'Invited Associate',
+      email: normalizedEmail,
+      topic: `Private Referral Invitation (${referralCode || 'KRETZ-VIP'})`,
+      ticketId: referral.id,
+      messageSnippet: 'You have been invited to L\'Agence | Kretz & De Spain with a €500 first-allocation credit.',
+      slaHours: 'Valid for 90 days',
+    },
+  }).catch(() => {});
+
+  logger.log({
+    level: 'info',
+    category: 'system',
+    requestId: req.id || 'req-referral',
+    method: 'POST',
+    route: '/api/v1/user/referrals/invite',
+    statusCode: 201,
+    userId,
+    eventType: 'REFERRAL_INVITE_SENT',
+    outcome: 'success',
+    message: `User ${userId} dispatched referral invite to ${normalizedEmail}`,
+    metadata: { invitee: normalizedEmail, referralCode },
+  });
+
+  return res.status(201).json({
+    success: true,
+    data: { referral, referrals: updated },
+    message: `VIP invitation dispatched to ${normalizedEmail}.`,
     requestId: req.id,
   });
 });
@@ -878,7 +1297,7 @@ router.post('/security/verify-turnstile', securityLimiter, async (req: Authentic
 /**
  * POST /api/v1/auth/password/reset
  */
-router.post('/api/v1/auth/password/reset', (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) => {
   const { token, newPassword } = req.body || {};
 
   if (!newPassword || newPassword.length < 6) {
@@ -913,15 +1332,17 @@ router.post('/api/v1/auth/password/reset', (req: AuthenticatedRequest, res: Resp
  * GET /api/v1/auth/session
  */
 router.get('/auth/session', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const currentUser = mockUsers.find(u => u.id === req.user?.id) || {
-    id: req.user!.id,
-    email: req.user!.email,
-    fullName: req.user!.fullName || 'Investor Member',
-    role: req.user!.role,
-    kycStatus: 'approved',
-    balance: 45000,
-    currency: 'EUR'
-  };
+  const currentUser =
+    mockUsers.find(u => u.id === req.user?.id) ||
+    (req.user?.email ? mockUsers.find(u => u.email.toLowerCase() === req.user!.email.toLowerCase()) : undefined) || {
+      id: req.user!.id,
+      email: req.user!.email,
+      fullName: req.user!.fullName || 'Investor Member',
+      role: req.user!.role,
+      kycStatus: 'unverified',
+      balance: 0,
+      currency: 'EUR'
+    };
 
   res.json({
     success: true,
@@ -1284,13 +1705,18 @@ router.post('/admin/users/:id/credit', requireAdmin, (req: AuthenticatedRequest,
 /**
  * GET /api/v1/marketplace/listings
  */
-router.get(['/marketplace/listings', '/properties'], (req: AuthenticatedRequest, res: Response) => {
-  const { search, type, status } = req.query;
+router.get(['/marketplace/listings', '/properties', '/listings'], (req: AuthenticatedRequest, res: Response) => {
+  const { search, type, status, location, minPrice, maxPrice, sortBy, page, limit } = req.query;
   let items = [...mockListings];
 
   if (search) {
-    const s = String(search).toLowerCase();
-    items = items.filter(p => p.title.toLowerCase().includes(s) || p.location.toLowerCase().includes(s));
+    const s = String(search).toLowerCase().trim();
+    items = items.filter(
+      p =>
+        p.title.toLowerCase().includes(s) ||
+        p.location.toLowerCase().includes(s) ||
+        p.type.toLowerCase().includes(s)
+    );
   }
   if (type && type !== 'all') {
     items = items.filter(p => p.type.toLowerCase() === String(type).toLowerCase());
@@ -1298,24 +1724,57 @@ router.get(['/marketplace/listings', '/properties'], (req: AuthenticatedRequest,
   if (status && status !== 'all') {
     items = items.filter(p => p.status === status);
   }
+  if (location && location !== 'all') {
+    const loc = String(location).toLowerCase().trim();
+    items = items.filter(p => p.location.toLowerCase().includes(loc));
+  }
+  if (minPrice !== undefined && !isNaN(Number(minPrice))) {
+    const minP = Number(minPrice);
+    items = items.filter(p => (p.minimumInvestment || p.tokenPrice) >= minP);
+  }
+  if (maxPrice !== undefined && !isNaN(Number(maxPrice))) {
+    const maxP = Number(maxPrice);
+    items = items.filter(p => (p.minimumInvestment || p.tokenPrice) <= maxP);
+  }
+
+  if (sortBy) {
+    const sortKey = String(sortBy);
+    if (sortKey === 'yield_desc' || sortKey === 'yield-desc') {
+      items.sort((a, b) => (b.projectedYield || 0) - (a.projectedYield || 0));
+    } else if (sortKey === 'price_asc' || sortKey === 'price-asc') {
+      items.sort((a, b) => (a.tokenPrice || 0) - (b.tokenPrice || 0));
+    } else if (sortKey === 'price_desc' || sortKey === 'price-desc') {
+      items.sort((a, b) => (b.tokenPrice || 0) - (a.tokenPrice || 0));
+    } else if (sortKey === 'target_desc' || sortKey === 'target-desc') {
+      items.sort((a, b) => (b.targetAmount || 0) - (a.targetAmount || 0));
+    }
+  }
+
+  const totalCount = items.length;
+  const pageNum = page ? Math.max(1, parseInt(String(page), 10) || 1) : 1;
+  const pageSize = limit ? Math.max(1, parseInt(String(limit), 10) || totalCount || 10) : totalCount || 10;
+  const paginatedItems = limit ? items.slice((pageNum - 1) * pageSize, pageNum * pageSize) : items;
 
   logger.log({
     level: 'info',
     category: 'marketplace',
     requestId: req.id || 'req-mkt',
     method: 'GET',
-    route: '/api/v1/marketplace/listings',
+    route: req.path,
     statusCode: 200,
     eventType: 'MARKETPLACE_LISTINGS_FETCHED',
     outcome: 'success',
-    message: `Marketplace offerings queried (${items.length} items returned)`,
-    metadata: { filterCount: items.length }
+    message: `Marketplace offerings queried (${paginatedItems.length}/${totalCount} items returned)`,
+    metadata: { filterCount: totalCount, page: pageNum, limit: pageSize }
   });
 
   res.json({
     success: true,
-    data: items,
-    total: items.length,
+    data: paginatedItems,
+    total: totalCount,
+    page: pageNum,
+    limit: pageSize,
+    totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
     requestId: req.id
   });
 });
@@ -1451,17 +1910,27 @@ router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:
 // 4. USER DASHBOARD & PORTFOLIO ROUTES (/api/v1/user & /api/v1/portfolio)
 // ============================================================================
 
+function findUserRecordForRequest(req: AuthenticatedRequest) {
+  if (!req.user) return undefined;
+  const byId = mockUsers.find(u => u.id === req.user!.id);
+  if (byId) return byId;
+  if (req.user.email) {
+    return mockUsers.find(u => u.email.toLowerCase() === req.user!.email.toLowerCase());
+  }
+  return undefined;
+}
+
 /**
  * GET /api/v1/user/profile
  */
 router.get('/user/profile', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const profile = mockUsers.find(u => u.id === req.user?.id) || {
+  const profile = findUserRecordForRequest(req) || {
     id: req.user!.id,
     email: req.user!.email,
     fullName: req.user!.fullName || 'Investor Member',
     role: req.user!.role,
-    kycStatus: 'approved',
-    balance: 45000,
+    kycStatus: 'unverified',
+    balance: 0,
     currency: 'EUR'
   };
 
@@ -1476,22 +1945,48 @@ router.get('/user/profile', requireAuth, (req: AuthenticatedRequest, res: Respon
  * GET /api/v1/portfolio
  */
 router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const userInvestments = [
-    {
-      id: 'inv-001',
-      propertyId: 'prop-villa-mirador',
-      propertyTitle: 'Villa El Mirador',
-      tokensPurchased: 100,
-      totalCost: 10000,
-      currentValue: 10580,
-      projectedAnnualDividend: 1280,
-      dividendsReceived: 320,
-      purchaseDate: new Date(Date.now() - 86400000 * 60).toISOString(),
-      certificateId: 'KZ-CERT-VILLA-001'
-    }
-  ];
+  const userId = req.user!.id;
+  const matchedUser = findUserRecordForRequest(req);
+  const resolvedEmail = matchedUser?.email || req.user?.email || '';
+  const userInvTxs = mockTransactions.filter(
+    t =>
+      (t.userId === userId || (Boolean(resolvedEmail) && t.userEmail === resolvedEmail)) &&
+      t.type === 'investment' &&
+      t.status === 'completed'
+  );
 
+  const holdingsMap = new Map<string, any>();
+  for (const tx of userInvTxs) {
+    const propId = (tx as any).propertyId || 'prop-unknown';
+    const prop = mockListings.find(p => p.id === propId);
+    const annualYieldRate = prop ? (prop.projectedYield || 12.8) / 100 : 0.128;
+    const existing = holdingsMap.get(propId);
+    if (existing) {
+      existing.tokensPurchased += Number((tx as any).tokensPurchased || 0);
+      existing.totalCost += Number(tx.amount || 0);
+      existing.currentValue = Math.round(existing.totalCost * 1.0);
+      existing.projectedAnnualDividend = Math.round(existing.totalCost * annualYieldRate * 100) / 100;
+    } else {
+      const cost = Number(tx.amount || 0);
+      holdingsMap.set(propId, {
+        id: tx.id,
+        propertyId: propId,
+        propertyTitle: (tx as any).propertyTitle || prop?.title || 'Tokenized Property SPV',
+        tokensPurchased: Number((tx as any).tokensPurchased || 0),
+        totalCost: cost,
+        currentValue: cost,
+        projectedAnnualDividend: Math.round(cost * annualYieldRate * 100) / 100,
+        dividendsReceived: userId === 'usr-investor-01' && propId === 'prop-villa-mirador' ? 320 : 0,
+        purchaseDate: tx.createdAt,
+        certificateId: tx.reference || 'KZ-CERT'
+      });
+    }
+  }
+
+  const userInvestments = Array.from(holdingsMap.values());
   const totalPortfolioValue = userInvestments.reduce((acc, curr) => acc + curr.currentValue, 0);
+  const totalTokensHeld = userInvestments.reduce((acc, curr) => acc + curr.tokensPurchased, 0);
+  const totalDividendsReceived = userInvestments.reduce((acc, curr) => acc + curr.dividendsReceived, 0);
 
   res.json({
     success: true,
@@ -1499,9 +1994,9 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: Authenticate
       holdings: userInvestments,
       totalHoldingsValue: totalPortfolioValue,
       totalPortfolioValue,
-      totalTokensHeld: 100,
-      activePropertiesCount: 1,
-      totalDividendsReceived: 320,
+      totalTokensHeld,
+      activePropertiesCount: userInvestments.length,
+      totalDividendsReceived,
       currency: 'EUR'
     },
     requestId: req.id
@@ -1512,12 +2007,13 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: Authenticate
  * GET /api/v1/wallet/balance
  */
 router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const user = mockUsers.find(u => u.id === req.user?.id || u.email === req.user?.email);
-  const bal = user ? user.balance : (req.user?.balance ?? 15000);
+  const user = findUserRecordForRequest(req);
+  const bal = user ? user.balance : (req.user?.balance ?? 0);
   res.json({
     success: true,
     data: {
       balance: bal,
+      subBalances: getOrInitUserSubBalances(req.user!.id, bal),
       currency: 'EUR'
     },
     requestId: req.id
@@ -1545,26 +2041,248 @@ router.get('/transactions', requireAuth, (req: AuthenticatedRequest, res: Respon
  * GET /api/v1/notifications
  */
 router.get('/notifications', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const list = userNotificationsStore.get(req.user!.id) || [];
   res.json({
     success: true,
-    data: [
-      {
-        id: 'notif-1',
-        title: 'Monthly Distribution Credited',
-        message: 'Your €320 rental yield for Villa El Mirador has been credited to your available balance.',
-        type: 'financial',
-        read: false,
-        createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'notif-2',
-        title: 'KYC Document Verified',
-        message: 'Your European investor accredited identity verification has been confirmed.',
-        type: 'success',
-        read: true,
-        createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
-      }
-    ],
+    data: list,
+    unreadCount: list.filter(n => !n.read).length,
+    requestId: req.id
+  });
+});
+
+router.patch('/notifications/:id/read', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const list = userNotificationsStore.get(req.user!.id) || [];
+  const target = list.find(n => n.id === req.params.id);
+  if (target) {
+    target.read = true;
+  }
+  res.json({
+    success: true,
+    data: target || null,
+    requestId: req.id
+  });
+});
+
+router.post('/notifications/read-all', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const list = userNotificationsStore.get(req.user!.id) || [];
+  list.forEach(n => { n.read = true; });
+  res.json({
+    success: true,
+    data: { markedRead: list.length },
+    requestId: req.id
+  });
+});
+
+/**
+ * User Favorites & Preferences Persistence (/api/v1/user/favorites & /api/v1/user/preferences)
+ */
+router.get('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
+  res.json({
+    success: true,
+    data: { favorites: Array.from(favSet) },
+    requestId: req.id
+  });
+});
+
+router.post('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const { propertyId } = req.body || {};
+  if (!propertyId || typeof propertyId !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'Valid propertyId is required.',
+      code: 'VALIDATION_ERROR',
+      requestId: req.id
+    });
+  }
+  const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
+  favSet.add(propertyId);
+  userFavoritesStore.set(req.user!.id, favSet);
+  res.json({
+    success: true,
+    data: { favorites: Array.from(favSet), propertyId, saved: true },
+    message: 'Property saved to your watchlist.',
+    requestId: req.id
+  });
+});
+
+router.delete('/user/favorites/:propertyId', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const { propertyId } = req.params;
+  const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
+  favSet.delete(propertyId);
+  userFavoritesStore.set(req.user!.id, favSet);
+  res.json({
+    success: true,
+    data: { favorites: Array.from(favSet), propertyId, saved: false },
+    message: 'Property removed from your watchlist.',
+    requestId: req.id
+  });
+});
+
+router.get('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const prefs = userPreferencesStore.get(req.user!.id) || {
+    defaultSort: 'yield-desc',
+    itemsPerPage: 6,
+    currencyDisplay: 'EUR',
+    emailNotifications: true
+  };
+  res.json({
+    success: true,
+    data: prefs,
+    requestId: req.id
+  });
+});
+
+router.put('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const current = userPreferencesStore.get(req.user!.id) || {};
+  const next = { ...current, ...(req.body || {}), updatedAt: new Date().toISOString() };
+  userPreferencesStore.set(req.user!.id, next);
+  res.json({
+    success: true,
+    data: next,
+    message: 'Preferences saved.',
+    requestId: req.id
+  });
+});
+
+/**
+ * Multi-Currency Treasury Desk Rates & Conversion (/api/v1/treasury/*)
+ */
+router.get('/treasury/rates', (_req: AuthenticatedRequest, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      base: 'EUR',
+      ratesToEur: TREASURY_FX_RATES_TO_EUR,
+      feePercent: TREASURY_FX_FEE_PERCENT,
+      updatedAt: new Date().toISOString()
+    }
+  });
+});
+
+router.get('/treasury/balances', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userRecord = findUserRecordForRequest(req);
+  const eurBal = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
+  const subBalances = getOrInitUserSubBalances(req.user!.id, eurBal);
+  res.json({
+    success: true,
+    data: { balances: subBalances },
+    requestId: req.id
+  });
+});
+
+router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const { fromCurrency, toCurrency, amount, clientEurBalance } = req.body || {};
+  const from = String(fromCurrency || '').toUpperCase();
+  const to = String(toCurrency || '').toUpperCase();
+  const numericAmount = Number(amount);
+
+  if (!TREASURY_FX_RATES_TO_EUR[from] || !TREASURY_FX_RATES_TO_EUR[to]) {
+    return res.status(400).json({
+      success: false,
+      error: 'Unsupported currency pair selected.',
+      code: 'UNSUPPORTED_CURRENCY',
+      requestId: req.id
+    });
+  }
+
+  if (from === to) {
+    return res.status(400).json({
+      success: false,
+      error: 'Source and target currencies must be different.',
+      code: 'SAME_CURRENCY',
+      requestId: req.id
+    });
+  }
+
+  if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Conversion amount must be greater than zero.',
+      code: 'INVALID_AMOUNT',
+      requestId: req.id
+    });
+  }
+
+  let userRecord = findUserRecordForRequest(req);
+  if (!userRecord) {
+    userRecord = {
+      id: req.user!.id,
+      email: req.user!.email,
+      fullName: req.user!.fullName || 'Verified Investor',
+      role: req.user!.role,
+      kycStatus: 'approved',
+      balance: typeof clientEurBalance === 'number' && clientEurBalance >= 0 ? clientEurBalance : 0,
+      currency: 'EUR',
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+    mockUsers.push(userRecord);
+  } else if (typeof clientEurBalance === 'number' && clientEurBalance >= 0 && !userSubBalancesStore.has(userRecord.id)) {
+    userRecord.balance = clientEurBalance;
+  }
+
+  const balances = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
+  const availableSource = balances[from] || 0;
+
+  if (availableSource < numericAmount) {
+    return res.status(400).json({
+      success: false,
+      error: `Insufficient ${from} balance (Available: ${availableSource.toFixed(from === 'SOL' ? 4 : 2)} ${from}). Deposit or convert into ${from} first.`,
+      code: 'INSUFFICIENT_CURRENCY_BALANCE',
+      requestId: req.id
+    });
+  }
+
+  const valueInEur = numericAmount * TREASURY_FX_RATES_TO_EUR[from];
+  const feeInEur = Math.round(valueInEur * (TREASURY_FX_FEE_PERCENT / 100) * 100) / 100;
+  const netEur = Math.max(0, valueInEur - feeInEur);
+  const convertedAmount = Number((netEur / TREASURY_FX_RATES_TO_EUR[to]).toFixed(to === 'SOL' ? 6 : 2));
+
+  balances[from] = Number((availableSource - numericAmount).toFixed(from === 'SOL' ? 6 : 2));
+  balances[to] = Number(((balances[to] || 0) + convertedAmount).toFixed(to === 'SOL' ? 6 : 2));
+  userRecord.balance = balances.EUR;
+
+  const ref = `FX-${from}-${to}-${Math.floor(100000 + Math.random() * 900000)}`;
+  const fxTx = {
+    id: `tx-fx-${Date.now()}`,
+    userId: userRecord.id,
+    userEmail: userRecord.email,
+    type: 'fee',
+    amount: Number(valueInEur.toFixed(2)),
+    currency: 'EUR',
+    status: 'completed',
+    method: `Treasury FX (${from} → ${to})`,
+    reference: ref,
+    createdAt: new Date().toISOString(),
+    metadata: {
+      fromCurrency: from,
+      toCurrency: to,
+      fromAmount: numericAmount,
+      toAmount: convertedAmount,
+      feeEur: feeInEur
+    }
+  };
+  mockTransactions.unshift(fxTx as any);
+  pushUserNotification(userRecord.id, {
+    title: 'Treasury FX Conversion Executed',
+    message: `Converted ${numericAmount} ${from} into ${convertedAmount} ${to} (Fee: €${feeInEur.toFixed(2)}).`,
+    type: 'financial'
+  });
+
+  res.json({
+    success: true,
+    data: {
+      reference: ref,
+      fromCurrency: from,
+      toCurrency: to,
+      fromAmount: numericAmount,
+      toAmount: convertedAmount,
+      feeEur: feeInEur,
+      balances,
+      transaction: fxTx
+    },
+    message: `Converted ${numericAmount} ${from} to ${convertedAmount} ${to}.`,
     requestId: req.id
   });
 });
@@ -1590,11 +2308,13 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
 
   const numAmount = Number(amount);
   const ref = `KZ-DEP-${Math.floor(100000 + Math.random() * 900000)}`;
+  const foundUser = findUserRecordForRequest(req);
+  const resolvedRecipient = foundUser?.email || req.user?.email || 'investor@kretz.com';
 
   const depositTx = {
     id: `tx-dep-${Date.now()}`,
     userId: req.user!.id,
-    userEmail: req.user!.email,
+    userEmail: resolvedRecipient,
     type: 'deposit',
     amount: numAmount,
     currency,
@@ -1608,8 +2328,7 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
   mockTransactions.unshift(depositTx);
 
   // Send branded deposit initiated email with CaixaBank escrow instructions
-  const userRecipient = req.user?.email || 'investor@kretz.com';
-  const foundUser = mockUsers.find(u => u.id === req.user?.id);
+  const userRecipient = resolvedRecipient;
   
   sendEmail({
     templateId: 'deposit_received',
@@ -1813,7 +2532,7 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
  * Execute fractional asset investment with idempotency protection
  */
 router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const { propertyId, tokensCount, paymentMethod = 'Platform Balance', idempotencyKey } = req.body || {};
+  const { propertyId, tokensCount, paymentMethod = 'Platform Balance', feePercent, idempotencyKey } = req.body || {};
 
   if (!propertyId || !tokensCount || Number(tokensCount) < 1) {
     return res.status(400).json({
@@ -1855,13 +2574,16 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   const count = Number(tokensCount);
-  const totalCost = count * prop.tokenPrice;
+  const principalCost = count * prop.tokenPrice;
+  const resolvedFeePct = typeof feePercent === 'number' && feePercent >= 0 ? feePercent : 0;
+  const feeEur = Math.round(principalCost * (resolvedFeePct / 100) * 100) / 100;
+  const totalCost = Math.round((principalCost + feeEur) * 100) / 100;
 
   const minInvest = prop.minimumInvestment || prop.tokenPrice || 1000;
-  if (totalCost < minInvest) {
+  if (principalCost < minInvest) {
     return res.status(400).json({
       success: false,
-      error: `Minimum investment for ${prop.title} is €${minInvest}. Requested: €${totalCost}.`,
+      error: `Minimum investment for ${prop.title} is €${minInvest}. Requested: €${principalCost}.`,
       code: 'BELOW_MINIMUM_INVESTMENT',
       requestId: req.id
     });
@@ -1876,7 +2598,7 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const userRecord = mockUsers.find(u => u.id === req.user?.id);
+  const userRecord = findUserRecordForRequest(req);
 
   if (userRecord && userRecord.balance < totalCost) {
     return res.status(400).json({
@@ -1889,19 +2611,23 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
 
   // Server-authoritative state mutation
   if (userRecord) {
-    userRecord.balance -= totalCost;
+    userRecord.balance = Math.round((userRecord.balance - totalCost) * 100) / 100;
+    const subBals = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
+    subBals.EUR = userRecord.balance;
   }
   prop.availableTokens -= count;
-  prop.fundedAmount += totalCost;
+  prop.fundedAmount += principalCost;
   processedWebhooks.add(safeKey);
 
   const certId = `KZ-CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
   const invTx = {
     id: `tx-inv-${Date.now()}`,
     userId: req.user!.id,
-    userEmail: req.user!.email,
+    userEmail: userRecord?.email || req.user!.email,
     type: 'investment',
-    amount: totalCost,
+    amount: principalCost,
+    feeEur,
+    totalChargedEur: totalCost,
     currency: 'EUR',
     status: 'completed',
     method: paymentMethod,
@@ -1912,7 +2638,7 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     createdAt: new Date().toISOString()
   };
 
-  mockTransactions.unshift(invTx);
+  mockTransactions.unshift(invTx as any);
 
   const userRecipient = req.user?.email || 'investor@kretz.com';
   sendEmail({
@@ -2170,18 +2896,57 @@ router.put('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, re
 
 // User profile & session contract endpoints
 router.get(['/auth/me', '/users/me'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const stored = findUserRecordForRequest(req);
   res.json({
     success: true,
-    data: req.user,
+    data: stored ? { ...req.user, ...stored } : req.user,
     requestId: req.id
   });
 });
 
 router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const updates = req.body || {};
+  const allowedFields = [
+    'fullName',
+    'phoneNumber',
+    'country',
+    'countryCode',
+    'bankIban',
+    'cryptoDepositAddress',
+    'taxId',
+    'address',
+    'city',
+    'postalCode',
+    'dateOfBirth',
+    'twoFactorEnabled',
+    'avatarUrl'
+  ];
+
+  let target = findUserRecordForRequest(req);
+  if (!target) {
+    target = {
+      id: req.user!.id,
+      email: req.user!.email,
+      fullName: req.user!.fullName || 'Verified Investor',
+      role: req.user!.role,
+      kycStatus: 'unverified',
+      balance: req.user!.balance ?? 0,
+      currency: 'EUR',
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+    mockUsers.push(target);
+  }
+
+  for (const key of allowedFields) {
+    if (updates[key] !== undefined) {
+      (target as any)[key] = typeof updates[key] === 'string' ? updates[key].trim() : updates[key];
+    }
+  }
+
   res.json({
     success: true,
-    data: { ...req.user, ...updates },
+    data: target,
     message: 'User profile updated successfully.',
     requestId: req.id
   });
@@ -2189,14 +2954,26 @@ router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response
 
 // Dashboard summary & performance endpoints
 router.get('/dashboard/summary', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const userRecord = findUserRecordForRequest(req);
+  const availableBalance = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
+  const userInvTxs = mockTransactions.filter(
+    t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
+  );
+  const investedTotal = userInvTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const uniqueProps = new Set(userInvTxs.map(t => (t as any).propertyId)).size;
+  const earnedDividends = userId === 'usr-investor-01' ? 320.0 : 0.0;
+  const projectedMonthlyIncome = Number((investedTotal * 0.061).toFixed(2));
+
   res.json({
     success: true,
     data: {
-      totalPortfolioValue: 10580.00,
-      availableBalance: req.user?.balance || 1500.00,
-      totalEarnedDividends: 320.00,
-      activePropertiesCount: 1,
-      projectedMonthlyIncome: 110.94,
+      totalPortfolioValue: Number((availableBalance + investedTotal).toFixed(2)),
+      availableBalance,
+      investedCapital: investedTotal,
+      totalEarnedDividends: earnedDividends,
+      activePropertiesCount: uniqueProps,
+      projectedMonthlyIncome,
       currency: 'EUR'
     },
     requestId: req.id
@@ -2349,10 +3126,24 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: Authentica
   
   if (targetTx) {
     targetTx.status = 'completed';
-    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
+    const foundUser =
+      mockUsers.find(u => u.id === targetTx.userId) ||
+      (targetTx.userEmail ? mockUsers.find(u => u.email === targetTx.userEmail) : undefined);
+    const creditAmt = Number(targetTx.amount);
     if (foundUser) {
-      foundUser.balance = (foundUser.balance || 0) + Number(targetTx.amount);
+      if (userSubBalancesStore.has(foundUser.id)) {
+        const sub = userSubBalancesStore.get(foundUser.id)!;
+        sub.EUR = Number(((sub.EUR || 0) + creditAmt).toFixed(2));
+        foundUser.balance = sub.EUR;
+      } else {
+        foundUser.balance = Number(((foundUser.balance || 0) + creditAmt).toFixed(2));
+      }
     }
+    pushUserNotification(targetTx.userId, {
+      title: 'Deposit Approved & Credited',
+      message: `Your deposit of €${creditAmt.toFixed(2)} (${targetTx.reference}) has been credited to your EUR balance.`,
+      type: 'financial'
+    });
     
     sendEmail({
       templateId: 'deposit_confirmed',
@@ -2380,6 +3171,36 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: Authentica
   res.json({
     success: true,
     message: `Deposit ${depositId} approved and cash credited to user balance.`,
+    requestId: req.id
+  });
+});
+
+router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const { depositId } = req.params;
+  const { reason } = req.body || {};
+  const targetTx = mockTransactions.find(t => t.id === depositId || t.reference === depositId);
+
+  if (!targetTx) {
+    return res.status(404).json({
+      success: false,
+      error: `Deposit transaction '${depositId}' not found.`,
+      code: 'DEPOSIT_NOT_FOUND',
+      requestId: req.id
+    });
+  }
+
+  targetTx.status = 'rejected';
+  (targetTx as any).rejectionReason = reason || 'Transfer verification could not be matched.';
+  pushUserNotification(targetTx.userId, {
+    title: 'Deposit Request Declined',
+    message: `Your deposit (${targetTx.reference}) was declined: ${(targetTx as any).rejectionReason}`,
+    type: 'warning'
+  });
+
+  res.json({
+    success: true,
+    data: targetTx,
+    message: `Deposit ${depositId} rejected.`,
     requestId: req.id
   });
 });

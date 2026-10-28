@@ -7105,7 +7105,13 @@ export const INITIAL_PROPERTIES: Property[] = rawProperties
       totalTokens: metrics.totalTokens,
       availableTokens: metrics.availableTokens,
       isFullyFunded: metrics.isFullyFunded,
-      status: p.status === 'hidden' ? 'hidden' : (metrics.isFullyFunded ? 'funded' : p.status),
+      status: p.status === 'hidden'
+        ? 'hidden'
+        : metrics.isFullyFunded
+        ? 'funded'
+        : metrics.fundedAmount > 0
+        ? 'funding'
+        : p.status,
       approvedForFrontend: p.status === 'hidden' ? false : true,
       assignedFunction: p.status === 'hidden' 
         ? undefined 

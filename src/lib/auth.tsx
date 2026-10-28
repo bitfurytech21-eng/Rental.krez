@@ -63,6 +63,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    if (!user?.id) return;
+    const unsubscribe = ledger.subscribe(() => {
+      const fresh = ledger.getUserById(user.id);
+      if (fresh) {
+        setUser((prev) => {
+          if (!prev) return { ...fresh };
+          return { ...fresh };
+        });
+      }
+    });
+    return unsubscribe;
+  }, [user?.id]);
+
+  useEffect(() => {
     // Check if URL hash indicates Supabase recovery flow (#type=recovery or access_token)
     if (typeof window !== 'undefined') {
       const hash = window.location.hash;

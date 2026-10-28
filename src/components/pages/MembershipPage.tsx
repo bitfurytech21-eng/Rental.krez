@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { MembershipApplicationModal } from '../club/MembershipApplicationModal';
 import { UserMembershipCard } from '../club/UserMembershipCard';
+import kretzHeadquartersImg from '../../assets/images/kretz_agency_headquarters_1792092491560.jpg';
 
 interface MembershipPageProps {
   onNavigateHome: () => void;
@@ -69,10 +70,10 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       )}
 
       {/* Editorial Luxury Hero */}
-      <section className="relative overflow-hidden bg-[#0B1B30] text-white pt-24 pb-20 border-b border-[#1D3860]">
+      <section className="relative overflow-hidden bg-[#0B1B30] text-white pt-16 sm:pt-24 pb-14 sm:pb-20 border-b border-[#1D3860]">
         <div className="absolute inset-0 z-0 opacity-20 mix-blend-luminosity">
           <img 
-            src="/src/assets/images/kretz_agency_headquarters_1792092491560.jpg" 
+            src={kretzHeadquartersImg} 
             alt="Kretz Club Privé" 
             className="w-full h-full object-cover"
           />
@@ -216,7 +217,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
 
                     <div className="mb-6 pb-6 border-b border-[#1D3860]">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl sm:text-4xl font-black text-[#BEE179]">
+                        <span className="text-3xl sm:text-4xl font-black text-[#BEE179] font-mono tabular-nums">
                           {formatCurrency(price)}
                         </span>
                         <span className="text-xs text-[#8EA7C7] font-medium">
@@ -410,6 +411,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleSuccess}
+        onNavigateLogin={onNavigateLogin}
       />
 
     </div>

@@ -86,6 +86,34 @@ export interface PaymentConfig {
   cryptoNetworks: CryptoNetworkConfig[];
 }
 
+export interface P2PListingOrder {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  propertyId: string;
+  propertyTitle: string;
+  propertyLocation: string;
+  propertyImage: string;
+  tokenTicker: string;
+  tokensAvailable: number;
+  askingPricePerToken: number;
+  parValuePerToken: number;
+  estimatedAnnualYield: number;
+  createdAt: string;
+  status: 'open' | 'filled' | 'cancelled';
+}
+
+export const LEDGER_FX_RATES_TO_EUR: Record<string, number> = {
+  EUR: 1.0,
+  USD: 0.92,
+  GBP: 1.18,
+  CHF: 1.06,
+  USDC: 0.92,
+  USDT: 0.92,
+  SOL: 158.4,
+};
+export const LEDGER_FX_FEE_PERCENT = 0.15;
+
 const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
   traditional: {
     beneficiary: "L'Agence Escrow Services S.L.",
@@ -1046,6 +1074,12 @@ class LedgerService {
   private memberships: UserMembership[];
   private membershipApplications: MembershipApplication[];
   private companyNews: CompanyNewsItem[];
+  private favorites: Record<string, string[]>;
+  private userPreferences: Record<string, Record<string, any>>;
+  private subBalances: Record<string, Record<string, number>>;
+  private p2pListings: P2PListingOrder[];
+  private processedIdempotencyKeys: Set<string> = new Set();
+  private listeners: Set<() => void> = new Set();
 
   constructor() {
     const storedUsers = getStorage<User[]>('users', DEFAULT_USERS);
@@ -1077,8 +1111,16 @@ class LedgerService {
       const init = initialMap.get(p.id);
       if (init) {
         const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
+        const resolvedStatus: PropertyStatus = isHidden
+          ? p.status
+          : p.availableTokens <= 0 || p.fundedAmount >= p.targetAmount
+          ? 'funded'
+          : p.fundedAmount > 0 && p.status === 'upcoming'
+          ? 'funding'
+          : p.status;
         return {
           ...p,
+          status: resolvedStatus,
           monthlyTargetRate: init.monthlyTargetRate,
           estimatedAnnualYield: init.estimatedAnnualYield,
           totalEstimatedReturn: init.totalEstimatedReturn,
@@ -1157,6 +1199,81 @@ class LedgerService {
       this.auditLogs = storedLogs;
     }
     this.notifications = getStorage('notifications', []);
+    this.favorites = getStorage<Record<string, string[]>>('favorites', {});
+    this.userPreferences = getStorage<Record<string, Record<string, any>>>('userPreferences', {});
+    this.subBalances = getStorage<Record<string, Record<string, number>>>('subBalances', {});
+
+    const storedP2P = getStorage<P2PListingOrder[] | null>('p2pListings', null);
+    if (Array.isArray(storedP2P) && storedP2P.length > 0) {
+      this.p2pListings = storedP2P;
+    } else {
+      const seedProps = this.properties.filter(p => p.approvedForFrontend !== false);
+      const p1 = seedProps[0];
+      const p2 = seedProps[1] || seedProps[0];
+      this.p2pListings = [];
+      if (p1) {
+        this.p2pListings.push({
+          id: 'p2p-ord-1001',
+          sellerId: 'usr-inst-lp-1',
+          sellerName: 'Alpine Family Office LP',
+          propertyId: p1.id,
+          propertyTitle: p1.title,
+          propertyLocation: p1.location,
+          propertyImage: p1.images[0] || p1.bannerImage,
+          tokenTicker: p1.tokenTicker,
+          tokensAvailable: 12,
+          askingPricePerToken: Number((p1.tokenPrice * 0.985).toFixed(2)),
+          parValuePerToken: p1.tokenPrice,
+          estimatedAnnualYield: p1.estimatedAnnualYield,
+          createdAt: '2026-10-14T10:30:00Z',
+          status: 'open',
+        });
+      }
+      if (p2 && p2.id !== p1?.id) {
+        this.p2pListings.push({
+          id: 'p2p-ord-1002',
+          sellerId: 'usr-inst-lp-2',
+          sellerName: 'Geneva Private Capital',
+          propertyId: p2.id,
+          propertyTitle: p2.title,
+          propertyLocation: p2.location,
+          propertyImage: p2.images[0] || p2.bannerImage,
+          tokenTicker: p2.tokenTicker,
+          tokensAvailable: 8,
+          askingPricePerToken: Number((p2.tokenPrice * 1.015).toFixed(2)),
+          parValuePerToken: p2.tokenPrice,
+          estimatedAnnualYield: p2.estimatedAnnualYield,
+          createdAt: '2026-10-16T15:10:00Z',
+          status: 'open',
+        });
+      }
+      setStorage('p2pListings', this.p2pListings);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (ev) => {
+        if (ev.key && ev.key.startsWith('rentallog_v3_')) {
+          this.notifyListeners();
+        }
+      });
+    }
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifyListeners() {
+    this.listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (err) {
+        console.error('Ledger subscriber error:', err);
+      }
+    });
   }
 
   private saveState() {
@@ -1172,6 +1289,11 @@ class LedgerService {
     setStorage('memberships', this.memberships);
     setStorage('membershipApplications', this.membershipApplications);
     setStorage('companyNews', this.companyNews);
+    setStorage('favorites', this.favorites);
+    setStorage('userPreferences', this.userPreferences);
+    setStorage('subBalances', this.subBalances);
+    setStorage('p2pListings', this.p2pListings);
+    this.notifyListeners();
   }
 
   public getPaymentConfig(): PaymentConfig {
@@ -1635,9 +1757,17 @@ class LedgerService {
       .map(p => {
         const init = initialMap.get(p.id);
         const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
+        const resolvedStatus: PropertyStatus = isHidden
+          ? p.status
+          : p.availableTokens <= 0 || p.fundedAmount >= p.targetAmount
+          ? 'funded'
+          : p.fundedAmount > 0 && p.status === 'upcoming'
+          ? 'funding'
+          : p.status;
         if (init) {
           return {
             ...p,
+            status: resolvedStatus,
             monthlyTargetRate: init.monthlyTargetRate,
             estimatedAnnualYield: init.estimatedAnnualYield,
             totalEstimatedReturn: init.totalEstimatedReturn,
@@ -2180,12 +2310,25 @@ class LedgerService {
 
   /**
    * Atomic Investment Execution:
-   * Validates available tokens, enforces minimums, deducts wallet balance, updates property funded amount,
-   * creates user investment record, and issues digital ownership certificate.
+   * Validates available tokens, enforces minimums, deducts wallet balance (including any applicable settlement fee),
+   * updates canonical property funded amount & available tokens in place, creates user investment record,
+   * and issues digital ownership certificate.
    */
-  public async executeInvestment(userId: string, propertyId: string, tokenCount: number): Promise<Investment> {
+  public async executeInvestment(
+    userId: string,
+    propertyId: string,
+    tokenCount: number,
+    options?: {
+      feePercent?: number;
+      paymentMethod?: string;
+      idempotencyKey?: string;
+    }
+  ): Promise<Investment> {
     if (tokenCount <= 0 || !Number.isInteger(tokenCount)) {
       throw new Error('Token purchase quantity must be a whole positive integer.');
+    }
+    if (options?.idempotencyKey && this.processedIdempotencyKeys.has(options.idempotencyKey)) {
+      throw new Error('Duplicate investment submission prevented. This order has already been settled.');
     }
     if (this.isProcessingLock) throw new Error('Transaction execution engine is busy.');
 
@@ -2194,64 +2337,75 @@ class LedgerService {
       const user = this.getUserById(userId);
       if (!user) throw new Error('Please log in to participate in real estate offerings.');
 
+      const rawProperty = this.properties.find(p => p.id === propertyId || p.slug === propertyId);
       const property = this.getPropertyById(propertyId);
-      if (!property) throw new Error('Target property not found in investment directory.');
+      if (!rawProperty || !property) throw new Error('Target property not found in investment directory.');
 
-      if (property.status !== 'funding') {
-        throw new Error(`This property is currently '${property.status}' and not open for new contributions.`);
+      if (rawProperty.status !== 'funding') {
+        throw new Error(`This property is currently '${rawProperty.status}' and not open for new contributions.`);
       }
 
-      if (tokenCount > property.availableTokens) {
-        throw new Error(`Only ${property.availableTokens} tokens remain available for this property.`);
+      if (tokenCount > rawProperty.availableTokens) {
+        throw new Error(`Only ${rawProperty.availableTokens} tokens remain available for this property.`);
       }
 
-      const totalCost = tokenCount * property.tokenPrice;
-      if (totalCost < property.minimumInvestment) {
-        throw new Error(`Minimum investment for this property is €${property.minimumInvestment.toLocaleString()} (${Math.ceil(property.minimumInvestment / property.tokenPrice)} tokens).`);
+      const unitPrice = property.tokenPrice;
+      const subtotalCost = Number((tokenCount * unitPrice).toFixed(2));
+      const feePercent = Math.max(0, options?.feePercent ?? 0);
+      const feeAmount = feePercent > 0 ? Number(((subtotalCost * feePercent) / 100).toFixed(2)) : 0;
+      const totalPayable = Number((subtotalCost + feeAmount).toFixed(2));
+
+      if (subtotalCost < property.minimumInvestment) {
+        throw new Error(`Minimum investment for this property is €${property.minimumInvestment.toLocaleString()} (${Math.ceil(property.minimumInvestment / unitPrice)} tokens).`);
       }
-      if (user.walletBalance < totalCost) {
-        throw new Error(`Insufficient available funds. Required: €${totalCost.toFixed(2)}, Available: €${user.walletBalance.toFixed(2)}. Please make a deposit first.`);
+      if (user.walletBalance < totalPayable) {
+        throw new Error(`Insufficient available funds. Required: €${totalPayable.toFixed(2)}, Available: €${user.walletBalance.toFixed(2)}. Please make a deposit first.`);
+      }
+
+      if (options?.idempotencyKey) {
+        this.processedIdempotencyKeys.add(options.idempotencyKey);
       }
 
       const timestamp = new Date().toISOString();
       const reference = `INV-${property.tokenTicker}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const txHash = generateTxHash(reference, totalCost, timestamp);
+      const txHash = generateTxHash(reference, totalPayable, timestamp);
       const certificateId = `CERT-${property.tokenTicker}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      // Deduct balance and add to invested capital
-      user.walletBalance = Number((user.walletBalance - totalCost).toFixed(2));
-      user.investedBalance = Number((user.investedBalance + totalCost).toFixed(2));
-
-      // Update property funding metrics
-      property.availableTokens -= tokenCount;
-      property.fundedAmount = Number((property.fundedAmount + totalCost).toFixed(2));
-      if (property.availableTokens <= 0) {
-        property.status = 'funded';
+      // Deduct total payable from cash balance and add net asset capital to invested balance
+      user.walletBalance = Number((user.walletBalance - totalPayable).toFixed(2));
+      user.investedBalance = Number((user.investedBalance + subtotalCost).toFixed(2));
+      if (this.subBalances[user.id]) {
+        this.subBalances[user.id].EUR = user.walletBalance;
       }
-      property.investorCount += 1;
 
-      // Calculate projected monthly income = investment cost × monthly percentage ÷ 100
+      // Mutate canonical property record in this.properties so availability updates everywhere!
+      rawProperty.availableTokens = Math.max(0, rawProperty.availableTokens - tokenCount);
+      rawProperty.fundedAmount = Number((rawProperty.fundedAmount + subtotalCost).toFixed(2));
+      if (rawProperty.availableTokens <= 0 || rawProperty.fundedAmount >= rawProperty.targetAmount) {
+        rawProperty.status = 'funded';
+        rawProperty.isFullyFunded = true;
+      }
+      rawProperty.investorCount = (rawProperty.investorCount || 0) + 1;
+
       const monthlyRate = property.monthlyTargetRate || 6.0;
-      const projectedMonthlyIncome = Number(((totalCost * monthlyRate) / 100).toFixed(2));
+      const projectedMonthlyIncome = Number(((subtotalCost * monthlyRate) / 100).toFixed(2));
 
-      // Calculate start and maturity dates based on property term
       const startDate = timestamp;
       const durationMonths = property.durationMonths || 36;
       const matDateObj = new Date(timestamp);
       matDateObj.setMonth(matDateObj.getMonth() + durationMonths);
       const maturityDate = matDateObj.toISOString();
 
-      // Create Investment record
       const investment: Investment = {
         id: 'inv-' + Math.random().toString(36).substring(2, 9),
         userId: user.id,
-        propertyId: property.id,
-        propertyTitle: property.title,
-        propertyLocation: property.location,
-        propertyImage: property.images[0] || property.bannerImage,
+        propertyId: rawProperty.id,
+        propertyTitle: rawProperty.title,
+        propertyLocation: rawProperty.location,
+        propertyImage: rawProperty.images[0] || rawProperty.bannerImage,
         tokensPurchased: tokenCount,
-        tokenPrice: property.tokenPrice,
-        totalAmountInvested: totalCost,
+        tokenPrice: unitPrice,
+        totalAmountInvested: subtotalCost,
         purchasedAt: timestamp,
         startDate: startDate,
         maturityDate: maturityDate,
@@ -2259,7 +2413,7 @@ class LedgerService {
         estimatedAnnualYield: property.estimatedAnnualYield,
         projectedMonthlyIncome: projectedMonthlyIncome,
         totalDividendsReceived: 0,
-        currentValuation: totalCost,
+        currentValuation: subtotalCost,
         unrealizedProfitLoss: 0,
         status: 'active',
         transactionHash: txHash,
@@ -2269,7 +2423,6 @@ class LedgerService {
 
       this.investments.unshift(investment);
 
-      // Trigger Supabase Edge Function to send automated confirmation email once recorded in ledger
       if (isSupabaseConfigured()) {
         try {
           await supabase.functions.invoke('send-investment-confirmation', {
@@ -2277,10 +2430,10 @@ class LedgerService {
               userId: user.id,
               email: user.email,
               fullName: user.fullName,
-              propertyTitle: property.title,
-              propertyLocation: property.location,
+              propertyTitle: rawProperty.title,
+              propertyLocation: rawProperty.location,
               tokensPurchased: tokenCount,
-              totalAmountInvested: totalCost,
+              totalAmountInvested: subtotalCost,
               certificateId: certificateId,
               transactionHash: txHash,
               purchasedAt: timestamp,
@@ -2291,24 +2444,28 @@ class LedgerService {
         }
       }
 
-      // Create Ledger Transaction
+      const paymentMethodLabel = options?.paymentMethod || 'Internal EUR Balance';
       const tx: Transaction = {
         id: 'tx-' + Math.random().toString(36).substring(2, 9),
         userId: user.id,
         type: 'investment',
-        amount: totalCost,
+        amount: totalPayable,
         currency: 'EUR',
         status: 'completed',
-        description: `Acquired ${tokenCount} ${property.tokenTicker} tokens in ${property.title}`,
+        description: `Acquired ${tokenCount} ${rawProperty.tokenTicker} tokens in ${rawProperty.title}${feeAmount > 0 ? ` (incl. €${feeAmount.toFixed(2)} fee)` : ''}`,
         reference: reference,
         createdAt: timestamp,
-        paymentMethod: 'Internal Balance',
+        paymentMethod: paymentMethodLabel,
         balanceAfter: user.walletBalance,
         txHash: txHash,
         metadata: {
-          propertyId: property.id,
-          propertyTitle: property.title,
-          tokens: tokenCount
+          propertyId: rawProperty.id,
+          propertyTitle: rawProperty.title,
+          tokens: tokenCount,
+          subtotalEUR: subtotalCost,
+          feePercent,
+          feeAmountEUR: feeAmount,
+          certificateId
         }
       };
 
@@ -2316,10 +2473,10 @@ class LedgerService {
       this.createNotification(
         user.id,
         'Investment Confirmed!',
-        `You have successfully acquired ${tokenCount} tokens (€${totalCost.toFixed(2)}) in ${property.title}. Certificate: ${certificateId}`,
+        `You have successfully acquired ${tokenCount} tokens (€${subtotalCost.toFixed(2)}) in ${rawProperty.title}. Certificate: ${certificateId}`,
         'success'
       );
-      this.logAudit(user.id, user.email, 'INVESTMENT_EXECUTED', `Purchased ${tokenCount} tokens in ${property.title} for €${totalCost}`);
+      this.logAudit(user.id, user.email, 'INVESTMENT_EXECUTED', `Purchased ${tokenCount} tokens in ${rawProperty.title} for €${totalPayable.toFixed(2)}`);
 
       this.saveState();
       return investment;
@@ -2370,6 +2527,472 @@ class LedgerService {
     if (changed) {
       this.saveState();
     }
+  }
+
+  public addUserNotification(
+    userId: string,
+    title: string,
+    message: string,
+    type: 'info' | 'success' | 'warning' | 'financial' = 'info'
+  ): void {
+    this.createNotification(userId, title, message, type);
+    this.saveState();
+  }
+
+  // ===================== SAVED PROPERTIES (FAVORITES) & USER PREFERENCES =====================
+
+  public getFavorites(userId?: string): string[] {
+    const key = userId || 'guest';
+    return [...(this.favorites[key] || [])];
+  }
+
+  public isFavorite(userId: string | undefined, propertyId: string): boolean {
+    const key = userId || 'guest';
+    return (this.favorites[key] || []).includes(propertyId);
+  }
+
+  public setFavorites(userId: string | undefined, propertyIds: string[]): string[] {
+    const key = userId || 'guest';
+    this.favorites[key] = Array.from(new Set(propertyIds));
+    this.saveState();
+    return [...this.favorites[key]];
+  }
+
+  public toggleFavorite(userId: string | undefined, propertyId: string): { saved: boolean; favorites: string[] } {
+    const key = userId || 'guest';
+    const current = new Set(this.favorites[key] || []);
+    let saved = false;
+    if (current.has(propertyId)) {
+      current.delete(propertyId);
+      saved = false;
+    } else {
+      current.add(propertyId);
+      saved = true;
+    }
+    this.favorites[key] = Array.from(current);
+    this.saveState();
+    return { saved, favorites: [...this.favorites[key]] };
+  }
+
+  public getUserPreferences(userId?: string): Record<string, any> {
+    const key = userId || 'guest';
+    return { ...(this.userPreferences[key] || {}) };
+  }
+
+  public updateUserPreferences(userId: string | undefined, updates: Record<string, any>): Record<string, any> {
+    const key = userId || 'guest';
+    this.userPreferences[key] = {
+      ...(this.userPreferences[key] || {}),
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.saveState();
+    return { ...this.userPreferences[key] };
+  }
+
+  // ===================== MULTI-CURRENCY TREASURY DESK METHODS =====================
+
+  public getUserCurrencyBalances(userId: string): Record<string, number> {
+    const user = this.getUserById(userId);
+    const eur = user ? user.walletBalance : 0;
+    if (!this.subBalances[userId]) {
+      this.subBalances[userId] = {
+        EUR: eur,
+        USD: 0,
+        GBP: 0,
+        CHF: 0,
+        USDC: 0,
+        USDT: 0,
+        SOL: 0,
+      };
+    } else {
+      this.subBalances[userId].EUR = eur;
+    }
+    return { ...this.subBalances[userId] };
+  }
+
+  public setUserCurrencyBalances(userId: string, balances: Record<string, number>): void {
+    const user = this.getUserById(userId);
+    this.subBalances[userId] = { ...balances };
+    if (user && typeof balances.EUR === 'number') {
+      user.walletBalance = Number(balances.EUR.toFixed(2));
+    }
+    this.saveState();
+  }
+
+  public executeCurrencyConversion(
+    userId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    amount: number
+  ): {
+    reference: string;
+    fromCurrency: string;
+    toCurrency: string;
+    fromAmount: number;
+    toAmount: number;
+    feeEur: number;
+    balances: Record<string, number>;
+    transaction: Transaction;
+  } {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('Please sign in to execute treasury currency conversions.');
+    const from = fromCurrency.toUpperCase();
+    const to = toCurrency.toUpperCase();
+
+    if (!LEDGER_FX_RATES_TO_EUR[from] || !LEDGER_FX_RATES_TO_EUR[to]) {
+      throw new Error('Selected currency is not supported by the institutional FX desk.');
+    }
+    if (from === to) {
+      throw new Error('Source and target currencies must be different.');
+    }
+    if (!amount || isNaN(amount) || amount <= 0) {
+      throw new Error('Enter a conversion amount greater than zero.');
+    }
+
+    const currentBalances = this.getUserCurrencyBalances(userId);
+    const availableSource = currentBalances[from] || 0;
+    if (availableSource < amount) {
+      throw new Error(
+        `Insufficient ${from} balance (Available: ${availableSource.toFixed(from === 'SOL' ? 4 : 2)} ${from}). Deposit or convert into ${from} first.`
+      );
+    }
+
+    const valueInEur = amount * LEDGER_FX_RATES_TO_EUR[from];
+    const feeEur = Number((valueInEur * (LEDGER_FX_FEE_PERCENT / 100)).toFixed(2));
+    const netEur = Math.max(0, valueInEur - feeEur);
+    const toDecimals = to === 'SOL' ? 6 : 2;
+    const fromDecimals = from === 'SOL' ? 6 : 2;
+    const convertedAmount = Number((netEur / LEDGER_FX_RATES_TO_EUR[to]).toFixed(toDecimals));
+
+    currentBalances[from] = Number((availableSource - amount).toFixed(fromDecimals));
+    currentBalances[to] = Number(((currentBalances[to] || 0) + convertedAmount).toFixed(toDecimals));
+    this.subBalances[userId] = currentBalances;
+    user.walletBalance = Number(currentBalances.EUR.toFixed(2));
+
+    const timestamp = new Date().toISOString();
+    const reference = `FX-${from}-${to}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const txHash = generateTxHash(reference, valueInEur, timestamp);
+
+    const tx: Transaction = {
+      id: 'tx-fx-' + Math.random().toString(36).substring(2, 9),
+      userId: user.id,
+      type: 'fee',
+      amount: Number(valueInEur.toFixed(2)),
+      currency: 'EUR',
+      status: 'completed',
+      description: `Treasury FX: Converted ${amount} ${from} → ${convertedAmount} ${to} (0.15% desk spread: €${feeEur.toFixed(2)})`,
+      reference,
+      createdAt: timestamp,
+      paymentMethod: `Institutional FX Desk (${from}/${to})`,
+      balanceAfter: user.walletBalance,
+      txHash,
+      metadata: {
+        fromCurrency: from,
+        toCurrency: to,
+        fromAmount: amount,
+        toAmount: convertedAmount,
+        feeEur,
+      },
+    };
+
+    this.transactions.unshift(tx);
+    this.createNotification(
+      user.id,
+      'Currency Conversion Settled',
+      `Converted ${amount} ${from} into ${convertedAmount} ${to}. Active EUR cash balance: €${user.walletBalance.toFixed(2)}.`,
+      'financial'
+    );
+    this.logAudit(user.id, user.email, 'FX_CONVERSION_EXECUTED', `Converted ${amount} ${from} to ${convertedAmount} ${to} (Ref: ${reference})`);
+    this.saveState();
+
+    return {
+      reference,
+      fromCurrency: from,
+      toCurrency: to,
+      fromAmount: amount,
+      toAmount: convertedAmount,
+      feeEur,
+      balances: { ...currentBalances },
+      transaction: tx,
+    };
+  }
+
+  // ===================== P2P SECONDARY MARKET ORDER BOOK METHODS =====================
+
+  public getP2PListings(): P2PListingOrder[] {
+    return this.p2pListings
+      .filter(l => l.status === 'open' && l.tokensAvailable > 0)
+      .map(l => ({ ...l }));
+  }
+
+  public createP2PSellOrder(params: {
+    sellerId: string;
+    propertyId: string;
+    tokensToSell: number;
+    askingPricePerToken: number;
+  }): P2PListingOrder {
+    const seller = this.getUserById(params.sellerId);
+    if (!seller) throw new Error('Please log in to post a secondary market sell order.');
+    if (params.tokensToSell < 1 || !Number.isInteger(params.tokensToSell)) {
+      throw new Error('Token quantity to list must be a whole integer of at least 1.');
+    }
+    if (!params.askingPricePerToken || params.askingPricePerToken < 1) {
+      throw new Error('Asking price per token must be at least €1.00.');
+    }
+
+    const activeHoldings = this.investments.filter(
+      inv => inv.userId === seller.id && inv.propertyId === params.propertyId && inv.status === 'active'
+    );
+    const totalOwnedTokens = activeHoldings.reduce((sum, inv) => sum + inv.tokensPurchased, 0);
+    if (totalOwnedTokens < params.tokensToSell) {
+      throw new Error(`You hold ${totalOwnedTokens} active tokens in this property; cannot list ${params.tokensToSell}.`);
+    }
+
+    const prop = this.getPropertyById(params.propertyId);
+    if (!prop) throw new Error('Property record not found.');
+
+    // Escrow tokens from seller's active holdings
+    let remainingToEscrow = params.tokensToSell;
+    for (const inv of activeHoldings) {
+      if (remainingToEscrow <= 0) break;
+      const deduct = Math.min(inv.tokensPurchased, remainingToEscrow);
+      inv.tokensPurchased -= deduct;
+      const costReduced = Number((deduct * inv.tokenPrice).toFixed(2));
+      inv.totalAmountInvested = Math.max(0, Number((inv.totalAmountInvested - costReduced).toFixed(2)));
+      inv.currentValuation = inv.totalAmountInvested;
+      seller.investedBalance = Math.max(0, Number((seller.investedBalance - costReduced).toFixed(2)));
+      remainingToEscrow -= deduct;
+    }
+    this.investments = this.investments.filter(inv => inv.tokensPurchased > 0 || inv.userId !== seller.id);
+
+    const newOrder: P2PListingOrder = {
+      id: 'p2p-ord-' + Math.random().toString(36).substring(2, 9),
+      sellerId: seller.id,
+      sellerName: `${seller.fullName.split(' ')[0]} ${seller.fullName.split(' ')[1]?.[0] || ''}.`.trim(),
+      propertyId: prop.id,
+      propertyTitle: prop.title,
+      propertyLocation: prop.location,
+      propertyImage: prop.images[0] || prop.bannerImage,
+      tokenTicker: prop.tokenTicker,
+      tokensAvailable: params.tokensToSell,
+      askingPricePerToken: Number(params.askingPricePerToken.toFixed(2)),
+      parValuePerToken: prop.tokenPrice,
+      estimatedAnnualYield: prop.estimatedAnnualYield,
+      createdAt: new Date().toISOString(),
+      status: 'open',
+    };
+
+    this.p2pListings.unshift(newOrder);
+    this.createNotification(
+      seller.id,
+      'Secondary Sell Order Published',
+      `Escrowed ${params.tokensToSell} ${prop.tokenTicker} tokens on the P2P Secondary Desk at €${newOrder.askingPricePerToken.toFixed(2)}/token.`,
+      'info'
+    );
+    this.logAudit(seller.id, seller.email, 'P2P_ORDER_CREATED', `Listed ${params.tokensToSell} ${prop.tokenTicker} tokens at €${newOrder.askingPricePerToken}`);
+    this.saveState();
+    return { ...newOrder };
+  }
+
+  public cancelP2PSellOrder(orderId: string, requestingUserId: string): void {
+    const order = this.p2pListings.find(o => o.id === orderId && o.status === 'open');
+    if (!order) throw new Error('Active secondary listing not found.');
+    if (order.sellerId !== requestingUserId) {
+      throw new Error('Only the listing seller can cancel this order.');
+    }
+
+    const seller = this.getUserById(requestingUserId);
+    const prop = this.getPropertyById(order.propertyId);
+    order.status = 'cancelled';
+
+    if (seller && prop && order.tokensAvailable > 0) {
+      const restoredCost = Number((order.tokensAvailable * order.parValuePerToken).toFixed(2));
+      seller.investedBalance = Number((seller.investedBalance + restoredCost).toFixed(2));
+      const existingHolding = this.investments.find(
+        i => i.userId === seller.id && i.propertyId === prop.id && i.status === 'active'
+      );
+      if (existingHolding) {
+        existingHolding.tokensPurchased += order.tokensAvailable;
+        existingHolding.totalAmountInvested = Number((existingHolding.totalAmountInvested + restoredCost).toFixed(2));
+        existingHolding.currentValuation = existingHolding.totalAmountInvested;
+      } else {
+        const now = new Date().toISOString();
+        const mat = new Date();
+        mat.setMonth(mat.getMonth() + (prop.durationMonths || 36));
+        this.investments.unshift({
+          id: 'inv-' + Math.random().toString(36).substring(2, 9),
+          userId: seller.id,
+          propertyId: prop.id,
+          propertyTitle: prop.title,
+          propertyLocation: prop.location,
+          propertyImage: prop.images[0] || prop.bannerImage,
+          tokensPurchased: order.tokensAvailable,
+          tokenPrice: order.parValuePerToken,
+          totalAmountInvested: restoredCost,
+          purchasedAt: now,
+          startDate: now,
+          maturityDate: mat.toISOString(),
+          durationMonths: prop.durationMonths || 36,
+          estimatedAnnualYield: prop.estimatedAnnualYield,
+          projectedMonthlyIncome: Number(((restoredCost * (prop.monthlyTargetRate || 6)) / 100).toFixed(2)),
+          totalDividendsReceived: 0,
+          currentValuation: restoredCost,
+          unrealizedProfitLoss: 0,
+          status: 'active',
+          transactionHash: generateTxHash(order.id, restoredCost, now),
+          certificateId: `CERT-${prop.tokenTicker}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+          fundingSource: 'wallet',
+        });
+      }
+      this.createNotification(
+        seller.id,
+        'Secondary Listing Cancelled',
+        `Your P2P sell order for ${order.tokensAvailable} ${order.tokenTicker} tokens was cancelled and escrowed tokens were returned to your portfolio.`,
+        'info'
+      );
+    }
+    this.saveState();
+  }
+
+  public executeP2PPurchase(params: {
+    buyerId: string;
+    orderId: string;
+    tokensToBuy: number;
+  }): Investment {
+    const buyer = this.getUserById(params.buyerId);
+    if (!buyer) throw new Error('Please log in to purchase tokens on the secondary desk.');
+    if (params.tokensToBuy < 1 || !Number.isInteger(params.tokensToBuy)) {
+      throw new Error('Token purchase quantity must be at least 1 whole unit.');
+    }
+
+    const order = this.p2pListings.find(o => o.id === params.orderId && o.status === 'open');
+    if (!order) throw new Error('This P2P sell order is no longer open.');
+    if (order.sellerId === buyer.id) {
+      throw new Error('You cannot buy your own secondary sell order. Use Cancel Listing to reclaim escrowed tokens.');
+    }
+    if (params.tokensToBuy > order.tokensAvailable) {
+      throw new Error(`Only ${order.tokensAvailable} tokens are available in this P2P order.`);
+    }
+
+    const subtotal = Number((params.tokensToBuy * order.askingPricePerToken).toFixed(2));
+    const p2pFee = Number((subtotal * 0.005).toFixed(2)); // 0.5% P2P atomic settlement fee
+    const totalPayable = Number((subtotal + p2pFee).toFixed(2));
+
+    if (buyer.walletBalance < totalPayable) {
+      throw new Error(
+        `Insufficient wallet balance (€${buyer.walletBalance.toFixed(2)}) for secondary purchase of €${totalPayable.toFixed(2)} (incl. €${p2pFee.toFixed(2)} P2P clearing fee).`
+      );
+    }
+
+    const prop = this.getPropertyById(order.propertyId);
+    const timestamp = new Date().toISOString();
+    const reference = `P2P-${order.tokenTicker}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const txHash = generateTxHash(reference, totalPayable, timestamp);
+    const certId = `CERT-P2P-${order.tokenTicker}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    // Deduct from buyer
+    buyer.walletBalance = Number((buyer.walletBalance - totalPayable).toFixed(2));
+    buyer.investedBalance = Number((buyer.investedBalance + subtotal).toFixed(2));
+    if (this.subBalances[buyer.id]) {
+      this.subBalances[buyer.id].EUR = buyer.walletBalance;
+    }
+
+    // Credit seller if seller is a registered ledger user
+    const seller = this.getUserById(order.sellerId);
+    if (seller) {
+      seller.walletBalance = Number((seller.walletBalance + subtotal).toFixed(2));
+      if (this.subBalances[seller.id]) {
+        this.subBalances[seller.id].EUR = seller.walletBalance;
+      }
+      this.transactions.unshift({
+        id: 'tx-p2p-sell-' + Math.random().toString(36).substring(2, 9),
+        userId: seller.id,
+        type: 'distribution',
+        amount: subtotal,
+        currency: 'EUR',
+        status: 'completed',
+        description: `P2P Secondary Sale: Sold ${params.tokensToBuy} ${order.tokenTicker} tokens at €${order.askingPricePerToken.toFixed(2)}/token`,
+        reference,
+        createdAt: timestamp,
+        paymentMethod: 'P2P Atomic Escrow Settlement',
+        balanceAfter: seller.walletBalance,
+        txHash,
+      });
+      this.createNotification(
+        seller.id,
+        'Secondary Order Filled!',
+        `${params.tokensToBuy} ${order.tokenTicker} tokens sold on the P2P desk. €${subtotal.toFixed(2)} credited to your available balance.`,
+        'financial'
+      );
+    }
+
+    // Update order inventory
+    order.tokensAvailable -= params.tokensToBuy;
+    if (order.tokensAvailable <= 0) {
+      order.status = 'filled';
+    }
+
+    const durationMonths = prop?.durationMonths || 36;
+    const matDate = new Date(timestamp);
+    matDate.setMonth(matDate.getMonth() + durationMonths);
+    const monthlyRate = prop?.monthlyTargetRate || 6.0;
+
+    const newInvestment: Investment = {
+      id: 'inv-p2p-' + Math.random().toString(36).substring(2, 9),
+      userId: buyer.id,
+      propertyId: order.propertyId,
+      propertyTitle: order.propertyTitle,
+      propertyLocation: order.propertyLocation,
+      propertyImage: order.propertyImage,
+      tokensPurchased: params.tokensToBuy,
+      tokenPrice: order.askingPricePerToken,
+      totalAmountInvested: subtotal,
+      purchasedAt: timestamp,
+      startDate: timestamp,
+      maturityDate: matDate.toISOString(),
+      durationMonths,
+      estimatedAnnualYield: order.estimatedAnnualYield,
+      projectedMonthlyIncome: Number(((subtotal * monthlyRate) / 100).toFixed(2)),
+      totalDividendsReceived: 0,
+      currentValuation: Number((params.tokensToBuy * order.parValuePerToken).toFixed(2)),
+      unrealizedProfitLoss: Number(((order.parValuePerToken - order.askingPricePerToken) * params.tokensToBuy).toFixed(2)),
+      status: 'active',
+      transactionHash: txHash,
+      certificateId: certId,
+      fundingSource: 'wallet',
+    };
+
+    this.investments.unshift(newInvestment);
+    this.transactions.unshift({
+      id: 'tx-p2p-buy-' + Math.random().toString(36).substring(2, 9),
+      userId: buyer.id,
+      type: 'investment',
+      amount: totalPayable,
+      currency: 'EUR',
+      status: 'completed',
+      description: `P2P Secondary Buy: ${params.tokensToBuy} ${order.tokenTicker} tokens in ${order.propertyTitle} (incl. €${p2pFee.toFixed(2)} clearing fee)`,
+      reference,
+      createdAt: timestamp,
+      paymentMethod: 'P2P Secondary Escrow',
+      balanceAfter: buyer.walletBalance,
+      txHash,
+      metadata: {
+        propertyId: order.propertyId,
+        propertyTitle: order.propertyTitle,
+        tokens: params.tokensToBuy,
+        feeAmountEUR: p2pFee,
+      },
+    });
+
+    this.createNotification(
+      buyer.id,
+      'Secondary Purchase Settled',
+      `Acquired ${params.tokensToBuy} ${order.tokenTicker} tokens in ${order.propertyTitle} for €${totalPayable.toFixed(2)}.`,
+      'success'
+    );
+    this.saveState();
+    return newInvestment;
   }
 
   // ===================== KRETZ MEMBERSHIP CLUB METHODS =====================

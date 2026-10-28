@@ -116,28 +116,10 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
     }
   };
 
-  const handleShareTwitter = () => {
-    const text = encodeURIComponent(`${article.title} - via Kretz Real Estate Dossiers & Insights`);
-    window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${text}`, '_blank');
-    insightsService.incrementShares(article.slug);
-  };
-
-  const handleShareLinkedIn = () => {
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`, '_blank');
-    insightsService.incrementShares(article.slug);
-  };
-
-  const handleShareWhatsApp = () => {
-    const text = encodeURIComponent(`${article.title} - ${currentUrl}`);
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-    insightsService.incrementShares(article.slug);
-  };
-
-  const handleShareEmail = () => {
-    const subject = encodeURIComponent(`Kretz Dossier: ${article.title}`);
-    const body = encodeURIComponent(`I thought you would find this in-depth real estate investigation interesting:\n\n${article.title}\n\nRead here: ${currentUrl}`);
-    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-  };
+  const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(`${article.title} - via Kretz Real Estate Dossiers & Insights`)}`;
+  const linkedInShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`;
+  const whatsAppShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${article.title} - ${currentUrl}`)}`;
+  const emailShareUrl = `mailto:?subject=${encodeURIComponent(`Kretz Dossier: ${article.title}`)}&body=${encodeURIComponent(`I thought you would find this in-depth real estate investigation interesting:\n\n${article.title}\n\nRead here: ${currentUrl}`)}`;
 
   const handlePrint = () => {
     window.print();
@@ -492,34 +474,48 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               Share Investigation:
             </span>
             <div className="flex items-center gap-2 justify-end">
-              <button
-                onClick={handleShareTwitter}
+              <a
+                href={twitterShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => insightsService.incrementShares(article.slug)}
                 className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share on X / Twitter"
+                aria-label="Share on X / Twitter"
               >
                 <Twitter className="w-4 h-4 text-[#BEE179]" />
-              </button>
-              <button
-                onClick={handleShareLinkedIn}
+              </a>
+              <a
+                href={linkedInShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => insightsService.incrementShares(article.slug)}
                 className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share on LinkedIn"
+                aria-label="Share on LinkedIn"
               >
                 <Linkedin className="w-4 h-4 text-[#BEE179]" />
-              </button>
-              <button
-                onClick={handleShareWhatsApp}
+              </a>
+              <a
+                href={whatsAppShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => insightsService.incrementShares(article.slug)}
                 className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share via WhatsApp"
+                aria-label="Share via WhatsApp"
               >
                 <Share2 className="w-4 h-4 text-[#BEE179]" />
-              </button>
-              <button
-                onClick={handleShareEmail}
+              </a>
+              <a
+                href={emailShareUrl}
+                onClick={() => insightsService.incrementShares(article.slug)}
                 className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share via Email"
+                aria-label="Share via Email"
               >
                 <Mail className="w-4 h-4 text-[#BEE179]" />
-              </button>
+              </a>
               <button
                 onClick={handleCopyLink}
                 className="px-3 py-2 rounded-xl bg-[#BEE179] text-[#0B1B30] hover:bg-[#AEDB5B] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
