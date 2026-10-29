@@ -1106,6 +1106,71 @@ export const AdminEmailManager: React.FC = () => {
             </div>
           </div>
 
+          {/* Webhook Endpoint & Subscribed Email Events */}
+          <div className="bg-white p-6 rounded-3xl border border-[#E4EEEA] shadow-xs space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-[#172B2A] flex items-center gap-2">
+                <Radio className="w-4 h-4 text-[#087F5B]" />
+                <span>Provider Webhook Endpoint &amp; Subscribed Email Events</span>
+              </h3>
+              <p className="text-xs text-[#71817D] mt-0.5">
+                Register this endpoint in your Resend or SendGrid dashboard to stream real-time delivery, bounce, and open events into the Activity Logs.
+              </p>
+            </div>
+
+            <div className="p-4 bg-[#F6FAF8] rounded-2xl border border-[#E4EEEA] space-y-2 text-xs">
+              <div className="flex items-center justify-between font-bold">
+                <span className="text-[#172B2A]">Webhook Endpoint URL (POST)</span>
+                <span className="text-[10px] text-[#087F5B] bg-[#DDF5EC] px-2 py-0.5 rounded-full">Live Ingestion</span>
+              </div>
+              <div className="font-mono bg-white p-2.5 rounded-xl border border-[#E4EEEA] text-[#087F5B] font-bold break-all">
+                https://kretzdespain.com/api/v1/webhooks/email
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="p-4 bg-[#F6FAF8] rounded-2xl border border-[#E4EEEA] space-y-2">
+                <span className="font-bold text-[#172B2A] block">Resend Webhook Events to Enable</span>
+                <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                  {[
+                    'email.sent',
+                    'email.delivered',
+                    'email.delivery_delayed',
+                    'email.bounced',
+                    'email.complained',
+                    'email.failed',
+                    'email.opened',
+                    'email.clicked'
+                  ].map((evName) => (
+                    <span key={evName} className="px-2 py-0.5 rounded-lg bg-white border border-[#E4EEEA] text-[#087F5B] font-bold">
+                      {evName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#F6FAF8] rounded-2xl border border-[#E4EEEA] space-y-2">
+                <span className="font-bold text-[#172B2A] block">SendGrid Event Webhook Events to Enable</span>
+                <div className="flex flex-wrap gap-1.5 font-mono text-[11px]">
+                  {[
+                    'processed',
+                    'delivered',
+                    'deferred',
+                    'bounce',
+                    'dropped',
+                    'spamreport',
+                    'open',
+                    'click'
+                  ].map((evName) => (
+                    <span key={evName} className="px-2 py-0.5 rounded-lg bg-white border border-[#E4EEEA] text-[#172B2A] font-bold">
+                      {evName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* DNS Configuration Guide (SPF, DKIM, DMARC) */}
           <div className="bg-white p-6 rounded-3xl border border-[#E4EEEA] shadow-xs space-y-4">
             <div>

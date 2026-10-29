@@ -1929,6 +1929,23 @@ router.post('/admin/users/:id/kyc', requireAdmin, (req: AuthenticatedRequest, re
     metadata: { targetUserId: id, status: target.kycStatus }
   });
 
+  const normalizedKyc = String(target.kycStatus).toLowerCase();
+  sendEmail({
+    templateId: normalizedKyc === 'rejected' ? 'kyc_rejected' : 'kyc_approved',
+    recipient: target.email,
+    data: {
+      fullName: target.fullName || 'Valued Investor',
+      event_name: 'Institutional KYC Verification',
+      status: normalizedKyc === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified',
+      notes:
+        notes ||
+        (normalizedKyc === 'rejected'
+          ? 'Please review your identity documentation in your Investor Portal and resubmit.'
+          : 'Your European identity verification has cleared AML screening.')
+    },
+    idempotencyKey: `idemp-kyc-${target.id}-${normalizedKyc}-${Date.now()}`
+  }).catch(() => {});
+
   res.json({
     success: true,
     data: target,
@@ -3576,6 +3593,21 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: Authenticat
     type: 'warning'
   });
 
+  const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
+  sendEmail({
+    templateId: 'payment_notification',
+    recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
+    data: {
+      fullName: foundUser?.fullName || 'Valued Investor',
+      payment_type: 'Deposit Request Declined',
+      amount: `€${Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      payment_status: 'Declined',
+      reference: targetTx.reference || depositId,
+      notes: (targetTx as any).rejectionReason
+    },
+    idempotencyKey: `idemp-dep-reject-${targetTx.id}`
+  }).catch(() => {});
+
   res.json({
     success: true,
     data: targetTx,
@@ -3633,6 +3665,19 @@ router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, (req: Authe
     if (foundUser) {
       foundUser.balance = (foundUser.balance || 0) + Number(targetTx.amount);
     }
+
+    sendEmail({
+      templateId: 'payment_notification',
+      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
+      data: {
+        fullName: foundUser?.fullName || 'Valued Investor',
+        payment_type: 'Withdrawal Declined & Refunded',
+        amount: `€${Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        payment_status: 'Refunded to Wallet',
+        reference: targetTx.reference || withdrawalId
+      },
+      idempotencyKey: `idemp-wth-reject-${targetTx.id}`
+    }).catch(() => {});
   }
 
   res.json({
@@ -3996,7 +4041,8 @@ router.post('/admin/email/send-test', requireAdmin, async (req: AuthenticatedReq
       templateId,
       recipient,
       data: mergedData,
-      subjectOverride
+      subjectOverride,
+      bypassAutomationCheck: true
     });
 
     res.json({

@@ -49,6 +49,7 @@ export interface EmailLogEntry {
   previewSnippet: string;
   idempotencyKey?: string;
   retryCount: number;
+  providerMessageId?: string;
   reference?: string;
   error?: string;
   metadata?: Record<string, any>;
@@ -92,14 +93,14 @@ export interface EmailSenderSettings {
 // ============================================================================
 
 let emailSettings: EmailSenderSettings = {
-  senderName: "L'Agence · Kretz",
-  fromAddress: 'info@kretz.site',
-  replyToAddress: 'support@kretz.site',
-  supportEmail: 'info@kretz.site',
+  senderName: process.env.EMAIL_SENDER_NAME || "L'Agence · Kretz",
+  fromAddress: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'info@kretzdespain.com',
+  replyToAddress: process.env.EMAIL_REPLY_TO || 'support@kretzdespain.com',
+  supportEmail: process.env.EMAIL_SUPPORT || 'info@kretzdespain.com',
   supportPhone: '+34 912 345 678',
   platformUrl: 'https://kretzdespain.com',
   primaryBrandColor: '#2563EB', // Signature Royal Blue from reference image
-  testMode: false,
+  testMode: process.env.EMAIL_TEST_MODE === 'true',
   subjectOverrides: {},
   customTemplates: []
 };
@@ -1378,6 +1379,7 @@ export interface SendEmailOptions {
   commandName?: string;
   eventId?: string;
   idempotencyKey?: string;
+  bypassAutomationCheck?: boolean;
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<{
@@ -1397,7 +1399,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
     subjectOverride,
     commandName,
     eventId,
-    idempotencyKey
+    idempotencyKey,
+    bypassAutomationCheck = false
   } = options;
 
   // Resolve legacy alias if provided
@@ -1410,6 +1413,25 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
 
   if (!recipient || !recipient.includes('@')) {
     throw new Error(`Invalid recipient email address: '${recipient}'.`);
+  }
+
+  // Respect Administrator Automation Rule toggles for automated platform events
+  if (!bypassAutomationCheck) {
+    const rule = emailAutomationRules.find(
+      r => r.templateId === templateId || (commandName && r.commandName === commandName)
+    );
+    if (rule && !rule.enabled) {
+      return {
+        success: false,
+        messageId: `suppressed-${Date.now()}`,
+        deliveryMode: 'sandbox',
+        deliveryTimeMs: 0,
+        previewSnippet: `Automation rule '${rule.eventName}' is disabled.`,
+        subject: template.defaultSubject,
+        idempotencyKey,
+        error: 'AUTOMATION_DISABLED'
+      };
+    }
   }
 
   // Idempotency check: prevent duplicate send for same event
@@ -1452,6 +1474,8 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
   const previewSnippet = text.replace(/\s+/g, ' ').trim().slice(0, 110) + '...';
   const messageId = `msg-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
+  let providerMessageId: string | undefined;
+
   try {
     let mode: 'resend' | 'sendgrid' | 'smtp' | 'sandbox' = 'sandbox';
 
@@ -1459,7 +1483,6 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
       mode = 'sandbox';
     } else if (provider.type === 'resend') {
       mode = 'resend';
-      // Execute Resend REST API call
       try {
         const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -1480,15 +1503,51 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
           const errData = await response.json().catch(() => ({}));
           console.warn('[Resend API Error, falling back to sandbox]:', errData);
           mode = 'sandbox';
+        } else {
+          const resJson: any = await response.json().catch(() => ({}));
+          if (resJson?.id) {
+            providerMessageId = String(resJson.id);
+          }
         }
       } catch (e: any) {
         console.warn('[Resend network failure, falling back to sandbox]:', e.message);
         mode = 'sandbox';
       }
+    } else if (provider.type === 'sendgrid') {
+      mode = 'sendgrid';
+      try {
+        const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${provider.key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: recipient }] }],
+            from: { email: emailSettings.fromAddress, name: emailSettings.senderName },
+            reply_to: { email: emailSettings.replyToAddress },
+            subject,
+            content: [
+              { type: 'text/plain', value: text },
+              { type: 'text/html', value: html }
+            ]
+          })
+        });
+        if (!response.ok) {
+          console.warn('[SendGrid API Error, falling back to sandbox]: HTTP', response.status);
+          mode = 'sandbox';
+        } else {
+          const sgMsgId = response.headers.get('x-message-id');
+          if (sgMsgId) providerMessageId = sgMsgId;
+        }
+      } catch (e: any) {
+        console.warn('[SendGrid network failure, falling back to sandbox]:', e.message);
+        mode = 'sandbox';
+      }
     } else if (provider.type === 'smtp') {
       mode = 'smtp';
       const mailer = getTransporter();
-      await mailer.sendMail({
+      const info = await mailer.sendMail({
         from: `"${emailSettings.senderName}" <${emailSettings.fromAddress}>`,
         to: recipient,
         replyTo: emailSettings.replyToAddress,
@@ -1496,6 +1555,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
         text,
         html
       });
+      if (info?.messageId) providerMessageId = info.messageId;
     } else {
       mode = 'sandbox';
       const mailer = getTransporter();
@@ -1528,6 +1588,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
       previewSnippet,
       idempotencyKey,
       retryCount: 0,
+      providerMessageId: providerMessageId || messageId,
       reference: mergedData.transaction_id || mergedData.event_id || mergedData.reference
     };
 
@@ -1685,32 +1746,73 @@ export function handleEmailWebhook(payload: any): { processed: boolean; updatedC
   if (!payload) return { processed: false, updatedCount: 0 };
   let updatedCount = 0;
 
-  // Supports both array of events and single event
+  // Supports single Resend/SES event object or SendGrid batch array of events
   const events = Array.isArray(payload) ? payload : [payload];
 
   for (const ev of events) {
-    const messageId = ev.message_id || ev.id || ev.sg_message_id;
-    const recipient = ev.recipient || ev.email;
-    const eventType = (ev.type || ev.event || '').toLowerCase();
+    if (!ev || typeof ev !== 'object') continue;
+    const nested = ev.data && typeof ev.data === 'object' ? ev.data : {};
 
-    // Find matching log entry
-    const targetLog = emailLogs.find(l => 
-      (messageId && l.id === messageId) || 
-      (recipient && l.recipient.toLowerCase() === recipient.toLowerCase())
+    const messageId =
+      nested.email_id ||
+      ev.email_id ||
+      ev.message_id ||
+      ev.sg_message_id ||
+      ev.id;
+
+    const rawTo = nested.to ?? ev.to ?? ev.recipient ?? ev.email;
+    const recipient = Array.isArray(rawTo) ? rawTo[0] : rawTo;
+    const eventType = String(ev.type || ev.event || '').toLowerCase().trim();
+
+    // Find matching log entry by providerMessageId, internal log id, or most recent recipient match
+    const targetLog = emailLogs.find(
+      l =>
+        (messageId && (l.providerMessageId === messageId || l.id === messageId)) ||
+        (recipient && typeof recipient === 'string' && l.recipient.toLowerCase() === recipient.toLowerCase())
     );
 
     if (targetLog) {
-      if (eventType.includes('deliver') || eventType === 'delivered') {
+      targetLog.metadata = {
+        ...(targetLog.metadata || {}),
+        lastWebhookEvent: eventType,
+        lastWebhookAt: new Date().toISOString()
+      };
+
+      if (eventType === 'email.sent' || eventType === 'processed' || eventType === 'sent') {
+        if (targetLog.status === 'queued') {
+          targetLog.status = 'sent';
+        }
+        updatedCount++;
+      } else if (eventType === 'email.delivered' || eventType.includes('deliver') && !eventType.includes('delay')) {
         targetLog.status = 'delivered';
-        targetLog.deliveredAt = new Date().toISOString();
+        targetLog.deliveredAt = nested.created_at || ev.created_at || new Date().toISOString();
         updatedCount++;
-      } else if (eventType.includes('bounce') || eventType === 'bounced') {
+      } else if (eventType === 'email.delivery_delayed' || eventType === 'deferred') {
+        targetLog.metadata.delayed = true;
+        updatedCount++;
+      } else if (
+        eventType === 'email.bounced' ||
+        eventType === 'email.complained' ||
+        eventType.includes('bounce') ||
+        eventType === 'spamreport'
+      ) {
         targetLog.status = 'bounced';
-        targetLog.error = ev.reason || 'Bounced by recipient mail server';
+        targetLog.error =
+          nested.bounce?.message ||
+          ev.reason ||
+          (eventType.includes('complain') || eventType === 'spamreport'
+            ? 'Recipient marked message as spam'
+            : 'Bounced by recipient mail server');
         updatedCount++;
-      } else if (eventType.includes('fail') || eventType === 'dropped') {
+      } else if (eventType === 'email.failed' || eventType.includes('fail') || eventType === 'dropped') {
         targetLog.status = 'failed';
-        targetLog.error = ev.error || ev.reason || 'Provider delivery failure';
+        targetLog.error = nested.failed?.reason || ev.error || ev.reason || 'Provider delivery failure';
+        updatedCount++;
+      } else if (eventType === 'email.opened' || eventType === 'open') {
+        targetLog.metadata.openedAt = new Date().toISOString();
+        updatedCount++;
+      } else if (eventType === 'email.clicked' || eventType === 'click') {
+        targetLog.metadata.clickedAt = new Date().toISOString();
         updatedCount++;
       }
     }
@@ -1731,7 +1833,8 @@ export async function retryFailedEmail(logId: string): Promise<{ success: boolea
     templateId: log.templateId,
     recipient: log.recipient,
     commandName: log.commandName,
-    eventId: log.eventId
+    eventId: log.eventId,
+    bypassAutomationCheck: true
   });
 
   if (result.success) {
