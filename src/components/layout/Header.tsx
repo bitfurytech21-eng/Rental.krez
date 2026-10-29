@@ -315,39 +315,16 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
 
 
 
-                  {isAdmin ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleNavClick('/admin')}
-                        className={`w-full text-left px-4 py-2 text-xs font-medium flex items-center gap-2 cursor-pointer ${
-                          isDark ? 'text-slate-200 hover:bg-[#152622]' : 'text-[#1C1917] hover:bg-[#f0f8fe]'
-                        }`}
-                      >
-                        <Shield className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Admin Control Center</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleNavClick('/admin#admin-security')}
-                        className={`w-full text-left px-4 py-2 text-xs font-medium flex items-center gap-2 cursor-pointer ${
-                          isDark ? 'text-slate-200 hover:bg-[#152622]' : 'text-[#1C1917] hover:bg-[#f0f8fe]'
-                        }`}
-                      >
-                        <Shield className="w-3.5 h-3.5 text-[#3BD4AE]" />
-                        <span>Custom Admin Login</span>
-                      </button>
-                    </>
-                  ) : (
+                  {isAdmin && (
                     <button
                       type="button"
-                      onClick={() => handleNavClick('/admin/login')}
+                      onClick={() => handleNavClick('/admin')}
                       className={`w-full text-left px-4 py-2 text-xs font-medium flex items-center gap-2 cursor-pointer ${
                         isDark ? 'text-slate-200 hover:bg-[#152622]' : 'text-[#1C1917] hover:bg-[#f0f8fe]'
                       }`}
                     >
-                      <Shield className="w-3.5 h-3.5 text-[#78736B]" />
-                      <span>Administrator Gateway</span>
+                      <Shield className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Admin Control Center</span>
                     </button>
                   )}
 
@@ -371,29 +348,15 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               )}
             </div>
           ) : (
-            <div className="hidden md:flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleNavClick('/login')}
-                className={`text-xs font-semibold px-2 py-1 transition-colors cursor-pointer ${
-                  isDark ? 'text-[#8A9692] hover:text-white' : 'text-[#5E5A54] hover:text-[#1C1917]'
-                }`}
-              >
-                Sign In
-              </button>
-              <span className={`text-xs ${isDark ? 'text-[#263531]' : 'text-[#D0DCE8]'}`} aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => handleNavClick('/admin/login')}
-                className={`text-xs font-semibold px-1.5 py-1 transition-colors cursor-pointer flex items-center gap-1 ${
-                  isDark ? 'text-[#8A9692] hover:text-[#BEE179]' : 'text-[#5E5A54] hover:text-[#1E3A34]'
-                }`}
-                title="Administrator Gateway & Custom Login"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Admin</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleNavClick('/login')}
+              className={`text-xs font-semibold px-2 py-1 transition-colors cursor-pointer hidden md:inline ${
+                isDark ? 'text-[#8A9692] hover:text-white' : 'text-[#5E5A54] hover:text-[#1C1917]'
+              }`}
+            >
+              Sign In
+            </button>
           )}
 
 
@@ -502,66 +465,38 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             {/* Account CTA on Mobile */}
             <div className={`pt-4 border-t space-y-3 ${isDark ? 'border-[#1E2B27]' : 'border-[#d4e5f5]'}`}>
               {user ? (
-                <div className="space-y-2.5">
-                  <div className={`flex items-center justify-between p-3.5 rounded-xl border ${
-                    isDark ? 'bg-[#121E1B] border-[#263531]' : 'bg-white border-[#d4e5f5]'
-                  }`}>
-                    <div>
-                      <div className="text-xs font-bold truncate max-w-[180px]">{user.fullName}</div>
-                      <div className={`text-[11px] truncate max-w-[180px] ${isDark ? 'text-[#8A9692]' : 'text-[#78736B]'}`}>{user.email}</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleNavClick(isAdmin ? '/admin' : '/dashboard')}
-                      className="px-3 py-1.5 rounded-md bg-[#1E3A34] text-white text-xs font-semibold cursor-pointer"
-                    >
-                      {isAdmin ? 'Admin Console' : 'Portal'}
-                    </button>
+                <div className={`flex items-center justify-between p-3.5 rounded-xl border ${
+                  isDark ? 'bg-[#121E1B] border-[#263531]' : 'bg-white border-[#d4e5f5]'
+                }`}>
+                  <div>
+                    <div className="text-xs font-bold truncate max-w-[180px]">{user.fullName}</div>
+                    <div className={`text-[11px] truncate max-w-[180px] ${isDark ? 'text-[#8A9692]' : 'text-[#78736B]'}`}>{user.email}</div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleNavClick(isAdmin ? '/admin#admin-security' : '/admin/login')}
-                    className={`w-full py-2.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer ${
-                      isDark
-                        ? 'bg-[#121E1B] border-[#263531] text-[#BEE179]'
-                        : 'bg-white border-[#d4e5f5] text-[#1E3A34]'
-                    }`}
+                    onClick={() => handleNavClick(isAdmin ? '/admin' : '/dashboard')}
+                    className="px-3 py-1.5 rounded-md bg-[#1E3A34] text-white text-xs font-semibold cursor-pointer"
                   >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>{isAdmin ? 'Custom Admin Email & Password' : 'Administrator Gateway'}</span>
+                    {isAdmin ? 'Admin Console' : 'Portal'}
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleNavClick('/login')}
-                      className={`py-2.5 rounded-lg border text-xs font-semibold text-center cursor-pointer ${
-                        isDark ? 'bg-[#121E1B] border-[#263531] text-white' : 'bg-white border-[#D8D1C5] text-[#1C1917]'
-                      }`}
-                    >
-                      Sign In
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleNavClick('/register')}
-                      className="py-2.5 rounded-lg bg-[#1E3A34] text-xs font-semibold text-white text-center cursor-pointer hover:bg-[#254A42]"
-                    >
-                      Create Account
-                    </button>
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => handleNavClick('/admin/login')}
-                    className={`w-full py-2.5 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer ${
-                      isDark
-                        ? 'bg-[#121E1B] border-[#263531] text-[#BEE179]'
-                        : 'bg-white border-[#D8D1C5] text-[#1E3A34]'
+                    onClick={() => handleNavClick('/login')}
+                    className={`py-2.5 rounded-lg border text-xs font-semibold text-center cursor-pointer ${
+                      isDark ? 'bg-[#121E1B] border-[#263531] text-white' : 'bg-white border-[#D8D1C5] text-[#1C1917]'
                     }`}
                   >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>Administrator Gateway &amp; Custom Login</span>
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleNavClick('/register')}
+                    className="py-2.5 rounded-lg bg-[#1E3A34] text-xs font-semibold text-white text-center cursor-pointer hover:bg-[#254A42]"
+                  >
+                    Create Account
                   </button>
                 </div>
               )}

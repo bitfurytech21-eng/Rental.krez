@@ -590,6 +590,15 @@ export const AdminPanel: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
+                onClick={() => navigateTo('/')}
+                className="text-xs font-bold px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-[#2d524a] bg-[#182D2A] text-[#A0A8A5] hover:text-white hover:bg-[#24423C] transition-colors"
+                title="View public marketplace"
+              >
+                <Globe className="w-3.5 h-3.5 text-[#B7E36A]" />
+                <span>Public Site</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab('admin-security')}
                 className={`text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border transition-colors ${
                   activeTab === 'admin-security'

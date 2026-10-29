@@ -133,14 +133,7 @@ function MainApp() {
     }
   };
 
-  const handleAuthSuccess = (authenticatedUser?: any) => {
-    const resolvedRole = authenticatedUser?.role || user?.role;
-    if (resolvedRole === 'admin') {
-      setPendingInvestmentProperty(null);
-      setReturnDestination(null);
-      navigateTo('/admin');
-      return;
-    }
+  const handleAuthSuccess = () => {
     if (pendingInvestmentProperty) {
       const target = pendingInvestmentProperty;
       setPendingInvestmentProperty(null);
@@ -384,7 +377,6 @@ function MainApp() {
             preservedProperty={pendingInvestmentProperty}
             onSuccess={handleAuthSuccess}
             onNavigateMode={(m) => navigateTo(`/${m}`)}
-            onNavigateAdminLogin={() => navigateTo('/admin/login')}
           />
         );
 
@@ -399,7 +391,6 @@ function MainApp() {
             preservedProperty={pendingInvestmentProperty}
             onSuccess={handleAuthSuccess}
             onNavigateMode={(m) => navigateTo(`/${m}`)}
-            onNavigateAdminLogin={() => navigateTo('/admin/login')}
           />
         );
 
@@ -587,16 +578,16 @@ function MainApp() {
 
   const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
-  const isPassGateActive = isAdminView && !passGateUnlocked;
+  const isIsolatedAdminEnvironment = isAdminView || isAdminLoginPage;
   const isHomePage = currentBasePath === '/' || currentBasePath === '';
 
   return (
     <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#f0f8fe] text-[#1C1917] font-sans min-h-screen'}`}>
 
-      {!isDashboardView && !isAdminLoginPage && !isPassGateActive && <Header currentPath={currentPath} onNavigate={navigateTo} />}
+      {!isDashboardView && !isIsolatedAdminEnvironment && <Header currentPath={currentPath} onNavigate={navigateTo} />}
 
       {/* Dynamic Hierarchical Breadcrumb Navigation & Schema.org BreadcrumbList */}
-      {!isDashboardView && !isAdminLoginPage && !isPassGateActive && !isHomePage && (
+      {!isDashboardView && !isIsolatedAdminEnvironment && !isHomePage && (
         <Breadcrumb
           currentPath={currentPath}
           onNavigate={navigateTo}
@@ -609,13 +600,13 @@ function MainApp() {
       </div>
 
       {/* Standard Institutional Footer across all public pages */}
-      {!isDashboardView && !isAdminLoginPage && !isPassGateActive && <Footer onNavigate={navigateTo} />}
+      {!isDashboardView && !isIsolatedAdminEnvironment && <Footer onNavigate={navigateTo} />}
 
-      {/* Support System */}
-      <SmartsuppWidget />
+      {/* Customer Support System (excluded from isolated admin routes) */}
+      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
 
       {/* First-visit Cookie Consent Banner */}
-      <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />
+      {!isIsolatedAdminEnvironment && <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />}
 
       {/* Viewport Resize Monitor & Desktop Site Layout Trigger */}
       <ViewportDesktopMonitor />

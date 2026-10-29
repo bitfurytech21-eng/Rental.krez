@@ -245,20 +245,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [isConfigured]);
 
-  // Connect Login form to real Supabase email/password sign-in with server-verified admin check & local preview fallback
+  // Connect Customer Login form strictly to investor accounts (Administrator login is isolated at /admin/login)
   const login = async (email: string, pass: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
 
     if (!isConfigured) {
-      // First check if credentials match the configured custom or default server Administrator account
-      try {
-        const verifiedAdmin = await adminLogin(cleanEmail, pass);
-        return verifiedAdmin;
-      } catch {
-        // Not admin credentials; continue to standard investor login
-      }
-
       let found = ledger.getUserByEmail(cleanEmail);
+      if (found && found.role === 'admin') {
+        throw new Error('Invalid email or password. Please verify your credentials and try again.');
+      }
       if (!found) {
         found = ledger.createUser({
           email: cleanEmail,
@@ -292,14 +287,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (error) {
-      // Attempt server-verified Administrator login (supports any custom admin email, e.g. you@yourdomain.com)
-      try {
-        const verifiedAdmin = await adminLogin(cleanEmail, pass);
-        return verifiedAdmin;
-      } catch {
-        // Not valid admin credentials; proceed with standard investor error handling
-      }
-
       try {
         ledger.recordAuditLog(
           'guest',
@@ -311,10 +298,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           { targetUserEmail: cleanEmail }
         );
       } catch (e) {}
-
-      if (cleanEmail === 'info@kretz.site' || cleanEmail === 'admin@kretz.com' || cleanEmail.endsWith('@kretz.site')) {
-        throw new Error('Invalid administrator credentials.');
-      }
 
       if (error.message.toLowerCase().includes('email not confirmed')) {
         const cleanEmail = email.trim().toLowerCase();
@@ -775,7 +758,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: {
         email: cleanEmail,
         password: pass,
-        turnstileToken: turnstileToken || 'mock-admin-turnstile-token'
+        turnstileToken:
+          turnstileToken ||
+          `fallback-admin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
       },
       skipAuth: true
     });
@@ -856,7 +841,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newEmail: params.newEmail.trim().toLowerCase(),
         newPassword: params.newPassword,
         fullName: params.fullName?.trim() || 'Executive Administrator',
-        turnstileToken: params.turnstileToken || 'mock-admin-turnstile-token',
+        turnstileToken:
+          params.turnstileToken ||
+          `fallback-admin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       },
       skipAuth: true,
     });

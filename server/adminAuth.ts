@@ -54,8 +54,8 @@ function revokeAllIssuedSessions(): void {
 
 // Session duration: 24 hours
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_FAILED_ATTEMPTS = 10;
+const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 const CUSTOM_CREDS_FILE = path.resolve(process.cwd(), 'server', '.admin-credentials.json');
 let cachedCustomCreds: CustomAdminCredentials | null | undefined = undefined;
@@ -99,9 +99,24 @@ function loadCustomCredentials(): CustomAdminCredentials | null {
  */
 export function getAdminConfig() {
   const custom = loadCustomCredentials();
-  const envEmail = (process.env.ADMIN_EMAIL || 'admin@kretz.com').trim().toLowerCase();
-  const envPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim() || null;
-  const envPlaintextPassword = process.env.ADMIN_PASSWORD?.trim() || null;
+  const rawEnvEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const isPlaceholderEmail =
+    !rawEnvEmail ||
+    rawEnvEmail === 'admin@example.com' ||
+    rawEnvEmail.startsWith('replace_with');
+  const envEmail = isPlaceholderEmail ? 'admin@kretz.com' : rawEnvEmail;
+
+  const rawHash = process.env.ADMIN_PASSWORD_HASH?.trim() || '';
+  const isValidBcryptHash = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(rawHash);
+  const envPasswordHash = isValidBcryptHash ? rawHash : null;
+
+  const rawPlain = process.env.ADMIN_PASSWORD?.trim() || '';
+  const isPlaceholderPlain =
+    !rawPlain ||
+    rawPlain.startsWith('replace_with') ||
+    rawPlain === 'your_secure_password';
+  const envPlaintextPassword = isPlaceholderPlain ? null : rawPlain;
+
   const sessionSecret =
     process.env.SESSION_SECRET ||
     process.env.JWT_SECRET ||

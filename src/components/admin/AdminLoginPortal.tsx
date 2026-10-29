@@ -44,7 +44,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   const [showSignInPass, setShowSignInPass] = useState(false);
 
   // Customize Credentials State
-  const [currentEmail, setCurrentEmail] = useState('admin@kretz.com');
+  const [currentEmail, setCurrentEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newFullName, setNewFullName] = useState('Executive Administrator');
   const [newEmail, setNewEmail] = useState('');
@@ -54,6 +54,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   const [showNewPass, setShowNewPass] = useState(false);
 
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -61,6 +62,8 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   useEffect(() => {
     setError(null);
     setSuccessMsg(null);
+    setTurnstileToken(null);
+    setTurnstileResetKey((k) => k + 1);
   }, [portalMode]);
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
@@ -79,6 +82,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
     } catch (err: any) {
       setError(err?.message || 'Authentication failed: Invalid administrator credentials.');
       setTurnstileToken(null);
+      setTurnstileResetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -137,6 +141,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
           'Unable to update administrator credentials. Verify your current email and password.'
       );
       setTurnstileToken(null);
+      setTurnstileResetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -210,6 +215,9 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter administrator email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
                 autoFocus
                 className="w-full px-4 py-3 rounded-xl bg-[#0B1513] border border-[#233530] text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B] transition-all"
@@ -226,6 +234,9 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   className="w-full px-4 py-3 pr-10 rounded-xl bg-[#0B1513] border border-[#233530] text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#087F5B] focus:ring-1 focus:ring-[#087F5B] transition-all"
                 />
@@ -242,6 +253,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
 
             <div className="pt-1">
               <TurnstileWidget
+                key={`signin-${turnstileResetKey}`}
                 onVerify={(token) => {
                   setTurnstileToken(token);
                   setError(null);
@@ -293,7 +305,10 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                   type="email"
                   value={currentEmail}
                   onChange={(e) => setCurrentEmail(e.target.value)}
-                  placeholder="admin@kretz.com"
+                  placeholder="Enter active administrator email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#131E1B] border border-[#233530] text-white placeholder-gray-600 text-xs focus:outline-none focus:border-[#087F5B]"
                 />
@@ -308,6 +323,9 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Enter active admin password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                     className="w-full px-3.5 py-2.5 pr-9 rounded-xl bg-[#131E1B] border border-[#233530] text-white placeholder-gray-600 text-xs font-mono focus:outline-none focus:border-[#087F5B]"
                   />
@@ -341,6 +359,9 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="you@yourdomain.com"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#131E1B] border border-[#233530] text-white placeholder-gray-600 text-xs focus:outline-none focus:border-[#087F5B]"
                 />
@@ -373,6 +394,9 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="New password"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       required
                       minLength={8}
                       className="w-full px-3 py-2.5 pr-8 rounded-xl bg-[#131E1B] border border-[#233530] text-white placeholder-gray-600 text-xs font-mono focus:outline-none focus:border-[#087F5B]"
@@ -401,6 +425,9 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
                     placeholder="Repeat password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                     minLength={8}
                     className="w-full px-3 py-2.5 rounded-xl bg-[#131E1B] border border-[#233530] text-white placeholder-gray-600 text-xs font-mono focus:outline-none focus:border-[#087F5B]"
@@ -411,6 +438,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
 
             <div className="pt-1">
               <TurnstileWidget
+                key={`customize-${turnstileResetKey}`}
                 onVerify={(token) => {
                   setTurnstileToken(token);
                   setError(null);
@@ -440,21 +468,14 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
           </form>
         )}
 
-        <div className="mt-7 pt-5 border-t border-[#233530] flex items-center justify-between text-xs text-[#8A9C96]">
-          <button
-            type="button"
-            onClick={onNavigateCustomerLogin}
-            className="hover:text-white transition-colors cursor-pointer"
-          >
-            Investor Portal
-          </button>
+        <div className="mt-7 pt-5 border-t border-[#233530] flex items-center justify-center text-xs text-[#8A9C96]">
           <button
             type="button"
             onClick={onNavigateHome}
             className="hover:text-white transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <Building2 className="w-3.5 h-3.5" />
-            <span>Public Site</span>
+            <span>Return to Public Site</span>
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, AlertTriangle, Building2, Scale, FileText, CheckCircle2, Lock, HelpCircle, FileCheck, RefreshCw } from 'lucide-react';
+import { useAuth } from '../../lib/auth';
 
 interface LegalFrameworkViewProps {
   mode?: 'full' | 'summary';
@@ -64,8 +65,9 @@ const DEFAULT_LEGAL_CHECKLIST: LegalChecklistItem[] = [
 ];
 
 export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = 'full' }) => {
+  const { isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<'entity' | 'structure' | 'rights' | 'terms' | 'risks' | 'checklist'>('entity');
-  const [checklist, setChecklist] = useState<LegalChecklistItem[]>(DEFAULT_LEGAL_CHECKLIST);
+  const [checklist] = useState<LegalChecklistItem[]>(DEFAULT_LEGAL_CHECKLIST);
 
   return (
     <div className="space-y-8">
@@ -134,16 +136,18 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = '
           >
             5. Risk Disclosures & Disputes
           </button>
-          <button
-            onClick={() => setActiveTab('checklist')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'checklist'
-                ? 'bg-[#182D2A] text-white shadow-xs'
-                : 'bg-[#F6F7F4] text-[#69736F] hover:bg-white'
-            }`}
-          >
-            6. Admin Legal Checklist
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('checklist')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'checklist'
+                  ? 'bg-[#182D2A] text-white shadow-xs'
+                  : 'bg-[#F6F7F4] text-[#69736F] hover:bg-white'
+              }`}
+            >
+              6. Admin Legal Checklist
+            </button>
+          )}
         </div>
       </div>
 
@@ -311,8 +315,8 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({ mode = '
         </div>
       )}
 
-      {/* Tab 6: Admin Legal Checklist */}
-      {activeTab === 'checklist' && (
+      {/* Tab 6: Admin Legal Checklist (Isolated to Administrators) */}
+      {isAdmin && activeTab === 'checklist' && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-bold text-[#18211F]">
