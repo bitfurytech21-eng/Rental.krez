@@ -1,8 +1,19 @@
 import React, { useState } from 'react';
 import { 
   Compass, MapPin, ArrowRight, Building, 
-  Waves, Mountain, Palmtree, Sun, Eye, ChevronRight
+  Waves, Mountain, Palmtree, Sun, Eye
 } from 'lucide-react';
+import heroFallbackImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
+import madridFallbackImg from '../../assets/images/prop_madrid_living_1791998371897.jpg';
+import malagaFallbackImg from '../../assets/images/prop_malaga_coastal_1791998372504.jpg';
+import miamiFallbackImg from '../../assets/images/prop_miami_luxury_1791998372925.jpg';
+
+const DESTINATION_FALLBACKS = [
+  heroFallbackImg,
+  madridFallbackImg,
+  malagaFallbackImg,
+  miamiFallbackImg,
+];
 
 interface DreamDestinationsSectionProps {
   onExploreProperties: () => void;
@@ -188,8 +199,9 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
 
         {/* Destination Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mb-16">
-          {filtered.map((dest) => {
+          {filtered.map((dest, destIdx) => {
             const Icon = dest.icon;
+            const fallbackImg = DESTINATION_FALLBACKS[destIdx % DESTINATION_FALLBACKS.length];
             return (
               <div 
                 key={dest.id}
@@ -200,7 +212,16 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
                   <img 
                     src={dest.image} 
                     alt={dest.country}
-                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-700 ease-out" 
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (!img.dataset.fallbackApplied) {
+                        img.dataset.fallbackApplied = 'true';
+                        img.src = fallbackImg;
+                      }
+                    }}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   
@@ -316,6 +337,14 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
               <img 
                 src={selectedDestination.image} 
                 alt={selectedDestination.country} 
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (!img.dataset.fallbackApplied) {
+                    img.dataset.fallbackApplied = 'true';
+                    img.src = heroFallbackImg;
+                  }
+                }}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />

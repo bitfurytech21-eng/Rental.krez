@@ -1,19 +1,20 @@
 /**
  * Kretz Server-Side Administrator Authentication Service
- * 
+ *
  * Provides:
+ * - Persistent custom administrator credentials (bcrypt cost-12 hash) set via Admin Security Console
  * - Environment-based administrator credential verification (ADMIN_EMAIL, ADMIN_PASSWORD_HASH, ADMIN_PASSWORD)
  * - Cryptographic password verification using bcryptjs with constant-time comparison
  * - Server-side signed session tokens using SESSION_SECRET
  * - Brute-force rate limiting and temporary account lockout
- * - In-memory active session store with token revocation on logout
+ * - In-memory active session store with token revocation on logout or password rotation
  * - Zero client-side leakage of password hashes or session secrets
  */
 
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import bcrypt from 'bcryptjs';
-import { Request, Response } from 'express';
-import { logger } from './logger';
 
 // Interface for verified session payload
 export interface AdminSessionPayload {
@@ -21,47 +22,125 @@ export interface AdminSessionPayload {
   email: string;
   role: 'admin';
   fullName: string;
+  credUpdatedAt: string | null;
   iat: number;
   exp: number;
   jti: string;
 }
 
-// In-memory tracking for failed attempts & active sessions
+export interface CustomAdminCredentials {
+  adminEmail: string;
+  fullName: string;
+  passwordHash: string;
+  updatedAt: string;
+}
+
+// In-memory tracking for failed attempts & revoked session JTIs
 interface FailedAttemptRecord {
   attempts: number;
   lockoutUntil: number;
 }
 
 const failedAttempts = new Map<string, FailedAttemptRecord>();
-const activeAdminSessions = new Map<string, AdminSessionPayload>();
+const issuedAdminJtis = new Set<string>();
+const revokedAdminJtis = new Set<string>();
+
+function revokeAllIssuedSessions(): void {
+  for (const jti of issuedAdminJtis) {
+    revokedAdminJtis.add(jti);
+  }
+  issuedAdminJtis.clear();
+}
 
 // Session duration: 24 hours
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
+const CUSTOM_CREDS_FILE = path.resolve(process.cwd(), 'server', '.admin-credentials.json');
+let cachedCustomCreds: CustomAdminCredentials | null | undefined = undefined;
+
+function loadCustomCredentials(): CustomAdminCredentials | null {
+  if (cachedCustomCreds !== undefined) {
+    return cachedCustomCreds;
+  }
+  try {
+    if (fs.existsSync(CUSTOM_CREDS_FILE)) {
+      const raw = fs.readFileSync(CUSTOM_CREDS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (
+        parsed &&
+        typeof parsed.adminEmail === 'string' &&
+        parsed.adminEmail.includes('@') &&
+        typeof parsed.passwordHash === 'string' &&
+        parsed.passwordHash.length > 20
+      ) {
+        cachedCustomCreds = {
+          adminEmail: parsed.adminEmail.trim().toLowerCase(),
+          fullName:
+            typeof parsed.fullName === 'string' && parsed.fullName.trim()
+              ? parsed.fullName.trim()
+              : 'Executive Administrator',
+          passwordHash: parsed.passwordHash,
+          updatedAt: parsed.updatedAt || new Date().toISOString(),
+        };
+        return cachedCustomCreds;
+      }
+    }
+  } catch (err) {
+    console.warn('Unable to read custom admin credentials file, falling back to env:', err);
+  }
+  cachedCustomCreds = null;
+  return null;
+}
+
 /**
- * Resolve Administrator configuration from server environment variables
+ * Resolve Administrator configuration from custom store or server environment variables
  */
 export function getAdminConfig() {
-  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@kretz.com').trim().toLowerCase();
-  const passwordHash = process.env.ADMIN_PASSWORD_HASH?.trim() || null;
-  const plaintextPassword = process.env.ADMIN_PASSWORD?.trim() || null;
-  const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET || 'kretz_prime_session_secret_2026_default_key';
+  const custom = loadCustomCredentials();
+  const envEmail = (process.env.ADMIN_EMAIL || 'admin@kretz.com').trim().toLowerCase();
+  const envPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim() || null;
+  const envPlaintextPassword = process.env.ADMIN_PASSWORD?.trim() || null;
+  const sessionSecret =
+    process.env.SESSION_SECRET ||
+    process.env.JWT_SECRET ||
+    'kretz_prime_session_secret_2026_default_key';
+
+  if (custom) {
+    return {
+      adminEmail: custom.adminEmail,
+      fullName: custom.fullName,
+      passwordHash: custom.passwordHash,
+      plaintextPassword: null,
+      sessionSecret,
+      isCustomConfigured: true,
+      updatedAt: custom.updatedAt,
+    };
+  }
 
   return {
-    adminEmail,
-    passwordHash,
-    plaintextPassword,
-    sessionSecret
+    adminEmail: envEmail,
+    fullName: 'Executive Administrator',
+    passwordHash: envPasswordHash,
+    plaintextPassword: envPlaintextPassword,
+    sessionSecret,
+    isCustomConfigured: false,
+    updatedAt: null as string | null,
   };
 }
 
 /**
- * Validate server configuration during startup
+ * Validate server configuration mode
  */
-export function validateAdminEnvironment(): { configured: boolean; mode: string } {
+export function validateAdminEnvironment(): {
+  configured: boolean;
+  mode: 'custom_bcrypt' | 'bcrypt_hash' | 'environment_password' | 'development_fallback';
+} {
   const config = getAdminConfig();
+  if (config.isCustomConfigured) {
+    return { configured: true, mode: 'custom_bcrypt' };
+  }
   if (config.passwordHash) {
     return { configured: true, mode: 'bcrypt_hash' };
   }
@@ -75,14 +154,15 @@ export function validateAdminEnvironment(): { configured: boolean; mode: string 
  * Verify administrator credentials securely on the server
  */
 export async function verifyAdminCredentials(password: string): Promise<boolean> {
+  if (!password) return false;
   const config = getAdminConfig();
 
-  // 1. If secure bcrypt password hash is provided in env (Production Standard)
+  // 1. If secure bcrypt password hash is configured (Custom Admin Store or Production Env)
   if (config.passwordHash) {
     try {
       return await bcrypt.compare(password, config.passwordHash);
     } catch (err) {
-      console.error('Error verifying ADMIN_PASSWORD_HASH with bcrypt:', err);
+      console.error('Error verifying admin password hash with bcrypt:', err);
       return false;
     }
   }
@@ -96,7 +176,6 @@ export async function verifyAdminCredentials(password: string): Promise<boolean>
   }
 
   // 3. Development / Sandbox fallback if unconfigured
-  // Secure default: 'AdminSecure2026!#'
   const devDefault = 'AdminSecure2026!#';
   const a = Buffer.from(password);
   const b = Buffer.from(devDefault);
@@ -105,21 +184,81 @@ export async function verifyAdminCredentials(password: string): Promise<boolean>
 }
 
 /**
+ * Persist custom administrator email, display name, and bcrypt-hashed password
+ */
+export async function updateCustomAdminCredentials(params: {
+  email: string;
+  fullName?: string;
+  passwordToHash: string;
+}): Promise<CustomAdminCredentials> {
+  const cleanEmail = params.email.trim().toLowerCase();
+  const cleanName = params.fullName?.trim() || getAdminConfig().fullName || 'Executive Administrator';
+  const passwordHash = await bcrypt.hash(params.passwordToHash, 12);
+  const updated: CustomAdminCredentials = {
+    adminEmail: cleanEmail,
+    fullName: cleanName,
+    passwordHash,
+    updatedAt: new Date().toISOString(),
+  };
+
+  cachedCustomCreds = updated;
+
+  try {
+    const dir = path.dirname(CUSTOM_CREDS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(CUSTOM_CREDS_FILE, JSON.stringify(updated, null, 2), {
+      encoding: 'utf-8',
+      mode: 0o600,
+    });
+  } catch (err) {
+    console.warn('Custom admin credentials updated in memory; disk write warning:', err);
+  }
+
+  // Invalidate previously issued admin sessions upon credential rotation
+  revokeAllIssuedSessions();
+  failedAttempts.clear();
+
+  return updated;
+}
+
+/**
+ * Reset custom administrator credentials back to environment or default configuration
+ */
+export function resetCustomAdminCredentials(): void {
+  cachedCustomCreds = null;
+  try {
+    if (fs.existsSync(CUSTOM_CREDS_FILE)) {
+      fs.unlinkSync(CUSTOM_CREDS_FILE);
+    }
+  } catch (err) {
+    console.warn('Unable to remove custom admin credentials file:', err);
+  }
+  revokeAllIssuedSessions();
+  failedAttempts.clear();
+}
+
+/**
  * Create a cryptographically signed session token
  */
-export function createAdminSession(email: string): { token: string; payload: AdminSessionPayload } {
+export function createAdminSession(
+  email: string,
+  fullName?: string
+): { token: string; payload: AdminSessionPayload } {
   const config = getAdminConfig();
   const now = Date.now();
   const jti = crypto.randomBytes(16).toString('hex');
 
   const payload: AdminSessionPayload = {
     sub: 'usr-admin-01',
-    email,
+    email: email.trim().toLowerCase(),
     role: 'admin',
-    fullName: 'Executive Administrator',
+    fullName: fullName?.trim() || config.fullName || 'Executive Administrator',
+    credUpdatedAt: config.updatedAt || null,
     iat: now,
     exp: now + SESSION_DURATION_MS,
-    jti
+    jti,
   };
 
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -130,8 +269,7 @@ export function createAdminSession(email: string): { token: string; payload: Adm
 
   const token = `kretz_adm_${payloadBase64}.${signature}`;
 
-  // Store in active sessions
-  activeAdminSessions.set(jti, payload);
+  issuedAdminJtis.add(jti);
 
   return { token, payload };
 }
@@ -167,17 +305,26 @@ export function verifyAdminSessionToken(token: string): AdminSessionPayload | nu
 
     // Check expiration
     if (Date.now() > payload.exp) {
-      activeAdminSessions.delete(payload.jti);
+      revokedAdminJtis.add(payload.jti);
+      issuedAdminJtis.delete(payload.jti);
       return null;
     }
 
-    // Check active session revocation
-    if (!activeAdminSessions.has(payload.jti)) {
+    // Check explicit logout / rotation revocation
+    if (revokedAdminJtis.has(payload.jti)) {
+      return null;
+    }
+
+    // Ensure token matches current active administrator email and credential version
+    if (
+      payload.email !== config.adminEmail ||
+      (payload.credUpdatedAt || null) !== (config.updatedAt || null)
+    ) {
       return null;
     }
 
     return payload;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -193,7 +340,9 @@ export function revokeAdminSession(token: string): boolean {
     if (!payloadBase64) return false;
     const payloadJson = Buffer.from(payloadBase64, 'base64url').toString('utf-8');
     const payload = JSON.parse(payloadJson) as AdminSessionPayload;
-    return activeAdminSessions.delete(payload.jti);
+    issuedAdminJtis.delete(payload.jti);
+    revokedAdminJtis.add(payload.jti);
+    return true;
   } catch {
     return false;
   }
@@ -222,7 +371,11 @@ export function checkAdminRateLimit(identifier: string): { isLocked: boolean; re
 /**
  * Record a failed admin login attempt
  */
-export function recordAdminFailedAttempt(identifier: string): { attempts: number; isLocked: boolean; remainingSeconds?: number } {
+export function recordAdminFailedAttempt(identifier: string): {
+  attempts: number;
+  isLocked: boolean;
+  remainingSeconds?: number;
+} {
   const now = Date.now();
   const record = failedAttempts.get(identifier) || { attempts: 0, lockoutUntil: 0 };
   record.attempts += 1;
@@ -233,14 +386,14 @@ export function recordAdminFailedAttempt(identifier: string): { attempts: number
     return {
       attempts: record.attempts,
       isLocked: true,
-      remainingSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000)
+      remainingSeconds: Math.ceil(LOCKOUT_DURATION_MS / 1000),
     };
   }
 
   failedAttempts.set(identifier, record);
   return {
     attempts: record.attempts,
-    isLocked: false
+    isLocked: false,
   };
 }
 

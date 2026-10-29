@@ -122,10 +122,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="flex items-center gap-4">
             <p>© {new Date().getFullYear()} L'Agence Real Estate S.L. All rights reserved.</p>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-6">
             <button type="button" onClick={() => onNavigate('/privacy')} className="hover:text-[#BEE179] cursor-pointer transition-colors font-semibold">Privacy Policy</button>
             <button type="button" onClick={() => onNavigate('/terms')} className="hover:text-[#BEE179] cursor-pointer transition-colors font-semibold">Terms of Use</button>
             <button type="button" onClick={() => onNavigate('/contact')} className="hover:text-[#BEE179] cursor-pointer transition-colors font-semibold">Direct Support</button>
+            <button type="button" onClick={() => onNavigate('/admin/login')} className="hover:text-[#BEE179] cursor-pointer transition-colors font-semibold">Admin Gateway</button>
           </div>
         </div>
 

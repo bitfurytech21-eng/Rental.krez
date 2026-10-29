@@ -11,6 +11,7 @@ import { Footer } from './components/layout/Footer';
 // Home Components
 import { Hero } from './components/home/Hero';
 import { PlatformStats } from './components/home/PlatformStats';
+import { FeaturedPropertiesCarousel } from './components/home/FeaturedPropertiesCarousel';
 import { HowItWorks } from './components/home/HowItWorks';
 import { Benefits } from './components/home/Benefits';
 import { FAQSection } from './components/home/FAQSection';
@@ -132,7 +133,14 @@ function MainApp() {
     }
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = (authenticatedUser?: any) => {
+    const resolvedRole = authenticatedUser?.role || user?.role;
+    if (resolvedRole === 'admin') {
+      setPendingInvestmentProperty(null);
+      setReturnDestination(null);
+      navigateTo('/admin');
+      return;
+    }
     if (pendingInvestmentProperty) {
       const target = pendingInvestmentProperty;
       setPendingInvestmentProperty(null);
@@ -376,6 +384,7 @@ function MainApp() {
             preservedProperty={pendingInvestmentProperty}
             onSuccess={handleAuthSuccess}
             onNavigateMode={(m) => navigateTo(`/${m}`)}
+            onNavigateAdminLogin={() => navigateTo('/admin/login')}
           />
         );
 
@@ -390,6 +399,7 @@ function MainApp() {
             preservedProperty={pendingInvestmentProperty}
             onSuccess={handleAuthSuccess}
             onNavigateMode={(m) => navigateTo(`/${m}`)}
+            onNavigateAdminLogin={() => navigateTo('/admin/login')}
           />
         );
 
@@ -465,7 +475,9 @@ function MainApp() {
       case '/admin-login':
         return (
           <AdminLoginPortal
-            onLoginSuccess={() => navigateTo('/admin')}
+            onLoginSuccess={(openSecurityTab) =>
+              navigateTo(openSecurityTab ? '/admin#admin-security' : '/admin')
+            }
             onNavigateCustomerLogin={() => navigateTo('/login')}
             onNavigateHome={() => navigateTo('/')}
           />
@@ -485,74 +497,33 @@ function MainApp() {
 
       // Default: Homepage
       case '/':
-      default:
+      default: {
+        const liveHomepageOfferingsCount = properties.filter(
+          (p) =>
+            p.status !== 'hidden' &&
+            p.status !== 'pending_approval' &&
+            p.approvedForFrontend !== false &&
+            Boolean(p.assignedFunction)
+        ).length;
+
         return (
-          <main>
+          <main className="overflow-x-hidden">
             <Hero
               onExplore={() => navigateTo('/properties')}
               onHowItWorks={() => navigateTo('/investing')}
+              properties={properties}
+              onSelectProperty={handleSelectProperty}
             />
 
-            <PlatformStats />
+            <PlatformStats activeOfferingsCount={liveHomepageOfferingsCount} />
 
-            {/* Dedicated Marketplace Gateway Section */}
-            <section className="py-14 sm:py-20 bg-[#0B1B30] border-b border-[#1D3860]">
-              <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
-                <div className="bg-[#102442] rounded-xl border border-[#1D3860] p-8 sm:p-12 shadow-xs">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    <div className="lg:col-span-8 space-y-3.5 text-left">
-                      <p className="text-[11px] font-bold text-[#BEE179] tracking-[0.2em] uppercase">
-                        Asset Marketplace · Direct Fractional Real Estate
-                      </p>
-                      <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-black text-[#BEE179] tracking-tight">
-                        Access Curated Prime Assets in the Marketplace
-                      </h2>
-                      <p className="text-sm sm:text-base text-[#D1E2F7] max-w-2xl leading-relaxed font-normal">
-                        The full marketplace is hosted in an independent investment portal with advanced filtering, 
-                        RICS certified appraisals, notarial deed verification, and real-time funding progress. 
-                        Invest directly from €750 with automated monthly dividend distributions.
-                      </p>
-                      
-                      {/* Marketplace Metrics Bar */}
-                      <div className="pt-2 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-[#D1E2F7]">
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
-                          <span><strong className="text-white font-bold">{properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend !== false && Boolean(p.assignedFunction)).length}</strong> Active Offerings</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
-                          <span><strong className="text-white font-bold font-mono">€750</strong> Min. Investment</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
-                          <span><strong className="text-[#BEE179] font-bold font-mono">11.4%</strong> Avg. Net IRR</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179]"></span>
-                          <span><strong className="text-white font-bold">100%</strong> Independent SPVs</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
-                      <button
-                        onClick={() => navigateTo('/properties')}
-                        className="py-3.5 px-6 rounded-lg bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs tracking-wide flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
-                      >
-                        <span>Enter Marketplace</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
-                      </button>
-                      <button
-                        onClick={() => navigateTo('/investing')}
-                        className="py-3 px-6 rounded-lg border border-[#1D3860] hover:border-[#BEE179] bg-[#0B1B30] hover:bg-[#132745] text-white font-bold text-xs tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                      >
-                        <span>Review How It Works</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
+            <FeaturedPropertiesCarousel
+              properties={properties}
+              onSelectProperty={handleSelectProperty}
+              onInvestProperty={handleInvestProperty}
+              onExploreAll={() => navigateTo('/properties')}
+              onHowItWorks={() => navigateTo('/investing')}
+            />
 
             <DreamDestinationsSection
               onExploreProperties={() => navigateTo('/properties')}
@@ -565,7 +536,10 @@ function MainApp() {
               onNavigateProperties={() => navigateTo('/properties')}
             />
 
-            <HowItWorks />
+            <HowItWorks
+              onExploreMarketplace={() => navigateTo('/properties')}
+              onLearnMore={() => navigateTo('/investing')}
+            />
 
             <CasosDeExitoTeaser
               onNavigateCasos={() => navigateTo('/casos-de-exito')}
@@ -599,6 +573,7 @@ function MainApp() {
             <TrustedByInvestorsSection />
           </main>
         );
+      }
     }
   };
 

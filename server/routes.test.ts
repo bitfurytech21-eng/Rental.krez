@@ -394,6 +394,146 @@ async function runApiTests() {
       refList.status === 200 && Array.isArray(refList.json.data?.referrals) && refList.json.data.referrals.length === 1,
       'GET /user/referrals returns persisted referral invitations'
     );
+
+    // 9. Custom Administrator Email & Password Lifecycle (Gateway + Console)
+    const initialAdminLogin = await api('POST', '/auth/admin-login', {
+      email: 'admin@kretz.com',
+      password: 'AdminSecure2026!#',
+      turnstileToken: 'mock-admin-turnstile-token',
+    });
+    assert(
+      initialAdminLogin.status === 200 && Boolean(initialAdminLogin.json.token),
+      'POST /auth/admin-login succeeds with initial administrator credentials'
+    );
+    const credAdminToken = initialAdminLogin.json.token as string;
+
+    const getAdminCreds = await api('GET', '/admin/security/credentials', undefined, credAdminToken);
+    assert(
+      getAdminCreds.status === 200 &&
+        getAdminCreds.json.data?.email === 'admin@kretz.com' &&
+        !('passwordHash' in (getAdminCreds.json.data || {})),
+      'GET /admin/security/credentials returns active admin email without leaking password hashes'
+    );
+
+    const badGatewayCustomize = await api('POST', '/auth/admin-customize', {
+      currentEmail: 'admin@kretz.com',
+      currentPassword: 'WrongPassword123!',
+      newEmail: 'founder@customestate.eu',
+      newPassword: 'ExecutivePass2026!',
+      turnstileToken: 'mock-admin-turnstile-token',
+    });
+    assert(
+      badGatewayCustomize.status === 401 &&
+        badGatewayCustomize.json.code === 'INVALID_CURRENT_CREDENTIALS',
+      'POST /auth/admin-customize rejects invalid current administrator credentials'
+    );
+
+    const gatewayCustomize = await api('POST', '/auth/admin-customize', {
+      currentEmail: 'admin@kretz.com',
+      currentPassword: 'AdminSecure2026!#',
+      newEmail: 'founder@customestate.eu',
+      newPassword: 'ExecutivePass2026!',
+      fullName: 'Managing Partner',
+      turnstileToken: 'mock-admin-turnstile-token',
+    });
+    assert(
+      gatewayCustomize.status === 200 &&
+        gatewayCustomize.json.user?.email === 'founder@customestate.eu' &&
+        gatewayCustomize.json.user?.role === 'admin' &&
+        Boolean(gatewayCustomize.json.token),
+      'POST /auth/admin-customize sets custom non-admin email & bcrypt password and returns signed admin session'
+    );
+    const gatewayCustomToken = gatewayCustomize.json.token as string;
+
+    const revokedOldTokenCheck = await api(
+      'GET',
+      '/admin/security/credentials',
+      undefined,
+      credAdminToken
+    );
+    assert(
+      revokedOldTokenCheck.status === 401,
+      'Prior admin session token is immediately invalidated when custom credentials are set'
+    );
+
+    const customNonAdminRbacCheck = await api(
+      'GET',
+      '/admin/security/credentials',
+      undefined,
+      gatewayCustomToken
+    );
+    assert(
+      customNonAdminRbacCheck.status === 200 &&
+        customNonAdminRbacCheck.json.data?.email === 'founder@customestate.eu',
+      'Custom email without "admin" substring retains full requireAdmin privileges'
+    );
+
+    const wrongCurrPass = await api(
+      'PUT',
+      '/admin/security/credentials',
+      {
+        currentPassword: 'WrongPassword123!',
+        newEmail: 'custom-admin@kretz.com',
+        newPassword: 'CustomVaultPass2026!',
+      },
+      gatewayCustomToken
+    );
+    assert(
+      wrongCurrPass.status === 401 && wrongCurrPass.json.code === 'INVALID_CURRENT_PASSWORD',
+      'PUT /admin/security/credentials rejects invalid current password'
+    );
+
+    const updateAdminCreds = await api(
+      'PUT',
+      '/admin/security/credentials',
+      {
+        currentPassword: 'ExecutivePass2026!',
+        newEmail: 'custom-admin@kretz.com',
+        newPassword: 'CustomVaultPass2026!',
+        fullName: 'Custom Executive Admin',
+      },
+      gatewayCustomToken
+    );
+    assert(
+      updateAdminCreds.status === 200 &&
+        updateAdminCreds.json.data?.email === 'custom-admin@kretz.com' &&
+        updateAdminCreds.json.data?.mode === 'custom_bcrypt' &&
+        Boolean(updateAdminCreds.json.data?.token),
+      'PUT /admin/security/credentials rotates custom admin email and bcrypt password'
+    );
+    const rotatedAdminToken = updateAdminCreds.json.data.token as string;
+
+    const oldAdminLogin = await api('POST', '/auth/admin-login', {
+      email: 'admin@kretz.com',
+      password: 'AdminSecure2026!#',
+      turnstileToken: 'mock-admin-turnstile-token',
+    });
+    assert(
+      oldAdminLogin.status === 401,
+      'POST /auth/admin-login rejects superseded default credentials after custom update'
+    );
+
+    const customAdminLogin = await api('POST', '/auth/admin-login', {
+      email: 'custom-admin@kretz.com',
+      password: 'CustomVaultPass2026!',
+      turnstileToken: 'mock-admin-turnstile-token',
+    });
+    assert(
+      customAdminLogin.status === 200 &&
+        customAdminLogin.json.user?.email === 'custom-admin@kretz.com',
+      'POST /auth/admin-login authenticates with newly configured custom email and password'
+    );
+
+    const resetAdminCreds = await api(
+      'POST',
+      '/admin/security/credentials/reset',
+      { currentPassword: 'CustomVaultPass2026!' },
+      rotatedAdminToken
+    );
+    assert(
+      resetAdminCreds.status === 200 && resetAdminCreds.json.data?.email === 'admin@kretz.com',
+      'POST /admin/security/credentials/reset restores environment/default admin credentials cleanly'
+    );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }

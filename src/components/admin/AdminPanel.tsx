@@ -60,12 +60,12 @@ export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits'
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
-  const { navigateTo } = useNavigation();
+  const { currentPath, navigateTo } = useNavigation();
 
   const fallbackAdmin = ledger.getUserById('usr-admin-1') || {
     id: 'usr-admin-1',
-    email: 'admin@lagence.com',
-    fullName: 'Platform Administrator',
+    email: 'admin@kretz.com',
+    fullName: 'Executive Administrator',
     role: 'admin',
     accountType: 'admin'
   };
@@ -74,7 +74,7 @@ export const AdminPanel: React.FC = () => {
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
@@ -109,16 +109,19 @@ export const AdminPanel: React.FC = () => {
   const [docFilterStatus, setDocFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   React.useEffect(() => {
-    const handleHash = () => {
-      const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news'];
-      if (valid.includes(hash as any)) {
-        setActiveTab(hash as any);
+    const valid: AdminTabType[] = ['dashboard', 'users', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+    const syncTabFromLocation = () => {
+      const hashFromPath = currentPath.includes('#') ? currentPath.split('#')[1].toLowerCase() : '';
+      const hashFromWin = typeof window !== 'undefined' ? window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase() : '';
+      const candidate = hashFromPath || hashFromWin;
+      if (candidate && valid.includes(candidate as any)) {
+        setActiveTab(candidate as any);
       }
     };
-    window.addEventListener('hashchange', handleHash);
-    return () => window.removeEventListener('hashchange', handleHash);
-  }, []);
+    syncTabFromLocation();
+    window.addEventListener('hashchange', syncTabFromLocation);
+    return () => window.removeEventListener('hashchange', syncTabFromLocation);
+  }, [currentPath]);
 
   // Manual Payment Credit State
   const [selectedUserId, setSelectedUserId] = useState<string>(users[0]?.id || '');
@@ -579,13 +582,27 @@ export const AdminPanel: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-[#A0A8A5]">
-                  Manage payments, manual balance integrations, treasury wallets, offerings, and financial ledger compliance.
+                  Signed in as <strong className="text-white">{activeUser.email}</strong> · Manage payments, offerings, compliance, and custom security credentials.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
+                type="button"
+                onClick={() => setActiveTab('admin-security')}
+                className={`text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border transition-colors ${
+                  activeTab === 'admin-security'
+                    ? 'bg-[#B7E36A] text-[#182D2A] border-[#B7E36A]'
+                    : 'bg-[#24423C] text-[#B7E36A] hover:bg-[#2d524a] border-emerald-700/50'
+                }`}
+                title="Configure custom administrator email and password"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Custom Email &amp; Password</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => logout()}
                 className="btn bg-[#0D1815] text-red-300 hover:bg-black/60 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-red-500/30 transition-colors"
                 title="Sign out of administrator session"
@@ -594,14 +611,16 @@ export const AdminPanel: React.FC = () => {
                 <span>Sign Out Admin</span>
               </button>
               <button
+                type="button"
                 onClick={handleRestoreDefaults}
                 className="btn bg-[#182D2A] text-white hover:bg-[#24423C] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-800/40"
                 title="Restore all properties and videos to default"
               >
                 <RotateCcw className="w-4 h-4 text-emerald-400" />
-                Restore Properties & Videos
+                Restore Properties &amp; Videos
               </button>
               <button
+                type="button"
                 onClick={() => setShowNewPropertyModal(true)}
                 className="btn btn-accent text-xs font-bold px-5 cursor-pointer"
               >

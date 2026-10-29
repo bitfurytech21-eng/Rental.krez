@@ -23,6 +23,14 @@ interface AuthContextType {
   setIsRecoveryMode: (val: boolean) => void;
   login: (email: string, pass: string) => Promise<User>;
   adminLogin: (email: string, pass: string, turnstileToken?: string) => Promise<User>;
+  customizeAdminCredentials: (params: {
+    currentEmail: string;
+    currentPassword: string;
+    newEmail: string;
+    newPassword: string;
+    fullName?: string;
+    turnstileToken?: string;
+  }) => Promise<User>;
   register: (
     email: string,
     pass: string,
@@ -40,11 +48,13 @@ interface AuthContextType {
   updateUserPassword: (newPassword: string) => Promise<void>;
   verifyMfaCode: (factorId: string, challengeId: string, code: string) => Promise<boolean>;
   quickDemoSession: (role: 'investor' | 'admin', accountType?: AccountType) => Promise<User>;
+  syncAdminSession: (newToken: string, updatedFields: { email: string; fullName?: string }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const CURRENT_USER_KEY = 'rentallog_current_user_id';
+const ADMIN_PROFILE_STORAGE_KEY = 'kretz_admin_profile';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -65,6 +75,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!user?.id) return;
     const unsubscribe = ledger.subscribe(() => {
+      // Do not overwrite server-verified custom administrator email/profile from local seed ledger
+      const activeTok = typeof window !== 'undefined' ? localStorage.getItem('kretz_auth_token') : null;
+      if (activeTok && activeTok.startsWith('kretz_adm_')) {
+        return;
+      }
       const fresh = ledger.getUserById(user.id);
       if (fresh) {
         setUser((prev) => {
@@ -92,11 +107,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Immediately restore cached session for instant rendering while validating in background
     const storedId = localStorage.getItem(CURRENT_USER_KEY);
-    if (storedId) {
+    const storedToken = localStorage.getItem('kretz_auth_token');
+    const storedAdminProfileRaw = localStorage.getItem(ADMIN_PROFILE_STORAGE_KEY);
+
+    if (storedToken && storedToken.startsWith('kretz_adm_') && storedAdminProfileRaw) {
+      try {
+        const parsedAdmin = JSON.parse(storedAdminProfileRaw);
+        if (parsedAdmin?.email) {
+          const restoredAdmin: User = {
+            id: parsedAdmin.id || 'usr-admin-01',
+            email: parsedAdmin.email,
+            fullName: parsedAdmin.fullName || 'Executive Administrator',
+            role: 'admin',
+            accountType: 'admin',
+            kycStatus: 'verified',
+            walletBalance: 500000,
+            investedBalance: 0,
+            totalEarned: 0,
+            createdAt: parsedAdmin.createdAt || new Date().toISOString(),
+          };
+          setUser(restoredAdmin);
+          setToken(storedToken);
+          setAuthToken(storedToken);
+        }
+      } catch {
+        // Fallback below
+      }
+    } else if (storedId) {
       const found = ledger.getUserById(storedId);
       if (found) {
         setUser(found);
-        const restoredToken = found.role === 'admin' ? 'admin_sess_' + found.id : 'sess_' + found.id;
+        const restoredToken = storedToken || (found.role === 'admin' ? 'admin_sess_' + found.id : 'sess_' + found.id);
         setToken(restoredToken);
         setAuthToken(restoredToken);
       }
@@ -121,6 +162,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) {
           console.error('Error fetching Supabase session:', error.message);
         }
+        // Never overwrite an active cryptographically signed Administrator session with an investor Supabase session
+        const currentAdminTok = localStorage.getItem('kretz_auth_token');
+        if (currentAdminTok && currentAdminTok.startsWith('kretz_adm_')) {
+          return;
+        }
+
         if (initialSession?.user) {
           const synced = ledger.syncSupabaseUser(
             initialSession.user.id,
@@ -165,6 +212,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsRecoveryMode(true);
       }
 
+      const activeAdminTok = localStorage.getItem('kretz_auth_token');
+      if (activeAdminTok && activeAdminTok.startsWith('kretz_adm_')) {
+        setIsLoading(false);
+        return;
+      }
+
       if (currentSession?.user) {
         const synced = ledger.syncSupabaseUser(
           currentSession.user.id,
@@ -192,20 +245,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [isConfigured]);
 
-  // Connect Login form to real Supabase email/password sign-in with local preview fallback
+  // Connect Login form to real Supabase email/password sign-in with server-verified admin check & local preview fallback
   const login = async (email: string, pass: string): Promise<User> => {
+    const cleanEmail = email.trim().toLowerCase();
+
     if (!isConfigured) {
-      const cleanEmail = email.trim().toLowerCase();
+      // First check if credentials match the configured custom or default server Administrator account
+      try {
+        const verifiedAdmin = await adminLogin(cleanEmail, pass);
+        return verifiedAdmin;
+      } catch {
+        // Not admin credentials; continue to standard investor login
+      }
+
       let found = ledger.getUserByEmail(cleanEmail);
       if (!found) {
         found = ledger.createUser({
           email: cleanEmail,
           fullName: cleanEmail.split('@')[0],
-          role: cleanEmail.includes('admin') ? 'admin' : 'investor'
+          role: 'investor'
         });
       }
       setUser(found);
-      setToken('local_sess_' + found.id);
+      const localTok = 'local_sess_' + found.id;
+      setToken(localTok);
+      setAuthToken(localTok);
+      localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
       localStorage.setItem(CURRENT_USER_KEY, found.id);
       try {
         ledger.recordAuditLog(
@@ -221,15 +286,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return found;
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const isExecutiveEmail = cleanEmail === 'info@kretz.site' || cleanEmail === 'admin@kretz.com' || cleanEmail.endsWith('@kretz.site');
-
     const { data, error } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password: pass,
     });
 
     if (error) {
+      // Attempt server-verified Administrator login (supports any custom admin email, e.g. you@yourdomain.com)
+      try {
+        const verifiedAdmin = await adminLogin(cleanEmail, pass);
+        return verifiedAdmin;
+      } catch {
+        // Not valid admin credentials; proceed with standard investor error handling
+      }
+
       try {
         ledger.recordAuditLog(
           'guest',
@@ -242,14 +312,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       } catch (e) {}
 
-      // If credentials failed on Supabase or it's unconfigured, attempt server-side environment-based admin login
-      if (isExecutiveEmail || cleanEmail.includes('admin')) {
-        try {
-          const verifiedAdmin = await adminLogin(cleanEmail, pass);
-          return verifiedAdmin;
-        } catch (adminErr: any) {
-          throw new Error('Invalid administrator credentials.');
-        }
+      if (cleanEmail === 'info@kretz.site' || cleanEmail === 'admin@kretz.com' || cleanEmail.endsWith('@kretz.site')) {
+        throw new Error('Invalid administrator credentials.');
       }
 
       if (error.message.toLowerCase().includes('email not confirmed')) {
@@ -562,6 +626,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setAuthToken(null);
     localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
   };
 
   // Send password reset email via Supabase recovery flow with server fallback
@@ -719,6 +784,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(res.error || 'Invalid administrator email or security credentials.');
     }
 
+    // Clear any local investor Supabase session so it cannot collide with the active Administrator session
+    if (isConfigured) {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {}
+    }
+
     const adminUser: User = {
       id: res.user?.id || 'usr-admin-01',
       email: res.user?.email || cleanEmail,
@@ -732,17 +804,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       createdAt: new Date().toISOString()
     };
 
+    setSession(null);
     setUser(adminUser);
     setToken(res.token);
     setAuthToken(res.token);
     localStorage.setItem(CURRENT_USER_KEY, adminUser.id);
+    localStorage.setItem(
+      ADMIN_PROFILE_STORAGE_KEY,
+      JSON.stringify({
+        id: adminUser.id,
+        email: adminUser.email,
+        fullName: adminUser.fullName,
+        createdAt: adminUser.createdAt,
+      })
+    );
 
     try {
       ledger.recordAuditLog(
         adminUser.id,
         adminUser.email,
         'LOGIN_SUCCESS',
-        `Administrator ${adminUser.email} authenticated via environment-verified credentials.`,
+        `Administrator ${adminUser.email} authenticated via server-verified credentials.`,
         'auth',
         'success',
         { targetUserId: adminUser.id, targetUserEmail: adminUser.email }
@@ -750,6 +832,117 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
 
     return adminUser;
+  };
+
+  // Atomically configure custom Administrator email & password from the Admin Gateway and establish session
+  const customizeAdminCredentials = async (params: {
+    currentEmail: string;
+    currentPassword: string;
+    newEmail: string;
+    newPassword: string;
+    fullName?: string;
+    turnstileToken?: string;
+  }): Promise<User> => {
+    const res = await apiRequest<{
+      success: boolean;
+      token: string;
+      user: any;
+      error?: string;
+    }>('/auth/admin-customize', {
+      method: 'POST',
+      body: {
+        currentEmail: params.currentEmail.trim().toLowerCase(),
+        currentPassword: params.currentPassword,
+        newEmail: params.newEmail.trim().toLowerCase(),
+        newPassword: params.newPassword,
+        fullName: params.fullName?.trim() || 'Executive Administrator',
+        turnstileToken: params.turnstileToken || 'mock-admin-turnstile-token',
+      },
+      skipAuth: true,
+    });
+
+    if (!res.success || !res.token) {
+      throw new Error(res.error || 'Unable to set custom administrator credentials.');
+    }
+
+    if (isConfigured) {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {}
+    }
+
+    const adminUser: User = {
+      id: res.user?.id || 'usr-admin-01',
+      email: res.user?.email || params.newEmail.trim().toLowerCase(),
+      fullName: res.user?.fullName || params.fullName?.trim() || 'Executive Administrator',
+      role: 'admin',
+      accountType: 'admin',
+      kycStatus: 'verified',
+      walletBalance: 500000,
+      investedBalance: 0,
+      totalEarned: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    setSession(null);
+    setUser(adminUser);
+    setToken(res.token);
+    setAuthToken(res.token);
+    localStorage.setItem(CURRENT_USER_KEY, adminUser.id);
+    localStorage.setItem(
+      ADMIN_PROFILE_STORAGE_KEY,
+      JSON.stringify({
+        id: adminUser.id,
+        email: adminUser.email,
+        fullName: adminUser.fullName,
+        createdAt: adminUser.createdAt,
+      })
+    );
+
+    try {
+      ledger.recordAuditLog(
+        adminUser.id,
+        adminUser.email,
+        'ADMIN_CREDENTIALS_UPDATED',
+        `Custom administrator email (${adminUser.email}) and bcrypt password configured.`,
+        'auth',
+        'success',
+        { targetUserId: adminUser.id, targetUserEmail: adminUser.email }
+      );
+    } catch (e) {}
+
+    return adminUser;
+  };
+
+  const syncAdminSession = (newToken: string, updatedFields: { email: string; fullName?: string }) => {
+    const cleanEmail = updatedFields.email.trim().toLowerCase();
+    setToken(newToken);
+    setAuthToken(newToken);
+    setUser((prev) => {
+      const nextUser: User = {
+        id: prev?.id || 'usr-admin-01',
+        email: cleanEmail,
+        fullName: updatedFields.fullName?.trim() || prev?.fullName || 'Executive Administrator',
+        role: 'admin',
+        accountType: 'admin',
+        kycStatus: 'verified',
+        walletBalance: prev?.walletBalance ?? 500000,
+        investedBalance: prev?.investedBalance ?? 0,
+        totalEarned: prev?.totalEarned ?? 0,
+        createdAt: prev?.createdAt || new Date().toISOString(),
+      };
+      localStorage.setItem(CURRENT_USER_KEY, nextUser.id);
+      localStorage.setItem(
+        ADMIN_PROFILE_STORAGE_KEY,
+        JSON.stringify({
+          id: nextUser.id,
+          email: nextUser.email,
+          fullName: nextUser.fullName,
+          createdAt: nextUser.createdAt,
+        })
+      );
+      return nextUser;
+    });
   };
 
   // Local demo session switcher (strictly investor preview - admin elevation disabled)
@@ -766,6 +959,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const demoToken = 'sess_' + existing.id;
     setToken(demoToken);
     setAuthToken(demoToken);
+    localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
     localStorage.setItem(CURRENT_USER_KEY, existing.id);
     return existing;
   };
@@ -784,6 +978,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsRecoveryMode,
         login,
         adminLogin,
+        customizeAdminCredentials,
         register,
         logout,
         refreshUser,
@@ -793,6 +988,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateUserPassword,
         verifyMfaCode,
         quickDemoSession,
+        syncAdminSession,
       }}
     >
       {children}

@@ -40,7 +40,10 @@ import {
 import crypto from 'crypto';
 import {
   getAdminConfig,
+  validateAdminEnvironment,
   verifyAdminCredentials,
+  updateCustomAdminCredentials,
+  resetCustomAdminCredentials,
   createAdminSession,
   revokeAdminSession,
   checkAdminRateLimit,
@@ -553,7 +556,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   resetAdminFailedAttempts(ip);
 
   // 6. Establish secure server session
-  const session = createAdminSession(config.adminEmail);
+  const session = createAdminSession(config.adminEmail, config.fullName);
 
   // 7. Set HTTP-only secure SameSite cookie
   res.cookie('kretz_admin_session', session.token, {
@@ -605,6 +608,164 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
 router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, requireTurnstile, handleAdminLogin);
 
 /**
+ * POST /api/v1/auth/admin-customize
+ * Verifies the active administrator email + password and atomically sets a custom administrator email,
+ * display name, and bcrypt-hashed password while issuing a freshly rotated administrator session.
+ */
+router.post(
+  ['/admin/customize', '/auth/admin-customize'],
+  authLimiter,
+  requireTurnstile,
+  async (req: AuthenticatedRequest, res: Response) => {
+    const ip =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket.remoteAddress ||
+      '127.0.0.1';
+
+    const rateLimitStatus = checkAdminRateLimit(ip);
+    if (rateLimitStatus.isLocked) {
+      return res.status(429).json({
+        success: false,
+        error: `Too many failed attempts. Administrative gateway is locked for ${rateLimitStatus.remainingSeconds} seconds.`,
+        code: 'RATE_LIMIT_EXCEEDED',
+        remainingSeconds: rateLimitStatus.remainingSeconds,
+        requestId: req.id
+      });
+    }
+
+    const { currentEmail, currentPassword, newEmail, newPassword, fullName } = req.body || {};
+    const normalizedCurrentEmail =
+      typeof currentEmail === 'string' ? currentEmail.trim().toLowerCase() : '';
+    const inputCurrPass = typeof currentPassword === 'string' ? currentPassword : '';
+
+    if (!normalizedCurrentEmail || !inputCurrPass) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter your current administrator email and current password to authorize custom credentials.',
+        code: 'MISSING_CURRENT_CREDENTIALS',
+        requestId: req.id
+      });
+    }
+
+    const config = getAdminConfig();
+    const emailMatches = normalizedCurrentEmail === config.adminEmail;
+    const passwordMatches = await verifyAdminCredentials(inputCurrPass);
+
+    if (!emailMatches || !passwordMatches) {
+      const failureRecord = recordAdminFailedAttempt(ip);
+      logger.log({
+        level: 'warn',
+        category: 'security',
+        requestId: req.id || 'req-admin-customize-denied',
+        method: 'POST',
+        route: req.originalUrl,
+        statusCode: 401,
+        eventType: 'ADMIN_CUSTOMIZE_DENIED',
+        outcome: 'failure',
+        message: `Failed admin credential customization attempt from ${ip} for ${normalizedCurrentEmail}.`,
+        errorCode: 'INVALID_CURRENT_CREDENTIALS',
+        metadata: { ip, attempts: failureRecord.attempts, isLocked: failureRecord.isLocked }
+      });
+
+      return res.status(401).json({
+        success: false,
+        error: 'Current administrator email or password is incorrect.',
+        code: 'INVALID_CURRENT_CREDENTIALS',
+        remainingAttempts: Math.max(0, 5 - failureRecord.attempts),
+        requestId: req.id
+      });
+    }
+
+    const targetEmail = (typeof newEmail === 'string' ? newEmail : '').trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(targetEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid custom administrator email address.',
+        code: 'INVALID_EMAIL',
+        requestId: req.id
+      });
+    }
+
+    const targetPassword = typeof newPassword === 'string' ? newPassword : '';
+    if (!targetPassword || targetPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'Your new administrator password must be at least 8 characters long.',
+        code: 'WEAK_PASSWORD',
+        requestId: req.id
+      });
+    }
+
+    resetAdminFailedAttempts(ip);
+
+    const targetFullName =
+      typeof fullName === 'string' && fullName.trim() ? fullName.trim() : config.fullName;
+
+    const updated = await updateCustomAdminCredentials({
+      email: targetEmail,
+      fullName: targetFullName,
+      passwordToHash: targetPassword
+    });
+
+    const adminMock = mockUsers.find((u) => u.role === 'admin');
+    if (adminMock) {
+      adminMock.email = updated.adminEmail;
+      adminMock.fullName = updated.fullName;
+    }
+
+    const session = createAdminSession(updated.adminEmail, updated.fullName);
+    res.cookie('kretz_admin_session', session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    logger.log({
+      level: 'info',
+      category: 'admin',
+      requestId: req.id || 'req-admin-customize-ok',
+      method: 'POST',
+      route: req.originalUrl,
+      statusCode: 200,
+      userId: session.payload.sub,
+      userRole: 'admin',
+      eventType: 'ADMIN_CREDENTIALS_CUSTOMIZED',
+      outcome: 'success',
+      message: `Custom administrator credentials configured and session established for ${updated.adminEmail}.`
+    });
+
+    return res.json({
+      success: true,
+      token: session.token,
+      user: {
+        id: session.payload.sub,
+        email: session.payload.email,
+        role: 'admin',
+        fullName: session.payload.fullName
+      },
+      data: {
+        email: updated.adminEmail,
+        fullName: updated.fullName,
+        mode: 'custom_bcrypt',
+        isCustomConfigured: true,
+        updatedAt: updated.updatedAt,
+        token: session.token,
+        user: {
+          id: session.payload.sub,
+          email: session.payload.email,
+          role: 'admin',
+          fullName: session.payload.fullName
+        }
+      },
+      message: 'Custom administrator email and password configured successfully.',
+      requestId: req.id
+    });
+  }
+);
+
+/**
  * POST /api/v1/admin/logout & /api/v1/auth/admin-logout
  */
 router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req: AuthenticatedRequest, res: Response) => {
@@ -643,6 +804,224 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req:
     requestId: req.id
   });
 });
+
+/**
+ * GET /api/v1/admin/security/credentials
+ * Returns the active administrator login email, display name, and credential mode (never exposes hashes or passwords).
+ */
+router.get('/admin/security/credentials', requireAuth, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const config = getAdminConfig();
+  const envState = validateAdminEnvironment();
+
+  return res.json({
+    success: true,
+    data: {
+      email: config.adminEmail,
+      fullName: config.fullName,
+      mode: envState.mode,
+      isCustomConfigured: config.isCustomConfigured,
+      updatedAt: config.updatedAt
+    },
+    requestId: req.id
+  });
+});
+
+/**
+ * PUT /api/v1/admin/security/credentials
+ * Updates the administrator login email, display name, and/or bcrypt-hashed password after verifying currentPassword.
+ */
+router.put(
+  '/admin/security/credentials',
+  securityLimiter,
+  requireAuth,
+  requireAdmin,
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { currentPassword, newEmail, newPassword, fullName } = req.body || {};
+    const config = getAdminConfig();
+
+    if (!currentPassword || typeof currentPassword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter your current administrator password to authorize credential changes.',
+        code: 'CURRENT_PASSWORD_REQUIRED',
+        requestId: req.id
+      });
+    }
+
+    const isCurrentValid = await verifyAdminCredentials(currentPassword);
+    if (!isCurrentValid) {
+      logger.log({
+        level: 'warn',
+        category: 'security',
+        requestId: req.id || 'req-admin-cred-denied',
+        method: 'PUT',
+        route: req.originalUrl,
+        statusCode: 401,
+        userId: req.user?.id,
+        eventType: 'ADMIN_CREDENTIALS_UPDATE_DENIED',
+        outcome: 'failure',
+        message: 'Failed attempt to update administrator credentials due to invalid current password.',
+        errorCode: 'INVALID_CURRENT_PASSWORD'
+      });
+
+      return res.status(401).json({
+        success: false,
+        error: 'Current administrator password is incorrect.',
+        code: 'INVALID_CURRENT_PASSWORD',
+        requestId: req.id
+      });
+    }
+
+    const targetEmail = (typeof newEmail === 'string' && newEmail.trim() ? newEmail : config.adminEmail)
+      .trim()
+      .toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(targetEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid administrator email address.',
+        code: 'INVALID_EMAIL',
+        requestId: req.id
+      });
+    }
+
+    const trimmedNewPass = typeof newPassword === 'string' ? newPassword : '';
+    if (trimmedNewPass && trimmedNewPass.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'New administrator password must be at least 8 characters long.',
+        code: 'WEAK_PASSWORD',
+        requestId: req.id
+      });
+    }
+
+    const passwordToPersist = trimmedNewPass || currentPassword;
+    const targetFullName =
+      typeof fullName === 'string' && fullName.trim() ? fullName.trim() : config.fullName;
+
+    const updated = await updateCustomAdminCredentials({
+      email: targetEmail,
+      fullName: targetFullName,
+      passwordToHash: passwordToPersist
+    });
+
+    const adminMock = mockUsers.find((u) => u.role === 'admin');
+    if (adminMock) {
+      adminMock.email = updated.adminEmail;
+      adminMock.fullName = updated.fullName;
+    }
+
+    const session = createAdminSession(updated.adminEmail, updated.fullName);
+    res.cookie('kretz_admin_session', session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    logger.log({
+      level: 'info',
+      category: 'admin',
+      requestId: req.id || 'req-admin-cred-updated',
+      method: 'PUT',
+      route: req.originalUrl,
+      statusCode: 200,
+      userId: session.payload.sub,
+      userRole: 'admin',
+      eventType: 'ADMIN_CREDENTIALS_UPDATED',
+      outcome: 'success',
+      message: `Administrator login credentials updated for ${updated.adminEmail}.`,
+      metadata: {
+        emailChanged: updated.adminEmail !== config.adminEmail,
+        passwordChanged: Boolean(trimmedNewPass)
+      }
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        email: updated.adminEmail,
+        fullName: updated.fullName,
+        mode: 'custom_bcrypt',
+        isCustomConfigured: true,
+        updatedAt: updated.updatedAt,
+        token: session.token,
+        user: {
+          id: session.payload.sub,
+          email: session.payload.email,
+          role: 'admin',
+          fullName: session.payload.fullName
+        }
+      },
+      message: 'Custom administrator email and security credentials saved.',
+      requestId: req.id
+    });
+  }
+);
+
+/**
+ * POST /api/v1/admin/security/credentials/reset
+ * Resets custom administrator credentials back to environment or default settings after verifying currentPassword.
+ */
+router.post(
+  '/admin/security/credentials/reset',
+  securityLimiter,
+  requireAuth,
+  requireAdmin,
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { currentPassword } = req.body || {};
+    if (!currentPassword || typeof currentPassword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter your current administrator password to authorize reset.',
+        code: 'CURRENT_PASSWORD_REQUIRED',
+        requestId: req.id
+      });
+    }
+
+    const isCurrentValid = await verifyAdminCredentials(currentPassword);
+    if (!isCurrentValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'Current administrator password is incorrect.',
+        code: 'INVALID_CURRENT_PASSWORD',
+        requestId: req.id
+      });
+    }
+
+    resetCustomAdminCredentials();
+    const restoredConfig = getAdminConfig();
+    const envState = validateAdminEnvironment();
+    const session = createAdminSession(restoredConfig.adminEmail, restoredConfig.fullName);
+
+    res.cookie('kretz_admin_session', session.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        email: restoredConfig.adminEmail,
+        fullName: restoredConfig.fullName,
+        mode: envState.mode,
+        isCustomConfigured: false,
+        updatedAt: null,
+        token: session.token,
+        user: {
+          id: session.payload.sub,
+          email: session.payload.email,
+          role: 'admin',
+          fullName: session.payload.fullName
+        }
+      },
+      message: 'Administrator credentials reset to environment default.',
+      requestId: req.id
+    });
+  }
+);
 
 /**
  * GET /api/v1/admin/session & /api/v1/auth/admin-session

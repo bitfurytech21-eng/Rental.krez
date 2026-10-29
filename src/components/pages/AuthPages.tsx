@@ -29,8 +29,9 @@ import { ledger } from '../../lib/ledger';
 interface AuthPageProps {
   initialMode?: 'login' | 'register' | 'forgot-password' | 'reset-password';
   preservedProperty?: Property | null;
-  onSuccess: () => void;
+  onSuccess: (authenticatedUser?: any) => void;
   onNavigateMode: (mode: 'login' | 'register' | 'forgot-password' | 'reset-password') => void;
+  onNavigateAdminLogin?: () => void;
 }
 
 export const AuthPages: React.FC<AuthPageProps> = ({
@@ -38,6 +39,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   preservedProperty,
   onSuccess,
   onNavigateMode,
+  onNavigateAdminLogin,
 }) => {
   const {
     login,
@@ -117,8 +119,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       } catch (backendErr) {
         // Fallback to local auth if backend offline
       }
-      await login(email, password);
-      onSuccess();
+      const signedInUser = await login(email, password);
+      onSuccess(signedInUser);
     } catch (err: any) {
       setError(err.message || 'Login failed.');
       setTurnstileToken(null);
@@ -448,15 +450,29 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               )}
             </button>
 
-            <div className="text-center pt-3 border-t border-[#1D3860]">
-              <span className="text-xs text-[#8EA7C7]">Don't have an account yet? </span>
-              <button
-                type="button"
-                onClick={() => switchMode('register')}
-                className="text-xs font-bold text-[#BEE179] hover:underline cursor-pointer"
-              >
-                Register Here
-              </button>
+            <div className="text-center pt-3 border-t border-[#1D3860] space-y-2.5">
+              <div>
+                <span className="text-xs text-[#8EA7C7]">Don't have an account yet? </span>
+                <button
+                  type="button"
+                  onClick={() => switchMode('register')}
+                  className="text-xs font-bold text-[#BEE179] hover:underline cursor-pointer"
+                >
+                  Register Here
+                </button>
+              </div>
+              {onNavigateAdminLogin && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={onNavigateAdminLogin}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8EA7C7] hover:text-[#BEE179] transition-colors cursor-pointer"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-[#BEE179]" />
+                    <span>Administrator Gateway &amp; Custom Login &rarr;</span>
+                  </button>
+                </div>
+              )}
             </div>
           </form>
         )}
