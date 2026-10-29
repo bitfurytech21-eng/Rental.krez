@@ -1292,12 +1292,29 @@ export const legacyTemplateAliases: Record<string, string> = {
 // ============================================================================
 
 export function getProviderConfig() {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const sendgridApiKey = process.env.SENDGRID_API_KEY;
-  const smtpHost = process.env.SMTP_HOST || process.env.ZOHO_SMTP_HOST || process.env.GMAIL_SMTP_HOST || process.env.EMAIL_HOST;
+  const isRealSecret = (val?: string): val is string => {
+    if (!val) return false;
+    const clean = val.trim();
+    if (!clean) return false;
+    const lower = clean.toLowerCase();
+    return (
+      !lower.includes('placeholder') &&
+      !lower.startsWith('replace_with') &&
+      !lower.startsWith('re_your_') &&
+      !lower.startsWith('sg.your_') &&
+      !lower.startsWith('your_secure_')
+    );
+  };
+
+  const resendApiKey = isRealSecret(process.env.RESEND_API_KEY) ? process.env.RESEND_API_KEY!.trim() : '';
+  const sendgridApiKey = isRealSecret(process.env.SENDGRID_API_KEY) ? process.env.SENDGRID_API_KEY!.trim() : '';
+  const rawSmtpHost = process.env.SMTP_HOST || process.env.ZOHO_SMTP_HOST || process.env.GMAIL_SMTP_HOST || process.env.EMAIL_HOST;
+  const smtpHost = isRealSecret(rawSmtpHost) ? rawSmtpHost!.trim() : '';
   const smtpPort = process.env.SMTP_PORT || process.env.ZOHO_SMTP_PORT || process.env.GMAIL_SMTP_PORT || process.env.EMAIL_PORT;
-  const smtpUser = process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.ZOHO_USER || process.env.GMAIL_USER || process.env.EMAIL_USER;
-  const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.ZOHO_PASS || process.env.GMAIL_PASS || process.env.EMAIL_PASS;
+  const rawSmtpUser = process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.ZOHO_USER || process.env.GMAIL_USER || process.env.EMAIL_USER;
+  const smtpUser = isRealSecret(rawSmtpUser) ? rawSmtpUser!.trim() : '';
+  const rawSmtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.ZOHO_PASS || process.env.GMAIL_PASS || process.env.EMAIL_PASS;
+  const smtpPass = isRealSecret(rawSmtpPass) ? rawSmtpPass!.trim() : '';
 
   if (resendApiKey) {
     return { type: 'resend', name: 'Resend Transactional API', configured: true, key: resendApiKey };

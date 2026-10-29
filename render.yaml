@@ -5,5 +5,88 @@ services:
     buildCommand: npm install --legacy-peer-deps && npm run build
     startCommand: npm start
     envVars:
+      - fromGroup: kretz-core-runtime
+      - fromGroup: kretz-admin-security
+      - fromGroup: kretz-supabase-client
+      - fromGroup: kretz-cloudflare-turnstile
+      - fromGroup: kretz-transactional-email
+      - fromGroup: kretz-optional-integrations
+
+envVarGroups:
+  # 1. Core Server & API Routing
+  - name: kretz-core-runtime
+    envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: "3000"
+      - key: VITE_API_BASE_URL
+        value: /api/v1
+
+  # 2. Administrator Gateway, Session Signing & Audit Log Security
+  - name: kretz-admin-security
+    envVars:
+      - key: ADMIN_EMAIL
+        value: admin@kretz.com
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_LOG_API_KEY
+        generateValue: true
+      - key: ADMIN_LOG_API_SECRET
+        generateValue: true
+
+  # 3. Supabase Database & Investor Auth (Build-Time Client Keys)
+  - name: kretz-supabase-client
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+
+  # 4. Cloudflare Turnstile Bot Protection
+  - name: kretz-cloudflare-turnstile
+    envVars:
+      - key: VITE_CLOUDFLARE_TURNSTILE_SITE_KEY
+        sync: false
+      - key: CLOUDFLARE_TURNSTILE_SECRET_KEY
+        sync: false
+      - key: SKIP_TURNSTILE
+        value: "false"
+
+  # 5. Transactional Email Delivery (Resend / SendGrid / SMTP)
+  - name: kretz-transactional-email
+    envVars:
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+
+  # 6. Optional Live Chat & Translation Engines
+  - name: kretz-optional-integrations
+    envVars:
+      - key: VITE_SMARTSUPP_KEY
+        sync: false
+      - key: DEEPL_API_KEY
+        sync: false
+      - key: LIBRETRANSLATE_URL
+        value: https://translate.argosopentech.com/translate
+      - key: LIBRETRANSLATE_API_KEY
+        sync: false
+      - key: MYMEMORY_EMAIL
+        sync: false
