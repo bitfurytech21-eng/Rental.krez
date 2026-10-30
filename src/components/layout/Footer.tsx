@@ -1,15 +1,13 @@
 import React from 'react';
 import { FOOTER_LINKS } from '../../data/navigation';
-import { COMPANY_REGISTRATION, SOLANA_INFRASTRUCTURE_REGISTRY } from '../../data/institutionalConfig';
-import { ShieldCheck, Mail, MapPin, ExternalLink } from 'lucide-react';
+import { COMPANY_REGISTRATION } from '../../data/institutionalConfig';
+import { Mail, MapPin, ExternalLink } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
-  const usdcItem = SOLANA_INFRASTRUCTURE_REGISTRY[0];
-
   return (
     <footer className="bg-[#0B1B30] text-[#D1E2F7] pt-16 pb-12 border-t border-[#1D3860] overflow-hidden max-w-full">
       <div className="container max-w-[1280px] mx-auto px-4 sm:px-6">
@@ -31,31 +29,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed font-medium">
               Institutional-grade tokenized European luxury real estate. Ring-fenced SPV custody, independent RICS appraisals, and Solana SPL / USDC settlement infrastructure.
             </p>
-
-            {/* Official Corporate Registration Summary */}
-            <div className="p-3 rounded-xl bg-[#102442] border border-[#1D3860] space-y-1 text-[11px] font-mono text-[#9EB5D4]">
-              <div>
-                <span className="text-white font-semibold">SIREN:</span> {COMPANY_REGISTRATION.siren}
-              </div>
-              <div>
-                <span className="text-white font-semibold">RCS:</span> {COMPANY_REGISTRATION.rcs}
-              </div>
-              <div>
-                <span className="text-white font-semibold">SIRET:</span> {COMPANY_REGISTRATION.siret}
-              </div>
-              <div>
-                <span className="text-white font-semibold">VAT:</span>{' '}
-                {COMPANY_REGISTRATION.vatIdentificationNumber}
-              </div>
-              <div>
-                <span className="text-white font-semibold">Form:</span> {COMPANY_REGISTRATION.legalForm}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-[#BEE179] font-bold pt-0.5">
-              <ShieldCheck className="w-4 h-4 text-[#BEE179] shrink-0 stroke-[2.5]" aria-hidden="true" />
-              <span>EU Ring-Fenced SPV Custody · Solana Mainnet</span>
-            </div>
           </div>
 
           {/* Platform Links */}
@@ -141,53 +114,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   {COMPANY_REGISTRATION.primaryEmail}
                 </a>
               </div>
-
-              {usdcItem && (
-                <div className="pt-2">
-                  <a
-                    href={usdcItem.explorerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#9EB5D4] hover:text-[#BEE179]"
-                  >
-                    <span>Solana USDC Mint: {usdcItem.address.slice(0, 6)}…{usdcItem.address.slice(-4)}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Risk Warning & Statutory Disclosure Bar */}
-        <div className="py-5 border-b border-[#1D3860] text-[11px] text-[#8EA7C7] leading-relaxed text-left">
-          <strong className="text-slate-200">Capital at Risk Disclosure:</strong> Fractional real estate investments involve illiquidity, market valuation fluctuations, tenant vacancy, and regulatory risks. Past or projected net yields do not guarantee future distributions. Circle USDC (<code className="font-mono">EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>) is utilized strictly as a payment and distribution settlement stablecoin on Solana Mainnet and does not represent equity or a property-share smart contract. Review the complete{' '}
-          <button
-            type="button"
-            onClick={() => onNavigate('/legal?doc=risk-disclosure-statement')}
-            className="text-[#BEE179] hover:underline font-semibold cursor-pointer"
-          >
-            Risk Disclosure Statement
-          </button>{' '}
-          and{' '}
-          <button
-            type="button"
-            onClick={() => onNavigate('/trust')}
-            className="text-[#BEE179] hover:underline font-semibold cursor-pointer"
-          >
-            Trust Centre
-          </button>{' '}
-          prior to subscribing.
-        </div>
-
-        {/* Copyright & Statutory Footer Line */}
+        {/* Copyright & Footer Links */}
         <div className="pt-6 flex flex-col lg:flex-row items-start lg:items-center justify-between text-xs text-[#8EA7C7] font-medium gap-4">
           <div className="text-left">
-            <p>
-              © {new Date().getFullYear()} {COMPANY_REGISTRATION.legalEntityLabel} · SIREN{' '}
-              {COMPANY_REGISTRATION.siren} · {COMPANY_REGISTRATION.rcs} · VAT{' '}
-              {COMPANY_REGISTRATION.vatIdentificationNumber}
-            </p>
+            <p>© {new Date().getFullYear()} L&apos;Agence Real Estate. All rights reserved.</p>
           </div>
           <div className="flex flex-wrap items-center gap-5">
             <button

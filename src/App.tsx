@@ -23,7 +23,6 @@ import { CasosDeExitoTeaser } from './components/home/CasosDeExitoTeaser';
 import { InsightsTeaserSection } from './components/home/InsightsTeaserSection';
 import { TrustedByInvestorsSection } from './components/home/TrustedByInvestorsSection';
 import { SolanaInfrastructureSection } from './components/home/SolanaInfrastructureSection';
-import { TrustCenterPreviewSection } from './components/home/TrustCenterPreviewSection';
 
 // Dedicated Pages
 import { PropertiesPage } from './components/pages/PropertiesPage';
@@ -586,13 +585,6 @@ function MainApp() {
             />
 
             <Benefits />
-
-            <TrustCenterPreviewSection
-              onNavigateTrust={() => navigateTo('/trust')}
-              onNavigateLegalDoc={(docId) =>
-                navigateTo(docId ? `/legal?doc=${docId}` : '/legal')
-              }
-            />
 
             <ClubTeaserSection
               onExploreClub={() => navigateTo('/club')}
