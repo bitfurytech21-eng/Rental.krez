@@ -534,6 +534,35 @@ async function runApiTests() {
       resetAdminCreds.status === 200 && resetAdminCreds.json.data?.email === 'admin@kretz.com',
       'POST /admin/security/credentials/reset restores environment/default admin credentials cleanly'
     );
+
+    // 12. Solana Infrastructure Registry & Institutional Trust Centre API Endpoints
+    const infraRes = await api('GET', '/blockchain/infrastructure');
+    assert(
+      infraRes.status === 200 &&
+        infraRes.json.success === true &&
+        infraRes.json.data?.company?.siren === '494 861 560' &&
+        infraRes.json.data?.company?.siret === '494 861 560 00030' &&
+        infraRes.json.data?.company?.vatIdentificationNumber === 'FR80494861560',
+      'GET /blockchain/infrastructure returns verified French corporate registration data (SIREN, SIRET, VAT)'
+    );
+
+    const programs = infraRes.json.data?.programsAndMints || [];
+    const addresses = programs.map((p: any) => p.address);
+    assert(
+      addresses.includes('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') &&
+        addresses.includes('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') &&
+        addresses.includes('TokenzQdBNbLqP5VEhdKAS6EPFLC1PHnBqCXEPpxuEb'),
+      'GET /blockchain/infrastructure exposes all 3 canonical Solana Mainnet addresses (USDC Mint, SPL Token, Token-2022)'
+    );
+
+    const trustRes = await api('GET', '/trust-center');
+    assert(
+      trustRes.status === 200 &&
+        trustRes.json.success === true &&
+        trustRes.json.data?.company?.rcs === 'Paris, 494 861 560 R.C.S.' &&
+        trustRes.json.data?.legalDocumentsCount === 12,
+      'GET /trust-center returns institutional verification summary and 12-document Legal Centre count'
+    );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }

@@ -33,30 +33,51 @@ export const RechartsPropertyDashboard: React.FC<RechartsPropertyDashboardProps>
   transactions,
   className = '',
 }) => {
-  const [activeTab, setActiveTab] = useState<'yield' | 'funding' | 'allocation'>('yield');
+  // 1. Monthly Yield Trends Data (Strictly derived from real completed distribution ledger records)
+  const dividendTransactions = transactions.filter(
+    (t) => t.type === 'distribution' && (t.status === 'completed' || t.status === 'approved')
+  );
 
-  // 1. Monthly Yield Trends Data (Real Transaction & Investment calculations)
-  const dividendTransactions = transactions.filter(t => t.type === 'distribution' && t.status === 'completed');
-  
-  const monthlyYieldData = [
-    { month: 'May 2025', yieldPaid: 185, targetApy: 7.2, holdings: 1 },
-    { month: 'Jun 2025', yieldPaid: 210, targetApy: 7.4, holdings: 1 },
-    { month: 'Jul 2025', yieldPaid: 340, targetApy: 8.1, holdings: 2 },
-    { month: 'Aug 2025', yieldPaid: 365, targetApy: 8.2, holdings: 2 },
-    { month: 'Sep 2025', yieldPaid: 480, targetApy: 8.5, holdings: 3 },
-    { month: 'Oct 2025', yieldPaid: 520, targetApy: 8.7, holdings: 3 },
-  ];
+  const [activeTab, setActiveTab] = useState<'yield' | 'funding' | 'allocation'>(() =>
+    dividendTransactions.length > 0 ? 'yield' : 'funding'
+  );
 
-  // Adjust recent month using real dividends if present
-  if (dividendTransactions.length > 0) {
-    const totalDividends = dividendTransactions.reduce((acc, t) => acc + t.amount, 0);
-    if (totalDividends > 0) {
-      monthlyYieldData[monthlyYieldData.length - 1].yieldPaid = totalDividends;
-    }
-  }
+  const weightedHoldingApy =
+    investments.length > 0
+      ? investments.reduce((acc, inv) => acc + (inv.estimatedAnnualYield || 0), 0) / investments.length
+      : 0;
+
+  const monthlyYieldMap = new Map<string, { month: string; yieldPaid: number; targetApy: number; holdings: number }>();
+  dividendTransactions
+    .slice()
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .forEach((tx) => {
+      const d = new Date(tx.createdAt);
+      const label = Number.isNaN(d.getTime())
+        ? 'Recent'
+        : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      const existing = monthlyYieldMap.get(label);
+      if (existing) {
+        existing.yieldPaid = Number((existing.yieldPaid + tx.amount).toFixed(2));
+      } else {
+        monthlyYieldMap.set(label, {
+          month: label,
+          yieldPaid: Number(tx.amount.toFixed(2)),
+          targetApy: Number(weightedHoldingApy.toFixed(2)),
+          holdings: investments.length,
+        });
+      }
+    });
+
+  const monthlyYieldData = Array.from(monthlyYieldMap.values());
+  const projectedMonthlyRunRate = investments.reduce((sum, inv) => sum + (inv.projectedMonthlyIncome || 0), 0);
 
   // 2. Property Funding Progress Data (Real property targets & funded amounts)
-  const fundingProgressData = properties.map((p) => {
+  const visibleCatalog = properties
+    .filter((p) => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend !== false)
+    .slice(0, 12);
+
+  const fundingProgressData = visibleCatalog.map((p) => {
     const percent = Math.min(100, Math.round((p.fundedAmount / (p.targetAmount || 1)) * 100));
     return {
       name: p.title.length > 20 ? p.title.slice(0, 18) + '...' : p.title,
@@ -71,16 +92,17 @@ export const RechartsPropertyDashboard: React.FC<RechartsPropertyDashboardProps>
     };
   });
 
-  // 3. Asset Allocation Data
+  // 3. Asset Allocation Data (Strictly distinguishes user portfolio vs catalog funded breakdown)
   const allocationColors = ['#087F5B', '#2563EB', '#D97706', '#7C3AED', '#059669', '#DC2626'];
-  const allocationData = investments.length > 0
+  const isShowingCatalogAllocation = investments.length === 0;
+  const allocationData = !isShowingCatalogAllocation
     ? investments.map((inv, i) => ({
         name: inv.propertyTitle.length > 18 ? inv.propertyTitle.slice(0, 16) + '...' : inv.propertyTitle,
         value: inv.currentValuation || inv.totalAmountInvested,
         dividends: inv.totalDividendsReceived || 0,
         color: allocationColors[i % allocationColors.length],
       }))
-    : properties.map((p, i) => ({
+    : visibleCatalog.slice(0, 6).map((p, i) => ({
         name: p.title.length > 18 ? p.title.slice(0, 16) + '...' : p.title,
         value: p.fundedAmount,
         dividends: Math.round((p.fundedAmount * p.estimatedAnnualYield) / 100),
@@ -139,27 +161,16 @@ export const RechartsPropertyDashboard: React.FC<RechartsPropertyDashboardProps>
               <BarChart2 className="w-4 h-4" />
             </span>
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
-              Recharts Real Property Analytics & Yield Performance
+              Property Funding &amp; Portfolio Performance Visualiser
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Real-time visualization of property funding progress, monthly payouts, and portfolio distribution
+            Live visualization of verified offering capitalization, settled payouts, and SPV allocation
           </p>
         </div>
 
         {/* View Mode Tabs */}
         <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl text-xs font-semibold self-start sm:self-auto">
-          <button
-            onClick={() => setActiveTab('yield')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'yield'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Yield Trends</span>
-          </button>
           <button
             onClick={() => setActiveTab('funding')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
@@ -172,6 +183,17 @@ export const RechartsPropertyDashboard: React.FC<RechartsPropertyDashboardProps>
             <span>Funding Progress</span>
           </button>
           <button
+            onClick={() => setActiveTab('yield')}
+            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'yield'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs font-bold'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Settled Yields</span>
+          </button>
+          <button
             onClick={() => setActiveTab('allocation')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'allocation'
@@ -180,7 +202,7 @@ export const RechartsPropertyDashboard: React.FC<RechartsPropertyDashboardProps>
             }`}
           >
             <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            <span>Portfolio Breakdown</span>
+            <span>{isShowingCatalogAllocation ? 'Catalog Mix' : 'My Allocation'}</span>
           </button>
         </div>
       </div>
@@ -188,38 +210,53 @@ export const RechartsPropertyDashboard: React.FC<RechartsPropertyDashboardProps>
       {/* 1. Monthly Yield Trends Area & Line Chart */}
       {activeTab === 'yield' && (
         <div className="space-y-3">
-          <div className="flex justify-between items-center text-xs font-mono">
-            <span className="text-slate-500 dark:text-slate-400">Monthly Dividend Distributions (€)</span>
+          <div className="flex justify-between items-center text-xs font-mono tabular-nums">
+            <span className="text-slate-500 dark:text-slate-400">Settled Dividend Distributions (€)</span>
             <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-              Cumulative Yield: {formatCurrency(monthlyYieldData.reduce((acc, d) => acc + d.yieldPaid, 0))}
+              Realized Cumulative Yield: {formatCurrency(monthlyYieldData.reduce((acc, d) => acc + d.yieldPaid, 0))}
             </span>
           </div>
 
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={monthlyYieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="rechartsYieldGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#087F5B" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#087F5B" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip content={<CustomYieldTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="yieldPaid"
-                  stroke="#087F5B"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#rechartsYieldGradient)"
-                  name="Yield Paid (€)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {monthlyYieldData.length === 0 ? (
+            <div className="py-10 px-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1.5">
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                No settled dividend payouts recorded on your account ledger yet
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                {investments.length > 0
+                  ? `Contractual monthly accrual across your ${investments.length} active SPV ${
+                      investments.length === 1 ? 'holding' : 'holdings'
+                    }: ${formatCurrency(projectedMonthlyRunRate)}/mo. Historical chart points appear once monthly payouts settle.`
+                  : 'Subscribe to an active real estate SPV offering to begin receiving verified monthly distributions.'}
+              </p>
+            </div>
+          ) : (
+            <div className="h-64 w-full pt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={monthlyYieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="rechartsYieldGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#087F5B" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#087F5B" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip content={<CustomYieldTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="yieldPaid"
+                    stroke="#087F5B"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#rechartsYieldGradient)"
+                    name="Yield Paid (€)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
 

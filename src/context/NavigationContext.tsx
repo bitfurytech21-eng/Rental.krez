@@ -23,16 +23,24 @@ const FAILSAFE_MAX_DURATION_MS = 4000;   // Failsafe recovery timer
 
 export const getPathFromLocation = (): string => {
   if (typeof window === 'undefined') return '/';
-  const rawHash = window.location.hash.replace('#', '').trim();
-  if (rawHash && rawHash !== '/') {
+  const fullHash = window.location.hash;
+  if (fullHash && fullHash.startsWith('#/')) {
+    const stripped = fullHash.slice(1).trim();
+    return stripped || '/';
+  }
+  const rawHash = fullHash.replace('#', '').trim();
+  // Only treat non-slash hashes as routes if pathname is root and hash looks like a route
+  if (rawHash && (window.location.pathname === '/' || window.location.pathname === '') && !rawHash.includes('=')) {
     return rawHash.startsWith('/') ? rawHash : `/${rawHash}`;
   }
-  return window.location.pathname || '/';
+  const search = window.location.search || '';
+  return `${window.location.pathname || '/'}${search}`;
 };
 
 export const cleanRoutePath = (path: string): string => {
-  if (!path || path === '/') return '/';
-  return path.startsWith('/') ? path : `/${path}`;
+  if (!path || path === '/' || path === '#/') return '/';
+  const normalized = path.replace(/^#/, '');
+  return normalized.startsWith('/') ? normalized : `/${normalized}`;
 };
 
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -68,12 +68,12 @@ export const YieldDistributionFlowDiagram: React.FC<{ className?: string }> = ({
             </div>
             <DollarSign className="w-4 h-4 text-emerald-600" />
           </div>
-          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Escrow Contract</h4>
+          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">SPV Cap-Table Snapshot</h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-            Funds deposited into audited smart contract matching investor token proportions.
+            Net distributable income is apportioned pro-rata across verified SPV unit holders.
           </p>
           <div className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 p-1 rounded-md">
-            On-Chain Ledger Audit
+            Double-Entry Reconciliation
           </div>
         </div>
 
@@ -85,12 +85,12 @@ export const YieldDistributionFlowDiagram: React.FC<{ className?: string }> = ({
             </div>
             <Wallet className="w-4 h-4 text-emerald-500" />
           </div>
-          <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Wallet Distribution</h4>
+          <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-300">USDC &amp; EUR Settlement</h4>
           <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-normal">
-            Dividends instantly credited to investor wallet balance on the 1st of each month.
+            Dividends settle on the 1st business day in liquid EUR or Solana USDC (EPjFWdd5Aufq...).
           </p>
           <div className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 p-1 rounded-md">
-            Liquid EUR Balance
+            EUR SEPA &amp; Solana USDC
           </div>
         </div>
       </div>

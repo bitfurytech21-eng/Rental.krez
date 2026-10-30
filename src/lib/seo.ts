@@ -50,14 +50,31 @@ export const ROUTE_SEO_MAP: Record<string, RouteSeoDefinition> = {
       de: "L'Agence Real Estate | Institutionelle Immobilien & Tokenisierung",
     },
     description: {
-      en: 'Invest in fractionalized luxury European properties with tokenized ERC-20 smart contracts, Ring-fenced SPV custody, and 12-15% projected IRR.',
-      es: 'Invierta en propiedades de lujo europeas fraccionadas con contratos inteligentes ERC-20, custodia SPV segregada y 12-15% TIR proyectada.',
-      fr: "Investissez dans l'immobilier de luxe européen fractionné avec des smart contracts ERC-20, une structure SPV étanche et un TRI cible de 12 à 15%.",
-      de: 'Investieren Sie in fraktionierte europäische Luxusimmobilien mit tokenisierten ERC-20 Smart Contracts, insolvenzsicherer SPV-Verwahrung und 12-15% prognostiziertem IRR.',
+      en: 'Invest in fractionalized luxury European properties built on Solana SPL & Token-2022 standards, ring-fenced SPV custody, and monthly EUR/USDC distributions.',
+      es: 'Invierta en propiedades de lujo europeas fraccionadas con estándares Solana SPL y Token-2022, custodia SPV segregada y distribuciones mensuales en EUR/USDC.',
+      fr: "Investissez dans l'immobilier de luxe européen fractionné sur Solana SPL & Token-2022, structure SPV étanche et distributions mensuelles en EUR/USDC.",
+      de: 'Investieren Sie in fraktionierte europäische Luxusimmobilien auf Solana SPL & Token-2022 Basis, insolvenzsicherer SPV-Verwahrung und monatlichen EUR/USDC-Renditen.',
     },
     image: DEFAULT_IMAGE,
     type: 'website',
     schemaType: 'RealEstateAgent',
+  },
+  '/trust': {
+    title: {
+      en: "Institutional Trust Centre & Corporate Registry | L'Agence Real Estate",
+      es: "Centro de Confianza Institucional y Registro Mercantil | L'Agence",
+      fr: "Centre de Confiance Institutionnel & Registre RCS | L'Agence",
+      de: "Institutionelles Trust Centre & Handelsregister | L'Agence",
+    },
+    description: {
+      en: 'Verify corporate registration (SIREN 494 861 560, RCS Paris, VAT FR80494861560), Solana Mainnet program addresses, audit disclosures, and SPV asset safeguards.',
+      es: 'Verifique el registro societario (SIREN 494 861 560, RCS París, IVA FR80494861560), direcciones Solana Mainnet, auditorías y custodia SPV.',
+      fr: 'Vérifiez l\'immatriculation (SIREN 494 861 560, RCS Paris, TVA FR80494861560), les programmes Solana Mainnet, audits et garanties SPV.',
+      de: 'Prüfen Sie Handelsregisterdaten (SIREN 494 861 560, RCS Paris, USt-IdNr. FR80494861560), Solana Mainnet-Adressen und SPV-Sicherheiten.',
+    },
+    image: DEFAULT_IMAGE,
+    type: 'website',
+    schemaType: 'FinancialService',
   },
   '/properties': {
     title: {
@@ -180,16 +197,16 @@ export const ROUTE_SEO_MAP: Record<string, RouteSeoDefinition> = {
   },
   '/token': {
     title: {
-      en: "Polygon ERC-20 Token Model & Secondary Liquidity | L'Agence",
-      es: "Modelo de Token ERC-20 en Polygon y Liquidez Secundaria | L'Agence",
-      fr: "Modèle de Token ERC-20 sur Polygon & Liquidité | L'Agence",
-      de: "Polygon ERC-20 Token-Modell & Sekundärmarkt-Liquidität | L'Agence",
+      en: "Solana SPL & Token-2022 Architecture & USDC Settlement | L'Agence",
+      es: "Arquitectura Solana SPL / Token-2022 y Liquidación USDC | L'Agence",
+      fr: "Architecture Solana SPL / Token-2022 & Règlement USDC | L'Agence",
+      de: "Solana SPL & Token-2022 Architektur & USDC-Abwicklung | L'Agence",
     },
     description: {
-      en: 'Learn about our Polygon-secured token architecture, automated monthly USDC/EUR rental distributions, and secondary P2P trading liquidity.',
-      es: 'Conozca la arquitectura de tokens en Polygon, dividendos mensuales automáticos en USDC/EUR y liquidez P2P secundaria.',
-      fr: 'Découvrez notre architecture de tokens sécurisée par Polygon, les distributions locatives mensuelles en USDC/EUR et la liquidité P2P.',
-      de: 'Erfahren Sie mehr über unsere Polygon-Token-Architektur, monatliche USDC/EUR-Mietrenditen und P2P-Sekundärmarktliquidität.',
+      en: 'Explore our Solana SPL (TokenkegQfe...) and Token-2022 compliance architecture, Circle USDC Mainnet settlement, and ring-fenced SPV cap-table registry.',
+      es: 'Conozca la arquitectura Solana SPL y Token-2022, liquidación mensual en Circle USDC Mainnet y custodia SPV segregada.',
+      fr: 'Découvrez notre architecture Solana SPL et Token-2022, les règlements mensuels en USDC Mainnet et le registre SPV.',
+      de: 'Erfahren Sie mehr über unsere Solana SPL & Token-2022 Architektur, monatliche USDC-Ausschüttungen und SPV-Verwahrung.',
     },
     image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&h=630&q=85',
     type: 'website',
@@ -292,6 +309,23 @@ export const ROUTE_SEO_MAP: Record<string, RouteSeoDefinition> = {
       es: 'Aviso europeo de privacidad RGPD sobre tratamiento de datos, cifrado de seguridad en AML/KYC y derechos del inversor.',
       fr: 'Notice RGPD européenne détaillant le traitement des données, le chiffrement des vérifications AML/KYC et vos droits.',
       de: 'Europäische DSGVO-Datenschutzerklärung über Datenverarbeitung, AML/KYC-Verschlüsselung und Anlegerrechte.',
+    },
+    image: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1200&h=630&q=85',
+    type: 'website',
+    schemaType: 'FinancialService',
+  },
+  '/cookies': {
+    title: {
+      en: "Cookie Policy & ePrivacy Consent | L'Agence Real Estate",
+      es: "Política de Cookies y Privacidad | L'Agence Real Estate",
+      fr: "Politique de Gestion des Cookies | L'Agence Real Estate",
+      de: "Cookie-Richtlinie & Datenschutz | L'Agence Real Estate",
+    },
+    description: {
+      en: 'Detailed cookie governance, session security storage, and EU ePrivacy Directive consent controls on L\'Agence Real Estate.',
+      es: 'Gobernanza detallada de cookies, almacenamiento seguro de sesión y controles de consentimiento ePrivacy de la UE.',
+      fr: 'Politique détaillée relative aux cookies, sécurité des sessions et gestion du consentement ePrivacy européen.',
+      de: 'Detaillierte Cookie-Richtlinie, Sitzungssicherheit und EU-ePrivacy-Einwilligungsverwaltung.',
     },
     image: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1200&h=630&q=85',
     type: 'website',
@@ -430,6 +464,8 @@ export function updatePageSeo(options?: UpdateSeoOptions): void {
       'longitude': 2.1648
     },
     'telephone': '+34910849210',
+    'taxID': '494 861 560',
+    'vatID': 'FR80494861560',
     'priceRange': '€€€€'
   };
 

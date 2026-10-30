@@ -8,8 +8,8 @@ export interface SchemaJsonLdProps {
   customSchema?: Record<string, any>;
 }
 
-const BASE_URL = 'https://kretz.site';
-const BRAND_LOGO = 'https://kretz.site/assets/aistudio/IMG_7234_bd44519a.jpeg';
+const BASE_URL = 'https://kretzdespain.com';
+const BRAND_LOGO = 'https://kretzdespain.com/assets/aistudio/IMG_7234_bd44519a.jpeg';
 
 /**
  * 1. Generates Schema.org Organization (RealEstateAgent) structured data
@@ -20,10 +20,14 @@ export function generateOrganizationSchema() {
     '@type': 'RealEstateAgent',
     '@id': `${BASE_URL}/#organization`,
     name: "L'Agence Real Estate",
+    legalName: "L'Agence Real Estate (LLC)",
+    taxID: '494 861 560',
+    vatID: 'FR80494861560',
+    iso6523Code: '0002:49486156000030',
     alternateName: [
       "L'Agence Real Estate & Tokenized Assets",
       "Kretz & De Spain Luxury Real Estate",
-      "L'Agence Real Estate S.L."
+      "L'Agence Real Estate (Paris RCS 494 861 560)"
     ],
     url: BASE_URL,
     logo: {
@@ -32,18 +36,27 @@ export function generateOrganizationSchema() {
       caption: "L'Agence Real Estate Official Crest"
     },
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&h=630&q=85',
-    description: 'Institutional-grade tokenized luxury real estate and prime European property investments. Ring-fenced SPV custody, independent RICS valuations, and automated monthly distributions.',
+    description: 'Institutional-grade tokenized luxury real estate and prime European property investments built around ring-fenced SPV custody and Solana blockchain settlement infrastructure.',
     telephone: '+34910849210',
     email: 'info@kretz.site',
     priceRange: '€€€€',
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: 'Carrer de Pau Claris, 139, Eixample',
-      addressLocality: 'Barcelona',
-      addressRegion: 'Catalonia',
-      postalCode: '08009',
-      addressCountry: 'ES'
-    },
+    address: [
+      {
+        '@type': 'PostalAddress',
+        streetAddress: '24 Rue du Faubourg Saint-Honoré',
+        addressLocality: 'Paris',
+        postalCode: '75008',
+        addressCountry: 'FR'
+      },
+      {
+        '@type': 'PostalAddress',
+        streetAddress: 'Carrer de Pau Claris, 139, Eixample',
+        addressLocality: 'Barcelona',
+        addressRegion: 'Catalonia',
+        postalCode: '08009',
+        addressCountry: 'ES'
+      }
+    ],
     geo: {
       '@type': 'GeoCoordinates',
       latitude: 41.3934,

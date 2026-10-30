@@ -30,8 +30,12 @@ const STATIC_ROUTE_LABELS: Record<string, string> = {
   '/investing': 'How It Works',
   '/faq': 'FAQ & Compliance',
   '/contact': 'Contact Desk',
-  '/legal': 'Legal Framework',
-  '/terms': 'Terms of Service',
+  '/trust': 'Institutional Trust Centre',
+  '/trust-center': 'Institutional Trust Centre',
+  '/trust-centre': 'Institutional Trust Centre',
+  '/transparency': 'Institutional Trust Centre',
+  '/legal': 'Legal Documentation Centre',
+  '/terms': 'Terms and Conditions',
   '/privacy': 'Privacy Policy',
   '/cookies': 'Cookie Policy',
   '/blog': 'Blog & Insights',
@@ -110,7 +114,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
       document.head.appendChild(script);
     }
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://kretz.site';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://kretzdespain.com';
     const breadcrumbListSchema = {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',

@@ -37,6 +37,7 @@ import { RechartsPropertyDashboard } from '../visuals/RechartsPropertyDashboard'
 import { SolanaWalletManager } from '../wallet/SolanaWalletManager';
 import { TaxReportGenerator } from '../documents/TaxReportGenerator';
 import { TreasuryConverterModal } from '../dashboard/TreasuryConverterModal';
+import { InvestorAnalyticsSuite } from '../dashboard/InvestorAnalyticsSuite';
 
 interface DashboardPageProps {
   defaultTab?: string;
@@ -374,6 +375,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'analytics', label: 'Portfolio Analytics', icon: PieChart },
     { id: 'portfolio', label: 'My Portfolio', icon: Building2, count: investments.length },
     { id: 'properties', label: 'Explore Properties', icon: TrendingUp },
     { id: 'transactions', label: 'Transactions', icon: History, count: transactions.length },
@@ -576,6 +578,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <nav className="hidden lg:flex items-center gap-1 bg-[var(--dash-header-controls)] px-2 py-1 rounded-xl border border-[var(--dash-header-controls-border)] shadow-xs">
             {[
               { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'analytics', label: 'Analytics', icon: PieChart },
               { id: 'properties', label: 'Investments', icon: TrendingUp },
               { id: 'transactions', label: 'Transactions', icon: History },
               { id: 'documents', label: 'Reports', icon: FileText },
@@ -933,6 +936,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {[
               { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'analytics', label: 'Portfolio Analytics', icon: PieChart },
               { id: 'properties', label: 'Investments', icon: TrendingUp },
               { id: 'transactions', label: 'Transactions', icon: History },
               { id: 'documents', label: 'Reports', icon: FileText },
@@ -1135,8 +1139,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
                 </div>
 
+                {/* Comprehensive Institutional Portfolio Analytics Suite (Real Ledger Data) */}
+                <InvestorAnalyticsSuite
+                  properties={properties}
+                  investments={investments}
+                  transactions={transactions}
+                  walletBalance={user.walletBalance}
+                  onExploreProperties={() => setActiveTab('properties')}
+                  onSelectProperty={onSelectProperty}
+                  onOpenTransactions={() => setActiveTab('transactions')}
+                />
+
                 {/* Monthly Dividend Yield Trends Chart */}
-                <YieldPayoutTrendsChart />
+                <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
 
                 <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#E4EEEA] shadow-sm space-y-3">
                   <div className="flex justify-between items-center">
@@ -1154,6 +1169,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                   <TransactionTable transactions={transactions} maxRows={5} />
                 </div>
+              </div>
+            )}
+
+            {/* 1.5 PORTFOLIO ANALYTICS TAB */}
+            {activeTab === 'analytics' && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <InvestorAnalyticsSuite
+                  properties={properties}
+                  investments={investments}
+                  transactions={transactions}
+                  walletBalance={user.walletBalance}
+                  onExploreProperties={() => setActiveTab('properties')}
+                  onSelectProperty={onSelectProperty}
+                  onOpenTransactions={() => setActiveTab('transactions')}
+                />
+                <RechartsPropertyDashboard
+                  properties={properties}
+                  investments={investments}
+                  transactions={transactions}
+                />
               </div>
             )}
 

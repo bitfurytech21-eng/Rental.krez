@@ -1,33 +1,60 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 
+import { Property } from '../../types/property';
+
 interface PlatformStatsProps {
   activeOfferingsCount?: number;
+  properties?: Property[];
 }
 
-export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCount }) => {
+export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCount, properties = [] }) => {
   const prefersReducedMotion = useReducedMotion();
+
+  const approvedProps = properties.filter(
+    (p) =>
+      p.status !== 'hidden' &&
+      p.status !== 'pending_approval' &&
+      p.approvedForFrontend !== false &&
+      Boolean(p.assignedFunction)
+  );
+
+  const totalTargetEur = approvedProps.reduce((sum, p) => sum + (p.targetAmount || 0), 0);
+  const avgReturn =
+    approvedProps.length > 0
+      ? approvedProps.reduce(
+          (sum, p) => sum + (p.totalEstimatedReturn || p.estimatedAnnualYield || 0),
+          0
+        ) / approvedProps.length
+      : 11.2;
+
+  const formattedCapValue =
+    totalTargetEur >= 1_000_000
+      ? `€${(totalTargetEur / 1_000_000).toFixed(1)}M`
+      : '€142.5M+';
+
+  const resolvedCount = activeOfferingsCount ?? approvedProps.length;
 
   const stats = [
     {
-      value: '€142.5M+',
-      label: 'Capitalized Asset Value',
+      value: formattedCapValue,
+      label: totalTargetEur > 0 ? 'Active Marketplace Target AUM' : 'Capitalized Asset Value',
       detail: 'Trophy residential & prime commercial properties across Europe',
     },
     {
-      value: '11.2%',
-      label: 'Average Annualized Net Return',
-      detail: 'Historical rental dividends plus realized capital appreciation',
+      value: `${avgReturn.toFixed(1)}%`,
+      label: 'Average Underwritten Annual Return',
+      detail: 'Projected net rental distributions plus targeted capital appreciation',
     },
     {
-      value: activeOfferingsCount && activeOfferingsCount > 0 ? `${activeOfferingsCount} Live` : '53 Assets',
-      label: activeOfferingsCount && activeOfferingsCount > 0 ? 'Active Marketplace SPVs' : 'Curated European Offerings',
+      value: resolvedCount > 0 ? `${resolvedCount} Live` : '53 Assets',
+      label: resolvedCount > 0 ? 'Approved Marketplace SPVs' : 'Curated European Offerings',
       detail: 'France, Spain, Portugal, and international sunshine markets',
     },
     {
-      value: '100%',
-      label: 'Independent SPV Protection',
-      detail: 'Ring-fenced corporate custody with audited physical deeds',
+      value: 'Solana + SPV',
+      label: 'Dual-Layer Custody & Settlement',
+      detail: 'Ring-fenced corporate deeds with SPL, Token-2022 & Circle USDC rails',
     },
   ];
 

@@ -1,11 +1,16 @@
 export type SolanaCluster = 'mainnet-beta' | 'devnet' | 'testnet';
 
+export const SOLANA_USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+export const SOLANA_SPL_TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+export const SOLANA_TOKEN_2022_PROGRAM_ID = 'TokenzQdBNbLqP5VEhdKAS6EPFLC1PHnBqCXEPpxuEb';
+
 export interface SolanaWalletState {
   isConnected: boolean;
   isInjectedExtension: boolean;
   address: string | null;
   cluster: SolanaCluster;
   solBalance: number | null;
+  usdcBalance?: number | null;
   providerName: 'Phantom' | 'Solflare' | 'Backpack' | 'Whitelisted Custody Address' | null;
   error?: string;
 }
@@ -19,6 +24,17 @@ export interface SolanaTokenInfo {
   propertyId: string;
   propertyTitle: string;
   splProgramId: string;
+}
+
+export interface SolanaAccountVerificationResult {
+  address: string;
+  exists: boolean;
+  executable: boolean;
+  owner: string | null;
+  lamports: number;
+  verifiedAt: string;
+  endpoint?: string;
+  error?: string;
 }
 
 const SOLANA_RPC_ENDPOINTS: Record<SolanaCluster, string[]> = {
@@ -61,7 +77,7 @@ export function generateSolanaAddress(seedStr: string): string {
 export function getSolanaExplorerUrl(
   txOrAddress: string,
   type: 'tx' | 'address' = 'tx',
-  cluster: SolanaCluster = 'devnet'
+  cluster: SolanaCluster = 'mainnet-beta'
 ): string {
   const clusterParam = cluster === 'mainnet-beta' ? '' : `?cluster=${cluster}`;
   return `https://explorer.solana.com/${type}/${txOrAddress}${clusterParam}`;
@@ -69,8 +85,8 @@ export function getSolanaExplorerUrl(
 
 export function getSolscanUrl(
   txOrAddress: string,
-  type: 'tx' | 'account' = 'tx',
-  cluster: SolanaCluster = 'devnet'
+  type: 'tx' | 'account' | 'token' = 'tx',
+  cluster: SolanaCluster = 'mainnet-beta'
 ): string {
   const clusterParam = cluster === 'mainnet-beta' ? '' : `?cluster=${cluster}`;
   return `https://solscan.io/${type}/${txOrAddress}${clusterParam}`;
@@ -106,13 +122,13 @@ export function getSolanaProvider(): { provider: any; name: 'Phantom' | 'Solflar
  */
 export async function fetchSolanaBalance(
   address: string,
-  cluster: SolanaCluster = 'devnet'
+  cluster: SolanaCluster = 'mainnet-beta'
 ): Promise<{ lamports: number; sol: number; endpoint: string }> {
   if (!isValidSolanaAddress(address)) {
     throw new Error('Invalid Solana Base58 public address.');
   }
 
-  const endpoints = SOLANA_RPC_ENDPOINTS[cluster] || SOLANA_RPC_ENDPOINTS.devnet;
+  const endpoints = SOLANA_RPC_ENDPOINTS[cluster] || SOLANA_RPC_ENDPOINTS['mainnet-beta'];
   let lastError: Error | null = null;
 
   for (const endpoint of endpoints) {
@@ -158,10 +174,142 @@ export async function fetchSolanaBalance(
 }
 
 /**
+ * Queries real on-chain USDC balance on Solana Mainnet-Beta using Circle's canonical USDC Mint
+ * (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v) via getTokenAccountsByOwner.
+ */
+export async function fetchSolanaUsdcBalance(
+  ownerAddress: string,
+  cluster: SolanaCluster = 'mainnet-beta'
+): Promise<{ usdc: number; tokenAccountsCount: number; endpoint: string } | null> {
+  if (!isValidSolanaAddress(ownerAddress) || cluster !== 'mainnet-beta') {
+    return null;
+  }
+
+  const endpoints = SOLANA_RPC_ENDPOINTS['mainnet-beta'];
+  for (const endpoint of endpoints) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'getTokenAccountsByOwner',
+          params: [
+            ownerAddress.trim(),
+            { mint: SOLANA_USDC_MINT_ADDRESS },
+            { encoding: 'jsonParsed', commitment: 'confirmed' },
+          ],
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!response.ok) continue;
+
+      const json = await response.json();
+      if (json.error) continue;
+
+      const accounts = Array.isArray(json?.result?.value) ? json.result.value : [];
+      let totalUsdc = 0;
+      for (const acc of accounts) {
+        const uiAmount = Number(
+          acc?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0
+        );
+        if (!Number.isNaN(uiAmount)) {
+          totalUsdc += uiAmount;
+        }
+      }
+      return {
+        usdc: Number(totalUsdc.toFixed(2)),
+        tokenAccountsCount: accounts.length,
+        endpoint,
+      };
+    } catch {
+      clearTimeout(timer);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Verifies the 3 canonical Solana Mainnet infrastructure accounts via backend proxy or direct Mainnet RPC.
+ */
+export async function verifyInfrastructureAccountsOnMainnet(): Promise<
+  Record<string, SolanaAccountVerificationResult>
+> {
+  const targetAddresses = [
+    SOLANA_USDC_MINT_ADDRESS,
+    SOLANA_SPL_TOKEN_PROGRAM_ID,
+    SOLANA_TOKEN_2022_PROGRAM_ID,
+  ];
+
+  // 1. Try server-side proxy endpoint first to avoid browser CORS / rate limits
+  try {
+    const apiRes = await fetch('/api/v1/blockchain/infrastructure?verifyRpc=true');
+    if (apiRes.ok) {
+      const json = await apiRes.json();
+      if (json?.success && json?.data?.rpcVerification) {
+        return json.data.rpcVerification;
+      }
+    }
+  } catch {
+    // Fall back to direct RPC below
+  }
+
+  // 2. Fallback to direct Solana Mainnet-Beta getMultipleAccounts
+  const verifiedAt = new Date().toISOString();
+  for (const endpoint of SOLANA_RPC_ENDPOINTS['mainnet-beta']) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 3,
+          method: 'getMultipleAccounts',
+          params: [targetAddresses, { encoding: 'base64', commitment: 'confirmed' }],
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!response.ok) continue;
+
+      const json = await response.json();
+      const values = json?.result?.value;
+      if (!Array.isArray(values)) continue;
+
+      const map: Record<string, SolanaAccountVerificationResult> = {};
+      targetAddresses.forEach((addr, idx) => {
+        const info = values[idx];
+        map[addr] = {
+          address: addr,
+          exists: Boolean(info),
+          executable: Boolean(info?.executable),
+          owner: info?.owner || null,
+          lamports: Number(info?.lamports ?? 0),
+          verifiedAt,
+          endpoint,
+        };
+      });
+      return map;
+    } catch {
+      clearTimeout(timer);
+    }
+  }
+
+  throw new Error('Unable to reach Solana Mainnet-Beta RPC to verify program accounts right now.');
+}
+
+/**
  * Connects to a real injected Solana wallet extension (never fabricates a fake wallet or balance).
  */
 export async function connectSolanaWallet(
-  preferredCluster: SolanaCluster = 'devnet'
+  preferredCluster: SolanaCluster = 'mainnet-beta'
 ): Promise<SolanaWalletState> {
   const detected = getSolanaProvider();
 
@@ -172,6 +320,7 @@ export async function connectSolanaWallet(
       address: null,
       cluster: preferredCluster,
       solBalance: null,
+      usdcBalance: null,
       providerName: null,
       error: 'No Solana wallet extension (Phantom, Solflare, or Backpack) was detected in this browser. Install an extension or register a public Solana address below for read-only custody tracking.',
     };
@@ -185,10 +334,15 @@ export async function connectSolanaWallet(
     }
 
     let solBalance: number | null = null;
+    let usdcBalance: number | null = null;
     let balanceError: string | undefined;
     try {
       const bal = await fetchSolanaBalance(address, preferredCluster);
       solBalance = bal.sol;
+      if (preferredCluster === 'mainnet-beta') {
+        const usdcRes = await fetchSolanaUsdcBalance(address, preferredCluster);
+        usdcBalance = usdcRes ? usdcRes.usdc : null;
+      }
     } catch (rpcErr: any) {
       balanceError = rpcErr?.message;
     }
@@ -199,6 +353,7 @@ export async function connectSolanaWallet(
       address,
       cluster: preferredCluster,
       solBalance,
+      usdcBalance,
       providerName: detected.name,
       error: balanceError,
     };
@@ -209,6 +364,7 @@ export async function connectSolanaWallet(
       address: null,
       cluster: preferredCluster,
       solBalance: null,
+      usdcBalance: null,
       providerName: null,
       error: err?.message || 'Wallet connection request was rejected by the user.',
     };
@@ -247,7 +403,7 @@ export async function signSolanaOwnershipProof(messageText: string): Promise<{
   };
 }
 
-export function disconnectSolanaWallet(cluster: SolanaCluster = 'devnet'): SolanaWalletState {
+export function disconnectSolanaWallet(cluster: SolanaCluster = 'mainnet-beta'): SolanaWalletState {
   const detected = getSolanaProvider();
   if (detected?.provider?.disconnect) {
     try {
@@ -260,6 +416,7 @@ export function disconnectSolanaWallet(cluster: SolanaCluster = 'devnet'): Solan
     address: null,
     cluster,
     solBalance: null,
+    usdcBalance: null,
     providerName: null,
   };
 }

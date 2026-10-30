@@ -102,16 +102,18 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
   ];
 
   const secondaryMenuLinks = [
+    { label: 'Institutional Trust Centre', path: '/trust', desc: 'Corporate registry (SIREN 494 861 560), Solana RPC & audits' },
+    { label: 'Legal Documentation Centre', path: '/legal', desc: '12 official terms, SPV agreements, AML/KYC & risk disclosures' },
+    { label: 'Token Model & Solana Rails', path: '/token', desc: 'Solana SPL, Token-2022 & Circle USDC settlement architecture' },
     { label: 'Success Stories', path: '/casos-de-exito', desc: 'Historical exits and 15.4% average realized IRR' },
     { label: 'Wealth Advisory', path: '/wealth', desc: 'Cross-border estate structuring & family office advisory' },
     { label: 'Company News & Media', path: '/news', desc: 'Official broadcasts, TV interviews and press releases' },
-    { label: 'Token Model & Liquidity', path: '/token', desc: 'Solana SPL Token architecture & secondary transfer desk' },
     { label: 'FAQ & Disclosures', path: '/faq', desc: 'Legal structuring, KYC and investor protection notice' },
     { label: 'Contact & Advisory Desk', path: '/contact', desc: 'Barcelona & Paris client desks for private consultations' },
   ];
 
   const isInsightsActive = currentPath === '/insights' || currentPath.startsWith('/insights/');
-  const isMoreActive = secondaryMenuLinks.some(link => currentPath === link.path);
+  const isMoreActive = secondaryMenuLinks.some(link => currentPath === link.path || currentPath.startsWith(`${link.path}?`));
 
   return (
     <header className={`sticky top-0 z-50 w-full backdrop-blur-md border-b transition-colors ${
@@ -451,11 +453,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 Advisory &amp; Governance
               </p>
               <div className={`grid grid-cols-2 gap-2 text-xs font-medium ${isDark ? 'text-slate-300' : 'text-[#5E5A54]'}`}>
+                <button onClick={() => handleNavClick('/trust')} className={`text-left py-1.5 font-bold ${isDark ? 'text-[#BEE179] hover:text-white' : 'text-[#1E3A34] hover:text-[#1C1917]'}`}>Trust Centre</button>
+                <button onClick={() => handleNavClick('/legal')} className={`text-left py-1.5 font-bold ${isDark ? 'text-[#BEE179] hover:text-white' : 'text-[#1E3A34] hover:text-[#1C1917]'}`}>Legal Centre (12)</button>
+                <button onClick={() => handleNavClick('/token')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Solana Token Model</button>
                 <button onClick={() => handleNavClick('/casos-de-exito')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Success Stories</button>
                 <button onClick={() => handleNavClick('/wealth')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Wealth Advisory</button>
                 <button onClick={() => handleNavClick('/news')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Company News</button>
-                <button onClick={() => handleNavClick('/token')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Token Model</button>
-                <button onClick={() => handleNavClick('/faq')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>FAQ &amp; Legal</button>
+                <button onClick={() => handleNavClick('/faq')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>FAQ &amp; Disclosures</button>
                 <button onClick={() => handleNavClick('/contact')} className={`text-left py-1.5 ${isDark ? 'hover:text-white' : 'hover:text-[#1C1917]'}`}>Contact Desk</button>
               </div>
             </div>

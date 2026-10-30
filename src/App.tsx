@@ -22,6 +22,8 @@ import { ClubTeaserSection } from './components/home/ClubTeaserSection';
 import { CasosDeExitoTeaser } from './components/home/CasosDeExitoTeaser';
 import { InsightsTeaserSection } from './components/home/InsightsTeaserSection';
 import { TrustedByInvestorsSection } from './components/home/TrustedByInvestorsSection';
+import { SolanaInfrastructureSection } from './components/home/SolanaInfrastructureSection';
+import { TrustCenterPreviewSection } from './components/home/TrustCenterPreviewSection';
 
 // Dedicated Pages
 import { PropertiesPage } from './components/pages/PropertiesPage';
@@ -31,6 +33,7 @@ import { TokenPage } from './components/pages/TokenPage';
 import { FAQPage } from './components/pages/FAQPage';
 import { ContactPage } from './components/pages/ContactPage';
 import { LegalPage } from './components/pages/LegalPage';
+import { TrustCenterPage } from './components/pages/TrustCenterPage';
 import { TeamPage } from './components/pages/TeamPage';
 import { WealthPage } from './components/pages/WealthPage';
 import { MembershipPage } from './components/pages/MembershipPage';
@@ -358,15 +361,41 @@ function MainApp() {
       case '/contact':
         return <ContactPage />;
 
+      case '/trust':
+      case '/trust-center':
+      case '/trust-centre':
+      case '/transparency':
+        return <TrustCenterPage onNavigate={navigateTo} />;
+
       case '/legal':
       case '/compliance':
       case '/disclosures':
       case '/cookies':
       case '/terms':
-        return <LegalPage mode="terms" />;
-
-      case '/privacy':
-        return <LegalPage mode="privacy" />;
+      case '/privacy': {
+        const queryStr = currentPath.includes('?')
+          ? currentPath.substring(currentPath.indexOf('?'))
+          : typeof window !== 'undefined'
+          ? window.location.search
+          : '';
+        const params = new URLSearchParams(queryStr);
+        const docSlug = params.get('doc') || undefined;
+        const legalMode =
+          basePath === '/privacy'
+            ? 'privacy'
+            : basePath === '/cookies'
+            ? 'cookies'
+            : basePath === '/disclosures'
+            ? 'disclosures'
+            : 'terms';
+        return (
+          <LegalPage
+            mode={legalMode}
+            initialDocSlug={docSlug}
+            onNavigateTrust={() => navigateTo('/trust')}
+          />
+        );
+      }
 
       case '/login':
       case '/signin':
@@ -413,6 +442,7 @@ function MainApp() {
         );
 
       case '/dashboard':
+      case '/analytics':
       case '/portfolio':
       case '/transactions':
       case '/distributions':
@@ -426,6 +456,7 @@ function MainApp() {
       case '/support': {
         const tabMap: Record<string, string> = {
           '/dashboard': 'overview',
+          '/analytics': 'analytics',
           '/portfolio': 'portfolio',
           '/transactions': 'transactions',
           '/distributions': 'distributions',
@@ -506,7 +537,10 @@ function MainApp() {
               onSelectProperty={handleSelectProperty}
             />
 
-            <PlatformStats activeOfferingsCount={liveHomepageOfferingsCount} />
+            <PlatformStats
+              activeOfferingsCount={liveHomepageOfferingsCount}
+              properties={properties}
+            />
 
             <FeaturedPropertiesCarousel
               properties={properties}
@@ -532,6 +566,13 @@ function MainApp() {
               onLearnMore={() => navigateTo('/investing')}
             />
 
+            <SolanaInfrastructureSection
+              properties={properties}
+              onNavigateToken={() => navigateTo('/token')}
+              onNavigateTrust={() => navigateTo('/trust')}
+              onSelectProperty={handleSelectProperty}
+            />
+
             <CasosDeExitoTeaser
               onNavigateCasos={() => navigateTo('/casos-de-exito')}
               onNavigateBlog={() => navigateTo('/blog')}
@@ -545,6 +586,13 @@ function MainApp() {
             />
 
             <Benefits />
+
+            <TrustCenterPreviewSection
+              onNavigateTrust={() => navigateTo('/trust')}
+              onNavigateLegalDoc={(docId) =>
+                navigateTo(docId ? `/legal?doc=${docId}` : '/legal')
+              }
+            />
 
             <ClubTeaserSection
               onExploreClub={() => navigateTo('/club')}
@@ -571,7 +619,7 @@ function MainApp() {
   const rawBasePath = (currentPath.split('#')[0] || '/').split('?')[0];
   const currentBasePath = rawBasePath.length > 1 ? rawBasePath.replace(/\/$/, '') : rawBasePath;
   const isDashboardView = [
-    '/dashboard', '/portfolio', '/transactions', '/distributions', 
+    '/dashboard', '/analytics', '/portfolio', '/transactions', '/distributions', 
     '/wallet', '/deposit', '/withdraw', '/documents', '/referrals', '/notifications', 
     '/profile', '/support'
   ].includes(currentBasePath) || currentBasePath.startsWith('/dashboard');
@@ -583,6 +631,13 @@ function MainApp() {
 
   return (
     <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#f0f8fe] text-[#1C1917] font-sans min-h-screen'}`}>
+      {/* Keyboard Accessibility Skip Link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#0B1B30] focus:text-[#BEE179] focus:font-bold focus:text-xs focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
 
       {!isDashboardView && !isIsolatedAdminEnvironment && <Header currentPath={currentPath} onNavigate={navigateTo} />}
 
@@ -595,7 +650,7 @@ function MainApp() {
         />
       )}
 
-      <div className={`flex-1 flex flex-col ${isDashboardView ? 'overflow-hidden' : ''}`}>
+      <div id="main-content" className={`flex-1 flex flex-col ${isDashboardView ? 'overflow-hidden' : ''}`}>
         {renderContent()}
       </div>
 

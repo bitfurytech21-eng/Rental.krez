@@ -4235,4 +4235,171 @@ router.post('/webhooks/email', (req, res) => {
   });
 });
 
+// ============================================================================
+// INSTITUTIONAL CORPORATE IDENTITY, SOLANA INFRASTRUCTURE & TRUST CENTRE API
+// ============================================================================
+const OFFICIAL_COMPANY_IDENTITY = {
+  siren: '494 861 560',
+  rcs: 'Paris, 494 861 560 R.C.S.',
+  siret: '494 861 560 00030',
+  vatIdentificationNumber: 'FR80494861560',
+  legalForm: 'LLC (Private Limited Company)',
+  operatingBrand: "L'Agence Real Estate · Kretz & De Spain",
+  website: 'https://kretzdespain.com',
+  parisOffice: '24 Rue du Faubourg Saint-Honoré, 75008 Paris, France',
+  barcelonaOffice: 'Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain',
+  contactEmail: 'info@kretz.site'
+};
+
+const OFFICIAL_SOLANA_INFRASTRUCTURE = [
+  {
+    id: 'usdc-mint',
+    name: 'USDC Stablecoin Mint',
+    address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    cluster: 'mainnet-beta',
+    role: 'Settlement & Rental Distribution Stablecoin Mint',
+    purposes: [
+      'Stablecoin used for purchasing investment interests',
+      'Currency intended for rental distribution payments'
+    ],
+    notice: 'Official Solana USDC stablecoin mint. Not a property-share token or bespoke rental distribution contract.',
+    explorerUrl: 'https://explorer.solana.com/address/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+  },
+  {
+    id: 'spl-token-program',
+    name: 'Solana SPL Token Program',
+    address: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+    cluster: 'mainnet-beta',
+    role: 'Canonical Fungible Token Program',
+    purposes: [
+      'Token balances',
+      'Token minting',
+      'Token transfers',
+      'Property investment token operations where applicable'
+    ],
+    explorerUrl: 'https://explorer.solana.com/address/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+  },
+  {
+    id: 'token-2022-program',
+    name: 'Solana Token-2022 Program',
+    address: 'TokenzQdBNbLqP5VEhdKAS6EPFLC1PHnBqCXEPpxuEb',
+    cluster: 'mainnet-beta',
+    role: 'Compliance & Token Extensions Program',
+    purposes: [
+      'Compliance-related token extensions',
+      'Transfer restrictions',
+      'Transfer hooks',
+      'Freeze and allowlist functionality where appropriately configured'
+    ],
+    explorerUrl: 'https://explorer.solana.com/address/TokenzQdBNbLqP5VEhdKAS6EPFLC1PHnBqCXEPpxuEb'
+  }
+];
+
+let cachedMainnetRpcVerification: {
+  expiresAt: number;
+  payload: Record<string, any>;
+} | null = null;
+
+async function querySolanaMainnetAccounts(addresses: string[]): Promise<Record<string, any> | null> {
+  if (cachedMainnetRpcVerification && Date.now() < cachedMainnetRpcVerification.expiresAt) {
+    return cachedMainnetRpcVerification.payload;
+  }
+
+  const rpcEndpoints = [
+    process.env.SOLANA_MAINNET_RPC_URL,
+    'https://solana-rpc.publicnode.com',
+    'https://api.mainnet-beta.solana.com'
+  ].filter((u): u is string => Boolean(u && u.startsWith('http')));
+
+  for (const endpoint of rpcEndpoints) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6500);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'getMultipleAccounts',
+          params: [addresses, { encoding: 'base64', commitment: 'confirmed' }]
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      if (!response.ok) continue;
+      const json: any = await response.json();
+      const values = json?.result?.value;
+      if (!Array.isArray(values)) continue;
+
+      const verifiedAt = new Date().toISOString();
+      const map: Record<string, any> = {};
+      addresses.forEach((addr, idx) => {
+        const info = values[idx];
+        map[addr] = {
+          address: addr,
+          exists: Boolean(info),
+          executable: Boolean(info?.executable),
+          owner: info?.owner || null,
+          lamports: Number(info?.lamports ?? 0),
+          verifiedAt,
+          endpoint
+        };
+      });
+
+      cachedMainnetRpcVerification = {
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        payload: map
+      };
+      return map;
+    } catch {
+      clearTimeout(timeout);
+    }
+  }
+  return null;
+}
+
+router.get('/blockchain/infrastructure', async (req, res) => {
+  const shouldVerifyRpc = String(req.query.verifyRpc || '').toLowerCase() === 'true';
+  let rpcVerification: Record<string, any> | null = null;
+  if (shouldVerifyRpc) {
+    rpcVerification = await querySolanaMainnetAccounts(
+      OFFICIAL_SOLANA_INFRASTRUCTURE.map((item) => item.address)
+    );
+  }
+
+  res.json({
+    success: true,
+    data: {
+      company: OFFICIAL_COMPANY_IDENTITY,
+      network: 'Solana Mainnet-Beta',
+      programsAndMints: OFFICIAL_SOLANA_INFRASTRUCTURE,
+      customSpvContractsStatus: {
+        status: 'BLOCKED',
+        reason: 'Bespoke per-property SPV Token-2022 mints and automated distribution contracts require per-deal notarial SPV closing, Mainnet deployment keys, and independent third-party smart-contract security audit.'
+      },
+      rpcVerification
+    }
+  });
+});
+
+router.get('/trust-center', (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      company: OFFICIAL_COMPANY_IDENTITY,
+      blockchain: OFFICIAL_SOLANA_INFRASTRUCTURE,
+      legalDocumentsCount: 12,
+      securityControls: {
+        adminRouteIsolation: true,
+        rbacEnforcement: true,
+        turnstileBotProtection: true,
+        rateLimitingActive: true,
+        nonCustodialSolanaSigning: true
+      },
+      updatedAt: new Date().toISOString()
+    }
+  });
+});
+
 export default router;

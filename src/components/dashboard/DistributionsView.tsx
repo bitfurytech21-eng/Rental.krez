@@ -29,7 +29,7 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
       <YieldDistributionFlowDiagram />
 
       {/* Monthly Dividend Yield Trends Chart */}
-      <YieldPayoutTrendsChart />
+      <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
       {/* Top summary banner - Finora Deep Emerald Finish */}
       <div className="bg-gradient-to-br from-[#075B46] via-[#087F5B] to-[#0A8F67] text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-[0_6px_24px_rgba(8,127,91,0.15)] relative overflow-hidden border border-[#087F5B]/30">
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
