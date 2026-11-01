@@ -100,12 +100,13 @@ function MainApp() {
   // Update dynamic SEO metadata, canonical tags, localized descriptions, and OpenGraph/Twitter cards
   useEffect(() => {
     if (currentPath.startsWith('/property/') && selectedProperty) {
+      const minimumEntry = Number(selectedProperty.minimumInvestment || selectedProperty.tokenPrice || 750);
       updatePageSeo({
         path: currentPath,
         lang: currentLanguage,
         title: `${selectedProperty.title} – Fractional Investment | L'Agence Real Estate`,
-        description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected net yield ${selectedProperty.estimatedAnnualYield}% p.a. Tokenized shares from €750 with segregated SPV legal ownership.`,
-        image: selectedProperty.images[0],
+        description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected net yield ${selectedProperty.estimatedAnnualYield}% p.a. Tokenized shares from €${minimumEntry.toLocaleString('en-GB')}.`,
+        image: selectedProperty.images?.[0] || '',
         type: 'article',
         schemaType: 'RealEstateAgent',
       });
@@ -626,7 +627,7 @@ function MainApp() {
       {/* Keyboard Accessibility Skip Link */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#0B1B30] focus:text-[#BEE179] focus:font-bold focus:text-xs focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#0B1B30] focus:text-[#BEE179] focus:font-bold focus:outline-none"
       >
         Skip to main content
       </a>
