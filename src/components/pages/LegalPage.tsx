@@ -23,7 +23,7 @@ export const LegalPage: React.FC<LegalPageProps> = ({
       : 'terms-and-conditions');
 
   return (
-    <div className="bg-[#F5F3EE] min-h-screen py-10 sm:py-14">
+    <div className="bg-background text-foreground min-h-screen py-10 sm:py-14">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
         <LegalFrameworkView
           mode="full"

@@ -252,7 +252,7 @@ export const Hero: React.FC<HeroProps> = ({
       onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className="relative bg-[#0B1B30] text-white overflow-hidden border-b border-[#1A3358] pt-10 pb-14 lg:pt-16 lg:pb-20 transition-colors"
+      className="relative bg-[#161616] text-white overflow-hidden border-b border-[#1A3358] pt-10 pb-14 lg:pt-16 lg:pb-20 transition-colors"
     >
       {/* Lightweight Compositor-Only Animated Hero Background */}
       <style>{`
@@ -306,8 +306,8 @@ export const Hero: React.FC<HeroProps> = ({
         </AnimatePresence>
 
         {/* Measured Directional Contrast Scrims Ensuring >4.5:1 Text Readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0B1B30] via-[#0B1B30]/92 to-[#0B1B30]/72" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B30] via-transparent to-[#0B1B30]/70" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#161616] via-[#161616]/92 to-[#161616]/72" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#161616] via-transparent to-[#161616]/70" />
 
         {/* Slow-Moving Ambient Gradient Glows */}
         <div
@@ -329,7 +329,7 @@ export const Hero: React.FC<HeroProps> = ({
         {/* Subtle Floating Ambient Micro-Particles */}
         <div className="hidden sm:block absolute top-[24%] right-[34%] w-1.5 h-1.5 rounded-full bg-[#BEE179]/40 hero-particle" />
         <div
-          className="hidden sm:block absolute top-[58%] right-[16%] w-2 h-2 rounded-full bg-[#8EA7C7]/35 hero-particle"
+          className="hidden sm:block absolute top-[58%] right-[16%] w-2 h-2 rounded-full bg-[#A0A0A0]/35 hero-particle"
           style={{ animationDelay: '4s' }}
         />
         <div
@@ -361,7 +361,7 @@ export const Hero: React.FC<HeroProps> = ({
                   <span className="text-[#6484B0]" aria-hidden="true">
                     ·
                   </span>
-                  <span className="text-[#D1E2F7] font-medium">
+                  <span className="text-[#E2E2E2] font-medium">
                     {currentSlide.kickerContext}
                   </span>
                 </div>
@@ -378,7 +378,7 @@ export const Hero: React.FC<HeroProps> = ({
                 </h1>
 
                 {/* Supporting Copy */}
-                <p className="text-base sm:text-lg text-[#D1E2F7] leading-relaxed max-w-xl font-medium">
+                <p className="text-base sm:text-lg text-[#E2E2E2] leading-relaxed max-w-xl font-medium">
                   {currentSlide.description}
                 </p>
 
@@ -387,19 +387,19 @@ export const Hero: React.FC<HeroProps> = ({
                   <button
                     type="button"
                     onClick={handlePrimaryAction}
-                    className="px-7 py-3.5 rounded-xl bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-md transition-all duration-150 cursor-pointer active:scale-[0.98] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    className="px-7 py-3.5 rounded-xl bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-md transition-all duration-150 cursor-pointer active:scale-[0.98] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   >
                     <span>{currentSlide.primaryCtaLabel}</span>
-                    <ArrowRight className="w-4 h-4 text-[#0B1B30] stroke-[2.75]" />
+                    <ArrowRight className="w-4 h-4 text-[#161616] stroke-[2.75]" />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleSecondaryAction}
-                    className="px-6 py-3.5 rounded-xl bg-[#132745] hover:bg-[#1A3258] border border-[#2B4C7E] text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                    className="px-6 py-3.5 rounded-xl bg-[#262626] hover:bg-[#1A3258] border border-[#2B4C7E] text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                   >
                     <span>{currentSlide.secondaryCtaLabel}</span>
-                    <ArrowRight className="w-4 h-4 text-[#D1E2F7] stroke-[2.25]" />
+                    <ArrowRight className="w-4 h-4 text-[#E2E2E2] stroke-[2.25]" />
                   </button>
                 </div>
               </motion.div>
@@ -441,10 +441,10 @@ export const Hero: React.FC<HeroProps> = ({
                   }
                 }}
                 aria-label={`View offering details for ${currentSlide.spotlightTitle}`}
-                className="bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden shadow-xl hover:border-[#BEE179]/60 transition-colors duration-200 cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                className="bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] overflow-hidden shadow-xl hover:border-[#BEE179]/60 transition-colors duration-200 cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
               >
                 {/* Fixed Aspect-Ratio Property Photography (Zero CLS) */}
-                <div className="relative aspect-[16/11] overflow-hidden bg-[#0A1729]">
+                <div className="relative aspect-[16/11] overflow-hidden bg-[#181818]">
                   <img
                     src={currentSlide.spotlightImage}
                     alt={currentSlide.spotlightTitle}
@@ -459,7 +459,7 @@ export const Hero: React.FC<HeroProps> = ({
                     }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B30]/90 via-[#0B1B30]/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#161616]/90 via-[#161616]/20 to-transparent" />
 
                   <div className="absolute bottom-3.5 left-4 right-4 flex items-end justify-between gap-3">
                     <div className="flex items-center gap-1.5 text-xs text-white/95 font-medium truncate">
@@ -468,7 +468,7 @@ export const Hero: React.FC<HeroProps> = ({
                     </div>
                     {activeProperty && (
                       <div className="text-right shrink-0">
-                        <span className="block text-[10px] text-[#D1E2F7]">Projected Yield</span>
+                        <span className="block text-[10px] text-[#E2E2E2]">Projected Yield</span>
                         <span className="font-mono tabular-nums text-sm font-black text-[#BEE179]">
                           {activeProperty.estimatedAnnualYield}% p.a.
                         </span>
@@ -478,9 +478,9 @@ export const Hero: React.FC<HeroProps> = ({
                 </div>
 
                 {/* Spotlight Details Connected to Real Property Data */}
-                <div className="p-5 sm:p-6 space-y-3.5 bg-[#102442]">
+                <div className="p-5 sm:p-6 space-y-3.5 bg-[#1E1E1E]">
                   <div>
-                    <div className="text-xs text-[#8EA7C7] font-medium truncate">
+                    <div className="text-xs text-[#A0A0A0] font-medium truncate">
                       {currentSlide.spotlightSubtitle}
                     </div>
                     <h2 className="font-serif text-lg sm:text-xl font-bold text-white mt-0.5 group-hover:text-[#BEE179] transition-colors line-clamp-1">
@@ -489,9 +489,9 @@ export const Hero: React.FC<HeroProps> = ({
                   </div>
 
                   {activeProperty ? (
-                    <div className="grid grid-cols-3 gap-3 py-3 border-y border-[#1D3860] text-xs font-mono tabular-nums">
+                    <div className="grid grid-cols-3 gap-3 py-3 border-y border-[#2E2E2E] text-xs font-mono tabular-nums">
                       <div>
-                        <span className="text-[#8EA7C7] block text-[11px] font-sans">
+                        <span className="text-[#A0A0A0] block text-[11px] font-sans">
                           Capitalization
                         </span>
                         <span className="font-semibold text-white">
@@ -499,7 +499,7 @@ export const Hero: React.FC<HeroProps> = ({
                         </span>
                       </div>
                       <div>
-                        <span className="text-[#8EA7C7] block text-[11px] font-sans">
+                        <span className="text-[#A0A0A0] block text-[11px] font-sans">
                           Token Price
                         </span>
                         <span className="font-semibold text-white">
@@ -507,14 +507,14 @@ export const Hero: React.FC<HeroProps> = ({
                         </span>
                       </div>
                       <div>
-                        <span className="text-[#8EA7C7] block text-[11px] font-sans">
+                        <span className="text-[#A0A0A0] block text-[11px] font-sans">
                           Subscription
                         </span>
                         <span className="font-bold text-[#BEE179]">{fundedPercent}% Funded</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="py-3 border-y border-[#1D3860] text-xs text-[#D1E2F7]">
+                    <div className="py-3 border-y border-[#2E2E2E] text-xs text-[#E2E2E2]">
                       Explore verified European property SPVs with independent RICS appraisals and notarized title deeds.
                     </div>
                   )}
@@ -553,7 +553,7 @@ export const Hero: React.FC<HeroProps> = ({
                 />
               );
             })}
-            <span className="ml-2 text-xs font-mono tabular-nums text-[#8EA7C7]">
+            <span className="ml-2 text-xs font-mono tabular-nums text-[#A0A0A0]">
               {String(activeSlideIdx + 1).padStart(2, '0')} / {String(slides.length).padStart(2, '0')}
             </span>
           </div>
@@ -565,7 +565,7 @@ export const Hero: React.FC<HeroProps> = ({
               onClick={() => setIsAutoPlaying((prev) => !prev)}
               aria-label={isAutoPlaying ? 'Pause hero slideshow' : 'Play hero slideshow'}
               aria-pressed={!isAutoPlaying}
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#1E1E1E] hover:bg-[#173158] border border-[#2E2E2E] text-[#E2E2E2] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
             >
               {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
@@ -573,7 +573,7 @@ export const Hero: React.FC<HeroProps> = ({
               type="button"
               onClick={goToPrev}
               aria-label="Previous hero slide"
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#1E1E1E] hover:bg-[#173158] border border-[#2E2E2E] text-[#E2E2E2] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -581,7 +581,7 @@ export const Hero: React.FC<HeroProps> = ({
               type="button"
               onClick={goToNext}
               aria-label="Next hero slide"
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#1E1E1E] hover:bg-[#173158] border border-[#2E2E2E] text-[#E2E2E2] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

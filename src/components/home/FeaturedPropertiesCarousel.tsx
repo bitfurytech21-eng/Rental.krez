@@ -231,7 +231,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
         }
       }}
       onKeyDown={handleKeyDown}
-      className="relative py-16 sm:py-24 bg-[#0B1B30] border-b border-[#1D3860] text-white overflow-hidden"
+      className="relative py-16 sm:py-24 bg-[#161616] border-b border-[#2E2E2E] text-white overflow-hidden"
     >
       {/* Subtle Parallax / Slow-Drifting Ambient Background Layer */}
       <style>{`
@@ -282,7 +282,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               Featured Properties &{' '}
               <span className="text-[#BEE179]">Investment Opportunities</span>
             </h2>
-            <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed">
+            <p className="text-sm sm:text-base text-[#E2E2E2] leading-relaxed">
               Inspect live fractional property offerings backed by notarized SPV deeds, RICS appraisals, and Solana SPL ownership records.
             </p>
           </div>
@@ -290,13 +290,13 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
           {/* Primary Navigation & Carousel Controls */}
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             {filteredOfferings.length > cardsPerView && (
-              <div className="flex items-center gap-1.5 bg-[#102442] border border-[#1D3860] rounded-xl p-1">
+              <div className="flex items-center gap-1.5 bg-[#1E1E1E] border border-[#2E2E2E] rounded-xl p-1">
                 <button
                   type="button"
                   onClick={() => setIsAutoPlaying((prev) => !prev)}
                   aria-label={isAutoPlaying ? 'Pause property carousel' : 'Play property carousel'}
                   aria-pressed={!isAutoPlaying}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   {isAutoPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                 </button>
@@ -304,18 +304,18 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                   type="button"
                   onClick={handlePrev}
                   aria-label="Previous properties"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="px-2 text-xs font-mono tabular-nums text-[#8EA7C7] select-none">
+                <span className="px-2 text-xs font-mono tabular-nums text-[#A0A0A0] select-none">
                   {String(currentIndex + 1).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
                 </span>
                 <button
                   type="button"
                   onClick={handleNext}
                   aria-label="Next properties"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -325,20 +325,20 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
             <button
               type="button"
               onClick={onExploreAll}
-              className="py-2.5 px-5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs tracking-wide flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="py-2.5 px-5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] font-bold text-xs tracking-wide flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <span>Enter Marketplace</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#161616]" />
             </button>
           </div>
         </div>
 
         {/* Interactive Filter Segmented Bar + Real Marketplace Summary */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-[#1D3860]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-[#2E2E2E]">
           <div
             role="tablist"
             aria-label="Filter featured properties by strategy"
-            className="inline-flex flex-wrap items-center gap-1.5 p-1 bg-[#102442] border border-[#1D3860] rounded-xl w-fit"
+            className="inline-flex flex-wrap items-center gap-1.5 p-1 bg-[#1E1E1E] border border-[#2E2E2E] rounded-xl w-fit"
           >
             {[
               { id: 'all' as CategoryFilter, label: `All Offerings (${visibleOfferings.length})` },
@@ -359,8 +359,8 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                   }}
                   className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179] ${
                     active
-                      ? 'bg-[#BEE179] text-[#0B1B30]'
-                      : 'text-[#D1E2F7] hover:text-white hover:bg-[#163056]'
+                      ? 'bg-[#BEE179] text-[#161616]'
+                      : 'text-[#E2E2E2] hover:text-white hover:bg-[#163056]'
                   }`}
                 >
                   {tab.label}
@@ -370,7 +370,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
           </div>
 
           {/* Unboxed Real Marketplace Metrics */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#8EA7C7] font-mono tabular-nums">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#A0A0A0] font-mono tabular-nums">
             <span>
               <strong className="text-white">{visibleOfferings.length}</strong> Live SPVs
             </span>
@@ -395,22 +395,22 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
             {[0, 1, 2].map((skeletonIdx) => (
               <div
                 key={skeletonIdx}
-                className="bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden animate-pulse"
+                className="bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] overflow-hidden animate-pulse"
               >
                 <div className="aspect-[16/10] bg-[#163056]" />
                 <div className="p-6 space-y-4">
-                  <div className="h-3 bg-[#1D3860] rounded w-1/2" />
-                  <div className="h-5 bg-[#1D3860] rounded w-5/6" />
-                  <div className="h-14 bg-[#0B1B30] rounded-xl" />
-                  <div className="h-9 bg-[#1D3860] rounded-lg" />
+                  <div className="h-3 bg-[#2E2E2E] rounded w-1/2" />
+                  <div className="h-5 bg-[#2E2E2E] rounded w-5/6" />
+                  <div className="h-14 bg-[#161616] rounded-xl" />
+                  <div className="h-9 bg-[#2E2E2E] rounded-lg" />
                 </div>
               </div>
             ))}
           </div>
         ) : filteredOfferings.length === 0 ? (
           /* Honest Empty / Filter-No-Match State */
-          <div className="bg-[#102442] rounded-2xl border border-[#1D3860] p-10 sm:p-12 text-center space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center mx-auto text-[#BEE179]">
+          <div className="bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] p-10 sm:p-12 text-center space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-[#161616] border border-[#2E2E2E] flex items-center justify-center mx-auto text-[#BEE179]">
               {visibleOfferings.length === 0 ? (
                 <Building2 className="w-5 h-5" />
               ) : (
@@ -422,7 +422,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                 ? 'No Public Property Offerings Currently Open'
                 : 'No Offerings Match This Strategy Filter'}
             </h3>
-            <p className="text-sm text-[#8EA7C7] max-w-md mx-auto leading-relaxed">
+            <p className="text-sm text-[#A0A0A0] max-w-md mx-auto leading-relaxed">
               {visibleOfferings.length === 0
                 ? 'New tokenized European SPV offerings appear here automatically as soon as due diligence and registry approval complete.'
                 : 'Reset the active strategy filter to view all verified real estate offerings currently open on the platform.'}
@@ -432,7 +432,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                 <button
                   type="button"
                   onClick={() => setCategoryFilter('all')}
-                  className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold transition-colors cursor-pointer"
                 >
                   Show All Offerings ({visibleOfferings.length})
                 </button>
@@ -440,7 +440,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               <button
                 type="button"
                 onClick={onHowItWorks}
-                className="px-5 py-2.5 rounded-xl bg-[#0B1B30] hover:bg-[#132745] border border-[#1D3860] text-white text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#161616] hover:bg-[#262626] border border-[#2E2E2E] text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 Review Investment Structure
               </button>
@@ -485,12 +485,12 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                     style={{ width: `${100 / cardsPerView}%` }}
                     className="px-3 shrink-0"
                   >
-                    <article className="h-full bg-[#102442] rounded-2xl border border-[#1D3860] hover:border-[#BEE179]/60 transition-colors duration-200 overflow-hidden flex flex-col justify-between group text-left">
+                    <article className="h-full bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] hover:border-[#BEE179]/60 transition-colors duration-200 overflow-hidden flex flex-col justify-between group text-left">
                       <div>
                         {/* Fixed-Ratio Image Container Preventing Layout Shift */}
                         <div
                           onClick={() => onSelectProperty(property)}
-                          className="relative aspect-[16/10] overflow-hidden bg-[#081526] cursor-pointer"
+                          className="relative aspect-[16/10] overflow-hidden bg-[#181818] cursor-pointer"
                         >
                           <img
                             src={primaryImage}
@@ -506,7 +506,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                             }}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B30]/90 via-[#0B1B30]/25 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#161616]/90 via-[#161616]/25 to-transparent" />
 
                           {/* Bottom-Left Location & Yield Overlay */}
                           <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-3">
@@ -515,7 +515,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                               <span className="truncate">{property.location}</span>
                             </div>
                             <div className="text-right shrink-0">
-                              <span className="block text-[10px] text-[#D1E2F7]">Target Net Yield</span>
+                              <span className="block text-[10px] text-[#E2E2E2]">Target Net Yield</span>
                               <span className="font-mono tabular-nums text-sm font-black text-[#BEE179]">
                                 {property.estimatedAnnualYield}% p.a.
                               </span>
@@ -526,7 +526,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                         {/* Property Body */}
                         <div className="p-5 sm:p-6 space-y-4">
                           {/* Clean Unboxed Metadata Line */}
-                          <div className="flex items-center gap-2 text-xs text-[#8EA7C7] truncate">
+                          <div className="flex items-center gap-2 text-xs text-[#A0A0A0] truncate">
                             <span className="text-[#BEE179] font-semibold">{property.type}</span>
                             <span aria-hidden="true">·</span>
                             <span className="font-mono tabular-nums">{property.tokenTicker}</span>
@@ -544,21 +544,21 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                           </h3>
 
                           {/* Real Valuation & Token Metrics */}
-                          <div className="grid grid-cols-3 gap-3 py-3 border-y border-[#1D3860] text-xs">
+                          <div className="grid grid-cols-3 gap-3 py-3 border-y border-[#2E2E2E] text-xs">
                             <div>
-                              <span className="block text-[11px] text-[#8EA7C7]">Valuation</span>
+                              <span className="block text-[11px] text-[#A0A0A0]">Valuation</span>
                               <span className="font-mono tabular-nums font-bold text-white">
                                 {formatCurrency(property.targetAmount)}
                               </span>
                             </div>
                             <div>
-                              <span className="block text-[11px] text-[#8EA7C7]">Token Price</span>
+                              <span className="block text-[11px] text-[#A0A0A0]">Token Price</span>
                               <span className="font-mono tabular-nums font-bold text-white">
                                 {formatCurrency(property.tokenPrice)}
                               </span>
                             </div>
                             <div>
-                              <span className="block text-[11px] text-[#8EA7C7]">Available</span>
+                              <span className="block text-[11px] text-[#A0A0A0]">Available</span>
                               <span className="font-mono tabular-nums font-bold text-[#BEE179]">
                                 {property.availableTokens.toLocaleString()} units
                               </span>
@@ -568,12 +568,12 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                           {/* Funding Progress Bar */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between text-xs font-mono tabular-nums">
-                              <span className="text-[#8EA7C7] font-sans">
+                              <span className="text-[#A0A0A0] font-sans">
                                 Subscription Progress
                               </span>
                               <span className="text-white font-semibold">{fundedPct}% Funded</span>
                             </div>
-                            <div className="h-1.5 w-full rounded-full bg-[#0B1B30] overflow-hidden">
+                            <div className="h-1.5 w-full rounded-full bg-[#161616] overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-[#BEE179] transition-transform duration-500 origin-left"
                                 style={{
@@ -590,7 +590,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                         <button
                           type="button"
                           onClick={() => onSelectProperty(property)}
-                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#0B1B30] hover:bg-[#142B4D] border border-[#1D3860] text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#161616] hover:bg-[#142B4D] border border-[#2E2E2E] text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                         >
                           Property Details
                         </button>
@@ -599,10 +599,10 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                           onClick={() =>
                             isFunded ? onSelectProperty(property) : onInvestProperty(property)
                           }
-                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                         >
                           <span>{isFunded ? 'Inspect SPV' : 'Acquire Tokens'}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
+                          <ArrowRight className="w-3.5 h-3.5 text-[#161616]" />
                         </button>
                       </div>
                     </article>
@@ -628,7 +628,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                         className={`h-2 rounded-full transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179] ${
                           isActive
                             ? 'w-8 bg-[#BEE179]'
-                            : 'w-2.5 bg-[#1D3860] hover:bg-[#355A8F]'
+                            : 'w-2.5 bg-[#2E2E2E] hover:bg-[#383838]'
                         }`}
                       />
                     );
@@ -638,7 +638,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                 <div />
               )}
 
-              <div className="flex items-center gap-2 text-xs text-[#8EA7C7]">
+              <div className="flex items-center gap-2 text-xs text-[#A0A0A0]">
                 <ShieldCheck className="w-4 h-4 text-[#BEE179] shrink-0" />
                 <span>
                   Every listing reflects real platform ledger availability and notarized European SPV custody.

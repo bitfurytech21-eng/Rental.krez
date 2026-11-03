@@ -3,7 +3,7 @@ import { ArrowRight, DollarSign, Building, ShieldCheck, Wallet, RefreshCw } from
 
 export const YieldDistributionFlowDiagram: React.FC<{ className?: string }> = ({ className = '' }) => {
   return (
-    <div className={`bg-white dark:bg-[#0D1522] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5 ${className}`}>
+    <div className={`bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5 ${className}`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">

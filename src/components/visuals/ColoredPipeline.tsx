@@ -51,47 +51,47 @@ export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
         };
       case 'active':
         return {
-          bg: 'bg-blue-600',
-          bgLight: 'bg-blue-50 dark:bg-blue-950/40',
-          border: 'border-blue-600',
-          borderLight: 'border-blue-300 dark:border-blue-800',
-          text: 'text-blue-700 dark:text-blue-300',
-          pillBg: 'bg-blue-100 dark:bg-blue-900/50',
-          track: 'bg-blue-500',
+          bg: 'bg-[#C49A6C]',
+          bgLight: 'bg-[#35251C]',
+          border: 'border-[#C49A6C]',
+          borderLight: 'border-[#594333]',
+          text: 'text-[#C49A6C]',
+          pillBg: 'bg-[#403025]',
+          track: 'bg-[#C49A6C]',
           badge: 'In Progress',
         };
       case 'pending':
         return {
-          bg: 'bg-amber-500',
-          bgLight: 'bg-amber-50 dark:bg-amber-950/40',
-          border: 'border-amber-500',
-          borderLight: 'border-amber-200 dark:border-amber-800',
-          text: 'text-amber-700 dark:text-amber-300',
-          pillBg: 'bg-amber-100 dark:bg-amber-900/50',
-          track: 'bg-amber-400',
+          bg: 'bg-amber-600',
+          bgLight: 'bg-[#35251C]',
+          border: 'border-amber-600',
+          borderLight: 'border-[#594333]',
+          text: 'text-amber-400',
+          pillBg: 'bg-[#403025]',
+          track: 'bg-amber-500',
           badge: 'Pending Review',
         };
       case 'failed':
         return {
           bg: 'bg-rose-600',
-          bgLight: 'bg-rose-50 dark:bg-rose-950/40',
+          bgLight: 'bg-rose-950/40',
           border: 'border-rose-600',
-          borderLight: 'border-rose-200 dark:border-rose-800',
-          text: 'text-rose-700 dark:text-rose-300',
-          pillBg: 'bg-rose-100 dark:bg-rose-900/50',
+          borderLight: 'border-rose-900',
+          text: 'text-rose-400',
+          pillBg: 'bg-rose-950',
           track: 'bg-rose-500',
           badge: 'Attention Needed',
         };
       case 'upcoming':
       default:
         return {
-          bg: 'bg-slate-300 dark:bg-slate-600',
-          bgLight: 'bg-slate-50 dark:bg-slate-900/40',
-          border: 'border-slate-300 dark:border-slate-700',
-          borderLight: 'border-slate-200 dark:border-slate-800',
-          text: 'text-slate-600 dark:text-slate-400',
-          pillBg: 'bg-slate-100 dark:bg-slate-800',
-          track: 'bg-slate-200 dark:bg-slate-700',
+          bg: 'bg-[#403025]',
+          bgLight: 'bg-[#211711]',
+          border: 'border-[#594333]',
+          borderLight: 'border-[#594333]',
+          text: 'text-[#C4B5A5]',
+          pillBg: 'bg-[#35251C]',
+          track: 'bg-[#594333]',
           badge: 'Upcoming',
         };
     }
@@ -100,16 +100,16 @@ export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
   const renderIcon = (status: PipelineStageStatus) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="w-4 h-4 text-white" />;
+        return <CheckCircle2 className="w-4 h-4 text-[#211711]" />;
       case 'active':
-        return <Clock className="w-4 h-4 text-white animate-spin-slow" />;
+        return <Clock className="w-4 h-4 text-[#211711] animate-spin-slow" />;
       case 'pending':
         return <Info className="w-4 h-4 text-white" />;
       case 'failed':
         return <AlertCircle className="w-4 h-4 text-white" />;
       case 'upcoming':
       default:
-        return <Circle className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />;
+        return <Circle className="w-3.5 h-3.5 text-[#C4B5A5]" />;
     }
   };
 
@@ -118,32 +118,32 @@ export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1522] p-4 sm:p-5 shadow-sm transition-all ${className}`}
+      className={`rounded-2xl border border-[#594333] bg-[#2B1E17] p-4 sm:p-5 shadow-sm transition-all text-[#F5EFE8] ${className}`}
     >
       {/* Header */}
       {(title || subtitle) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#594333]">
           <div>
             {title && (
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#087F5B] dark:text-[#BEE179]" />
-                <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+                <ShieldCheck className="w-4 h-4 text-[#C49A6C]" />
+                <h4 className="text-sm sm:text-base font-bold text-[#F5EFE8]">
                   {title}
                 </h4>
               </div>
             )}
             {subtitle && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
+              <p className="text-xs text-[#C4B5A5] mt-0.5">{subtitle}</p>
             )}
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] font-mono font-semibold text-[#C4B5A5]">
               Progress: {progressPercent}%
             </span>
-            <div className="w-20 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div className="w-20 h-2 bg-[#211711] rounded-full overflow-hidden border border-[#594333]">
               <div
-                className="h-full bg-emerald-500 transition-all duration-500"
+                className="h-full bg-[#C49A6C] transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -155,9 +155,9 @@ export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
       <div className="hidden md:block">
         <div className="relative flex items-center justify-between my-2">
           {/* Main Pipeline Track Line */}
-          <div className="absolute top-1/2 left-6 right-6 -translate-y-1/2 h-1 bg-slate-100 dark:bg-slate-800 z-0 rounded-full">
+          <div className="absolute top-1/2 left-6 right-6 -translate-y-1/2 h-1 bg-[#211711] z-0 rounded-full">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 via-blue-500 to-amber-500 transition-all duration-700 rounded-full"
+              className="h-full bg-gradient-to-r from-[#C49A6C] via-[#8C5E3C] to-[#594333] transition-all duration-700 rounded-full"
               style={{
                 width: `${Math.max(0, ((completedCount - 0.5) / (stages.length - 1)) * 100)}%`,
               }}
@@ -185,7 +185,7 @@ export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
                 <div
                   className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-all duration-300 ${
                     styles.bg
-                  } ${isActive ? 'ring-4 ring-blue-100 dark:ring-blue-900/60 scale-110' : ''} ${
+                  } ${isActive ? 'ring-4 ring-[#C49A6C]/30 scale-110' : ''} ${
                     isHovered ? 'scale-115 shadow-md' : ''
                   }`}
                 >
@@ -194,14 +194,14 @@ export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
 
                 {/* Stage Step Number & Title */}
                 <div className="mt-2 text-center px-1">
-                  <span className="text-[9.5px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 block">
+                  <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#C4B5A5] block">
                     Step 0{idx + 1}
                   </span>
                   <span
                     className={`text-xs font-bold block line-clamp-1 transition-colors ${
                       isActive
-                        ? 'text-blue-600 dark:text-blue-400 font-extrabold'
-                        : 'text-slate-800 dark:text-slate-200'
+                        ? 'text-[#C49A6C] font-extrabold'
+                        : 'text-[#F5EFE8]'
                     }`}
                   >
                     {stage.title}

@@ -100,7 +100,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
       aria-roledescription="carousel"
       aria-label="Realized Property Exits & Audited Case Studies"
       onKeyDown={handleKeyDown}
-      className="py-20 sm:py-28 bg-[#0B1B30] border-t border-b border-[#1D3860] text-white text-left overflow-hidden"
+      className="py-20 sm:py-28 bg-[#161616] border-t border-b border-[#2E2E2E] text-white text-left overflow-hidden"
     >
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
         {/* Section Header */}
@@ -118,30 +118,30 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
               <span className="text-[#BEE179]">15.4% Avg Realized IRR</span>
             </h2>
 
-            <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed font-normal">
+            <p className="text-sm sm:text-base text-[#E2E2E2] leading-relaxed font-normal">
               Radical transparency on liquidated real estate SPVs. Inspect realized capital distributions, holding durations, and notarized SPV dissolution deeds.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             {CASE_STUDIES.length > cardsPerView && (
-              <div className="flex items-center gap-1.5 bg-[#102442] border border-[#1D3860] rounded-xl p-1">
+              <div className="flex items-center gap-1.5 bg-[#1E1E1E] border border-[#2E2E2E] rounded-xl p-1">
                 <button
                   type="button"
                   onClick={handlePrev}
                   aria-label="Previous realized case study"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="px-2 text-xs font-mono tabular-nums text-[#8EA7C7]">
+                <span className="px-2 text-xs font-mono tabular-nums text-[#A0A0A0]">
                   {String(currentIndex + 1).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
                 </span>
                 <button
                   type="button"
                   onClick={handleNext}
                   aria-label="Next realized case study"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -151,7 +151,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
             <button
               type="button"
               onClick={onNavigateCasos}
-              className="py-2.5 px-5 text-xs font-bold bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="py-2.5 px-5 text-xs font-bold bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <span>All Realized Cases</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -186,10 +186,10 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                 >
                   <article
                     onClick={onNavigateCasos}
-                    className="h-full bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden hover:border-[#BEE179]/60 transition-colors duration-200 flex flex-col justify-between group cursor-pointer"
+                    className="h-full bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] overflow-hidden hover:border-[#BEE179]/60 transition-colors duration-200 flex flex-col justify-between group cursor-pointer"
                   >
                     <div>
-                      <div className="relative aspect-[16/10] overflow-hidden bg-[#0B1B30]">
+                      <div className="relative aspect-[16/10] overflow-hidden bg-[#161616]">
                         <img
                           src={study.image}
                           alt={study.title}
@@ -204,10 +204,10 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                           }}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B30]/92 via-[#0B1B30]/25 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#161616]/92 via-[#161616]/25 to-transparent" />
 
                         <div className="absolute bottom-3 left-3.5 right-3.5 text-left">
-                          <div className="flex items-center gap-1.5 text-xs text-[#D1E2F7]">
+                          <div className="flex items-center gap-1.5 text-xs text-[#E2E2E2]">
                             <span className="text-[#BEE179] font-semibold">
                               {study.city}, {study.country}
                             </span>
@@ -221,55 +221,55 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                       </div>
 
                       <div className="p-5 sm:p-6 space-y-4 text-left">
-                        <div className="grid grid-cols-3 gap-2 py-3 border-y border-[#1D3860] text-center">
+                        <div className="grid grid-cols-3 gap-2 py-3 border-y border-[#2E2E2E] text-center">
                           <div>
-                            <p className="text-[11px] text-[#8EA7C7] font-medium">Realized IRR</p>
+                            <p className="text-[11px] text-[#A0A0A0] font-medium">Realized IRR</p>
                             <p className="font-mono tabular-nums text-lg sm:text-xl font-bold text-[#BEE179]">
                               {study.realTIR}%
                             </p>
                           </div>
-                          <div className="border-x border-[#1D3860]">
-                            <p className="text-[11px] text-[#8EA7C7] font-medium">Net Gain</p>
+                          <div className="border-x border-[#2E2E2E]">
+                            <p className="text-[11px] text-[#A0A0A0] font-medium">Net Gain</p>
                             <p className="font-mono tabular-nums text-lg sm:text-xl font-bold text-white">
                               +{study.capitalGain}%
                             </p>
                           </div>
                           <div>
-                            <p className="text-[11px] text-[#8EA7C7] font-medium">Hold Term</p>
+                            <p className="text-[11px] text-[#A0A0A0] font-medium">Hold Term</p>
                             <p className="font-mono tabular-nums text-lg sm:text-xl font-bold text-white">
                               {study.durationMonths}m
                             </p>
                           </div>
                         </div>
 
-                        <div className="space-y-1.5 text-xs text-[#D1E2F7]">
+                        <div className="space-y-1.5 text-xs text-[#E2E2E2]">
                           <div className="flex justify-between items-center">
-                            <span className="text-[#8EA7C7]">Total Returned</span>
+                            <span className="text-[#A0A0A0]">Total Returned</span>
                             <span className="font-mono tabular-nums font-bold text-white">
                               {formatCurrency(study.totalReturned)}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-[#8EA7C7]">Verified Holders</span>
+                            <span className="text-[#A0A0A0]">Verified Holders</span>
                             <span className="font-mono tabular-nums font-medium text-white">
                               {study.investorCount} investors
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-[#8EA7C7]">Notary Deed</span>
+                            <span className="text-[#A0A0A0]">Notary Deed</span>
                             <span className="font-mono tabular-nums text-[#BEE179] text-[11px] font-bold">
                               {study.spvDeedId}
                             </span>
                           </div>
                         </div>
 
-                        <p className="text-xs text-[#8EA7C7] line-clamp-2 leading-relaxed pt-1">
+                        <p className="text-xs text-[#A0A0A0] line-clamp-2 leading-relaxed pt-1">
                           {study.summary}
                         </p>
                       </div>
                     </div>
 
-                    <div className="px-5 sm:px-6 py-4 border-t border-[#1D3860] flex items-center justify-between text-xs font-bold text-[#BEE179] group-hover:underline">
+                    <div className="px-5 sm:px-6 py-4 border-t border-[#2E2E2E] flex items-center justify-between text-xs font-bold text-[#BEE179] group-hover:underline">
                       <span>View Notarial Deed & Audit</span>
                       <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -292,7 +292,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                   className={`h-2 rounded-full transition-all duration-200 cursor-pointer ${
                     idx === currentIndex
                       ? 'w-8 bg-[#BEE179]'
-                      : 'w-2.5 bg-[#1D3860] hover:bg-[#355A8F]'
+                      : 'w-2.5 bg-[#2E2E2E] hover:bg-[#383838]'
                   }`}
                 />
               ))}
@@ -301,7 +301,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
         </div>
 
         {/* Dual Banner: Educational Blog & Academy */}
-        <div className="p-8 sm:p-10 rounded-2xl bg-[#102442] border border-[#1D3860] shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 text-left">
+        <div className="p-8 sm:p-10 rounded-2xl bg-[#1E1E1E] border border-[#2E2E2E] shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 text-left">
           <div className="space-y-3 max-w-xl">
             <p className="text-xs font-bold text-[#BEE179] tracking-wider flex items-center gap-2">
               <BookOpen className="w-3.5 h-3.5 text-[#BEE179]" />
@@ -310,7 +310,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
             <h3 className="font-serif text-2xl font-bold text-white">
               Understand fractional mechanics before participating
             </h3>
-            <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#E2E2E2] leading-relaxed">
               Read comprehensive analyses on European regulatory frameworks, calculating compound IRR yields, tax reporting, and how SPV deeds ring-fence investor capital.
             </p>
             <div className="pt-1">
@@ -331,9 +331,9 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
               <div
                 key={art.id}
                 onClick={onNavigateBlog}
-                className="p-4 rounded-xl bg-[#0B1B30] hover:bg-[#132745] border border-[#1D3860] transition-colors cursor-pointer space-y-1"
+                className="p-4 rounded-xl bg-[#161616] hover:bg-[#262626] border border-[#2E2E2E] transition-colors cursor-pointer space-y-1"
               >
-                <div className="flex items-center gap-2 text-[11px] text-[#8EA7C7]">
+                <div className="flex items-center gap-2 text-[11px] text-[#A0A0A0]">
                   <span className="font-bold text-[#BEE179]">{art.category}</span>
                   <span aria-hidden="true">·</span>
                   <span className="font-mono tabular-nums">{art.readTime}</span>
@@ -341,7 +341,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                 <h4 className="font-serif font-bold text-xs sm:text-sm text-white line-clamp-1">
                   {art.title}
                 </h4>
-                <p className="text-[11px] text-[#8EA7C7] line-clamp-1">{art.excerpt}</p>
+                <p className="text-[11px] text-[#A0A0A0] line-clamp-1">{art.excerpt}</p>
               </div>
             ))}
           </div>

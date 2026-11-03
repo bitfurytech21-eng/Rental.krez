@@ -14,7 +14,7 @@ export const InvestmentGuidePage: React.FC<InvestmentGuidePageProps> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'setup' | 'faq'>('overview');
 
   return (
-    <div className="bg-[#F8FAFC] min-h-screen py-12">
+    <div className="bg-background text-foreground min-h-screen py-12">
       <div className="container max-w-[1000px] mx-auto px-4 space-y-12">
         {/* Breadcrumb & Header */}
         <div className="space-y-4">

@@ -64,7 +64,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
   ];
 
   return (
-    <section className="relative py-20 sm:py-28 bg-[#0B1B30] text-white overflow-hidden max-w-full border-t border-b border-[#1D3860]">
+    <section className="relative py-20 sm:py-28 bg-[#161616] text-white overflow-hidden max-w-full border-t border-b border-[#2E2E2E]">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 relative z-10">
         
         {/* Section Pill & Header */}
@@ -77,7 +77,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
             A Fresh Perspective on <span className="italic font-normal text-white">Luxury Real Estate</span>
           </h2>
 
-          <p className="text-base sm:text-lg text-[#D1E2F7] leading-relaxed font-normal max-w-2xl">
+          <p className="text-base sm:text-lg text-[#E2E2E2] leading-relaxed font-normal max-w-2xl">
             Founded on family values and institutional rigor, L'Agence pairs bespoke off-market discretion with cutting-edge asset curation across France and prime international markets.
           </p>
         </div>
@@ -86,7 +86,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mb-16">
           
           {/* Left Column: Leadership Card in Deep Navy Surface */}
-          <div className="lg:col-span-5 flex flex-col justify-between bg-[#102442] border border-[#1D3860] rounded-xl p-6 sm:p-8 relative overflow-hidden group shadow-md text-white">
+          <div className="lg:col-span-5 flex flex-col justify-between bg-[#1E1E1E] border border-[#2E2E2E] rounded-xl p-6 sm:p-8 relative overflow-hidden group shadow-md text-white">
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-6">
                 <span className="text-[11px] uppercase tracking-wider font-semibold text-[#BEE179] flex items-center gap-1.5">
@@ -164,7 +164,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
           <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
             
             {/* Primary Discipline Statement Card */}
-            <div className="bg-[#102442] border border-[#1D3860] rounded-xl p-8 sm:p-10 text-left relative overflow-hidden">
+            <div className="bg-[#1E1E1E] border border-[#2E2E2E] rounded-xl p-8 sm:p-10 text-left relative overflow-hidden">
               <span className="text-[11px] uppercase tracking-widest font-semibold text-[#BEE179] mb-2 block">
                 Philosophy
               </span>
@@ -173,7 +173,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                 On Discipline and Method
               </h3>
 
-              <div className="space-y-4 text-sm sm:text-base text-[#D1E2F7] leading-relaxed">
+              <div className="space-y-4 text-sm sm:text-base text-[#E2E2E2] leading-relaxed">
                 <p>
                   Specializing in prime residential and trophy real estate, <strong>L'Agence</strong> provides an editorial, disciplined approach to property acquisition. Founded on deep family integrity, our team collaborates with seasoned advisors across France and international luxury hubs.
                 </p>
@@ -183,14 +183,14 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
               </div>
 
               {/* Dual Strategy Tabs: Public vs Off-Market */}
-              <div className="mt-8 pt-6 border-t border-[#1D3860]">
+              <div className="mt-8 pt-6 border-t border-[#2E2E2E]">
                 <div className="flex items-center gap-2 mb-4">
                   <button
                     onClick={() => setActiveStrategyTab('off-market')}
                     className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                       activeStrategyTab === 'off-market'
-                        ? 'bg-[#BEE179] text-[#0B1B30] shadow-xs'
-                        : 'bg-[#0B1B30] text-[#D1E2F7] hover:text-white border border-[#1D3860]'
+                        ? 'bg-[#BEE179] text-[#161616] shadow-xs'
+                        : 'bg-[#161616] text-[#E2E2E2] hover:text-white border border-[#2E2E2E]'
                     }`}
                   >
                     <EyeOff className="w-3.5 h-3.5" />
@@ -201,8 +201,8 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                     onClick={() => setActiveStrategyTab('public')}
                     className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                       activeStrategyTab === 'public'
-                        ? 'bg-[#BEE179] text-[#0B1B30] shadow-xs'
-                        : 'bg-[#0B1B30] text-[#D1E2F7] hover:text-white border border-[#1D3860]'
+                        ? 'bg-[#BEE179] text-[#161616] shadow-xs'
+                        : 'bg-[#161616] text-[#E2E2E2] hover:text-white border border-[#2E2E2E]'
                     }`}
                   >
                     <Share2 className="w-3.5 h-3.5" />
@@ -211,7 +211,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                 </div>
 
                 {activeStrategyTab === 'off-market' ? (
-                  <div className="p-4 rounded-lg bg-[#0B1B30] border border-[#1D3860] text-left text-xs text-[#D1E2F7] space-y-2">
+                  <div className="p-4 rounded-lg bg-[#161616] border border-[#2E2E2E] text-left text-xs text-[#E2E2E2] space-y-2">
                     <div className="flex items-center gap-2 text-white font-semibold">
                       <Lock className="w-3.5 h-3.5 text-[#BEE179]" />
                       <span>Ultra-Confidential Mandates & Family Office Networks</span>
@@ -221,7 +221,7 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                     </p>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-lg bg-[#0B1B30] border border-[#1D3860] text-left text-xs text-[#D1E2F7] space-y-2">
+                  <div className="p-4 rounded-lg bg-[#161616] border border-[#2E2E2E] text-left text-xs text-[#E2E2E2] space-y-2">
                     <div className="flex items-center gap-2 text-white font-semibold">
                       <Award className="w-3.5 h-3.5 text-[#BEE179]" />
                       <span>Cinematic Media & International Press Coverage</span>
@@ -238,26 +238,26 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 onClick={onNavigateContact}
-                className="p-5 rounded-xl bg-[#102442] hover:bg-[#152e54] border border-[#1D3860] text-left transition-all group cursor-pointer"
+                className="p-5 rounded-xl bg-[#1E1E1E] hover:bg-[#262626] border border-[#2E2E2E] text-left transition-all group cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-bold text-[#BEE179] uppercase tracking-wider">Private Advisory</span>
                   <ArrowRight className="w-3.5 h-3.5 text-[#BEE179] group-hover:translate-x-1 transition-transform" />
                 </div>
                 <p className="text-sm font-bold text-white">Confidential Mandate</p>
-                <p className="text-xs text-[#8EA7C7] mt-0.5">Entrust your acquisition or sale to our advisory team.</p>
+                <p className="text-xs text-[#A0A0A0] mt-0.5">Entrust your acquisition or sale to our advisory team.</p>
               </button>
 
               <button
                 onClick={onNavigateProperties}
-                className="p-5 rounded-xl bg-[#102442] hover:bg-[#152e54] border border-[#1D3860] text-left transition-all group cursor-pointer"
+                className="p-5 rounded-xl bg-[#1E1E1E] hover:bg-[#262626] border border-[#2E2E2E] text-left transition-all group cursor-pointer"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-bold text-[#BEE179] uppercase tracking-wider">Fractional Assets</span>
                   <ArrowRight className="w-3.5 h-3.5 text-[#BEE179] group-hover:translate-x-1 transition-transform" />
                 </div>
                 <p className="text-sm font-bold text-white">Tokenized Offerings</p>
-                <p className="text-xs text-[#8EA7C7] mt-0.5">Invest in verified European prime assets from €750.</p>
+                <p className="text-xs text-[#A0A0A0] mt-0.5">Invest in verified European prime assets from €750.</p>
               </button>
             </div>
 
@@ -265,14 +265,14 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
         </div>
 
         {/* Part 2: Regional Hub Directory */}
-        <div className="bg-[#102442] border border-[#1D3860] rounded-xl p-6 sm:p-8 text-left">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-[#1D3860]">
+        <div className="bg-[#1E1E1E] border border-[#2E2E2E] rounded-xl p-6 sm:p-8 text-left">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-[#2E2E2E]">
             <div>
               <h4 className="font-serif text-lg font-bold text-white flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-[#BEE179]" />
                 Regional Presence & Partner Coverage
               </h4>
-              <p className="text-xs text-[#8EA7C7] mt-0.5">Explore active territory operations across France and key international gateways.</p>
+              <p className="text-xs text-[#A0A0A0] mt-0.5">Explore active territory operations across France and key international gateways.</p>
             </div>
 
             <button
@@ -292,8 +292,8 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
                 onClick={() => setSelectedRegion(idx)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   selectedRegion === idx
-                    ? 'bg-[#BEE179] text-[#0B1B30] shadow-xs'
-                    : 'bg-[#0B1B30] text-[#D1E2F7] hover:text-white border border-[#1D3860]'
+                    ? 'bg-[#BEE179] text-[#161616] shadow-xs'
+                    : 'bg-[#161616] text-[#E2E2E2] hover:text-white border border-[#2E2E2E]'
                 }`}
               >
                 {hub.region}
@@ -302,16 +302,16 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
           </div>
 
           {/* Active Territory Card */}
-          <div className="bg-[#0B1B30] border border-[#1D3860] rounded-lg p-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+          <div className="bg-[#161616] border border-[#2E2E2E] rounded-lg p-5 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
             <div className="md:col-span-8 space-y-1.5">
               <div className="flex items-center gap-3">
                 <span className="font-serif text-base font-bold text-white">{regionalHubs[selectedRegion].region}</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#102442] text-[#BEE179] border border-[#1D3860]">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1E1E1E] text-[#BEE179] border border-[#2E2E2E]">
                   {regionalHubs[selectedRegion].agentsCount}
                 </span>
               </div>
-              <p className="text-xs text-[#D1E2F7]">{regionalHubs[selectedRegion].subtext}</p>
-              <p className="text-xs text-[#8EA7C7] pt-1">
+              <p className="text-xs text-[#E2E2E2]">{regionalHubs[selectedRegion].subtext}</p>
+              <p className="text-xs text-[#A0A0A0] pt-1">
                 <strong className="text-white font-medium">Signature Focus:</strong> {regionalHubs[selectedRegion].keyAssets}
               </p>
             </div>
@@ -319,14 +319,14 @@ export const AgencyDisciplineSection: React.FC<AgencyDisciplineSectionProps> = (
             <div className="md:col-span-4 flex flex-col sm:flex-row md:flex-col gap-2 justify-end">
               <button
                 onClick={onNavigateTeam}
-                className="py-2.5 px-3 text-xs font-semibold text-white bg-[#102442] hover:bg-[#152e54] border border-[#1D3860] rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                className="py-2.5 px-3 text-xs font-semibold text-white bg-[#1E1E1E] hover:bg-[#262626] border border-[#2E2E2E] rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
                 <Users className="w-3.5 h-3.5 text-[#BEE179]" />
                 <span>Regional Team</span>
               </button>
               <button
                 onClick={onNavigateContact}
-                className="py-2.5 px-3 text-xs font-bold text-[#0B1B30] bg-[#BEE179] hover:bg-[#AEDB5B] rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                className="py-2.5 px-3 text-xs font-bold text-[#161616] bg-[#BEE179] hover:bg-[#AEDB5B] rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors"
               >
                 <PhoneCall className="w-3.5 h-3.5" />
                 <span>Contact Desk</span>

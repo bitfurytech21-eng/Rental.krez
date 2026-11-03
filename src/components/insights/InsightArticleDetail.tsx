@@ -126,10 +126,10 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#0B1B30] text-white">
+    <div className="min-h-screen bg-[#161616] bg-[url('/assets/aistudio/IMG_7654_229f55d1.jpeg')] bg-cover bg-fixed text-white">
       
       {/* 1. Dynamic Reading Scroll Progress Bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 bg-[#1D3860] z-50">
+      <div className="fixed top-0 left-0 right-0 h-1 bg-[#2E2E2E] z-50">
         <div
           className="h-full bg-[#BEE179] transition-all duration-150"
           style={{ width: `${scrollProgress}%` }}
@@ -137,10 +137,10 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
       </div>
 
       {/* 2. Sticky Editorial Breadcrumb & Navigation Bar */}
-      <section className="bg-[#0B1B30]/95 border-b border-[#1D3860] py-3.5 px-4 sm:px-6 sticky top-[74px] sm:top-[80px] z-30 shadow-xs backdrop-blur-md">
+      <section className="bg-[#161616]/95 border-b border-[#2E2E2E] py-3.5 px-4 sm:px-6 sticky top-[74px] sm:top-[80px] z-30 shadow-xs backdrop-blur-md">
         <div className="max-w-[1240px] mx-auto flex items-center justify-between gap-4">
           
-          <div className="flex items-center gap-2 text-xs text-[#8EA7C7] truncate">
+          <div className="flex items-center gap-2 text-xs text-[#A0A0A0] truncate">
             <button
               onClick={onNavigateBack}
               className="text-[#BEE179] hover:underline font-bold flex items-center gap-1 shrink-0 cursor-pointer"
@@ -174,18 +174,18 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isBookmarked 
-                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-xs' 
-                  : 'bg-[#102442] hover:bg-[#132745] text-white border border-[#1D3860]'
+                  ? 'bg-[#BEE179] text-[#161616] shadow-xs' 
+                  : 'bg-[#1E1E1E] hover:bg-[#2A2A2A] text-white border border-[#2E2E2E]'
               }`}
               title={isBookmarked ? 'Bookmarked' : 'Save / Bookmark dossier'}
             >
-              <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current text-[#0B1B30]' : 'text-[#BEE179]'}`} />
+              <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current text-[#161616]' : 'text-[#BEE179]'}`} />
               <span className="hidden sm:inline">{isBookmarked ? 'Saved' : 'Save'}</span>
             </button>
 
             <button
               onClick={handleCopyLink}
-              className="px-3 py-1.5 rounded-lg bg-[#102442] hover:bg-[#132745] text-white border border-[#1D3860] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-[#1E1E1E] hover:bg-[#2A2A2A] text-white border border-[#2E2E2E] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Copy article link"
             >
               {copiedLink ? <Check className="w-3.5 h-3.5 text-[#BEE179]" /> : <Copy className="w-3.5 h-3.5 text-[#BEE179]" />}
@@ -194,7 +194,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
 
             <button
               onClick={handlePrint}
-              className="p-1.5 rounded-lg bg-[#102442] hover:bg-[#132745] text-white border border-[#1D3860] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg bg-[#1E1E1E] hover:bg-[#2A2A2A] text-white border border-[#2E2E2E] transition-colors cursor-pointer"
               title="Print article / Export PDF"
             >
               <Printer className="w-3.5 h-3.5 text-[#BEE179]" />
@@ -205,24 +205,24 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
       </section>
 
       {/* 3. Hero Article Header Zone */}
-      <header className="pt-10 pb-8 px-4 sm:px-6 bg-[#0B1B30] border-b border-[#1D3860]">
+      <header className="pt-10 pb-8 px-4 sm:px-6 bg-[#161616] border-b border-[#2E2E2E]">
         <div className="max-w-[960px] mx-auto text-left space-y-5">
           
           {/* Header Badges */}
           <div className="flex flex-wrap items-center gap-2.5">
             {article.isDossier && (
-              <span className="px-3 py-1 rounded-full bg-[#BEE179] text-[#0B1B30] text-xs font-black uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-[#BEE179] text-[#161616] text-xs font-black uppercase tracking-wider">
                 {article.dossierIssue || 'Major Dossier'}
               </span>
             )}
-            <span className="px-3 py-1 rounded-full bg-[#102442] text-[#BEE179] border border-[#1D3860] text-xs font-bold">
+            <span className="px-3 py-1 rounded-full bg-[#1E1E1E] text-[#BEE179] border border-[#2E2E2E] text-xs font-bold">
               {article.categoryName}
             </span>
-            <span className="text-xs text-[#8EA7C7] font-mono flex items-center gap-1">
+            <span className="text-xs text-[#A0A0A0] font-mono flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-[#BEE179]" />
               {article.readTime}
             </span>
-            <span className="text-xs text-[#8EA7C7] font-mono flex items-center gap-1">
+            <span className="text-xs text-[#A0A0A0] font-mono flex items-center gap-1">
               <Eye className="w-3.5 h-3.5 text-[#BEE179]" />
               {article.viewsCount} reads
             </span>
@@ -235,13 +235,13 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
 
           {/* Subtitle / Chapeau */}
           {article.subtitle && (
-            <p className="text-base sm:text-lg text-[#D1E2F7] font-medium leading-relaxed italic border-l-2 border-[#BEE179] pl-4">
+            <p className="text-base sm:text-lg text-[#E2E2E2] font-medium leading-relaxed italic border-l-2 border-[#BEE179] pl-4">
               {article.subtitle}
             </p>
           )}
 
           {/* Author Byline & Date Bar */}
-          <div className="pt-4 border-t border-[#1D3860] flex flex-wrap items-center justify-between gap-4 text-xs">
+          <div className="pt-4 border-t border-[#2E2E2E] flex flex-wrap items-center justify-between gap-4 text-xs">
             <div className="flex items-center gap-3">
               <img
                 src={article.author.avatar}
@@ -250,16 +250,16 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               />
               <div>
                 <span className="font-bold text-white block text-sm">{article.author.name}</span>
-                <span className="text-[#8EA7C7] text-xs block">
+                <span className="text-[#A0A0A0] text-xs block">
                   {article.author.role} · {article.author.organization || 'Kretz Wealth Advisory'}
                 </span>
               </div>
             </div>
 
-            <div className="text-right text-[#8EA7C7]">
+            <div className="text-right text-[#A0A0A0]">
               <span className="block font-medium text-white">Published: {formatDate(article.publishedAt)}</span>
               {article.updatedAt && (
-                <span className="block text-[11px] text-[#8EA7C7]">Updated: {formatDate(article.updatedAt)}</span>
+                <span className="block text-[11px] text-[#A0A0A0]">Updated: {formatDate(article.updatedAt)}</span>
               )}
             </div>
           </div>
@@ -270,7 +270,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
       {/* 4. Article Featured Image */}
       <section className="px-4 sm:px-6 pt-8 pb-4 max-w-[1100px] mx-auto text-left">
         <figure className="space-y-2">
-          <div className="rounded-3xl overflow-hidden aspect-[16/9] sm:aspect-[21/9] bg-[#0B1B30] border border-[#1D3860] shadow-md">
+          <div className="rounded-3xl overflow-hidden aspect-[16/9] sm:aspect-[21/9] bg-[#161616] border border-[#2E2E2E] shadow-md">
             <img
               src={article.coverImage}
               alt={article.coverImageAlt}
@@ -278,7 +278,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               loading="eager"
             />
           </div>
-          <figcaption className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-[#8EA7C7] px-2 italic">
+          <figcaption className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-[#A0A0A0] px-2 italic">
             <span>{article.coverImageCaption}</span>
             <span className="not-italic font-mono text-[10px] text-slate-300">{article.coverImageAttribution}</span>
           </figcaption>
@@ -290,14 +290,14 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
         
         {/* Executive Summary Box */}
         {article.keyTakeaways && article.keyTakeaways.length > 0 && (
-          <aside className="mb-10 p-6 sm:p-8 rounded-3xl bg-[#102442] border-2 border-[#1D3860] shadow-xs space-y-4">
+          <aside className="mb-10 p-6 sm:p-8 rounded-3xl bg-[#1E1E1E] border-2 border-[#2E2E2E] shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-[#BEE179]">
               <ShieldCheck className="w-5 h-5 text-[#BEE179]" />
               <h3 className="text-sm font-black uppercase tracking-wider">
                 Dossier Key Takeaways & Executive Summary
               </h3>
             </div>
-            <ul className="space-y-2.5 text-xs sm:text-sm text-[#D1E2F7] leading-relaxed">
+            <ul className="space-y-2.5 text-xs sm:text-sm text-[#E2E2E2] leading-relaxed">
               {article.keyTakeaways.map((takeaway, i) => (
                 <li key={i} className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179] mt-2 shrink-0" />
@@ -310,7 +310,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
 
         {/* Table of Contents */}
         {article.chapters && article.chapters.length > 0 && (
-          <nav aria-label="Table of contents" className="mb-12 p-6 rounded-2xl bg-[#102442] border border-[#1D3860] shadow-xs space-y-3">
+          <nav aria-label="Table of contents" className="mb-12 p-6 rounded-2xl bg-[#1E1E1E] border border-[#2E2E2E] shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-white">
               <BookOpen className="w-4 h-4 text-[#BEE179]" />
               <h4 className="font-extrabold text-xs uppercase tracking-wider text-[#BEE179]">
@@ -322,14 +322,14 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
                 <a
                   key={idx}
                   href={`#${ch.anchor}`}
-                  className="flex items-start justify-between py-1.5 px-2 rounded-lg hover:bg-[#0B1B30] text-[#D1E2F7] hover:text-white transition-colors group"
+                  className="flex items-start justify-between py-1.5 px-2 rounded-lg hover:bg-[#161616] text-[#E2E2E2] hover:text-white transition-colors group"
                 >
                   <div className="space-y-0.5">
                     <span className="font-bold block group-hover:underline">
                       {idx + 1}. {ch.title}
                     </span>
                     {ch.summary && (
-                      <span className="text-[11px] text-[#8EA7C7] block">{ch.summary}</span>
+                      <span className="text-[11px] text-[#A0A0A0] block">{ch.summary}</span>
                     )}
                   </div>
                   <ChevronRight className="w-4 h-4 text-[#BEE179] opacity-80 group-hover:opacity-100 shrink-0 mt-1" />
@@ -340,7 +340,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
         )}
 
         {/* Formatted Content Rendering */}
-        <article className="prose prose-invert max-w-none text-[#D1E2F7] leading-relaxed space-y-6 text-sm sm:text-base">
+        <article className="prose prose-invert max-w-none text-[#E2E2E2] leading-relaxed space-y-6 text-sm sm:text-base">
           {article.content.split('\n\n').map((block, idx) => {
             const trimmed = block.trim();
             if (!trimmed) return null;
@@ -348,7 +348,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
             // Heading 2
             if (trimmed.startsWith('## ')) {
               return (
-                <h2 key={idx} className="text-2xl sm:text-3xl font-black text-[#BEE179] pt-8 pb-2 border-b border-[#1D3860]">
+                <h2 key={idx} className="text-2xl sm:text-3xl font-black text-[#BEE179] pt-8 pb-2 border-b border-[#2E2E2E]">
                   {trimmed.replace('## ', '')}
                 </h2>
               );
@@ -371,7 +371,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
             if (trimmed.startsWith('> ')) {
               const quoteLines = trimmed.split('\n').map(l => l.replace(/^>\s*/, '')).join(' ');
               return (
-                <blockquote key={idx} className="my-6 p-6 rounded-2xl bg-[#102442] border-l-4 border-[#BEE179] italic text-sm sm:text-base text-white">
+                <blockquote key={idx} className="my-6 p-6 rounded-2xl bg-[#1E1E1E] border-l-4 border-[#BEE179] italic text-sm sm:text-base text-white">
                   {quoteLines}
                 </blockquote>
               );
@@ -384,18 +384,18 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               const dataRows = rows.slice(1).map(r => r.split('|').map(c => c.trim()).filter(Boolean));
 
               return (
-                <div key={idx} className="my-6 overflow-x-auto rounded-2xl border border-[#1D3860] shadow-xs">
+                <div key={idx} className="my-6 overflow-x-auto rounded-2xl border border-[#2E2E2E] shadow-xs">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-[#102442] text-[#BEE179]">
+                    <thead className="bg-[#1E1E1E] text-[#BEE179]">
                       <tr>
                         {headers.map((h, i) => (
                           <th key={i} className="py-3 px-4 font-bold">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#1D3860] bg-[#0B1B30]">
+                    <tbody className="divide-y divide-[#2E2E2E] bg-[#161616]">
                       {dataRows.map((r, ri) => (
-                        <tr key={ri} className="hover:bg-[#102442] transition-colors">
+                        <tr key={ri} className="hover:bg-[#1E1E1E] transition-colors">
                           {r.map((cell, ci) => (
                             <td key={ci} className="py-3 px-4 font-medium text-white">{cell}</td>
                           ))}
@@ -411,7 +411,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
             if (trimmed.startsWith('```')) {
               const code = trimmed.replace(/^```[a-z]*\n/, '').replace(/\n```$/, '');
               return (
-                <pre key={idx} className="my-6 p-4 rounded-xl bg-[#102442] border border-[#1D3860] text-[#BEE179] font-mono text-xs overflow-x-auto leading-normal">
+                <pre key={idx} className="my-6 p-4 rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] text-[#BEE179] font-mono text-xs overflow-x-auto leading-normal">
                   <code>{code}</code>
                 </pre>
               );
@@ -421,7 +421,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
             if (trimmed.startsWith('- ') || trimmed.startsWith('1. ')) {
               const lines = trimmed.split('\n');
               return (
-                <ul key={idx} className="my-4 space-y-2 list-disc pl-5 text-sm sm:text-base text-[#D1E2F7]">
+                <ul key={idx} className="my-4 space-y-2 list-disc pl-5 text-sm sm:text-base text-[#E2E2E2]">
                   {lines.map((l, li) => (
                     <li key={li}>{l.replace(/^[-*]\s+|\d+\.\s+/, '')}</li>
                   ))}
@@ -434,7 +434,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               const firstLetter = trimmed.charAt(0);
               const rest = trimmed.slice(1);
               return (
-                <p key={idx} className="leading-relaxed text-sm sm:text-base text-[#D1E2F7]">
+                <p key={idx} className="leading-relaxed text-sm sm:text-base text-[#E2E2E2]">
                   <span className="float-left text-5xl font-black text-[#BEE179] leading-none pr-3 pt-1 font-serif">
                     {firstLetter}
                   </span>
@@ -444,7 +444,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
             }
 
             return (
-              <p key={idx} className="leading-relaxed text-sm sm:text-base text-[#D1E2F7]">
+              <p key={idx} className="leading-relaxed text-sm sm:text-base text-[#E2E2E2]">
                 {trimmed}
               </p>
             );
@@ -452,7 +452,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
         </article>
 
         {/* 6. Tags and Social Sharing Bar */}
-        <div className="mt-12 pt-8 border-t border-[#1D3860] flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="mt-12 pt-8 border-t border-[#2E2E2E] flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-[#BEE179] block">
               Dossier Taxonomy & Tags:
@@ -461,7 +461,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               {article.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-3 py-1 rounded-xl bg-[#102442] text-[#BEE179] border border-[#1D3860] text-xs font-bold"
+                  className="px-3 py-1 rounded-xl bg-[#1E1E1E] text-[#BEE179] border border-[#2E2E2E] text-xs font-bold"
                 >
                   #{tag}
                 </span>
@@ -479,7 +479,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => insightsService.incrementShares(article.slug)}
-                className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] text-white hover:bg-[#2A2A2A] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share on X / Twitter"
                 aria-label="Share on X / Twitter"
               >
@@ -490,7 +490,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => insightsService.incrementShares(article.slug)}
-                className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] text-white hover:bg-[#2A2A2A] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share on LinkedIn"
                 aria-label="Share on LinkedIn"
               >
@@ -501,7 +501,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => insightsService.incrementShares(article.slug)}
-                className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] text-white hover:bg-[#2A2A2A] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share via WhatsApp"
                 aria-label="Share via WhatsApp"
               >
@@ -510,7 +510,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               <a
                 href={emailShareUrl}
                 onClick={() => insightsService.incrementShares(article.slug)}
-                className="w-9 h-9 rounded-xl bg-[#102442] border border-[#1D3860] text-white hover:bg-[#132745] flex items-center justify-center transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] text-white hover:bg-[#2A2A2A] flex items-center justify-center transition-colors cursor-pointer"
                 title="Share via Email"
                 aria-label="Share via Email"
               >
@@ -518,7 +518,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               </a>
               <button
                 onClick={handleCopyLink}
-                className="px-3 py-2 rounded-xl bg-[#BEE179] text-[#0B1B30] hover:bg-[#AEDB5B] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-2 rounded-xl bg-[#BEE179] text-[#161616] hover:bg-[#AEDB5B] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedLink ? 'Copied' : 'Copy'}</span>
@@ -528,7 +528,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
         </div>
 
         {/* 7. Author Bio Card */}
-        <section className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#102442] border border-[#1D3860] flex flex-col sm:flex-row items-center sm:items-start gap-6 text-left">
+        <section className="mt-12 p-6 sm:p-8 rounded-3xl bg-[#1E1E1E] border border-[#2E2E2E] flex flex-col sm:flex-row items-center sm:items-start gap-6 text-left">
           <img
             src={article.author.avatar}
             alt={article.author.name}
@@ -537,13 +537,13 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#BEE179]">Author & Editorial Lead</span>
-              <span className="text-[#8EA7C7]">•</span>
-              <span className="text-xs text-[#8EA7C7]">{article.author.organization || 'Kretz Advisory'}</span>
+              <span className="text-[#A0A0A0]">•</span>
+              <span className="text-xs text-[#A0A0A0]">{article.author.organization || 'Kretz Advisory'}</span>
             </div>
             <h4 className="text-lg font-black text-white">
               {article.author.name}
             </h4>
-            <p className="text-xs text-[#D1E2F7] leading-relaxed">
+            <p className="text-xs text-[#E2E2E2] leading-relaxed">
               {article.author.bio || 'Senior real estate analyst specializing in European residential and commercial property markets.'}
             </p>
           </div>
@@ -551,7 +551,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
 
         {/* 8. Whitepaper Download Module */}
         {article.downloadableResource && (
-          <section className="mt-8 p-6 rounded-3xl bg-[#102442] border border-[#1D3860] text-white flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
+          <section className="mt-8 p-6 rounded-3xl bg-[#1E1E1E] border border-[#2E2E2E] text-white flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
             <div className="space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#BEE179]">
                 Print-Ready Whitepaper & Complete Dataset
@@ -559,7 +559,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
               <h5 className="font-extrabold text-sm sm:text-base text-white">
                 {article.downloadableResource.title}
               </h5>
-              <span className="text-xs text-[#8EA7C7] block font-mono">
+              <span className="text-xs text-[#A0A0A0] block font-mono">
                 {article.downloadableResource.fileType} · {article.downloadableResource.fileSize} · High-Resolution Tables
               </span>
             </div>
@@ -578,9 +578,9 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
                     setDownloadNotice(null);
                   }, 800);
                 }}
-                className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shrink-0 shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shrink-0 shadow-sm"
               >
-                <Download className="w-4 h-4 text-[#0B1B30]" />
+                <Download className="w-4 h-4 text-[#161616]" />
                 <span>Download Whitepaper</span>
               </button>
             </div>
@@ -591,7 +591,7 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
 
       {/* 9. Related Articles Grid */}
       {relatedArticles.length > 0 && (
-        <section className="py-14 px-4 sm:px-6 bg-[#0B1B30] border-t border-[#1D3860]">
+        <section className="py-14 px-4 sm:px-6 bg-[#161616] border-t border-[#2E2E2E]">
           <div className="max-w-[1240px] mx-auto text-left space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -614,10 +614,10 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
                 <div
                   key={rel.id}
                   onClick={() => onSelectArticle(rel.slug)}
-                  className="bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden shadow-xs hover:border-[#BEE179]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between group cursor-pointer"
+                  className="bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] overflow-hidden shadow-xs hover:border-[#BEE179]/60 hover:shadow-lg transition-all duration-300 flex flex-col justify-between group cursor-pointer"
                 >
                   <div>
-                    <div className="aspect-[16/10] overflow-hidden bg-[#0B1B30]">
+                    <div className="aspect-[16/10] overflow-hidden bg-[#161616]">
                       <img
                         src={rel.coverImage}
                         alt={rel.coverImageAlt}
@@ -632,13 +632,13 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
                       <h4 className="font-black text-sm text-white group-hover:text-[#BEE179] transition-colors line-clamp-2 leading-snug">
                         {rel.title}
                       </h4>
-                      <p className="text-xs text-[#D1E2F7] line-clamp-2">
+                      <p className="text-xs text-[#E2E2E2] line-clamp-2">
                         {rel.excerpt}
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-5 pt-0 border-t border-[#1D3860] flex items-center justify-between text-[11px] text-[#8EA7C7]">
+                  <div className="p-5 pt-0 border-t border-[#2E2E2E] flex items-center justify-between text-[11px] text-[#A0A0A0]">
                     <span>{rel.readTime}</span>
                     <span className="font-bold text-[#BEE179] group-hover:underline">Read →</span>
                   </div>

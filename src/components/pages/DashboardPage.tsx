@@ -776,7 +776,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             >
               <Bell className="w-3.5 h-3.5" />
               {notifications.filter(n => !n.read).length > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30] text-[8px] font-black rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#161616] text-[8px] font-black rounded-full flex items-center justify-center">
                   {notifications.filter(n => !n.read).length}
                 </span>
               )}
@@ -788,7 +788,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[var(--dash-header-controls)] hover:bg-[var(--dash-hover)] border border-[var(--dash-header-controls-border)] text-[var(--dash-text)] transition-all cursor-pointer shadow-xs"
               >
-                <div className="w-6 h-6 rounded-md bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30] flex items-center justify-center font-black text-[11px] overflow-hidden shrink-0">
+                <div className="w-6 h-6 rounded-md bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#161616] flex items-center justify-center font-black text-[11px] overflow-hidden shrink-0">
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
                   ) : (
@@ -964,7 +964,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <span>{item.label}</span>
                   </div>
                   {item.count !== undefined && item.count > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30]">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#161616]">
                       {item.count}
                     </span>
                   )}

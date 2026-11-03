@@ -145,9 +145,9 @@ export const SolanaCapitalRiskTerminalCard: React.FC<{ className?: string }> = (
   };
 
   return (
-    <div className={`p-6 sm:p-7 rounded-3xl bg-[#0D1826] border border-[#1E334D] text-left text-white space-y-5 font-mono shadow-xl ${className}`}>
+    <div className={`p-6 sm:p-7 rounded-3xl bg-[#181818] border border-[#2E2E2E] text-left text-white space-y-5 font-mono shadow-xl ${className}`}>
       {/* Code Block */}
-      <div className="p-4 rounded-2xl bg-[#08101A] border border-[#16273B] text-xs space-y-1.5 text-[#B2C6E0]">
+      <div className="p-4 rounded-2xl bg-[#141414] border border-[#262626] text-xs space-y-1.5 text-[#D4D4D4]">
         <div><span className="font-bold text-white">SIREN:</span> {COMPANY_REGISTRATION.siren}</div>
         <div><span className="font-bold text-white">RCS:</span> {COMPANY_REGISTRATION.rcs}</div>
         <div><span className="font-bold text-white">SIRET:</span> {COMPANY_REGISTRATION.siret}</div>
@@ -175,7 +175,7 @@ export const SolanaCapitalRiskTerminalCard: React.FC<{ className?: string }> = (
           <button
             type="button"
             onClick={handleCopy}
-            className="p-1 rounded hover:bg-[#16273B] text-[#8BA5C9] hover:text-white cursor-pointer"
+            className="p-1 rounded hover:bg-[#262626] text-[#8BA5C9] hover:text-white cursor-pointer"
             aria-label="Copy USDC Mint address"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-[#BEE179]" /> : <Copy className="w-3.5 h-3.5" />}
@@ -183,7 +183,7 @@ export const SolanaCapitalRiskTerminalCard: React.FC<{ className?: string }> = (
         </div>
       </div>
 
-      <div className="border-t border-[#1E334D]" />
+      <div className="border-t border-[#2E2E2E]" />
 
       {/* Capital at Risk Disclosure Paragraph (Exact text from Image 3) */}
       <p className="text-xs text-[#A1B8D8] font-sans leading-relaxed">

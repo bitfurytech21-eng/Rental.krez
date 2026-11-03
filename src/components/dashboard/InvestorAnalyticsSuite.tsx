@@ -425,7 +425,7 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Institutional KPI Summary Strip */}
-      <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs">
+      <div className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E4EEEA] dark:border-slate-800">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#087F5B] dark:text-[#3BD4AE] block">
@@ -503,7 +503,7 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       {/* Row 1: Portfolio Value Over Time + Rental Distributions Over Time */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 1: Portfolio Value Over Time */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#E4EEEA] dark:border-slate-800 mb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -583,7 +583,7 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
         </div>
 
         {/* Chart 2: Rental Distributions Over Time */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#E4EEEA] dark:border-slate-800 mb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -638,7 +638,7 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       {/* Row 2: Investment Allocation by Property + Property Performance Comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 3: Investment Allocation by Property */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+        <div className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
             <div>
               <div className="flex items-center gap-2">
@@ -718,7 +718,7 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
         </div>
 
         {/* Chart 4: Property Performance Comparison */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
+        <div className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
             <div>
               <div className="flex items-center gap-2">
@@ -803,7 +803,7 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       </div>
 
       {/* Row 3: Investment Diversification (Geography & Property Class) */}
-      <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+      <div className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
           <div>
             <div className="flex items-center gap-2">
@@ -877,7 +877,7 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       </div>
 
       {/* Row 4: Monthly & Annual Financial Summaries + CSV Export */}
-      <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+      <div className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
           <div>
             <div className="flex items-center gap-2">

@@ -8,6 +8,7 @@ interface FooterProps {
 const EXPLORE_LINKS = [
   { to: '/properties', label: 'Properties' },
   { to: '/how-it-works', label: 'How It Works' },
+  { to: '/team', label: 'Our Team & Leadership' },
   { to: '/portfolio', label: 'Portfolio' },
   { to: '/journal', label: 'Journal' },
   { to: '/contact', label: 'Contact' },

@@ -66,7 +66,7 @@ export const KrezContactPage: React.FC = () => {
   };
 
   return (
-    <main className="bg-[#0E1720] text-white">
+    <main className="bg-background text-foreground">
       <section className="pt-header-offset pb-section-sm md:pb-section-spacing">
         <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
           <KrezReveal>

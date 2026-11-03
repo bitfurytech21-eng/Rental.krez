@@ -11,7 +11,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <section className="py-20 sm:py-28 bg-[#0B1B30] text-white border-t border-[#1D3860] overflow-hidden">
+    <section className="py-20 sm:py-28 bg-[#161616] text-white border-t border-[#2E2E2E] overflow-hidden">
       <style>{`
         @keyframes ctaOrbDriftA {
           0%, 100% { transform: translate3d(0px, 0px, 0) scale(1); opacity: 0.45; }
@@ -45,7 +45,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.25 }}
           transition={{ duration: prefersReducedMotion ? 0 : 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className="bg-[#102442] border border-[#1D3860] rounded-2xl p-10 sm:p-16 text-white text-center space-y-6 relative overflow-hidden shadow-lg"
+          className="bg-[#1E1E1E] border border-[#2E2E2E] rounded-2xl p-10 sm:p-16 text-white text-center space-y-6 relative overflow-hidden shadow-lg"
         >
           {/* Animated Ambient Gradient & Softly Shifting Architectural Geometry */}
           <div
@@ -102,7 +102,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
               <span className="text-[#BEE179]">Monthly Yields</span>
             </h2>
 
-            <p className="text-sm sm:text-base text-[#D1E2F7] max-w-xl mx-auto font-normal leading-relaxed">
+            <p className="text-sm sm:text-base text-[#E2E2E2] max-w-xl mx-auto font-normal leading-relaxed">
               Review vetted European residential and commercial assets, inspect independent RICS appraisals, and access automated monthly rental settlements.
             </p>
 
@@ -110,21 +110,21 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
               <button
                 type="button"
                 onClick={onRegister}
-                className="py-3.5 px-7 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs tracking-wide transition-all duration-150 cursor-pointer shadow-xs flex items-center gap-2 whitespace-nowrap active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="py-3.5 px-7 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] font-bold text-xs tracking-wide transition-all duration-150 cursor-pointer shadow-xs flex items-center gap-2 whitespace-nowrap active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <span>Create Investor Account</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
+                <ArrowRight className="w-3.5 h-3.5 text-[#161616]" />
               </button>
               <button
                 type="button"
                 onClick={onExplore}
-                className="py-3.5 px-7 rounded-xl bg-[#0B1B30] hover:bg-[#132745] border border-[#1D3860] text-white font-bold text-xs tracking-wide transition-colors duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                className="py-3.5 px-7 rounded-xl bg-[#161616] hover:bg-[#262626] border border-[#2E2E2E] text-white font-bold text-xs tracking-wide transition-colors duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
               >
                 <span>Browse Active Assets</span>
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-y-3 gap-x-8 text-xs text-[#D1E2F7] font-medium pt-8 border-t border-[#1D3860]">
+            <div className="flex flex-wrap items-center justify-center gap-y-3 gap-x-8 text-xs text-[#E2E2E2] font-medium pt-8 border-t border-[#2E2E2E]">
               <span className="flex items-center gap-1.5 font-mono tabular-nums">
                 <Check className="w-3.5 h-3.5 text-[#BEE179] shrink-0" /> Entry Ticket from €750
               </span>

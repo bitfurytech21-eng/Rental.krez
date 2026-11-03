@@ -187,7 +187,7 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   return (
     <div className={`turnstile-security-wrapper space-y-2 ${className}`}>
       {label && (
-        <div className="flex items-center justify-between text-[11px] font-bold text-[#D1E2F7]">
+        <div className="flex items-center justify-between text-[11px] font-bold text-[#E2E2E2]">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-[#BEE179]" />
             <span>{label}</span>

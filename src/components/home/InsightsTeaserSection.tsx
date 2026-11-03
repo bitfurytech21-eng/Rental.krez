@@ -119,7 +119,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
         }
       }}
       onKeyDown={handleKeyDown}
-      className="py-20 sm:py-28 bg-[#0B1B30] border-b border-[#1D3860] text-white text-left overflow-hidden"
+      className="py-20 sm:py-28 bg-[#161616] border-b border-[#2E2E2E] text-white text-left overflow-hidden"
     >
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
         {/* Section Header */}
@@ -137,20 +137,20 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
               <span className="text-[#BEE179]">Dossiers & Market Insights</span>
             </h2>
 
-            <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed font-normal">
+            <p className="text-sm sm:text-base text-[#E2E2E2] leading-relaxed font-normal">
               Institutional investigations, quarterly yield surveys, regulatory blueprints, and tokenized asset registry analysis from our research desk.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             {carouselArticles.length > 1 && (
-              <div className="flex items-center gap-1.5 bg-[#102442] border border-[#1D3860] rounded-xl p-1">
+              <div className="flex items-center gap-1.5 bg-[#1E1E1E] border border-[#2E2E2E] rounded-xl p-1">
                 <button
                   type="button"
                   onClick={() => setIsAutoPlaying((prev) => !prev)}
                   aria-label={isAutoPlaying ? 'Pause insights slideshow' : 'Play insights slideshow'}
                   aria-pressed={!isAutoPlaying}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   {isAutoPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                 </button>
@@ -158,11 +158,11 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                   type="button"
                   onClick={goPrev}
                   aria-label="Previous market dossier"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="px-2 text-xs font-mono tabular-nums text-[#8EA7C7]">
+                <span className="px-2 text-xs font-mono tabular-nums text-[#A0A0A0]">
                   {String(activeIdx + 1).padStart(2, '0')} /{' '}
                   {String(carouselArticles.length).padStart(2, '0')}
                 </span>
@@ -170,7 +170,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                   type="button"
                   onClick={goNext}
                   aria-label="Next market dossier"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#E2E2E2] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -180,7 +180,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
             <button
               type="button"
               onClick={onNavigateInsights}
-              className="py-2.5 px-5 text-xs font-bold bg-[#BEE179] text-[#0B1B30] hover:bg-[#AEDB5B] rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="py-2.5 px-5 text-xs font-bold bg-[#BEE179] text-[#161616] hover:bg-[#AEDB5B] rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <span>Explore All Dossiers</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -194,7 +194,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
           <div
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
-            className="lg:col-span-7 bg-[#102442] text-white rounded-2xl overflow-hidden border border-[#1D3860] shadow-md flex flex-col justify-between group hover:border-[#BEE179]/60 transition-colors"
+            className="lg:col-span-7 bg-[#1E1E1E] text-white rounded-2xl overflow-hidden border border-[#2E2E2E] shadow-md flex flex-col justify-between group hover:border-[#BEE179]/60 transition-colors"
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -206,7 +206,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                 className="flex-1 flex flex-col justify-between"
               >
                 <div
-                  className="relative aspect-[16/9] overflow-hidden cursor-pointer bg-[#081526]"
+                  className="relative aspect-[16/9] overflow-hidden cursor-pointer bg-[#181818]"
                   onClick={() => onNavigateDossier(activeArticle.slug)}
                 >
                   <img
@@ -224,9 +224,9 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                     }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#102442] via-[#102442]/35 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1E1E1E] via-[#1E1E1E]/35 to-transparent" />
 
-                  <div className="absolute bottom-3.5 left-4 right-4 flex items-center justify-between text-xs text-[#D1E2F7]">
+                  <div className="absolute bottom-3.5 left-4 right-4 flex items-center justify-between text-xs text-[#E2E2E2]">
                     <div className="flex items-center gap-2 truncate">
                       <span className="font-bold text-[#BEE179]">
                         {activeArticle.dossierIssue || 'Research Dossier'}
@@ -249,13 +249,13 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                     >
                       {activeArticle.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed line-clamp-3 font-normal">
+                    <p className="text-xs sm:text-sm text-[#E2E2E2] leading-relaxed line-clamp-3 font-normal">
                       {activeArticle.excerpt}
                     </p>
                   </div>
 
                   {/* Author + Slide Dots + Read CTA */}
-                  <div className="pt-4 border-t border-[#1D3860] flex flex-wrap items-center justify-between gap-4">
+                  <div className="pt-4 border-t border-[#2E2E2E] flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <img
                         src={activeArticle.author.avatar}
@@ -275,14 +275,14 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                         <p className="text-xs font-semibold text-white leading-tight">
                           {activeArticle.author.name}
                         </p>
-                        <p className="text-[11px] text-[#8EA7C7]">{activeArticle.author.role}</p>
+                        <p className="text-[11px] text-[#A0A0A0]">{activeArticle.author.role}</p>
                       </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => onNavigateDossier(activeArticle.slug)}
-                      className="px-4 py-2 rounded-xl bg-[#BEE179] text-[#0B1B30] hover:bg-[#AEDB5B] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shrink-0 shadow-xs whitespace-nowrap"
+                      className="px-4 py-2 rounded-xl bg-[#BEE179] text-[#161616] hover:bg-[#AEDB5B] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shrink-0 shadow-xs whitespace-nowrap"
                     >
                       <span>Read Investigation</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -304,7 +304,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                     className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
                       idx === activeIdx
                         ? 'w-8 bg-[#BEE179]'
-                        : 'w-2.5 bg-[#1D3860] hover:bg-[#355A8F]'
+                        : 'w-2.5 bg-[#2E2E2E] hover:bg-[#383838]'
                     }`}
                   />
                 ))}
@@ -315,21 +315,21 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
           {/* Right 5 Columns: Secondary Picks + Prime Yield Barometer + Research Themes */}
           <div className="lg:col-span-5 flex flex-col justify-between gap-4">
             {/* European Corridor Yield Snapshot */}
-            <div className="p-5 rounded-2xl bg-[#102442] border border-[#1D3860] space-y-3">
+            <div className="p-5 rounded-2xl bg-[#1E1E1E] border border-[#2E2E2E] space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold text-white">
                   <BarChart3 className="w-4 h-4 text-[#BEE179]" />
                   <span>European Tokenized Yield Barometer</span>
                 </div>
-                <span className="text-[11px] font-mono text-[#8EA7C7]">Q3–Q4 Benchmark</span>
+                <span className="text-[11px] font-mono text-[#A0A0A0]">Q3–Q4 Benchmark</span>
               </div>
-              <div className="divide-y divide-[#1D3860]">
+              <div className="divide-y divide-[#2E2E2E]">
                 {marketCorridorStats.map((row) => (
                   <div
                     key={row.corridor}
                     className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2 text-xs"
                   >
-                    <span className="text-[#D1E2F7] truncate">{row.corridor}</span>
+                    <span className="text-[#E2E2E2] truncate">{row.corridor}</span>
                     <div className="flex items-center gap-2 shrink-0 font-mono tabular-nums">
                       <span className="font-bold text-white">{row.netYield}</span>
                       <span className="text-[11px] text-[#BEE179]">{row.trend}</span>
@@ -342,11 +342,11 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
             {secondaryInsights.map((article) => (
               <div
                 key={article.id}
-                className="bg-[#102442] rounded-2xl p-5 border border-[#1D3860] hover:border-[#BEE179]/60 transition-colors flex flex-col justify-between space-y-3 group cursor-pointer"
+                className="bg-[#1E1E1E] rounded-2xl p-5 border border-[#2E2E2E] hover:border-[#BEE179]/60 transition-colors flex flex-col justify-between space-y-3 group cursor-pointer"
                 onClick={() => onNavigateDossier(article.slug)}
               >
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-2 text-xs text-[#8EA7C7]">
+                  <div className="flex items-center justify-between gap-2 text-xs text-[#A0A0A0]">
                     <span className="font-semibold text-[#BEE179] truncate">
                       {article.categoryName}
                     </span>
@@ -358,8 +358,8 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                   </h4>
                 </div>
 
-                <div className="flex items-center justify-between pt-2.5 border-t border-[#1D3860] text-xs">
-                  <span className="text-[#8EA7C7] truncate">{article.author.name}</span>
+                <div className="flex items-center justify-between pt-2.5 border-t border-[#2E2E2E] text-xs">
+                  <span className="text-[#A0A0A0] truncate">{article.author.name}</span>
                   <span className="font-bold text-[#BEE179] group-hover:translate-x-1 transition-transform flex items-center gap-1 shrink-0">
                     <span>Read</span>
                     <ArrowRight className="w-3 h-3" />
@@ -369,7 +369,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
             ))}
 
             {/* Interactive Research Filter Buttons */}
-            <div className="p-5 rounded-2xl bg-[#102442] border border-[#1D3860] space-y-3">
+            <div className="p-5 rounded-2xl bg-[#1E1E1E] border border-[#2E2E2E] space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-white">
                 <TrendingUp className="w-3.5 h-3.5 text-[#BEE179]" />
                 <span>Filter by Research Desk Topic</span>
@@ -388,7 +388,7 @@ export const InsightsTeaserSection: React.FC<InsightsTeaserSectionProps> = ({
                       e.stopPropagation();
                       onNavigateCategory(tag.cat);
                     }}
-                    className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-[#0B1B30] hover:bg-[#BEE179] hover:text-[#0B1B30] text-[#D1E2F7] border border-[#1D3860] transition-colors cursor-pointer whitespace-nowrap"
+                    className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-[#161616] hover:bg-[#BEE179] hover:text-[#161616] text-[#E2E2E2] border border-[#2E2E2E] transition-colors cursor-pointer whitespace-nowrap"
                   >
                     {tag.label}
                   </button>

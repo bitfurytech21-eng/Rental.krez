@@ -201,7 +201,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
   return (
     <section 
       aria-label="Trusted by Investors"
-      className="py-16 sm:py-24 bg-[#0B1B30] text-white border-t border-[#1A3358] relative overflow-hidden"
+      className="py-16 sm:py-24 bg-[#161616] text-white border-t border-[#1A3358] relative overflow-hidden"
     >
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 relative z-10">
         {/* Section Header */}
@@ -214,15 +214,15 @@ export const TrustedByInvestorsSection: React.FC = () => {
             Trusted by Private & Institutional Investors
           </h2>
 
-          <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed max-w-2xl mx-auto font-medium">
+          <p className="text-sm sm:text-base text-[#E2E2E2] leading-relaxed max-w-2xl mx-auto font-medium">
             Grounded in European securities compliance, ring-fenced legal titling, and independent RICS appraisals.
           </p>
         </div>
 
         {/* Marquee 1: Partner Ecosystem */}
-        <div className="relative max-w-6xl mx-auto mb-10 overflow-hidden rounded-xl bg-[#102442] border border-[#1D3860] p-4 sm:p-6 shadow-md pause-on-hover touch-pan-x">
-          <div className="absolute inset-y-0 left-0 w-16 sm:w-24 bg-gradient-to-r from-[#102442] via-[#102442]/80 to-transparent z-20 pointer-events-none" />
-          <div className="absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-[#102442] via-[#102442]/80 to-transparent z-20 pointer-events-none" />
+        <div className="relative max-w-6xl mx-auto mb-10 overflow-hidden rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] p-4 sm:p-6 shadow-md pause-on-hover touch-pan-x">
+          <div className="absolute inset-y-0 left-0 w-16 sm:w-24 bg-gradient-to-r from-[#1E1E1E] via-[#1E1E1E]/80 to-transparent z-20 pointer-events-none" />
+          <div className="absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-[#1E1E1E] via-[#1E1E1E]/80 to-transparent z-20 pointer-events-none" />
 
           <div className="overflow-hidden w-full">
             <div className="animate-horizontal-scroll-normal flex items-center gap-4 sm:gap-6 pr-4 sm:pr-6 w-max">
@@ -231,7 +231,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
                 return (
                   <div
                     key={`partner-${partner.id}-${idx}`}
-                    className="p-4 sm:p-5 rounded-lg bg-[#0B1B30] border border-[#1D3860] shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center min-w-[180px] sm:min-w-[220px] h-16 sm:h-20 shrink-0 group hover:border-[#BEE179]/40"
+                    className="p-4 sm:p-5 rounded-lg bg-[#161616] border border-[#2E2E2E] shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center min-w-[180px] sm:min-w-[220px] h-16 sm:h-20 shrink-0 group hover:border-[#BEE179]/40"
                   >
                     <PartnerSvg className="h-6 sm:h-7 w-auto max-w-[85%] filter brightness-200 group-hover:brightness-100 transition-all duration-300 opacity-80 group-hover:opacity-100" />
                   </div>
@@ -250,9 +250,9 @@ export const TrustedByInvestorsSection: React.FC = () => {
             </span>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl bg-[#102442] border border-[#1D3860] p-4 sm:p-6 shadow-md pause-on-hover touch-pan-x">
-            <div className="absolute inset-y-0 left-0 w-16 sm:w-24 bg-gradient-to-r from-[#102442] via-[#102442]/80 to-transparent z-20 pointer-events-none" />
-            <div className="absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-[#102442] via-[#102442]/80 to-transparent z-20 pointer-events-none" />
+          <div className="relative overflow-hidden rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] p-4 sm:p-6 shadow-md pause-on-hover touch-pan-x">
+            <div className="absolute inset-y-0 left-0 w-16 sm:w-24 bg-gradient-to-r from-[#1E1E1E] via-[#1E1E1E]/80 to-transparent z-20 pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-[#1E1E1E] via-[#1E1E1E]/80 to-transparent z-20 pointer-events-none" />
 
             <div className="overflow-hidden w-full">
               <div className="animate-horizontal-scroll-reverse flex items-center gap-4 sm:gap-6 pr-4 sm:pr-6 w-max">
@@ -261,9 +261,9 @@ export const TrustedByInvestorsSection: React.FC = () => {
                   return (
                     <div
                       key={`reg-${badge.id}-${idx}`}
-                      className="bg-[#0B1B30] border border-[#1D3860] hover:border-[#BEE179]/40 rounded-lg p-3.5 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-3.5 min-w-[260px] sm:min-w-[300px] h-16 sm:h-20 shrink-0 group"
+                      className="bg-[#161616] border border-[#2E2E2E] hover:border-[#BEE179]/40 rounded-lg p-3.5 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-3.5 min-w-[260px] sm:min-w-[300px] h-16 sm:h-20 shrink-0 group"
                     >
-                      <div className="shrink-0 p-1 bg-white rounded border border-[#1D3860]">
+                      <div className="shrink-0 p-1 bg-white rounded border border-[#2E2E2E]">
                         <AuthLogo className="h-7 sm:h-8 w-auto" />
                       </div>
 
@@ -272,15 +272,15 @@ export const TrustedByInvestorsSection: React.FC = () => {
                           <span className="text-xs font-bold text-white truncate group-hover:text-[#BEE179] transition-colors">
                             {badge.code}
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#0B1B30] bg-[#BEE179] px-1.5 py-0.5 rounded shrink-0">
-                            <CheckCircle2 className="w-2.5 h-2.5 text-[#0B1B30]" />
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#161616] bg-[#BEE179] px-1.5 py-0.5 rounded shrink-0">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-[#161616]" />
                             {badge.tag}
                           </span>
                         </div>
                         <div className="text-[11px] font-bold text-[#BEE179] leading-snug truncate">
                           {badge.title}
                         </div>
-                        <div className="text-[10px] text-[#8EA7C7] leading-tight truncate">
+                        <div className="text-[10px] text-[#A0A0A0] leading-tight truncate">
                           {badge.subtitle}
                         </div>
                       </div>
@@ -293,7 +293,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
         </div>
 
         {/* Sub-bar / Trust Statement */}
-        <div className="mt-8 text-center text-xs text-[#8EA7C7] font-semibold flex items-center justify-center gap-2 px-2">
+        <div className="mt-8 text-center text-xs text-[#A0A0A0] font-semibold flex items-center justify-center gap-2 px-2">
           <Award className="w-3.5 h-3.5 text-[#BEE179] shrink-0" />
           <span>Notarial Deed Escrow · RICS Certified Appraisals · Rigorous SPV Due Diligence</span>
         </div>

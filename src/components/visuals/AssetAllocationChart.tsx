@@ -12,9 +12,9 @@ interface AssetCategory {
 }
 
 const DEFAULT_CATEGORIES: AssetCategory[] = [
-  { id: 'cat-1', category: 'Luxury Residential', value: 14500, tokens: 290, color: '#087F5B', bgLight: 'bg-emerald-500' },
-  { id: 'cat-2', category: 'Urban Coliving', value: 8200, tokens: 164, color: '#2563EB', bgLight: 'bg-blue-500' },
-  { id: 'cat-3', category: 'Prime Commercial', value: 5750, tokens: 115, color: '#D97706', bgLight: 'bg-amber-500' },
+  { id: 'cat-1', category: 'Luxury Residential', value: 14500, tokens: 290, color: '#C49A6C', bgLight: 'bg-[#C49A6C]' },
+  { id: 'cat-2', category: 'Urban Coliving', value: 8200, tokens: 164, color: '#8C5E3C', bgLight: 'bg-[#8C5E3C]' },
+  { id: 'cat-3', category: 'Prime Commercial', value: 5750, tokens: 115, color: '#594333', bgLight: 'bg-[#594333]' },
 ];
 
 export const AssetAllocationChart: React.FC<{
@@ -40,17 +40,17 @@ export const AssetAllocationChart: React.FC<{
   let cumulativeAngle = 0;
 
   return (
-    <div className={`bg-white dark:bg-[#0D1522] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}>
+    <div className={`bg-[#2B1E17] border border-[#594333] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 text-[#F5EFE8] ${className}`}>
       {/* Header */}
-      <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <span className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400">
+      <div className="flex items-center gap-2 pb-3 border-b border-[#594333]">
+        <span className="p-1.5 rounded-lg bg-[#35251C] border border-[#594333] text-[#C49A6C]">
           <PieChart className="w-4 h-4" />
         </span>
         <div>
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+          <h3 className="text-sm sm:text-base font-bold text-[#F5EFE8]">
             Property Sector Asset Allocation
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-[#C4B5A5]">
             Portfolio diversification breakdown across real estate asset classes
           </p>
         </div>
@@ -89,10 +89,10 @@ export const AssetAllocationChart: React.FC<{
 
           {/* Donut Center Display */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#C4B5A5]">
               Total Assets
             </span>
-            <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100">
+            <span className="text-sm font-bold font-mono text-[#F5EFE8]">
               {formatCurrency(grandTotal)}
             </span>
           </div>
@@ -111,8 +111,8 @@ export const AssetAllocationChart: React.FC<{
                 onMouseLeave={() => setHoveredId(null)}
                 className={`p-2.5 rounded-xl border transition-all ${
                   isHovered
-                    ? 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 shadow-2xs'
-                    : 'border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30'
+                    ? 'border-[#C49A6C] bg-[#35251C] shadow-2xs'
+                    : 'border-[#594333] bg-[#35251C]/60 hover:border-[#C49A6C]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 text-xs">
@@ -121,16 +121,16 @@ export const AssetAllocationChart: React.FC<{
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: cat.color }}
                     />
-                    <span className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                    <span className="font-bold text-[#F5EFE8] truncate">
                       {cat.category}
                     </span>
                   </div>
 
                   <div className="text-right shrink-0 font-mono">
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-[#F5EFE8]">
                       {formatCurrency(cat.value)}
                     </span>
-                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 ml-2 font-semibold">
+                    <span className="text-[10.5px] text-[#C4B5A5] ml-2 font-semibold">
                       ({percentage}%)
                     </span>
                   </div>

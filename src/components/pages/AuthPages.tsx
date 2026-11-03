@@ -273,12 +273,12 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   };
 
   return (
-    <div className="auth-page py-12 px-4 bg-[#0B1B30] min-h-[calc(100vh-160px)] flex items-center justify-center text-white">
-      <div className="auth-card max-w-md w-full bg-[#102442] p-7 sm:p-8 rounded-3xl border border-[#1D3860] shadow-2xl">
+    <div className="auth-page py-12 px-4 bg-[#161616] min-h-[calc(100vh-160px)] flex items-center justify-center text-white">
+      <div className="auth-card max-w-md w-full bg-[#1E1E1E] p-7 sm:p-8 rounded-3xl border border-[#2E2E2E] shadow-2xl">
         {/* Preserved Property Banner */}
         {preservedProperty && (
-          <div className="mb-6 p-4 rounded-2xl bg-[#0B1B30] border border-[#1D3860] flex items-center gap-3 text-xs text-white">
-            <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#102442] shrink-0 border border-[#1D3860]">
+          <div className="mb-6 p-4 rounded-2xl bg-[#161616] border border-[#2E2E2E] flex items-center gap-3 text-xs text-white">
+            <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#1E1E1E] shrink-0 border border-[#2E2E2E]">
               <img
                 src={preservedProperty.images[0] || preservedProperty.bannerImage}
                 alt={preservedProperty.title}
@@ -290,7 +290,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 Preserved Investment Selection
               </span>
               <h4 className="font-bold text-white truncate">{preservedProperty.title}</h4>
-              <span className="text-[#8EA7C7] text-[11px]">
+              <span className="text-[#A0A0A0] text-[11px]">
                 Min: {formatCurrency(preservedProperty.minimumInvestment)} · {preservedProperty.city}
               </span>
             </div>
@@ -299,7 +299,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
         {/* Supabase Status Banner */}
         {!isConfigured && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-[#0B1B30] border border-amber-500/40 text-xs text-amber-200 flex items-start gap-2.5">
+          <div className="mb-6 p-3.5 rounded-2xl bg-[#161616] border border-amber-500/40 text-xs text-amber-200 flex items-start gap-2.5">
             <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block mb-0.5 text-amber-300">Supabase Auth Setup Required:</span>
@@ -316,7 +316,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           <img 
             src="/assets/aistudio/IMG_7234_bd44519a.jpeg" 
             alt="L'Agence Logo" 
-            className="w-12 h-12 rounded-2xl object-cover mx-auto mb-3 shadow-md border border-[#1D3860]"
+            className="w-12 h-12 rounded-2xl object-cover mx-auto mb-3 shadow-md border border-[#2E2E2E]"
             style={{ filter: 'brightness(1.35) contrast(1.22) saturate(1.1)' }}
           />
           <h2 className="text-2xl font-black text-white">
@@ -325,7 +325,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
             {mode === 'forgot-password' && 'Password Recovery'}
             {mode === 'reset-password' && 'Set New Password'}
           </h2>
-          <p className="text-xs text-[#8EA7C7] mt-1.5 leading-relaxed">
+          <p className="text-xs text-[#A0A0A0] mt-1.5 leading-relaxed">
             {mode === 'login' && 'Sign in using your verified email and password'}
             {mode === 'register' && 'Institutional real estate tokenization platform. Email verification required.'}
             {mode === 'forgot-password' && 'Enter your registered email to receive a secure recovery link.'}
@@ -354,14 +354,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
         {/* Navigation Tabs: Sign In / Register Portal */}
         {(mode === 'login' || mode === 'register') && (
-          <div className="grid grid-cols-2 p-1.5 bg-[#0B1B30] rounded-2xl mb-6 border border-[#1D3860]">
+          <div className="grid grid-cols-2 p-1.5 bg-[#161616] rounded-2xl mb-6 border border-[#2E2E2E]">
             <button
               type="button"
               onClick={() => switchMode('login')}
               className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 mode === 'login'
-                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-md font-black'
-                  : 'text-[#8EA7C7] hover:text-white'
+                  ? 'bg-[#BEE179] text-[#161616] shadow-md font-black'
+                  : 'text-[#A0A0A0] hover:text-white'
               }`}
             >
               <Lock className="w-3.5 h-3.5" />
@@ -372,8 +372,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               onClick={() => switchMode('register')}
               className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 mode === 'register'
-                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-md font-black'
-                  : 'text-[#8EA7C7] hover:text-white'
+                  ? 'bg-[#BEE179] text-[#161616] shadow-md font-black'
+                  : 'text-[#A0A0A0] hover:text-white'
               }`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -393,7 +393,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
               />
             </div>
 
@@ -414,7 +414,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
               />
             </div>
 
@@ -434,11 +434,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
             <button
               type="submit"
               disabled={loading || !turnstileToken}
-              className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+              className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
             >
               {loading ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                  <span className="w-3.5 h-3.5 border-2 border-[#161616] border-t-transparent rounded-full animate-spin" />
                   <span>Signing in...</span>
                 </>
               ) : preservedProperty ? (
@@ -448,8 +448,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               )}
             </button>
 
-            <div className="text-center pt-3 border-t border-[#1D3860]">
-              <span className="text-xs text-[#8EA7C7]">Don't have an account yet? </span>
+            <div className="text-center pt-3 border-t border-[#2E2E2E]">
+              <span className="text-xs text-[#A0A0A0]">Don't have an account yet? </span>
               <button
                 type="button"
                 onClick={() => switchMode('register')}
@@ -474,9 +474,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     placeholder="David Vance"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
                   />
-                  <p className="text-[10px] text-[#8EA7C7]">Stored securely in Supabase user metadata for SPV compliance.</p>
+                  <p className="text-[10px] text-[#A0A0A0]">Stored securely in Supabase user metadata for SPV compliance.</p>
                 </div>
 
                 <div className="form-field space-y-1">
@@ -487,7 +487,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     placeholder="david@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
                   />
                 </div>
 
@@ -498,7 +498,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       <Globe className="w-3.5 h-3.5 text-[#BEE179]" />
                       <span>Country of Residence</span>
                     </label>
-                    <span className="text-[10px] font-bold text-[#BEE179] bg-[#0B1B30] px-2 py-0.5 rounded-full border border-[#1D3860]">
+                    <span className="text-[10px] font-bold text-[#BEE179] bg-[#161616] px-2 py-0.5 rounded-full border border-[#2E2E2E]">
                       SPV Compliance
                     </span>
                   </div>
@@ -509,10 +509,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       setSelectedCountryCode(newCode);
                       setPhoneCountryCode(newCode);
                     }}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179]"
                   >
                     {COUNTRIES.map((country) => (
-                      <option key={country.code} value={country.code} className="bg-[#102442] text-white">
+                      <option key={country.code} value={country.code} className="bg-[#1E1E1E] text-white">
                         {country.flag} {country.name} ({country.dialCode})
                       </option>
                     ))}
@@ -526,7 +526,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       <Phone className="w-3.5 h-3.5 text-[#BEE179]" />
                       <span>Phone Number</span>
                     </label>
-                    <span className="text-[10px] text-[#8EA7C7]">Country Code & Digits</span>
+                    <span className="text-[10px] text-[#A0A0A0]">Country Code & Digits</span>
                   </div>
 
                   <div className="grid grid-cols-12 gap-2">
@@ -534,11 +534,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       <select
                         value={phoneCountryCode}
                         onChange={(e) => setPhoneCountryCode(e.target.value)}
-                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-2.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179] truncate"
+                        className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-2.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179] truncate"
                         title="Select Country Dialing Code"
                       >
                         {COUNTRIES.map((c) => (
-                          <option key={`dial-${c.code}`} value={c.code} className="bg-[#102442] text-white">
+                          <option key={`dial-${c.code}`} value={c.code} className="bg-[#1E1E1E] text-white">
                             {c.flag} {c.dialCode} ({c.code})
                           </option>
                         ))}
@@ -555,11 +555,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                           const val = e.target.value.replace(/[^\d\s-]/g, '');
                           setPhoneDigits(val);
                         }}
-                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                        className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-[#8EA7C7]">
+                  <p className="text-[10px] text-[#A0A0A0]">
                     Required for 2FA security, investor distributions, and KYC notification delivery.
                   </p>
                 </div>
@@ -567,17 +567,17 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <div className="form-field space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider">Account Type</label>
-                    <span className="text-[10px] font-bold text-[#BEE179] bg-[#0B1B30] px-2.5 py-0.5 rounded-full border border-[#1D3860]">
+                    <span className="text-[10px] font-bold text-[#BEE179] bg-[#161616] px-2.5 py-0.5 rounded-full border border-[#2E2E2E]">
                       {ACCOUNT_TYPES.find(t => t.id === accountType)?.badge || 'Investor'}
                     </span>
                   </div>
                   <select
                     value={accountType}
                     onChange={(e) => setAccountType(e.target.value as AccountType)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179]"
                   >
                     {ACCOUNT_TYPES.filter(type => type.id !== 'admin').map((type) => (
-                      <option key={type.id} value={type.id} className="bg-[#102442] text-white">
+                      <option key={type.id} value={type.id} className="bg-[#1E1E1E] text-white">
                         {type.label}
                       </option>
                     ))}
@@ -586,7 +586,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     const activeType = ACCOUNT_TYPES.find(t => t.id === accountType);
                     if (!activeType) return null;
                     return (
-                      <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl text-[11px] text-[#8EA7C7] flex items-start gap-2">
+                      <div className="p-3 bg-[#161616] border border-[#2E2E2E] rounded-xl text-[11px] text-[#A0A0A0] flex items-start gap-2">
                         <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#BEE179] shrink-0" />
                         <div className="space-y-0.5 flex-1">
                           <p className="leading-snug text-white font-medium">{activeType.description}</p>
@@ -603,7 +603,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
                 {/* VIP Referral Code Field / Applied Banner */}
                 {referralCode ? (
-                  <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl flex items-center justify-between text-xs text-white">
+                  <div className="p-3 bg-[#161616] border border-[#2E2E2E] rounded-xl flex items-center justify-between text-xs text-white">
                     <div className="flex items-center gap-2">
                       <Tag className="w-4 h-4 text-[#BEE179] shrink-0" />
                       <div>
@@ -611,7 +611,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                         <div className="font-mono font-bold text-white text-xs">CODE: {referralCode}</div>
                       </div>
                     </div>
-                    <span className="font-bold text-[#0B1B30] bg-[#BEE179] px-2.5 py-1 rounded-full shadow-xs text-[10.5px] shrink-0">
+                    <span className="font-bold text-[#161616] bg-[#BEE179] px-2.5 py-1 rounded-full shadow-xs text-[10.5px] shrink-0">
                       +€500 Bonus
                     </span>
                   </div>
@@ -622,14 +622,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                         <Tag className="w-3.5 h-3.5 text-[#BEE179]" />
                         <span>Referral / Partner Code (Optional)</span>
                       </label>
-                      <span className="text-[10px] text-[#8EA7C7]">€500 Welcome Allocation</span>
+                      <span className="text-[10px] text-[#A0A0A0]">€500 Welcome Allocation</span>
                     </div>
                     <input
                       type="text"
                       placeholder="e.g. KRETZ-VIP"
                       value={referralCode}
                       onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                      className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-2.5 font-mono font-semibold text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179] uppercase placeholder:normal-case"
+                      className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-2.5 font-mono font-semibold text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179] uppercase placeholder:normal-case"
                     />
                   </div>
                 )}
@@ -642,11 +642,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     placeholder="Create secure password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
                   />
                 </div>
 
-                <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl text-[11px] text-[#8EA7C7] space-y-1">
+                <div className="p-3 bg-[#161616] border border-[#2E2E2E] rounded-xl text-[11px] text-[#A0A0A0] space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-[#BEE179]">
                     <Shield className="w-3.5 h-3.5" />
                     <span>Identity & Email Verification</span>
@@ -672,11 +672,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <button
                   type="submit"
                   disabled={loading || !turnstileToken}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {loading ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-[#161616] border-t-transparent rounded-full animate-spin" />
                       <span>Creating account...</span>
                     </>
                   ) : preservedProperty ? (
@@ -686,8 +686,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   )}
                 </button>
 
-                <div className="text-center pt-3 border-t border-[#1D3860]">
-                  <span className="text-xs text-[#8EA7C7]">Already have an account? </span>
+                <div className="text-center pt-3 border-t border-[#2E2E2E]">
+                  <span className="text-xs text-[#A0A0A0]">Already have an account? </span>
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
@@ -699,11 +699,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               </form>
             ) : (
               <div className="text-center py-4 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-[#161616] border border-[#2E2E2E] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
                   <Mail className="w-7 h-7" />
                 </div>
                 <h3 className="text-xl font-black text-white">Verify Your Email</h3>
-                <div className="p-4 bg-[#0B1B30] rounded-2xl border border-[#1D3860] text-xs text-[#8EA7C7] leading-relaxed text-left space-y-2">
+                <div className="p-4 bg-[#161616] rounded-2xl border border-[#2E2E2E] text-xs text-[#A0A0A0] leading-relaxed text-left space-y-2">
                   <p>
                     We have dispatched a verification link to <strong className="text-white">{email}</strong>.
                   </p>
@@ -716,7 +716,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     setVerificationPending(false);
                     switchMode('login');
                   }}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
                 >
                   Proceed to Sign In
                 </button>
@@ -738,7 +738,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
                   />
                 </div>
 
@@ -758,11 +758,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <button
                   type="submit"
                   disabled={loading || !turnstileToken}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {loading ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-[#161616] border-t-transparent rounded-full animate-spin" />
                       <span>Sending Recovery Link...</span>
                     </>
                   ) : (
@@ -770,7 +770,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   )}
                 </button>
 
-                <div className="text-center pt-3 border-t border-[#1D3860]">
+                <div className="text-center pt-3 border-t border-[#2E2E2E]">
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
@@ -782,11 +782,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               </form>
             ) : (
               <div className="text-center py-4 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-[#161616] border border-[#2E2E2E] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
                 <h4 className="text-lg font-bold text-white">Recovery Email Sent</h4>
-                <p className="text-xs text-[#8EA7C7] leading-relaxed">
+                <p className="text-xs text-[#A0A0A0] leading-relaxed">
                   A password recovery link has been generated by Supabase and sent to{' '}
                   <strong className="text-white">{email}</strong>. Please follow the instructions in the email.
                 </p>
@@ -795,7 +795,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     setResetSent(false);
                     switchMode('login');
                   }}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
                 >
                   Return to Sign In
                 </button>
@@ -809,7 +809,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           <div>
             {!passwordResetSuccess ? (
               <form onSubmit={handleUpdatePassword} className="space-y-4">
-                <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl text-xs text-white flex items-center gap-2">
+                <div className="p-3 bg-[#161616] border border-[#2E2E2E] rounded-xl text-xs text-white flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-[#BEE179]" />
                   <span>Authenticated via Supabase recovery token</span>
                 </div>
@@ -822,7 +822,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     placeholder="Enter new password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
                   />
                 </div>
 
@@ -834,18 +834,18 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     placeholder="Repeat new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#161616] border border-[#2E2E2E] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#A0A0A0] focus:outline-none focus:border-[#BEE179]"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {loading ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-[#161616] border-t-transparent rounded-full animate-spin" />
                       <span>Updating Password in Supabase...</span>
                     </>
                   ) : (
@@ -855,16 +855,16 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               </form>
             ) : (
               <div className="text-center py-4 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-[#161616] border border-[#2E2E2E] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
                 <h4 className="text-lg font-bold text-white">Password Updated!</h4>
-                <p className="text-xs text-[#8EA7C7] leading-relaxed">
+                <p className="text-xs text-[#A0A0A0] leading-relaxed">
                   Your password has been successfully reset in Supabase. You can now sign in with your new credentials.
                 </p>
                 <button
                   onClick={() => switchMode('login')}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
                 >
                   Proceed to Sign In
                 </button>

@@ -299,7 +299,7 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
   return (
     <section
       aria-label="5-Year Projected Annual Rental Yield Growth"
-      className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4"
+      className="bg-white dark:bg-[#181818] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4"
     >
       {/* Header & Top-Level Controls */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 pb-4 border-b border-[#E4EEEA] dark:border-slate-800">

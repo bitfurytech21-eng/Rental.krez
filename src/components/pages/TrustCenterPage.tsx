@@ -100,11 +100,11 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
   };
 
   return (
-    <div className="bg-[#F6F9F8] min-h-screen py-10 sm:py-16 text-left">
+    <div className="bg-background text-foreground min-h-screen py-10 sm:py-16 text-left">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 space-y-12">
         {/* 1. Institutional Trust Centre Hero Header */}
-        <section className="bg-[#0B1B30] text-white rounded-3xl border border-[#1D3860] p-6 sm:p-10 shadow-xl space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-[#1D3860]">
+        <section className="bg-[#161616] text-white rounded-3xl border border-[#2E2E2E] p-6 sm:p-10 shadow-xl space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-[#2E2E2E]">
             <div className="space-y-3 max-w-3xl">
               <div className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-[#BEE179]">
                 <ShieldCheck className="w-4 h-4 text-[#BEE179]" />
@@ -113,7 +113,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
               <h1 className="font-serif text-3xl sm:text-5xl font-black text-white tracking-tight leading-[1.1]">
                 Trust Centre &amp; Regulatory Governance
               </h1>
-              <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed">
+              <p className="text-sm sm:text-base text-[#E2E2E2] leading-relaxed">
                 A transparent record of corporate registration identifiers, legal documentation, Solana Mainnet settlement programs, property underwriting safeguards, smart-contract audit disclosures, and custody controls.
               </p>
             </div>
@@ -122,7 +122,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
               <button
                 type="button"
                 onClick={() => onNavigate('/legal')}
-                className="px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Legal Documentation (12)</span>
@@ -130,7 +130,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
               <button
                 type="button"
                 onClick={() => onNavigate('/contact')}
-                className="px-4 py-2.5 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-white text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-[#1E1E1E] hover:bg-[#173158] border border-[#2E2E2E] text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 Contact Compliance Desk
               </button>
@@ -148,10 +148,10 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
             ].map((item) => (
               <div
                 key={item.label}
-                className="p-4 rounded-2xl bg-[#102442] border border-[#1D3860] flex flex-col justify-between gap-2"
+                className="p-4 rounded-2xl bg-[#1E1E1E] border border-[#2E2E2E] flex flex-col justify-between gap-2"
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8EA7C7]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#A0A0A0]">
                     {item.label}
                   </span>
                   <span className="text-[9.5px] font-mono text-[#BEE179]">{item.status}</span>
@@ -163,7 +163,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
                   <button
                     type="button"
                     onClick={() => handleCopy(item.value)}
-                    className="p-1 rounded hover:bg-[#1A355E] text-[#8EA7C7] hover:text-white cursor-pointer shrink-0"
+                    className="p-1 rounded hover:bg-[#1A355E] text-[#A0A0A0] hover:text-white cursor-pointer shrink-0"
                     aria-label={`Copy ${item.label}`}
                     title={`Copy ${item.label}`}
                   >
@@ -579,12 +579,12 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
         </section>
 
         {/* 7. Investor Protection & Contact Desk */}
-        <section className="bg-[#0B1B30] text-white rounded-3xl border border-[#1D3860] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <section className="bg-[#161616] text-white rounded-3xl border border-[#2E2E2E] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <h2 className="font-serif text-xl sm:text-2xl font-bold text-white">
               Direct Compliance, Custody &amp; Investor Relations Desk
             </h2>
-            <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#E2E2E2] leading-relaxed">
               Request notarized SPV extracts, submit formal due-diligence inquiries, or verify corporate documentation directly with our Paris and Barcelona desks.
             </p>
             <div className="flex flex-wrap items-center gap-5 pt-2 text-xs text-[#BEE179] font-semibold">
@@ -602,7 +602,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
           <button
             type="button"
             onClick={() => onNavigate('/contact')}
-            className="px-5 py-3 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold inline-flex items-center gap-2 shrink-0 cursor-pointer"
+            className="px-5 py-3 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold inline-flex items-center gap-2 shrink-0 cursor-pointer"
           >
             <span>Submit Compliance Inquiry</span>
             <ArrowRight className="w-4 h-4" />

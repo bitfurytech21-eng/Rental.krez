@@ -175,7 +175,7 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
   const listedBuildingsCount = ledger.getFrontendProperties().length || 53;
 
   return (
-    <main className="bg-[#FAF8F5] text-[#18211F]">
+    <main className="bg-[#211711] text-[#F5EFE8]">
       <IntroOverlay onRevealHero={() => setHeroRevealed(true)} />
 
       {/* Section 1: Full-Viewport Architectural Hero */}
@@ -208,7 +208,7 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('/properties')}
-              className="inline-flex items-center gap-2 rounded-pill bg-primary px-6 py-3 text-xs font-semibold tracking-widest uppercase text-white transition-transform duration-fast hover:scale-hover active:scale-active cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-pill bg-[#C49A6C] px-6 py-3 text-xs font-semibold tracking-widest uppercase text-[#211711] transition-transform duration-fast hover:scale-hover hover:bg-[#d4ac7d] active:scale-active cursor-pointer"
             >
               <span>Browse properties</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -216,7 +216,7 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('/how-it-works')}
-              className="rounded-pill bg-background/85 px-5 py-3 text-xs font-semibold tracking-widest uppercase text-foreground backdrop-blur-xs transition-colors duration-fast hover:bg-background cursor-pointer"
+              className="rounded-pill bg-[#2B1E17]/90 px-5 py-3 text-xs font-semibold tracking-widest uppercase text-[#F5EFE8] border border-[#594333] backdrop-blur-xs transition-colors duration-fast hover:bg-[#35251C] cursor-pointer"
             >
               How It Works
             </button>
@@ -288,22 +288,22 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
       </section>
 
       {/* Section 4: Investor Journal — Latest Updates */}
-      <section className="bg-[#F4F1EA] border-t border-[#E5E0D4] py-section-sm md:py-section-spacing">
+      <section className="bg-[#2B1E17] border-t border-[#594333] py-section-sm md:py-section-spacing">
         <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
           <KrezReveal>
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
-                <p className="text-xs font-semibold tracking-widest uppercase text-accent">
+                <p className="text-xs font-semibold tracking-widest uppercase text-[#C49A6C]">
                   Investor journal
                 </p>
-                <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-foreground md:text-4xl">
+                <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-[#F5EFE8] md:text-4xl">
                   Latest updates
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => onNavigate('/journal')}
-                className="inline-flex items-center gap-2 self-start text-xs font-semibold tracking-widest uppercase text-foreground transition-colors duration-fast hover:text-accent md:self-auto cursor-pointer"
+                className="inline-flex items-center gap-2 self-start text-xs font-semibold tracking-widest uppercase text-[#F5EFE8] transition-colors duration-fast hover:text-[#C49A6C] md:self-auto cursor-pointer"
               >
                 <span>All updates</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -314,18 +314,18 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
           <div className="mt-10 grid gap-gutter md:grid-cols-3 md:gap-gutter-md">
             {journalPosts.map((post, idx) => (
               <KrezReveal key={post.id} delay={idx * 0.06}>
-                <article className="flex h-full flex-col justify-between rounded-card border border-[#DC8D5] bg-white p-card-pad shadow-2xs transition-transform duration-base hover:-translate-y-hover-lift">
+                <article className="flex h-full flex-col justify-between rounded-card border border-[#594333] bg-[#35251C] p-card-pad shadow-2xs transition-transform duration-base hover:-translate-y-hover-lift">
                   <div>
-                    <div className="flex items-center justify-between gap-2 text-xs text-muted">
-                      <span className="font-semibold tracking-widest uppercase text-accent">
+                    <div className="flex items-center justify-between gap-2 text-xs text-[#C4B5A5]">
+                      <span className="font-semibold tracking-widest uppercase text-[#C49A6C]">
                         {post.category}
                       </span>
                       <span>{formatJournalDate(post.publishedDate)}</span>
                     </div>
-                    <h3 className="mt-4 text-lg font-heading font-semibold leading-snug text-foreground">
+                    <h3 className="mt-4 text-lg font-heading font-semibold leading-snug text-[#F5EFE8]">
                       {post.title}
                     </h3>
-                    <p className="mt-3 text-sm leading-relaxed text-muted">
+                    <p className="mt-3 text-sm leading-relaxed text-[#C4B5A5]">
                       {post.summary}
                     </p>
                   </div>
@@ -333,7 +333,7 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
                   <button
                     type="button"
                     onClick={() => onNavigate('/journal')}
-                    className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase text-foreground transition-colors duration-fast hover:text-accent cursor-pointer"
+                    className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase text-[#F5EFE8] transition-colors duration-fast hover:text-[#C49A6C] cursor-pointer"
                   >
                     <span>Read update</span>
                     <ArrowRight className="h-3.5 w-3.5" />

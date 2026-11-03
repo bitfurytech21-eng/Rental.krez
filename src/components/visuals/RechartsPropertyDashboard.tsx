@@ -152,56 +152,56 @@ export const RechartsPropertyDashboard: React.FC<RechartsPropertyDashboardProps>
   };
 
   return (
-    <div className={`bg-white dark:bg-[#0D1522] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}>
+    <div className={`bg-[#2B1E17] border border-[#594333] rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 text-[#F5EFE8] ${className}`}>
       {/* Control Header & Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#594333]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400">
+            <span className="p-1.5 rounded-lg bg-[#35251C] border border-[#594333] text-[#C49A6C]">
               <BarChart2 className="w-4 h-4" />
             </span>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm sm:text-base font-bold text-[#F5EFE8]">
               Property Funding &amp; Portfolio Performance Visualiser
             </h3>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-[#C4B5A5] mt-0.5">
             Live visualization of verified offering capitalization, settled payouts, and SPV allocation
           </p>
         </div>
 
         {/* View Mode Tabs */}
-        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl text-xs font-semibold self-start sm:self-auto">
+        <div className="flex items-center p-1 bg-[#211711] border border-[#594333] rounded-xl text-xs font-semibold self-start sm:self-auto">
           <button
             onClick={() => setActiveTab('funding')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'funding'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'bg-[#C49A6C] text-[#211711] shadow-2xs font-bold'
+                : 'text-[#C4B5A5] hover:text-[#F5EFE8]'
             }`}
           >
-            <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <Building2 className={`w-3.5 h-3.5 ${activeTab === 'funding' ? 'text-[#211711]' : 'text-[#C49A6C]'}`} />
             <span>Funding Progress</span>
           </button>
           <button
             onClick={() => setActiveTab('yield')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'yield'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'bg-[#C49A6C] text-[#211711] shadow-2xs font-bold'
+                : 'text-[#C4B5A5] hover:text-[#F5EFE8]'
             }`}
           >
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <TrendingUp className={`w-3.5 h-3.5 ${activeTab === 'yield' ? 'text-[#211711]' : 'text-[#C49A6C]'}`} />
             <span>Settled Yields</span>
           </button>
           <button
             onClick={() => setActiveTab('allocation')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'allocation'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'bg-[#C49A6C] text-[#211711] shadow-2xs font-bold'
+                : 'text-[#C4B5A5] hover:text-[#F5EFE8]'
             }`}
           >
-            <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <Coins className={`w-3.5 h-3.5 ${activeTab === 'allocation' ? 'text-[#211711]' : 'text-[#C49A6C]'}`} />
             <span>{isShowingCatalogAllocation ? 'Catalog Mix' : 'My Allocation'}</span>
           </button>
         </div>

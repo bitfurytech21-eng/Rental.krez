@@ -90,9 +90,9 @@ ${shareUrl}`;
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-5 sm:p-6 bg-[#0B1B30] text-white flex items-center justify-between border-b border-[#1D3860]">
+        <div className="p-5 sm:p-6 bg-[#161616] text-white flex items-center justify-between border-b border-[#2E2E2E]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#102442] border border-[#1D3860] flex items-center justify-center text-[#BEE179] shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#1E1E1E] border border-[#2E2E2E] flex items-center justify-center text-[#BEE179] shrink-0">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
@@ -107,7 +107,7 @@ ${shareUrl}`;
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#102442] hover:bg-[#1D3860] text-[#A2C2EC] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#1E1E1E] hover:bg-[#2E2E2E] text-[#A2C2EC] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Close Modal"
           >
             <X className="w-4 h-4" />
@@ -150,7 +150,7 @@ ${shareUrl}`;
                 className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                   copiedLink
                     ? 'bg-emerald-600 text-white'
-                    : 'bg-[#0B1B30] hover:bg-[#122846] text-[#BEE179] border border-[#1D3860]'
+                    : 'bg-[#161616] hover:bg-[#122846] text-[#BEE179] border border-[#2E2E2E]'
                 }`}
               >
                 {copiedLink ? (
