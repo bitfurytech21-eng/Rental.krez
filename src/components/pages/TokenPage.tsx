@@ -57,7 +57,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
   };
 
   return (
-    <div className="bg-[#F8FAFC] min-h-screen py-12">
+    <div className="bg-[#070D18] text-white min-h-screen py-12">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 space-y-12">
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center space-y-4">

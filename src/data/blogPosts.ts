@@ -25,12 +25,12 @@ export const BLOG_POSTS: BlogPost[] = [
     excerpt: 'A complete breakdown of participatory loans, blockchain token issuance on Polygon, and how monthly rental dividends are automated.',
     readTime: '6 min read',
     publishedAt: '2026-03-12',
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
     tags: ['Tokenization', 'Smart Contracts', 'SPV', 'Dividends'],
     author: {
       name: 'Adrián Fariza',
       role: 'Head of Real Estate Analytics',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
+      avatar: 'https://files.kretzrealestate.com/4766e7ad6acfa8eb806e887f91fe681d.jpg',
     },
     content: `
 Real estate has historically been the primary driver of generational wealth creation, but it has suffered from two major barriers: high capital requirements and severe illiquidity. Tokenization solves both problems by dividing physical properties into fractional digital representations on the blockchain.
@@ -58,7 +58,7 @@ Investors can withdraw their capital via instant SEPA wire transfers or reinvest
     excerpt: 'Why Internal Rate of Return (TIR) and capital appreciation (Plusvalía) are the most critical metrics for assessing tokenized property performance.',
     readTime: '5 min read',
     publishedAt: '2026-02-28',
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
     tags: ['TIR', 'Plusvalía', 'ROI', 'Financial Metrics'],
     author: {
       name: 'Elena Rostova',
@@ -91,7 +91,7 @@ Plusvalía represents the positive difference between the acquisition cost and t
     excerpt: 'How the Markets in Crypto-Assets (MiCA) regulation and European securities directives provide institutional protection for tokenized real estate.',
     readTime: '7 min read',
     publishedAt: '2026-02-14',
-    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg',
     tags: ['MiCA', 'Regulation', 'Compliance', 'EU Law', 'CNMV'],
     author: {
       name: 'Carlos Menéndez',
@@ -120,12 +120,12 @@ Creditors of the platform have zero claim against the underlying real estate ass
     excerpt: 'Analyzing the trade-offs between rapid 4-8 month renovation flips and resilient 3-5 year corporate rental yields across Málaga, Madrid, and Valencia.',
     readTime: '6 min read',
     publishedAt: '2026-01-22',
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg',
     tags: ['Málaga', 'Madrid', 'Valencia', 'Flipping', 'Rental Yield'],
     author: {
       name: 'Adrián Fariza',
       role: 'Head of Real Estate Analytics',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
+      avatar: 'https://files.kretzrealestate.com/4766e7ad6acfa8eb806e887f91fe681d.jpg',
     },
     content: `
 Spain’s real estate market offers two fundamentally distinct strategies for fractional investors: **Value-Add Flipping** and **Core Long-Term Rental**. Understanding the dynamics of both enables optimal portfolio construction.
@@ -151,7 +151,7 @@ Spain’s real estate market offers two fundamentally distinct strategies for fr
     excerpt: 'How blockchain-based tokenization provides superior asset visibility, no secondary discount penalties, and direct monthly cash flows compared to traditional SOCIMIs.',
     readTime: '5 min read',
     publishedAt: '2026-01-08',
-    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/67ec4082a8f72d825044d16021ae9bdf.jpg',
     tags: ['SOCIMI', 'REIT', 'Fractional', 'Comparison'],
     author: {
       name: 'Elena Rostova',
@@ -178,7 +178,7 @@ For decades, European investors looking for real estate exposure without managin
     excerpt: 'Why multi-family offices in Zurich, Madrid, and Paris are allocating treasury reserves into short-duration tokenized real estate notes.',
     readTime: '6 min read',
     publishedAt: '2025-12-15',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg',
     tags: ['Family Office', 'Treasury', 'Institutional', 'Wealth Management'],
     author: {
       name: 'Carlos Menéndez',
@@ -206,7 +206,7 @@ By deploying €100,000 to €500,000 tickets across 10 to 20 vetted residential
     excerpt: 'How yields from participatory loans and tokenized property capital gains are taxed in Spain for both resident and non-resident international investors.',
     readTime: '8 min read',
     publishedAt: '2025-11-30',
-    image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/d92edb3b50aae9836a6fd0808b3fd4f.jpg',
     tags: ['Taxation', 'Spain', 'IRPF', 'Modelo 721', 'Withholdings'],
     author: {
       name: 'Carlos Menéndez',
@@ -240,7 +240,7 @@ Because our tokens represent participatory claims against a Spanish legal entity
     excerpt: 'Need liquidity before a project completes? Discover how the decentralized secondary market bulletin board enables frictionless P2P token transfers.',
     readTime: '5 min read',
     publishedAt: '2025-11-12',
-    image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg',
     tags: ['Secondary Market', 'Liquidity', 'P2P', 'Trading', 'Polygon'],
     author: {
       name: 'Elena Rostova',
@@ -265,12 +265,12 @@ Traditional real estate requires months of listing, brokerage commissions (often
     excerpt: 'Only 1 out of every 100 examined properties passes our institutional screening. Discover the exact criteria our analysts audit before tokenizing an asset.',
     readTime: '7 min read',
     publishedAt: '2025-10-20',
-    image: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/19c23e6587bc7e7e96e969be390bf34.jpg',
     tags: ['Due Diligence', 'Underwriting', 'RICS', 'Safety', 'Audit'],
     author: {
       name: 'Adrián Fariza',
       role: 'Head of Real Estate Analytics',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
+      avatar: 'https://files.kretzrealestate.com/4766e7ad6acfa8eb806e887f91fe681d.jpg',
     },
     content: `
 High returns are meaningless without ironclad downside protection. To maintain our flawless 0% default rate across more than 120 completed projects, every asset undergoes an exhaustive 15-point technical, legal, and financial audit.

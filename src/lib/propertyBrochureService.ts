@@ -180,7 +180,7 @@ export class PropertyBrochureService {
       role: rawAgent?.role || 'Managing Directors & Luxury Advisory',
       email: rawAgent?.email || 'advisory@kretz.site',
       phone: rawAgent?.phone || '+34 910 849 210',
-      photo: rawAgent?.photo || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80'
+      photo: rawAgent?.photo || 'https://files.kretzrealestate.com/99ed804445ec781b934f157307a135.jpg'
     };
 
     const agency = {

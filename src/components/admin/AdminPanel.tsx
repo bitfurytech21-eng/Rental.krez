@@ -389,8 +389,8 @@ export const AdminPanel: React.FC = () => {
       country: 'Spain',
       type: newType,
       status: 'funding',
-      images: ['/src/assets/images/prop_valencia_apt_1791998371242.jpg'],
-      bannerImage: '/src/assets/images/prop_valencia_apt_1791998371242.jpg',
+      images: ['https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg'],
+      bannerImage: 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
       targetAmount: newTarget,
       fundedAmount: 0,
       tokenPrice: tokenPrice,
@@ -1747,7 +1747,7 @@ export const AdminPanel: React.FC = () => {
                       'SEPA Bank Wire Transfer (CaixaBank Escrow)',
                       testRef,
                       {
-                        receiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1200&auto=format&fit=crop&q=80',
+                        receiptUrl: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
                         receiptFileName: `caixabank_wire_slip_${testRef}.pdf`,
                         receiptFileSize: 260000,
                         notes: 'Simulated investor wire transfer slip upload'

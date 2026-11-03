@@ -4,6 +4,7 @@ import {
   generateTokenPurchaseQuote,
   computeCanonicalPropertyMetrics,
   calculateLiveInvestmentBreakdown,
+  calculateFiveYearPortfolioYieldProjection,
   PAYMENT_FEE_TIERS,
 } from './financialService';
 import { isValidSolanaAddress } from './solanaService';
@@ -273,6 +274,62 @@ async function runFinancialAndInteractionTests() {
 
   unsubscribe();
   assertTrue(notifyCount >= 5, 'Ledger subscriber notified across state mutations');
+
+  // Test 9: 5-Year Portfolio Annual Rental Yield Growth Projection Engine
+  const emptyProj = calculateFiveYearPortfolioYieldProjection([]);
+  assertEqual(emptyProj.points.length, 0, 'Empty portfolio returns 0 projection points');
+  assertEqual(emptyProj.totalCapitalEUR, 0, 'Empty portfolio returns €0 total capital');
+
+  const multiAssetProj = calculateFiveYearPortfolioYieldProjection(
+    [
+      {
+        propertyId: 'prop-1',
+        title: 'Roquebrune Villa SPV',
+        allocatedCapitalEUR: 10000,
+        annualYieldPercent: 9.0,
+        downsideYieldPercent: 7.5,
+      },
+      {
+        propertyId: 'prop-2',
+        title: 'Paris 16e Mansion SPV',
+        allocatedCapitalEUR: 15000,
+        annualYieldPercent: 8.0,
+        downsideYieldPercent: 6.8,
+      },
+    ],
+    { annualIndexationPercent: 2.5, years: 5, startYear: 2027 }
+  );
+
+  assertEqual(multiAssetProj.points.length, 5, '5-year projection produces exactly 5 annual points');
+  assertEqual(multiAssetProj.totalCapitalEUR, 25000, 'Selected portfolio capital sums to €25,000');
+  assertEqual(
+    multiAssetProj.year1AnnualYieldEUR,
+    2100,
+    'Year 1 net rental yield (€900 + €1,200) = €2,100.00'
+  );
+  assertEqual(
+    multiAssetProj.weightedYear1YieldPercent,
+    8.4,
+    'Year 1 weighted initial yield-on-cost = 8.40%'
+  );
+  assertTrue(
+    multiAssetProj.year5CashYieldEUR > multiAssetProj.year1AnnualYieldEUR,
+    'Year 5 lease-indexed cash rental yield exceeds Year 1 initial yield'
+  );
+  assertTrue(
+    multiAssetProj.year5CompoundedYieldOnCostPercent > multiAssetProj.year5CashYieldOnCostPercent,
+    'Year 5 compounded reinvestment YoC exceeds non-compounded cash YoC'
+  );
+  assertTrue(
+    multiAssetProj.compoundingAdvantageEUR > 0,
+    '5-year dividend reinvestment generates positive compounding advantage'
+  );
+  assertTrue(
+    multiAssetProj.points.every(
+      (pt) => pt.downsideAnnualYieldEUR < pt.cashAnnualYieldEUR
+    ),
+    'Stress-tested downside curve stays conservatively below base cash yield across all 5 years'
+  );
 
   console.log('--- All Financial & Interactive Ledger Tests Completed ---');
 }

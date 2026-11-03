@@ -70,7 +70,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
   const [formStatus, setFormStatus] = useState<InsightArticleStatus>('published');
   const [formScheduledDate, setFormScheduledDate] = useState('');
   const [formReadTime, setFormReadTime] = useState('12 min read');
-  const [formCoverImage, setFormCoverImage] = useState('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80');
+  const [formCoverImage, setFormCoverImage] = useState('https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg');
   const [formCoverAlt, setFormCoverAlt] = useState('European luxury real estate architecture');
   const [formCoverCaption, setFormCoverCaption] = useState('Prime architectural asset under institutional management');
   const [formCoverAttribution, setFormCoverAttribution] = useState("Photo by L'Agence Editorial License");
@@ -121,7 +121,7 @@ export const AdminInsightsCMS: React.FC<AdminInsightsCMSProps> = ({
     setFormStatus('published');
     setFormScheduledDate('');
     setFormReadTime('12 min read');
-    setFormCoverImage('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80');
+    setFormCoverImage('https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg');
     setFormCoverAlt('Luxury architectural asset in Europe');
     setFormCoverCaption('Prime European property under institutional management');
     setFormCoverAttribution("Photo by L'Agence Editorial License");

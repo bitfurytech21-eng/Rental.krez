@@ -34,11 +34,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Málaga',
     country: 'Spain',
     strategy: 'Renovation & Flip',
-    image: 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_malaga_coastal_1791998372504.jpg',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg',
+      'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
+      'https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg'
     ],
     realTIR: 15.86,
     capitalGain: 14.20,
@@ -73,8 +73,8 @@ export const CASE_STUDIES: CaseStudy[] = [
     image: '/assets/aistudio/IMG_7162_db83e4b3.jpeg',
     gallery: [
       '/assets/aistudio/IMG_7162_db83e4b3.jpeg',
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=85',
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/19c23e6587bc7e7e96e969be390bf34.jpg',
+      'https://files.kretzrealestate.com/e1f17df01ac0d3f74df7ff17e913373d.jpg'
     ],
     realTIR: 14.85,
     capitalGain: 12.99,
@@ -106,11 +106,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Valencia',
     country: 'Spain',
     strategy: 'Renovation & Flip',
-    image: '/src/assets/images/prop_valencia_apt_1791998371242.jpg',
+    image: 'https://files.kretzrealestate.com/292b12457f5dea6736f8fb8e92c1022.jpg',
     gallery: [
-      '/src/assets/images/prop_valencia_apt_1791998371242.jpg',
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=85',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/292b12457f5dea6736f8fb8e92c1022.jpg',
+      'https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg',
+      'https://files.kretzrealestate.com/67d719b53b4d8cff16912b54539849d.jpg'
     ],
     realTIR: 16.20,
     capitalGain: 15.10,
@@ -142,11 +142,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Madrid',
     country: 'Spain',
     strategy: 'Rent & Capital Gain',
-    image: '/src/assets/images/prop_madrid_living_1791998371897.jpg',
+    image: 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
     gallery: [
-      '/src/assets/images/prop_madrid_living_1791998371897.jpg',
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=85',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
+      'https://files.kretzrealestate.com/7cae7d2c3b9bbf8e9445a1b2cc78e81.jpg',
+      'https://files.kretzrealestate.com/e1d5efb0c63a5b291d5efb22df70cc39.jpg'
     ],
     realTIR: 13.90,
     capitalGain: 11.40,
@@ -178,11 +178,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Barcelona',
     country: 'Spain',
     strategy: 'Commercial Conversion',
-    image: 'https://images.unsplash.com/photo-1511527661048-7fe73d85e9a4?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1511527661048-7fe73d85e9a4?auto=format&fit=crop&w=1200&q=85',
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_valencia_apt_1791998371242.jpg'
+      'https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg',
+      'https://files.kretzrealestate.com/8ea96ea88eac7013d9d6445c14583f8e.jpg',
+      'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg'
     ],
     realTIR: 17.15,
     capitalGain: 16.30,
@@ -214,11 +214,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Gandía',
     country: 'Spain',
     strategy: 'Renovation & Flip',
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_malaga_coastal_1791998372504.jpg',
-      'https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
+      'https://files.kretzrealestate.com/b8d5f1e23efcd102b11bcb49831c99.jpg',
+      'https://files.kretzrealestate.com/31574c24ff15ac43bf531be459a515f9.jpg'
     ],
     realTIR: 15.12,
     capitalGain: 13.40,
@@ -250,10 +250,10 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Castellón',
     country: 'Spain',
     strategy: 'Rent & Capital Gain',
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/7cae7d2c3b9bbf8e9445a1b2cc78e81.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_valencia_apt_1791998371242.jpg',
+      'https://files.kretzrealestate.com/7cae7d2c3b9bbf8e9445a1b2cc78e81.jpg',
+      'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
       '/assets/aistudio/IMG_7162_db83e4b3.jpeg'
     ],
     realTIR: 16.85,
@@ -286,11 +286,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Alicante',
     country: 'Spain',
     strategy: 'Renovation & Flip',
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_malaga_coastal_1791998372504.jpg',
-      'https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg',
+      'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
+      'https://files.kretzrealestate.com/3286f7373a9319f6adb33037462b9324.jpg'
     ],
     realTIR: 14.90,
     capitalGain: 12.80,
@@ -322,11 +322,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Miami',
     country: 'United States',
     strategy: 'Rent & Capital Gain',
-    image: '/src/assets/images/prop_miami_luxury_1791998372925.jpg',
+    image: 'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg',
     gallery: [
-      '/src/assets/images/prop_miami_luxury_1791998372925.jpg',
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_madrid_living_1791998371897.jpg'
+      'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg',
+      'https://files.kretzrealestate.com/7eefe58406cdce325e79d9c8953d4e1.jpg',
+      'https://files.kretzrealestate.com/75697f0376827e4f8ca11760d17be4.jpg'
     ],
     realTIR: 15.75,
     capitalGain: 13.90,
@@ -358,11 +358,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Palma de Mallorca',
     country: 'Spain',
     strategy: 'Renovation & Flip',
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/3c62f78b3114e7f8f343dfcd6ca6dbf.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_malaga_coastal_1791998372504.jpg',
-      'https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/3c62f78b3114e7f8f343dfcd6ca6dbf.jpg',
+      'https://files.kretzrealestate.com/45f052b49abe0b4fe8eb139a021325d.jpg',
+      'https://files.kretzrealestate.com/57597262d0e282a1c34ff9e1a4a539d1.jpg'
     ],
     realTIR: 17.40,
     capitalGain: 16.10,
@@ -394,11 +394,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Valencia',
     country: 'Spain',
     strategy: 'Renovation & Flip',
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_valencia_apt_1791998371242.jpg',
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=85'
+      'https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg',
+      'https://files.kretzrealestate.com/d92edb3b50aae9836a6fd0808b3fd4f.jpg',
+      'https://files.kretzrealestate.com/b014d988f1d5c6e0bf2ef9d2e9408c3e.jpg'
     ],
     realTIR: 16.50,
     capitalGain: 14.80,
@@ -430,11 +430,11 @@ export const CASE_STUDIES: CaseStudy[] = [
     city: 'Riviera Maya',
     country: 'Mexico',
     strategy: 'Vacation Resort',
-    image: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1200&q=85',
+    image: 'https://files.kretzrealestate.com/2876787d3d8a4a862a3417c6f96448cb.jpg',
     gallery: [
-      'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1200&q=85',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
-      '/src/assets/images/prop_miami_luxury_1791998372925.jpg'
+      'https://files.kretzrealestate.com/2876787d3d8a4a862a3417c6f96448cb.jpg',
+      'https://files.kretzrealestate.com/92e6258d020ad1870ec6769394ec9ee.jpg',
+      'https://files.kretzrealestate.com/e93e50a3d237bb408cfae295e2e51a68.jpg'
     ],
     realTIR: 16.44,
     capitalGain: 13.80,
@@ -476,7 +476,7 @@ export const INVESTOR_TESTIMONIALS: InvestorTestimonial[] = [
     name: 'Jaume Ramon',
     role: 'Tech Entrepreneur & Private Investor',
     location: 'Barcelona, Spain',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    avatar: 'https://files.kretzrealestate.com/e148e2d574a8577f2dc4db58923b4a8.jpg',
     quote: 'Real estate tokenization offered me the exact liquidity and diversification I was missing in traditional property. Being able to participate with €1,000 across Málaga and Madrid and see automated returns every month is game-changing.',
     portfolioSize: '€48,500',
     investedProjectsCount: 14,
@@ -485,7 +485,7 @@ export const INVESTOR_TESTIMONIALS: InvestorTestimonial[] = [
     name: 'José María López',
     role: 'Business Productivity Consultant',
     location: 'Madrid, Spain',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+    avatar: 'https://files.kretzrealestate.com/d2db691fe7f1baa19e2443f3b53737b9.jpg',
     quote: 'I made the transition from volatile crypto to real-world asset (RWA) backed tokens. Having notarial deeds behind each SPV gives you the peace of mind of institutional real estate with modern digital speed.',
     portfolioSize: '€32,000',
     investedProjectsCount: 9,
@@ -503,7 +503,7 @@ export const INVESTOR_TESTIMONIALS: InvestorTestimonial[] = [
     name: 'Adrián Fariza',
     role: 'Senior Real Estate Analyst',
     location: 'Sevilla, Spain',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
+    avatar: 'https://files.kretzrealestate.com/4766e7ad6acfa8eb806e887f91fe681d.jpg',
     quote: 'The rigorous underwriting, transparent RICS appraisals, and 0% default rate on closed projects make this platform the gold standard for fractional property in Southern Europe.',
     portfolioSize: '€65,000',
     investedProjectsCount: 22,
@@ -512,7 +512,7 @@ export const INVESTOR_TESTIMONIALS: InvestorTestimonial[] = [
     name: 'Dewi Jansen',
     role: 'International Wealth Strategist',
     location: 'Amsterdam / Paris',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
+    avatar: 'https://files.kretzrealestate.com/ecb44ae86606eb4eda62039225f46.jpg',
     quote: 'My family office allocates part of our cash reserves into tokenized Spanish properties. The returns consistently beat government bonds while remaining backed by tangible physical land and brick.',
     portfolioSize: '€120,000',
     investedProjectsCount: 31,

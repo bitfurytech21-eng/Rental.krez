@@ -35,7 +35,7 @@ export function generateOrganizationSchema() {
       url: BRAND_LOGO,
       caption: "L'Agence Real Estate Official Crest"
     },
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&h=630&q=85',
+    image: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
     description: 'Institutional-grade tokenized luxury real estate and prime European property investments built around ring-fenced SPV custody and Solana blockchain settlement infrastructure.',
     telephone: '+34910849210',
     email: 'info@kretz.site',

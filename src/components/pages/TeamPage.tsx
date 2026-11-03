@@ -9,7 +9,7 @@ import { useAuth } from '../../lib/auth';
 import { contactApi } from '../../lib/api';
 import { TurnstileWidget } from '../security/TurnstileWidget';
 
-import kretzHeadquartersImg from '../../assets/images/kretz_agency_headquarters_1792092491560.jpg';
+const kretzHeadquartersImg = 'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg';
 import olivierImg from '../../assets/images/team/olivier_kretz.jpg';
 import sandrineImg from '../../assets/images/team/sandrine_kretz.jpg';
 import martinImg from '../../assets/images/team/martin_kretz.jpg';

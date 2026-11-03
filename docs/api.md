@@ -327,9 +327,9 @@ Returns catalog listings with real-time token availability, funding progress, an
       "type": "Apartment",
       "status": "funding",
       "images": [
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c"
+        "https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg"
       ],
-      "bannerImage": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+      "bannerImage": "https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg",
       "targetAmount": 1250000,
       "fundedAmount": 875000,
       "tokenPrice": 100,
@@ -442,7 +442,7 @@ Retrieves all token holdings, active dividend streams, and contract certificates
       "propertyId": "prop_lux_01",
       "propertyTitle": "Haussmannien Classique — Trocadéro",
       "propertyLocation": "Avenue Paul Doumer, 75016 Paris",
-      "propertyImage": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
+      "propertyImage": "https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg",
       "tokensPurchased": 25,
       "tokenPrice": 100,
       "totalAmountInvested": 2500.00,

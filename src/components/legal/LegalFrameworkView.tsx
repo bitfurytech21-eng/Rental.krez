@@ -21,6 +21,7 @@ import {
   LegalDocumentRecord,
   SOLANA_INFRASTRUCTURE_REGISTRY,
 } from '../../data/institutionalConfig';
+import { SolanaCapitalRiskTerminalCard } from '../trust/CorporateRegistryTrustCard';
 
 interface LegalFrameworkViewProps {
   mode?: 'full' | 'summary';
@@ -519,6 +520,10 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
                 Barcelona: {COMPANY_REGISTRATION.barcelonaOffice} · {COMPANY_REGISTRATION.primaryEmail}
               </span>
             </div>
+          </div>
+
+          <div className="pt-4">
+            <SolanaCapitalRiskTerminalCard />
           </div>
         </div>
       )}

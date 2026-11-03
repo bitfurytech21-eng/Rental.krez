@@ -454,3 +454,199 @@ export function calculateLiveInvestmentBreakdown(options: {
   };
 }
 
+export interface PortfolioYieldPositionInput {
+  propertyId: string;
+  title: string;
+  allocatedCapitalEUR: number;
+  annualYieldPercent: number;
+  downsideYieldPercent?: number;
+}
+
+export interface AnnualYieldProjectionPoint {
+  yearIndex: number;
+  yearLabel: string;
+  calendarYear: number;
+  cashAnnualYieldEUR: number;
+  cashYieldOnCostPercent: number;
+  compoundedAnnualYieldEUR: number;
+  compoundedYieldOnCostPercent: number;
+  downsideAnnualYieldEUR: number;
+  downsideYieldOnCostPercent: number;
+  cumulativeCashYieldEUR: number;
+  cumulativeCompoundedYieldEUR: number;
+  reinvestedPrincipalEUR: number;
+  byProperty: Record<
+    string,
+    {
+      cashAnnualYieldEUR: number;
+      compoundedAnnualYieldEUR: number;
+      compoundedYieldOnCostPercent: number;
+    }
+  >;
+}
+
+export interface FiveYearPortfolioYieldProjection {
+  points: AnnualYieldProjectionPoint[];
+  totalCapitalEUR: number;
+  weightedYear1YieldPercent: number;
+  year1AnnualYieldEUR: number;
+  year5CashYieldEUR: number;
+  year5CashYieldOnCostPercent: number;
+  year5CompoundedYieldEUR: number;
+  year5CompoundedYieldOnCostPercent: number;
+  fiveYearYieldExpansionPercent: number;
+  totalFiveYearCashDistributionsEUR: number;
+  totalFiveYearCompoundedDistributionsEUR: number;
+  compoundingAdvantageEUR: number;
+}
+
+/**
+ * Projects annual rental yield growth over a multi-year (default 5-year) horizon
+ * for a selected portfolio of tokenized real estate SPV positions.
+ */
+export function calculateFiveYearPortfolioYieldProjection(
+  positions: PortfolioYieldPositionInput[],
+  options?: {
+    annualIndexationPercent?: number;
+    years?: number;
+    startYear?: number;
+  }
+): FiveYearPortfolioYieldProjection {
+  const years = Math.max(1, Math.min(20, Math.floor(options?.years ?? 5)));
+  const indexationRate = (options?.annualIndexationPercent ?? 2.5) / 100;
+  const downsideIndexationRate = indexationRate * 0.5;
+  const startYear = options?.startYear ?? new Date().getFullYear() + 1;
+
+  const validPositions = positions.filter(
+    (p) => (p.allocatedCapitalEUR || 0) > 0 && (p.annualYieldPercent || 0) >= 0
+  );
+
+  const totalCapitalEUR = roundDecimal(
+    validPositions.reduce((sum, p) => sum + p.allocatedCapitalEUR, 0),
+    2
+  );
+
+  if (validPositions.length === 0 || totalCapitalEUR <= 0) {
+    return {
+      points: [],
+      totalCapitalEUR: 0,
+      weightedYear1YieldPercent: 0,
+      year1AnnualYieldEUR: 0,
+      year5CashYieldEUR: 0,
+      year5CashYieldOnCostPercent: 0,
+      year5CompoundedYieldEUR: 0,
+      year5CompoundedYieldOnCostPercent: 0,
+      fiveYearYieldExpansionPercent: 0,
+      totalFiveYearCashDistributionsEUR: 0,
+      totalFiveYearCompoundedDistributionsEUR: 0,
+      compoundingAdvantageEUR: 0,
+    };
+  }
+
+  // Track compounded principal per position across years
+  const compoundedPrincipals = new Map<string, number>();
+  for (const pos of validPositions) {
+    compoundedPrincipals.set(pos.propertyId, pos.allocatedCapitalEUR);
+  }
+
+  let cumulativeCashYieldEUR = 0;
+  let cumulativeCompoundedYieldEUR = 0;
+  const points: AnnualYieldProjectionPoint[] = [];
+
+  for (let yr = 1; yr <= years; yr++) {
+    const escalationFactor = Math.pow(1 + indexationRate, yr - 1);
+    const downsideEscalationFactor = Math.pow(1 + downsideIndexationRate, yr - 1);
+
+    let yearCashTotal = 0;
+    let yearCompoundedTotal = 0;
+    let yearDownsideTotal = 0;
+    let endOfYearPrincipalTotal = 0;
+    const byProperty: AnnualYieldProjectionPoint['byProperty'] = {};
+
+    for (const pos of validPositions) {
+      const baseRate = Math.max(0, pos.annualYieldPercent) / 100;
+      const downsideRate =
+        Math.max(0, pos.downsideYieldPercent ?? roundDecimal(pos.annualYieldPercent * 0.85, 2)) / 100;
+
+      const escalatedRate = baseRate * escalationFactor;
+      const escalatedDownsideRate = downsideRate * downsideEscalationFactor;
+
+      const propCashYield = roundDecimal(pos.allocatedCapitalEUR * escalatedRate, 2);
+      const currentPrincipal = compoundedPrincipals.get(pos.propertyId) ?? pos.allocatedCapitalEUR;
+      const propCompoundedYield = roundDecimal(currentPrincipal * escalatedRate, 2);
+      const propDownsideYield = roundDecimal(pos.allocatedCapitalEUR * escalatedDownsideRate, 2);
+
+      const nextPrincipal = roundDecimal(currentPrincipal + propCompoundedYield, 2);
+      compoundedPrincipals.set(pos.propertyId, nextPrincipal);
+
+      yearCashTotal += propCashYield;
+      yearCompoundedTotal += propCompoundedYield;
+      yearDownsideTotal += propDownsideYield;
+      endOfYearPrincipalTotal += nextPrincipal;
+
+      byProperty[pos.propertyId] = {
+        cashAnnualYieldEUR: propCashYield,
+        compoundedAnnualYieldEUR: propCompoundedYield,
+        compoundedYieldOnCostPercent:
+          pos.allocatedCapitalEUR > 0
+            ? roundDecimal((propCompoundedYield / pos.allocatedCapitalEUR) * 100, 2)
+            : 0,
+      };
+    }
+
+    const cashAnnualYieldEUR = roundDecimal(yearCashTotal, 2);
+    const compoundedAnnualYieldEUR = roundDecimal(yearCompoundedTotal, 2);
+    const downsideAnnualYieldEUR = roundDecimal(yearDownsideTotal, 2);
+
+    cumulativeCashYieldEUR = roundDecimal(cumulativeCashYieldEUR + cashAnnualYieldEUR, 2);
+    cumulativeCompoundedYieldEUR = roundDecimal(
+      cumulativeCompoundedYieldEUR + compoundedAnnualYieldEUR,
+      2
+    );
+
+    points.push({
+      yearIndex: yr,
+      yearLabel: `Year ${yr}`,
+      calendarYear: startYear + yr - 1,
+      cashAnnualYieldEUR,
+      cashYieldOnCostPercent: roundDecimal((cashAnnualYieldEUR / totalCapitalEUR) * 100, 2),
+      compoundedAnnualYieldEUR,
+      compoundedYieldOnCostPercent: roundDecimal(
+        (compoundedAnnualYieldEUR / totalCapitalEUR) * 100,
+        2
+      ),
+      downsideAnnualYieldEUR,
+      downsideYieldOnCostPercent: roundDecimal((downsideAnnualYieldEUR / totalCapitalEUR) * 100, 2),
+      cumulativeCashYieldEUR,
+      cumulativeCompoundedYieldEUR,
+      reinvestedPrincipalEUR: roundDecimal(endOfYearPrincipalTotal, 2),
+      byProperty,
+    });
+  }
+
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  return {
+    points,
+    totalCapitalEUR,
+    weightedYear1YieldPercent: first.cashYieldOnCostPercent,
+    year1AnnualYieldEUR: first.cashAnnualYieldEUR,
+    year5CashYieldEUR: last.cashAnnualYieldEUR,
+    year5CashYieldOnCostPercent: last.cashYieldOnCostPercent,
+    year5CompoundedYieldEUR: last.compoundedAnnualYieldEUR,
+    year5CompoundedYieldOnCostPercent: last.compoundedYieldOnCostPercent,
+    fiveYearYieldExpansionPercent: roundDecimal(
+      last.compoundedYieldOnCostPercent - first.cashYieldOnCostPercent,
+      2
+    ),
+    totalFiveYearCashDistributionsEUR: last.cumulativeCashYieldEUR,
+    totalFiveYearCompoundedDistributionsEUR: last.cumulativeCompoundedYieldEUR,
+    compoundingAdvantageEUR: roundDecimal(
+      last.cumulativeCompoundedYieldEUR - last.cumulativeCashYieldEUR,
+      2
+    ),
+  };
+}
+
+

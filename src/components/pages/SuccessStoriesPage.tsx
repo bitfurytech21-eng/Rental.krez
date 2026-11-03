@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CASE_STUDIES, CaseStudy } from '../../data/caseStudies';
 import { formatCurrency } from '../../lib/utils';
-import heroFallbackImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
+const heroFallbackImg = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
 import { 
   Trophy, TrendingUp, CheckCircle2, Calendar, MapPin, 
   Users, ArrowRight, ShieldCheck, FileCheck, Filter, 

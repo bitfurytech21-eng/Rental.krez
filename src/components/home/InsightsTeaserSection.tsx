@@ -12,10 +12,11 @@ import {
 } from 'lucide-react';
 import { insightsService } from '../../lib/insightsService';
 
-import heroFallbackImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
-import hqFallbackImg from '../../assets/images/kretz_agency_headquarters_1792092491560.jpg';
-import madridFallbackImg from '../../assets/images/prop_madrid_living_1791998371897.jpg';
-import portraitFallbackImg from '../../assets/images/portrait_martin_kretz_1792092492537.jpg';
+import portraitFallbackImg from '../../assets/images/team/martin_kretz.jpg';
+
+const heroFallbackImg = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
+const hqFallbackImg = 'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg';
+const madridFallbackImg = 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg';
 
 const INSIGHT_COVER_FALLBACKS = [hqFallbackImg, heroFallbackImg, madridFallbackImg];
 

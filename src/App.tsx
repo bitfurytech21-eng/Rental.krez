@@ -8,29 +8,20 @@ import { Property } from './types/property';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 
-// Home Components
-import { Hero } from './components/home/Hero';
-import { PlatformStats } from './components/home/PlatformStats';
-import { FeaturedPropertiesCarousel } from './components/home/FeaturedPropertiesCarousel';
-import { HowItWorks } from './components/home/HowItWorks';
-import { Benefits } from './components/home/Benefits';
-import { FAQSection } from './components/home/FAQSection';
-import { FinalCTA } from './components/home/FinalCTA';
-import { AgencyDisciplineSection } from './components/home/AgencyDisciplineSection';
-import { DreamDestinationsSection } from './components/home/DreamDestinationsSection';
-import { ClubTeaserSection } from './components/home/ClubTeaserSection';
-import { CasosDeExitoTeaser } from './components/home/CasosDeExitoTeaser';
-import { InsightsTeaserSection } from './components/home/InsightsTeaserSection';
-import { TrustedByInvestorsSection } from './components/home/TrustedByInvestorsSection';
-import { SolanaInfrastructureSection } from './components/home/SolanaInfrastructureSection';
+// Krez Template Pages
+import { KrezHomePage } from './components/krez/KrezHomePage';
+import { KrezPropertiesPage } from './components/krez/KrezPropertiesPage';
+import { KrezPropertyDetailPage } from './components/krez/KrezPropertyDetailPage';
+import { KrezHowItWorksPage } from './components/krez/KrezHowItWorksPage';
+import { KrezPortfolioPage } from './components/krez/KrezPortfolioPage';
+import { KrezJournalPage } from './components/krez/KrezJournalPage';
+import { KrezContactPage } from './components/krez/KrezContactPage';
+import { KrezAccountPage } from './components/krez/KrezAccountPage';
 
-// Dedicated Pages
-import { PropertiesPage } from './components/pages/PropertiesPage';
+// Dedicated Institutional & Platform Pages
 import { PropertyDetailView } from './components/properties/PropertyDetailView';
-import { HowItWorksPage } from './components/pages/HowItWorksPage';
 import { TokenPage } from './components/pages/TokenPage';
 import { FAQPage } from './components/pages/FAQPage';
-import { ContactPage } from './components/pages/ContactPage';
 import { LegalPage } from './components/pages/LegalPage';
 import { TrustCenterPage } from './components/pages/TrustCenterPage';
 import { TeamPage } from './components/pages/TeamPage';
@@ -39,11 +30,8 @@ import { MembershipPage } from './components/pages/MembershipPage';
 import { SuccessStoriesPage } from './components/pages/SuccessStoriesPage';
 import { BlogPage } from './components/pages/BlogPage';
 import { CompanyNewsPage } from './components/pages/CompanyNewsPage';
-import { ProfilePage } from './components/pages/ProfilePage';
 import { AuthPages } from './components/pages/AuthPages';
 import { DashboardPage } from './components/pages/DashboardPage';
-import { PortfolioOverview } from './components/dashboard/PortfolioOverview';
-import { TransactionTable } from './components/dashboard/TransactionTable';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
 import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
@@ -59,17 +47,17 @@ import { Breadcrumb } from './components/common/Breadcrumb';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 
-import { ArrowRight, ShieldCheck, UserCheck, Plus } from 'lucide-react';
+import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
 function MainApp() {
-  const { user, isConfigured } = useAuth();
+  const { user } = useAuth();
   const { currentPath, navigateTo } = useNavigation();
   const { currentLanguage } = useLanguage();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [pendingInvestmentProperty, setPendingInvestmentProperty] = useState<Property | null>(null);
   const [returnDestination, setReturnDestination] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>(ledger.getProperties());
-  const [passGateUnlocked, setPassGateUnlocked] = useState(isPassGateUnlocked);
+  const [, setPassGateUnlocked] = useState(isPassGateUnlocked);
 
   useEffect(() => {
     return subscribePassGate(setPassGateUnlocked);
@@ -89,24 +77,25 @@ function MainApp() {
 
   // Synchronize selectedProperty whenever route changes to a property page
   useEffect(() => {
-    if (currentPath.startsWith('/property/')) {
-      const slug = currentPath.replace('/property/', '');
+    const clean = currentPath.split('#')[0].split('?')[0];
+    if (clean.startsWith('/property/') || clean.startsWith('/properties/')) {
+      const slug = clean.replace(/^\/propert(?:y|ies)\//, '');
       const currentList = ledger.getProperties();
-      const found = currentList.find(prop => prop.slug === slug || prop.id === slug);
+      const found = currentList.find((prop) => prop.slug === slug || prop.id === slug);
       if (found) setSelectedProperty(found);
     }
   }, [currentPath]);
 
   // Update dynamic SEO metadata, canonical tags, localized descriptions, and OpenGraph/Twitter cards
   useEffect(() => {
-    if (currentPath.startsWith('/property/') && selectedProperty) {
-      const minimumEntry = Number(selectedProperty.minimumInvestment || selectedProperty.tokenPrice || 750);
+    const clean = currentPath.split('#')[0].split('?')[0];
+    if ((clean.startsWith('/property/') || clean.startsWith('/properties/')) && selectedProperty) {
       updatePageSeo({
         path: currentPath,
         lang: currentLanguage,
-        title: `${selectedProperty.title} – Fractional Investment | L'Agence Real Estate`,
-        description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected net yield ${selectedProperty.estimatedAnnualYield}% p.a. Tokenized shares from €${minimumEntry.toLocaleString('en-GB')}.`,
-        image: selectedProperty.images?.[0] || '',
+        title: `${selectedProperty.title} – Fractional Investment | L'Agence`,
+        description: `Invest in ${selectedProperty.title} located in ${selectedProperty.location}. Projected net yield ${selectedProperty.estimatedAnnualYield}% p.a.`,
+        image: selectedProperty.images[0],
         type: 'article',
         schemaType: 'RealEstateAgent',
       });
@@ -120,20 +109,7 @@ function MainApp() {
 
   const handleSelectProperty = (property: Property) => {
     setSelectedProperty(property);
-    navigateTo(`/property/${property.slug}`);
-  };
-
-  // Requirement 10: Preserve selected property when visitor signs in before continuing an investment
-  const handleInvestProperty = (property: Property) => {
-    if (!user) {
-      setPendingInvestmentProperty(property);
-      setSelectedProperty(property);
-      setReturnDestination(`/property/${property.slug}`);
-      navigateTo('/login');
-    } else {
-      setSelectedProperty(property);
-      navigateTo(`/property/${property.slug}`);
-    }
+    navigateTo(`/property/${property.slug}?dossier=full`);
   };
 
   const handleAuthSuccess = () => {
@@ -141,7 +117,7 @@ function MainApp() {
       const target = pendingInvestmentProperty;
       setPendingInvestmentProperty(null);
       setSelectedProperty(target);
-      navigateTo(`/property/${target.slug}`);
+      navigateTo(`/property/${target.slug}?dossier=full`);
     } else if (returnDestination) {
       const dest = returnDestination;
       setReturnDestination(null);
@@ -151,80 +127,112 @@ function MainApp() {
     }
   };
 
-  // Synchronize properties state whenever an investment occurs
   const handleInvestmentSuccess = () => {
     setProperties(ledger.getProperties());
   };
+
+  const queryString = currentPath.includes('?')
+    ? currentPath.substring(currentPath.indexOf('?'))
+    : typeof window !== 'undefined'
+    ? window.location.search
+    : '';
+  const searchParams = new URLSearchParams(queryString);
+  const wantsFullDossier = searchParams.get('dossier') === 'full';
 
   // Render appropriate view based on currentPath
   const renderContent = () => {
     const rawPath = currentPath.split('#')[0].split('?')[0] || '/';
     const basePath = rawPath.length > 1 ? rawPath.replace(/\/$/, '') : rawPath;
 
-    // Property detail view
-    if (basePath.startsWith('/property/')) {
-      const slug = basePath.replace('/property/', '');
-      const currentList = properties;
-      const found = (selectedProperty && (selectedProperty.slug === slug || selectedProperty.id === slug))
-        ? selectedProperty
-        : currentList.find(p => p.slug === slug || p.id === slug);
+    // Property detail routes (/properties/:id and /property/:slug)
+    if (basePath.startsWith('/properties/') || basePath.startsWith('/property/')) {
+      const slug = basePath.replace(/^\/propert(?:y|ies)\//, '');
+      const found =
+        selectedProperty && (selectedProperty.slug === slug || selectedProperty.id === slug)
+          ? selectedProperty
+          : properties.find((p) => p.slug === slug || p.id === slug);
 
       if (found) {
-        const isHidden = found.status === 'hidden' || found.status === 'pending_approval' || found.approvedForFrontend === false || !found.assignedFunction;
+        const isHidden =
+          found.status === 'hidden' ||
+          found.status === 'pending_approval' ||
+          found.approvedForFrontend === false ||
+          !found.assignedFunction;
 
         // Invariant: Non-admin users cannot access hidden properties on the frontend
         if (isHidden && user?.role !== 'admin') {
           return (
-            <div className="min-h-[70vh] bg-[#F6F7F4] flex items-center justify-center py-20 px-4">
-              <div className="max-w-md w-full bg-white rounded-3xl border border-[#E3E8E3] p-8 text-center shadow-lg">
-                <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto mb-4">
-                  <ShieldCheck className="w-8 h-8" />
+            <main className="min-h-[75vh] bg-background pt-header-offset pb-section-sm flex items-center justify-center px-gutter">
+              <div className="max-w-md w-full rounded-card border border-border bg-secondary/55 p-card-pad text-center">
+                <div className="w-12 h-12 rounded-pill bg-background border border-border text-accent flex items-center justify-center mx-auto mb-4">
+                  <ShieldCheck className="w-6 h-6" />
                 </div>
-                <div className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-3">
+                <p className="text-xs font-semibold tracking-widest uppercase text-accent mb-2">
                   Off-Market Asset · Admin Custody
-                </div>
-                <h2 className="text-xl font-bold text-[#18211F] mb-2">{found.title}</h2>
-                <p className="text-sm text-[#69736F] leading-relaxed mb-6">
-                  This property is currently held in off-market administrative custody and has not yet been approved to appear on the public frontend.
+                </p>
+                <h2 className="text-xl font-heading font-bold uppercase text-foreground mb-2">
+                  {found.title}
+                </h2>
+                <p className="text-sm text-muted leading-relaxed mb-6">
+                  This property is currently held in off-market administrative custody and has not yet been approved to appear on the public register.
                 </p>
                 <button
+                  type="button"
                   onClick={() => navigateTo('/properties')}
-                  className="w-full py-3 px-6 rounded-2xl bg-[#182D2A] text-white font-bold text-sm hover:bg-[#27845D] transition-colors cursor-pointer"
+                  className="w-full py-3.5 px-6 rounded-pill bg-primary text-white font-semibold uppercase tracking-widest text-xs cursor-pointer"
                 >
-                  Return to Active Marketplace
+                  Return to Properties
                 </button>
               </div>
-            </div>
+            </main>
           );
         }
 
-        return (
-          <div>
-            {isHidden && user?.role === 'admin' && (
-              <div className="bg-amber-600 text-white px-4 py-2.5 text-center text-xs font-bold flex items-center justify-center gap-2">
-                <span>🔒 Administrator Preview Mode: This property is HIDDEN from visitors (Function: {found.assignedFunction || 'Unassigned'} · Approved: No).</span>
-                <button
-                  onClick={() => navigateTo('/admin')}
-                  className="underline bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[11px] cursor-pointer"
-                >
-                  Manage in Admin Panel &rarr;
-                </button>
-              </div>
-            )}
-            <PropertyDetailView
-              property={found}
-              onBack={() => navigateTo('/properties')}
-              onNavigateDeposit={() => navigateTo('/dashboard')}
-              onNavigateAuthForInvestment={(prop) => {
-                setPendingInvestmentProperty(prop);
-                setReturnDestination(`/property/${prop.slug}`);
-                navigateTo('/login');
-              }}
-              onInvestmentSuccess={handleInvestmentSuccess}
-            />
-          </div>
-        );
+        if (wantsFullDossier) {
+          return (
+            <div className="pt-16">
+              {isHidden && user?.role === 'admin' && (
+                <div className="bg-amber-600 text-white px-4 py-2.5 text-center text-xs font-bold flex items-center justify-center gap-2">
+                  <span>
+                    Administrator Preview Mode: This property is HIDDEN from visitors (Function:{' '}
+                    {found.assignedFunction || 'Unassigned'} · Approved: No).
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('/admin')}
+                    className="underline bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[11px] cursor-pointer"
+                  >
+                    Manage in Admin Panel &rarr;
+                  </button>
+                </div>
+              )}
+              <PropertyDetailView
+                property={found}
+                onBack={() => navigateTo(`/properties/${found.slug}`)}
+                onNavigateDeposit={() => navigateTo('/dashboard')}
+                onNavigateAuthForInvestment={(prop) => {
+                  setPendingInvestmentProperty(prop);
+                  setReturnDestination(`/property/${prop.slug}?dossier=full`);
+                  navigateTo('/login');
+                }}
+                onInvestmentSuccess={handleInvestmentSuccess}
+              />
+            </div>
+          );
+        }
       }
+
+      return (
+        <KrezPropertyDetailPage
+          buildingId={slug}
+          properties={properties}
+          onNavigate={navigateTo}
+          onOpenFullDossier={(prop) => {
+            setSelectedProperty(prop);
+            navigateTo(`/property/${prop.slug}?dossier=full`);
+          }}
+        />
+      );
     }
 
     // Individual Insight Article / Dossier view
@@ -241,22 +249,37 @@ function MainApp() {
     }
 
     switch (basePath) {
+      case '/':
+      case '':
+      case '/home':
+        return <KrezHomePage onNavigate={navigateTo} />;
+
       case '/properties':
-        return (
-          <PropertiesPage
-            properties={properties}
-            onSelectProperty={handleSelectProperty}
-            onInvestProperty={handleInvestProperty}
-          />
-        );
+        return <KrezPropertiesPage properties={properties} onNavigate={navigateTo} />;
+
+      case '/how-it-works':
+      case '/investing':
+        return <KrezHowItWorksPage onNavigate={navigateTo} />;
+
+      case '/portfolio':
+        return <KrezPortfolioPage onNavigate={navigateTo} />;
+
+      case '/journal':
+        return <KrezJournalPage onNavigate={navigateTo} />;
+
+      case '/contact':
+        return <KrezContactPage />;
+
+      case '/account':
+        return <KrezAccountPage onNavigate={navigateTo} />;
 
       case '/insights':
       case '/insights/dossiers': {
-        const queryParams = typeof window !== 'undefined' 
-          ? new URLSearchParams(window.location.search || (currentPath.includes('?') ? currentPath.substring(currentPath.indexOf('?')) : ''))
-          : new URLSearchParams();
-        const initialCategory = queryParams.get('category') || 'all';
-        const initialType = (basePath === '/insights/dossiers' || queryParams.get('type') === 'dossiers') ? 'dossiers' : undefined;
+        const initialCategory = searchParams.get('category') || 'all';
+        const initialType =
+          basePath === '/insights/dossiers' || searchParams.get('type') === 'dossiers'
+            ? 'dossiers'
+            : undefined;
         return (
           <InsightsEditorialHome
             initialCategory={initialCategory}
@@ -327,27 +350,11 @@ function MainApp() {
           />
         );
 
-      case '/investing':
-        return (
-          <HowItWorksPage
-            onExplore={() => navigateTo('/properties')}
-            onRegister={() => navigateTo('/register')}
-          />
-        );
-
       case '/token':
-        return (
-          <TokenPage
-            onExplore={() => navigateTo('/properties')}
-          />
-        );
+        return <TokenPage onExplore={() => navigateTo('/properties')} />;
 
       case '/faq':
-        return (
-          <FAQPage
-            onContact={() => navigateTo('/contact')}
-          />
-        );
+        return <FAQPage onContact={() => navigateTo('/contact')} />;
 
       case '/guide':
       case '/security-guide':
@@ -357,9 +364,6 @@ function MainApp() {
             onNavigateLogin={() => navigateTo('/login')}
           />
         );
-
-      case '/contact':
-        return <ContactPage />;
 
       case '/trust':
       case '/trust-center':
@@ -373,13 +377,7 @@ function MainApp() {
       case '/cookies':
       case '/terms':
       case '/privacy': {
-        const queryStr = currentPath.includes('?')
-          ? currentPath.substring(currentPath.indexOf('?'))
-          : typeof window !== 'undefined'
-          ? window.location.search
-          : '';
-        const params = new URLSearchParams(queryStr);
-        const docSlug = params.get('doc') || undefined;
+        const docSlug = searchParams.get('doc') || undefined;
         const legalMode =
           basePath === '/privacy'
             ? 'privacy'
@@ -443,7 +441,6 @@ function MainApp() {
 
       case '/dashboard':
       case '/analytics':
-      case '/portfolio':
       case '/transactions':
       case '/distributions':
       case '/wallet':
@@ -457,7 +454,6 @@ function MainApp() {
         const tabMap: Record<string, string> = {
           '/dashboard': 'overview',
           '/analytics': 'analytics',
-          '/portfolio': 'portfolio',
           '/transactions': 'transactions',
           '/distributions': 'distributions',
           '/wallet': 'wallet',
@@ -469,7 +465,8 @@ function MainApp() {
           '/profile': 'profile',
           '/support': 'support',
         };
-        const tab = tabMap[basePath] || 'overview';
+        const requestedTab = searchParams.get('tab');
+        const tab = requestedTab || tabMap[basePath] || 'overview';
         return (
           <ProtectedRoute
             onNavigateLogin={() => {
@@ -480,7 +477,7 @@ function MainApp() {
             <DashboardPage
               defaultTab={tab}
               onSelectProperty={(id) => {
-                const p = properties.find(prop => prop.id === id);
+                const p = properties.find((prop) => prop.id === id);
                 if (p) handleSelectProperty(p);
               }}
               onExploreProperties={() => navigateTo('/properties')}
@@ -517,149 +514,126 @@ function MainApp() {
           </ProtectedRoute>
         );
 
-      // Default: Homepage
-      case '/':
-      default: {
-        const liveHomepageOfferingsCount = properties.filter(
-          (p) =>
-            p.status !== 'hidden' &&
-            p.status !== 'pending_approval' &&
-            p.approvedForFrontend !== false &&
-            Boolean(p.assignedFunction)
-        ).length;
-
+      default:
         return (
-          <main className="overflow-x-hidden">
-            <Hero
-              onExplore={() => navigateTo('/properties')}
-              onHowItWorks={() => navigateTo('/investing')}
-              properties={properties}
-              onSelectProperty={handleSelectProperty}
-            />
-
-            <PlatformStats
-              activeOfferingsCount={liveHomepageOfferingsCount}
-              properties={properties}
-            />
-
-            <FeaturedPropertiesCarousel
-              properties={properties}
-              onSelectProperty={handleSelectProperty}
-              onInvestProperty={handleInvestProperty}
-              onExploreAll={() => navigateTo('/properties')}
-              onHowItWorks={() => navigateTo('/investing')}
-            />
-
-            <DreamDestinationsSection
-              onExploreProperties={() => navigateTo('/properties')}
-              onContactAgency={() => navigateTo('/contact')}
-            />
-
-            <AgencyDisciplineSection
-              onNavigateTeam={() => navigateTo('/team')}
-              onNavigateContact={() => navigateTo('/contact')}
-              onNavigateProperties={() => navigateTo('/properties')}
-            />
-
-            <HowItWorks
-              onExploreMarketplace={() => navigateTo('/properties')}
-              onLearnMore={() => navigateTo('/investing')}
-            />
-
-            <SolanaInfrastructureSection
-              properties={properties}
-              onNavigateToken={() => navigateTo('/token')}
-              onNavigateTrust={() => navigateTo('/trust')}
-              onSelectProperty={handleSelectProperty}
-            />
-
-            <CasosDeExitoTeaser
-              onNavigateCasos={() => navigateTo('/casos-de-exito')}
-              onNavigateBlog={() => navigateTo('/blog')}
-              onNavigateProperties={() => navigateTo('/properties')}
-            />
-
-            <InsightsTeaserSection
-              onNavigateInsights={() => navigateTo('/insights')}
-              onNavigateDossier={(slug) => navigateTo(`/insights/${slug}`)}
-              onNavigateCategory={(cat) => navigateTo(`/insights?category=${cat}`)}
-            />
-
-            <Benefits />
-
-            <ClubTeaserSection
-              onExploreClub={() => navigateTo('/club')}
-              onContactDesk={() => navigateTo('/contact')}
-            />
-
-            <FAQSection
-              onNavigateFAQ={() => navigateTo('/faq')}
-              onNavigateContact={() => navigateTo('/contact')}
-            />
-
-            <FinalCTA
-              onRegister={() => navigateTo('/register')}
-              onExplore={() => navigateTo('/properties')}
-            />
-
-            <TrustedByInvestorsSection />
+          <main className="min-h-[75vh] bg-background pt-header-offset pb-section-sm text-foreground">
+            <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
+              <p className="text-xs font-semibold tracking-widest uppercase text-accent">
+                404
+              </p>
+              <h1 className="mt-3 text-4xl font-heading font-bold tracking-tight uppercase text-foreground md:text-5xl">
+                Page not found
+              </h1>
+              <p className="mt-4 max-w-md text-base leading-relaxed text-muted">
+                The page you requested does not exist or has moved.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => navigateTo('/')}
+                  className="inline-flex items-center gap-2 rounded-pill bg-primary px-6 py-3.5 text-xs font-semibold tracking-widest uppercase text-white cursor-pointer"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span>Back to home</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('/properties')}
+                  className="rounded-pill border border-border bg-secondary px-6 py-3.5 text-xs font-semibold tracking-widest uppercase text-foreground cursor-pointer"
+                >
+                  Browse properties
+                </button>
+              </div>
+            </div>
           </main>
         );
-      }
     }
   };
 
   const rawBasePath = (currentPath.split('#')[0] || '/').split('?')[0];
   const currentBasePath = rawBasePath.length > 1 ? rawBasePath.replace(/\/$/, '') : rawBasePath;
-  const isDashboardView = [
-    '/dashboard', '/analytics', '/portfolio', '/transactions', '/distributions', 
-    '/wallet', '/deposit', '/withdraw', '/documents', '/referrals', '/notifications', 
-    '/profile', '/support'
-  ].includes(currentBasePath) || currentBasePath.startsWith('/dashboard');
+
+  const isDashboardView =
+    [
+      '/dashboard',
+      '/analytics',
+      '/transactions',
+      '/distributions',
+      '/wallet',
+      '/deposit',
+      '/withdraw',
+      '/documents',
+      '/referrals',
+      '/notifications',
+      '/profile',
+      '/support',
+    ].includes(currentBasePath) || currentBasePath.startsWith('/dashboard');
 
   const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
   const isIsolatedAdminEnvironment = isAdminView || isAdminLoginPage;
-  const isHomePage = currentBasePath === '/' || currentBasePath === '';
+
+  const isKrezTemplatePage =
+    currentBasePath === '/' ||
+    currentBasePath === '' ||
+    currentBasePath === '/home' ||
+    currentBasePath === '/properties' ||
+    currentBasePath.startsWith('/properties/') ||
+    (currentBasePath.startsWith('/property/') && !wantsFullDossier) ||
+    currentBasePath === '/how-it-works' ||
+    currentBasePath === '/investing' ||
+    currentBasePath === '/portfolio' ||
+    currentBasePath === '/journal' ||
+    currentBasePath === '/contact' ||
+    currentBasePath === '/account';
 
   return (
-    <div className={`flex flex-col ${isDashboardView ? 'bg-white h-screen overflow-hidden' : 'bg-[#f0f8fe] text-[#1C1917] font-sans min-h-screen'}`}>
+    <div
+      className={`flex flex-col ${
+        isDashboardView
+          ? 'bg-white h-screen overflow-hidden'
+          : 'bg-background text-foreground font-sans min-h-screen'
+      }`}
+    >
       {/* Keyboard Accessibility Skip Link */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#0B1B30] focus:text-[#BEE179] focus:font-bold focus:outline-none"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-pill focus:bg-primary focus:text-white focus:font-semibold focus:text-xs focus:shadow-lg"
       >
         Skip to main content
       </a>
 
-      {!isDashboardView && !isIsolatedAdminEnvironment && <Header currentPath={currentPath} onNavigate={navigateTo} />}
+      {!isDashboardView && !isIsolatedAdminEnvironment && (
+        <Header currentPath={currentPath} onNavigate={navigateTo} />
+      )}
 
-      {/* Dynamic Hierarchical Breadcrumb Navigation & Schema.org BreadcrumbList */}
-      {!isDashboardView && !isIsolatedAdminEnvironment && !isHomePage && (
-        <Breadcrumb
-          currentPath={currentPath}
-          onNavigate={navigateTo}
-          selectedProperty={selectedProperty}
-        />
+      {/* Hierarchical Breadcrumb on deep institutional pages */}
+      {!isDashboardView && !isIsolatedAdminEnvironment && !isKrezTemplatePage && (
+        <div className="pt-16">
+          <Breadcrumb
+            currentPath={currentPath}
+            onNavigate={navigateTo}
+            selectedProperty={selectedProperty}
+          />
+        </div>
       )}
 
       <div id="main-content" className={`flex-1 flex flex-col ${isDashboardView ? 'overflow-hidden' : ''}`}>
         {renderContent()}
       </div>
 
-      {/* Standard Institutional Footer across all public pages */}
-      {!isDashboardView && !isIsolatedAdminEnvironment && <Footer onNavigate={navigateTo} />}
+      {!isDashboardView && !isIsolatedAdminEnvironment && (
+        <Footer onNavigate={navigateTo} />
+      )}
 
-      {/* Customer Support System (excluded from isolated admin routes) */}
       {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
 
-      {/* First-visit Cookie Consent Banner */}
-      {!isIsolatedAdminEnvironment && <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />}
+      {!isIsolatedAdminEnvironment && (
+        <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />
+      )}
 
-      {/* Viewport Resize Monitor & Desktop Site Layout Trigger */}
       <ViewportDesktopMonitor />
 
-      {/* Dynamic Schema.org JSON-LD Structured Data Engine */}
       <SchemaJsonLd property={selectedProperty} />
     </div>
   );

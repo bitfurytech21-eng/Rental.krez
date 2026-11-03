@@ -10,6 +10,7 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname || '.', 'src'),
+        'react-is': path.resolve(import.meta.dirname || '.', 'node_modules/react-is'),
       },
     },
     build: {

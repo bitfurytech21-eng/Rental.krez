@@ -187,7 +187,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
             const target = e.target as HTMLImageElement;
             if (!target.dataset.fallback) {
               target.dataset.fallback = 'true';
-              target.src = '/assets/images/hero_real_estate_1791998371047.jpg';
+              target.src = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
             }
           }}
         />

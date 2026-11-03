@@ -1,3 +1,20 @@
+import olivierKretzImg from '../assets/images/team/olivier_kretz.jpg';
+import sandrineKretzImg from '../assets/images/team/sandrine_kretz.jpg';
+import martinKretzImg from '../assets/images/team/martin_kretz.jpg';
+import valentinKretzImg from '../assets/images/team/valentin_kretz.jpg';
+import louisKretzImg from '../assets/images/team/louis_kretz.jpg';
+import raphaelKretzImg from '../assets/images/team/raphael_kretz.jpg';
+import alexandreBruneauImg from '../assets/images/team/alexandre_bruneau.jpg';
+import adrianaPinosImg from '../assets/images/team/adriana_pinos.jpg';
+import yannMiossecImg from '../assets/images/team/yann_miossec.jpg';
+import jimmyDelageImg from '../assets/images/team/jimmy_delage.jpg';
+import lisaAzzaroneImg from '../assets/images/team/lisa_azzarone.jpg';
+import clementineBussetImg from '../assets/images/team/clementine_busset.jpg';
+import mathildeMasImg from '../assets/images/team/mathilde_mas.jpg';
+import amandineLandoisImg from '../assets/images/team/amandine_landois.jpg';
+import jorgeDeAndresImg from '../assets/images/team/jorge_de_andres.jpg';
+import camilleRichardImg from '../assets/images/team/camille_richard.jpg';
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -21,7 +38,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Founder & Managing Partner",
     "category": "founders",
     "bio": "Founded Kretz Real Estate in 2007 with Sandrine after 25 years in senior executive leadership at Procter & Gamble and Lexmark. Olivier steers the global strategy, high-profile family office relations, and oversees ultra-confidential private acquisitions across France and international luxury capitals.",
-    "image": "/src/assets/images/team/olivier_kretz.jpg",
+    "image": olivierKretzImg,
     "remoteImage": "https://files.kretzrealestate.com/4929ede2b815e7353ffa822ced3380.jpg",
     "location": "Paris & Boulogne-Billancourt, France",
     "specialty": "Family Office Advisory & Off-Market Flagships",
@@ -40,7 +57,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Co-Founder & Associate Director",
     "category": "founders",
     "bio": "Co-founder with Olivier. Former educator with an extraordinary instinct for architectural harmony, exceptional interior design, and lifestyle potential. Sandrine curates the agency’s most poetic residences, private châteaux, and leads bespoke client staging and confidential representation.",
-    "image": "/src/assets/images/team/sandrine_kretz.jpg",
+    "image": sandrineKretzImg,
     "remoteImage": "https://files.kretzrealestate.com/0e1bfd6464958b18e6e5786a9bdcc0.jpg",
     "location": "Paris & French Riviera, France",
     "specialty": "Historic Mansions, Châteaux & Architectural Staging",
@@ -58,7 +75,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Managing Director · Associate Director",
     "category": "partners",
     "bio": "Eldest son and Managing Director of Kretz & Partners. Graduate in business administration and luxury marketing. Leading figure in prestige Parisian apartments, private mansions (Hôtels Particuliers), and international expansion across Monaco and London.",
-    "image": "/src/assets/images/team/martin_kretz.jpg",
+    "image": martinKretzImg,
     "remoteImage": "https://files.kretzrealestate.com/e3597ced4d5dc4d62ae87be13b8f059.jpg",
     "location": "Paris (Left & Right Bank) & Monaco",
     "specialty": "Hôtels Particuliers, Penthouses & Monaco Prime Assets",
@@ -77,7 +94,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Associate Director · Luxury Estates & Transatlantic",
     "category": "partners",
     "bio": "Second son. Mathematical and engineering background. Formative career in international luxury development in New York and the Philippines before returning to propel Kretz’s transatlantic partnerships, prime Riviera waterfronts, and tokenized real estate ventures.",
-    "image": "/src/assets/images/team/valentin_kretz.jpg",
+    "image": valentinKretzImg,
     "remoteImage": "https://files.kretzrealestate.com/99ed804445ec781b934f157307a135.jpg",
     "location": "Paris, Côte d’Azur & New York",
     "specialty": "Waterfront Villas, US-European Investments & Tokenization",
@@ -95,7 +112,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Associate Director · Spain & Latin America",
     "category": "partners",
     "bio": "Third son. Directs digital strategy, media innovations, and high-yield seasonal luxury rentals. Instrumental in scaling Kretz’s presence in Spain (Barcelona, Ibiza, Mallorca) and pioneering Web3 fractionalized liquidity for prime real estate assets.",
-    "image": "/src/assets/images/team/louis_kretz.jpg",
+    "image": louisKretzImg,
     "remoteImage": "https://files.kretzrealestate.com/e148e2d574a8577f2dc4db58923b4a8.jpg",
     "location": "Barcelona & Balearic Islands, Spain",
     "specialty": "Iberian Waterfronts, Fincas & Prime Rental Yields",
@@ -114,7 +131,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Associate Director & Commercial Advisor",
     "category": "partners",
     "bio": "Youngest son. Bringing fresh dynamic energy, modern digital perspectives, and a sharp focus on emerging luxury residential lofts, architectural artist studios, and next-generation European tech entrepreneurs entering real estate wealth preservation.",
-    "image": "/src/assets/images/team/raphael_kretz.jpg",
+    "image": raphaelKretzImg,
     "remoteImage": "https://files.kretzrealestate.com/c56649d66abef1a56114544f45a952b7.jpg",
     "location": "Paris & Western Suburbs, France",
     "specialty": "Contemporary Lofts, Artist Ateliers & Urban Estates",
@@ -132,7 +149,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Chief Executive Officer (CEO)",
     "category": "executives",
     "bio": "Experienced corporate executive steering the operational scaling of Kretz Real Estate, orchestrating the international network of over 100 dedicated advisors, institutional partnerships, and regulatory structuring for European real estate tokenization.",
-    "image": "/src/assets/images/team/alexandre_bruneau.jpg",
+    "image": alexandreBruneauImg,
     "remoteImage": "https://files.kretzrealestate.com/d2db691fe7f1baa19e2443f3b53737b9.jpg",
     "location": "Paris Corporate Headquarters",
     "specialty": "Corporate Strategy, Institutional Partnerships & Scaling",
@@ -151,7 +168,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Partner · Director Kretz Spain & Balearics",
     "category": "executives",
     "bio": "Leads Kretz Real Estate Spain and Balearic operations from Madrid and Ibiza. Specialist in ultra-exclusive Mediterranean waterfront villas, country fincas, and cross-border European investor portfolios seeking prime sun-belt yields.",
-    "image": "/src/assets/images/team/adriana_pinos.jpg",
+    "image": adrianaPinosImg,
     "remoteImage": "https://files.kretzrealestate.com/ecb44ae86606eb4eda62039225f46.jpg",
     "location": "Barcelona, Madrid & Ibiza, Spain",
     "specialty": "Balearic Waterfronts & Prime Iberian Estates",
@@ -170,7 +187,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Director of Operations",
     "category": "executives",
     "bio": "Oversees daily operational execution, transactional workflows, compliance standards, and administrative support across Kretz Real Estate offices throughout France and international branches.",
-    "image": "/src/assets/images/team/yann_miossec.jpg",
+    "image": yannMiossecImg,
     "remoteImage": "https://files.kretzrealestate.com/ddb0e124cfbf3380425a9c124b89cb0.jpg",
     "location": "Paris Head Office, France",
     "specialty": "Operational Excellence & Escrow Execution",
@@ -188,7 +205,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Associate Director · Paris Prime",
     "category": "executives",
     "bio": "Premier real estate consultant in the Golden Triangle and 16th arrondissement of Paris. Dedicated to high-profile diplomatic residences, private mansions, and luxury family duplexes.",
-    "image": "/src/assets/images/team/jimmy_delage.jpg",
+    "image": jimmyDelageImg,
     "remoteImage": "https://files.kretzrealestate.com/35ba22829fe974131fe731db7b1c1dc.jpg",
     "location": "Paris (16th & Golden Triangle)",
     "specialty": "Golden Triangle Apartments & Diplomatic Residencies",
@@ -206,7 +223,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Head of Digital & Social Media Strategy",
     "category": "executives",
     "bio": "With a background at global luxury cosmetic leaders and brand communication agencies, Lisa directs Kretz Real Estate global media channels and social storytelling, driving multi-million digital reach.",
-    "image": "/src/assets/images/team/lisa_azzarone.jpg",
+    "image": lisaAzzaroneImg,
     "remoteImage": "https://files.kretzrealestate.com/da3d69b85d3b84fe37f96807737bf1f.jpg",
     "location": "Paris Head Office, France",
     "specialty": "Digital Marketing, Social Media Strategy & Brand Media",
@@ -225,7 +242,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Commercial Operations & Client Executive",
     "category": "executives",
     "bio": "Crucial pillar of the Parisian head office coordinating exclusive mandate documentation, VIP client relations, and transactions support for the family directors.",
-    "image": "/src/assets/images/team/clementine_busset.jpg",
+    "image": clementineBussetImg,
     "remoteImage": "https://files.kretzrealestate.com/fc195bbe53cf6cfded49e78975e5aeb.jpg",
     "location": "Paris Head Office, France",
     "specialty": "Exclusive Mandates & Transaction Coordination",
@@ -243,7 +260,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Brand & Social Media Specialist",
     "category": "executives",
     "bio": "Master in Social Media Strategy with prior luxury real estate marketing experience in Bali. Spearheading content creation and digital engagement for Kretz properties.",
-    "image": "/src/assets/images/team/mathilde_mas.jpg",
+    "image": mathildeMasImg,
     "remoteImage": "https://files.kretzrealestate.com/76b7cc7116299d18f725d0f0c1e31bb.jpg",
     "location": "Paris Head Office, France",
     "specialty": "Social Video, Editorial Content & Digital Campaigns",
@@ -261,7 +278,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Sales Coordinator & Advisor Support",
     "category": "executives",
     "bio": "Over 12 years of luxury real estate experience as commercial agent and agency manager. Providing daily high-level support and coordination to Kretz agents across France.",
-    "image": "/src/assets/images/team/amandine_landois.jpg",
+    "image": amandineLandoisImg,
     "remoteImage": "https://files.kretzrealestate.com/8353c188bfd272a87297fb9892bdb74c.jpg",
     "location": "Paris Head Office, France",
     "specialty": "Advisor Support, Network Training & Sales Enablement",
@@ -279,7 +296,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Partner & Real Estate Consultant · Madrid",
     "category": "executives",
     "bio": "Born in Madrid and passionate about high-end architectural brokerage. Experienced investor and entrepreneur combining personalized client service with deep knowledge of Salamanca and Jerónimos.",
-    "image": "/src/assets/images/team/jorge_de_andres.jpg",
+    "image": jorgeDeAndresImg,
     "remoteImage": "https://files.kretzrealestate.com/4766e7ad6acfa8eb806e887f91fe681d.jpg",
     "location": "Madrid, Spain",
     "specialty": "Madrid Prime Real Estate & Historic Palacetes",
@@ -298,7 +315,7 @@ export const KRETZ_CORE_LEADERSHIP: TeamMember[] = [
     "role": "Commercial Support Spain",
     "category": "executives",
     "bio": "Based in Barcelona for 5 years with international corporate background. Coordinates commercial support, client inquiries, and transaction logistics for Kretz Real Estate Spain.",
-    "image": "/src/assets/images/team/camille_richard.jpg",
+    "image": camilleRichardImg,
     "remoteImage": "https://files.kretzrealestate.com/e46d42ad35647a1556fcafa726a796.jpg",
     "location": "Barcelona, Spain",
     "specialty": "Spanish Commercial Support & Client Operations",

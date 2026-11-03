@@ -170,13 +170,13 @@ let mockListings = [
     minimumInvestment: 1000,
     holdingPeriodMonths: 48,
     images: [
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80'
+      'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
+      'https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg',
+      'https://files.kretzrealestate.com/3286f7373a9319f6adb33037462b9324.jpg',
+      'https://files.kretzrealestate.com/6bc1db91a5f1856684da4204fd49ddd.jpg',
+      'https://files.kretzrealestate.com/77505885976169785aa355b7b21d7abe.jpg',
+      'https://files.kretzrealestate.com/337717ee33c361d8662e538c0cf8088.jpg',
+      'https://files.kretzrealestate.com/413290f763843c687cca11f6bc94ca.jpg'
     ],
     specs: { bedrooms: 7, bathrooms: 9, builtAreaM2: 1280, plotAreaM2: 5200 },
     financials: { grossRentAnnual: 220000, netYield: 73.2, totalIrr: 292.8 }
@@ -199,13 +199,13 @@ let mockListings = [
     minimumInvestment: 1000,
     holdingPeriodMonths: 48,
     images: [
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80'
+      'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
+      'https://files.kretzrealestate.com/7cae7d2c3b9bbf8e9445a1b2cc78e81.jpg',
+      'https://files.kretzrealestate.com/e1d5efb0c63a5b291d5efb22df70cc39.jpg',
+      'https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg',
+      'https://files.kretzrealestate.com/8ea96ea88eac7013d9d6445c14583f8e.jpg',
+      'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg',
+      'https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg'
     ],
     specs: { bedrooms: 6, bathrooms: 7, builtAreaM2: 950, plotAreaM2: 2400 },
     financials: { grossRentAnnual: 145000, netYield: 75.6, totalIrr: 302.4 }
@@ -228,13 +228,13 @@ let mockListings = [
     minimumInvestment: 1000,
     holdingPeriodMonths: 36,
     images: [
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80'
+      'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
+      'https://files.kretzrealestate.com/b8d5f1e23efcd102b11bcb49831c99.jpg',
+      'https://files.kretzrealestate.com/31574c24ff15ac43bf531be459a515f9.jpg',
+      'https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg',
+      'https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg',
+      'https://files.kretzrealestate.com/3c62f78b3114e7f8f343dfcd6ca6dbf.jpg',
+      'https://files.kretzrealestate.com/57597262d0e282a1c34ff9e1a4a539d1.jpg'
     ],
     specs: { bedrooms: 8, bathrooms: 10, builtAreaM2: 1450, plotAreaM2: 8900 },
     financials: { grossRentAnnual: 310000, netYield: 78.0, totalIrr: 234.0 }
@@ -2230,7 +2230,7 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
     capitalAppreciation: Number(body.capitalAppreciation || 4.5),
     minimumInvestment: body.minimumInvestment || 1000,
     holdingPeriodMonths: Number(body.holdingPeriodMonths || 36),
-    images: body.images || ['https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80'],
+    images: body.images || ['https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg'],
     specs: body.specs || { bedrooms: 5, bathrooms: 6, builtAreaM2: 750, plotAreaM2: 2500 },
     financials: body.financials || { grossRentAnnual: 120000, netYield: 8.5, totalIrr: 13.0 }
   };
@@ -3707,13 +3707,13 @@ let mockInsightArticles: any[] = [
     author: {
       name: 'Dr. Alexandre Moreau',
       role: 'Chief Real Estate Economist & Partner',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      avatar: '/assets/aistudio/IMG_7164_23f4c8e0.jpeg',
       organization: 'Kretz Wealth Advisory'
     },
     publishedAt: '2026-10-15T09:00:00Z',
     status: 'published',
     readTime: '14 min read',
-    coverImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb186f5f7?auto=format&fit=crop&w=1600&q=80',
+    coverImage: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
     coverImageAlt: 'Modern European architecture showcasing urban luxury real estate in Madrid and Paris',
     coverImageCaption: 'Parisian boulevard meets modern European architectural capital reallocation: institutional prime yields re-anchor above 4.5% net.',
     coverImageAttribution: 'Photo by Laurent Perrier / Kretz Editorial License',
@@ -3735,13 +3735,13 @@ let mockInsightArticles: any[] = [
     author: {
       name: 'Maitre Hélène de Saint-Germain',
       role: 'Head of Legal & Regulatory Compliance',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+      avatar: '/assets/aistudio/IMG_7163_8f4b2c74.png',
       organization: 'Kretz Legal Counsel'
     },
     publishedAt: '2026-10-10T11:15:00Z',
     status: 'published',
     readTime: '16 min read',
-    coverImage: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1600&q=80',
+    coverImage: 'https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg',
     coverImageAlt: 'Abstract blockchain digital tokens intersecting with luxury architectural blueprints',
     coverImageCaption: 'Digital tokenization bridges centuries-old notarial deeds with cryptographic settlement: an immutable bridge to liquidity.',
     coverImageAttribution: 'Photo by Kretz Blockchain Laboratory',

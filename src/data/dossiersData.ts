@@ -20,7 +20,7 @@ export const INSIGHT_CATEGORIES: InsightCategory[] = [
     description: 'Quarterly price-per-square-meter indices, capitalization rates, prime rental yields, and transaction volume trends across Paris, Madrid, and the Mediterranean.',
     accentColor: '#3B82F6',
     icon: 'TrendingUp',
-    heroImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80',
+    heroImage: 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
     featuredOrder: 2,
   },
   {
@@ -31,7 +31,7 @@ export const INSIGHT_CATEGORIES: InsightCategory[] = [
     description: 'Smart contracts, fractional SPV structuring, secondary market liquidity pools, and digital title registry innovations under EU regulatory frameworks.',
     accentColor: '#8B5CF6',
     icon: 'Cpu',
-    heroImage: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1600&q=80',
+    heroImage: 'https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg',
     featuredOrder: 3,
   },
   {
@@ -42,7 +42,7 @@ export const INSIGHT_CATEGORIES: InsightCategory[] = [
     description: 'MiCA compliance, European ESG disclosure standards, cross-border wealth structuring, non-resident taxes, and post-Golden Visa residence strategies.',
     accentColor: '#F59E0B',
     icon: 'Scale',
-    heroImage: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1600&q=80',
+    heroImage: 'https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg',
     featuredOrder: 4,
   },
   {
@@ -53,7 +53,7 @@ export const INSIGHT_CATEGORIES: InsightCategory[] = [
     description: 'Trophy real estate acquisitions, historic Parisian hôtels particuliers, prime Spanish fincas, and private family office allocation architectures.',
     accentColor: '#D97706',
     icon: 'Crown',
-    heroImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80',
+    heroImage: 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
     featuredOrder: 5,
   },
 ];
@@ -251,7 +251,7 @@ For the remainder of the decade, the Kretz research committee recommends a balan
     updatedAt: '2026-10-14T16:00:00Z',
     status: 'published',
     readTime: '16 min read',
-    coverImage: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1600&q=80',
+    coverImage: 'https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg',
     coverImageAlt: 'Abstract blockchain digital tokens intersecting with luxury architectural blueprints',
     coverImageCaption: 'Digital tokenization bridges centuries-old notarial deeds with cryptographic settlement: an immutable bridge to liquidity.',
     coverImageAttribution: 'Photo by Kretz Blockchain Laboratory',
@@ -402,7 +402,7 @@ Platforms operating under registered CASP licenses benefit from **European passp
     updatedAt: '2026-10-12T10:00:00Z',
     status: 'published',
     readTime: '13 min read',
-    coverImage: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1600&q=80',
+    coverImage: 'https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg',
     coverImageAlt: 'Formal architectural facade of European government financial institutions',
     coverImageCaption: 'Navigating post-Golden Visa Southern Europe: strategic planning turns fiscal complexity into sustained wealth protection.',
     coverImageAttribution: 'Photo by Javier Gutierrez / Kretz Legal Review',
@@ -503,7 +503,7 @@ For property investors holding assets via corporate holding entities or debt ins
     author: {
       name: 'Valentin de Kretz',
       role: 'Managing Partner — Paris Luxury Division',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+      avatar: 'https://files.kretzrealestate.com/99ed804445ec781b934f157307a135.jpg',
       bio: 'Leading international broker and host of L’Agence on Netflix, overseeing landmark residential transactions across Paris, Neuilly-sur-Seine, and the French Riviera.',
       organization: 'Kretz Family Real Estate'
     },
@@ -511,10 +511,10 @@ For property investors holding assets via corporate holding entities or debt ins
     updatedAt: '2026-10-02T16:00:00Z',
     status: 'published',
     readTime: '11 min read',
-    coverImage: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1600&q=80',
+    coverImage: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
     coverImageAlt: 'Haussmannian building facades overlooking the Parisian skyline and Eiffel Tower',
     coverImageCaption: 'Haussmannian heritage meets modern architectural refinement: Paris remains the ultimate European wealth sanctuary.',
-    coverImageAttribution: 'Photo by Kretz Paris Archive / Unsplash Editorial',
+    coverImageAttribution: 'Photo by Kretz Paris Archive',
     isFeatured: false,
     isEditorsPick: true,
     tags: ['Paris Luxury', 'Haussmannian', 'Golden Triangle', 'Ultra-Prime', 'Family Office', 'Heritage'],
@@ -614,7 +614,7 @@ Through fractional SPV tokenization, Kretz acquires these distressed historical 
     author: {
       name: 'Dr. Lucas Vaneck',
       role: 'Head of Quantitative Analytics & PropTech',
-      avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80',
+      avatar: 'https://files.kretzrealestate.com/d2db691fe7f1baa19e2443f3b53737b9.jpg',
       bio: 'PhD in Spatial Econometrics from ETH Zürich, specializing in algorithmic valuation, geospatial machine learning, and automated real estate diligence.',
       organization: 'Kretz Quantitative Lab'
     },
@@ -622,7 +622,7 @@ Through fractional SPV tokenization, Kretz acquires these distressed historical 
     updatedAt: '2026-09-22T12:00:00Z',
     status: 'published',
     readTime: '12 min read',
-    coverImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80',
+    coverImage: 'https://files.kretzrealestate.com/d92edb3b50aae9836a6fd0808b3fd4f.jpg',
     coverImageAlt: 'Futuristic glass architectural building reflecting computational data grids',
     coverImageCaption: 'Algorithmic valuation networks process satellite imagery and cadastral data in milliseconds, redefining institutional diligence.',
     coverImageAttribution: 'Photo by Kretz Quantitative Research',
@@ -720,7 +720,7 @@ This results in a valuation precision that rivals or exceeds human surveyor cons
     author: {
       name: 'Sophie Lambert-Dupont',
       role: 'Director of Sustainable Real Estate & ESG',
-      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
+      avatar: 'https://files.kretzrealestate.com/ecb44ae86606eb4eda62039225f46.jpg',
       bio: 'LEED and BREEAM Fellow with 15 years advising European institutional REITs on carbon net-zero transitions and taxonomy-aligned real estate retrofits.',
       organization: 'Kretz Sustainability Practice'
     },
@@ -728,7 +728,7 @@ This results in a valuation precision that rivals or exceeds human surveyor cons
     updatedAt: '2026-09-12T11:00:00Z',
     status: 'published',
     readTime: '10 min read',
-    coverImage: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=80',
+    coverImage: 'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
     coverImageAlt: 'Sustainable modern luxury villa with integrated solar energy and lush garden landscaping',
     coverImageCaption: 'Sustainable European prime estates command double-digit rent and valuation premiums under strict EU ESG covenants.',
     coverImageAttribution: 'Photo by Kretz Architectural Archive',

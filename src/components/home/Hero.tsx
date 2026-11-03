@@ -13,10 +13,10 @@ import {
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
 
-import heroEstateImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
-import madridImg from '../../assets/images/prop_madrid_living_1791998371897.jpg';
-import malagaImg from '../../assets/images/prop_malaga_coastal_1791998372504.jpg';
-import miamiImg from '../../assets/images/prop_miami_luxury_1791998372925.jpg';
+const heroEstateImg = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
+const madridImg = 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg';
+const malagaImg = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
+const miamiImg = 'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg';
 
 interface HeroProps {
   onExplore: () => void;

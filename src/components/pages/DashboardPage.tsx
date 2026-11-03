@@ -38,6 +38,7 @@ import { SolanaWalletManager } from '../wallet/SolanaWalletManager';
 import { TaxReportGenerator } from '../documents/TaxReportGenerator';
 import { TreasuryConverterModal } from '../dashboard/TreasuryConverterModal';
 import { InvestorAnalyticsSuite } from '../dashboard/InvestorAnalyticsSuite';
+import { ProjectedYieldGrowthChart } from '../dashboard/ProjectedYieldGrowthChart';
 
 interface DashboardPageProps {
   defaultTab?: string;
@@ -1175,6 +1176,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             {/* 1.5 PORTFOLIO ANALYTICS TAB */}
             {activeTab === 'analytics' && (
               <div className="space-y-4 animate-in fade-in duration-200">
+                <ProjectedYieldGrowthChart
+                  properties={frontendProperties.length > 0 ? frontendProperties : properties}
+                  investments={investments}
+                  onSelectProperty={onSelectProperty}
+                  onExploreProperties={() => setActiveTab('properties')}
+                />
                 <InvestorAnalyticsSuite
                   properties={properties}
                   investments={investments}

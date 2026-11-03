@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { GlobalPageLoader } from '../components/common/GlobalPageLoader';
 
 export interface NavigationContextType {
   currentPath: string;
@@ -17,10 +16,6 @@ export const useNavigation = (): NavigationContextType => {
   return context;
 };
 
-const MIN_TRANSITION_DURATION_MS = 600;  // Smooth 600ms desktop page transition
-const FADE_OUT_DURATION_MS = 250;        // Smooth exit fade
-const FAILSAFE_MAX_DURATION_MS = 4000;   // Failsafe recovery timer
-
 export const getPathFromLocation = (): string => {
   if (typeof window === 'undefined') return '/';
   const fullHash = window.location.hash;
@@ -29,147 +24,104 @@ export const getPathFromLocation = (): string => {
     return stripped || '/';
   }
   const rawHash = fullHash.replace('#', '').trim();
-  // Only treat non-slash hashes as routes if pathname is root and hash looks like a route
-  if (rawHash && (window.location.pathname === '/' || window.location.pathname === '') && !rawHash.includes('=')) {
-    return rawHash.startsWith('/') ? rawHash : `/${rawHash}`;
+  if (
+    rawHash &&
+    (window.location.pathname === '/' || window.location.pathname === '') &&
+    !rawHash.includes('=') &&
+    rawHash.startsWith('/')
+  ) {
+    return rawHash;
   }
   const search = window.location.search || '';
-  return `${window.location.pathname || '/'}${search}`;
+  const anchor = fullHash && !fullHash.startsWith('#/') ? fullHash : '';
+  return `${window.location.pathname || '/'}${search}${anchor}`;
 };
 
 export const cleanRoutePath = (path: string): string => {
   if (!path || path === '/' || path === '#/') return '/';
-  const normalized = path.replace(/^#/, '');
+  const normalized = path.replace(/^#(?=\/)/, '');
+  if (normalized.startsWith('#')) {
+    return normalized;
+  }
   return normalized.startsWith('/') ? normalized : `/${normalized}`;
 };
 
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentPath, setCurrentPath] = useState<string>(getPathFromLocation);
-  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
-  const [isFadingOut, setIsFadingOut] = useState<boolean>(false);
-
-  const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const fadeOutTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const failsafeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const routeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isTransitioningRef = useRef<boolean>(false);
   const currentPathRef = useRef<string>(currentPath);
 
-  // Keep ref synchronized
   useEffect(() => {
     currentPathRef.current = currentPath;
   }, [currentPath]);
 
-  // Clean up all timers on unmount
-  const clearAllTimers = useCallback(() => {
-    if (transitionTimerRef.current) {
-      clearTimeout(transitionTimerRef.current);
-      transitionTimerRef.current = null;
+  const scrollAfterNavigate = useCallback((targetPath: string) => {
+    if (typeof window === 'undefined') return;
+    const hashIndex = targetPath.indexOf('#');
+    if (hashIndex !== -1) {
+      const anchorId = targetPath.slice(hashIndex + 1).split('?')[0];
+      if (anchorId && !anchorId.startsWith('/')) {
+        window.setTimeout(() => {
+          const el = document.getElementById(anchorId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 80);
+        return;
+      }
     }
-    if (fadeOutTimerRef.current) {
-      clearTimeout(fadeOutTimerRef.current);
-      fadeOutTimerRef.current = null;
-    }
-    if (failsafeTimerRef.current) {
-      clearTimeout(failsafeTimerRef.current);
-      failsafeTimerRef.current = null;
-    }
-    if (routeTimerRef.current) {
-      clearTimeout(routeTimerRef.current);
-      routeTimerRef.current = null;
-    }
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, []);
 
-  useEffect(() => {
-    return () => clearAllTimers();
-  }, [clearAllTimers]);
-
-  /**
-   * Internal transition trigger
-   * Ensures the GlobalPageLoader overlay state is triggered immediately BEFORE proceeding with the route change.
-   * Holds the overlay for a minimum of 5 seconds before initiating the smooth exit fade.
-   */
-  const executeTransition = useCallback((targetPath: string, shouldPushHistory: boolean = true) => {
-    const cleanTarget = cleanRoutePath(targetPath);
-
-    // Prevent duplicate clicks / simultaneous overlays while a transition is already in progress
-    if (isTransitioningRef.current) {
-      return;
-    }
-
-    // 1. Immediately trigger the GlobalPageLoader overlay state BEFORE proceeding with the route change
-    clearAllTimers();
-    isTransitioningRef.current = true;
-    setIsTransitioning(true);
-    setIsFadingOut(false);
-
-    // 2. Schedule the route change to proceed smoothly under the active overlay
-    routeTimerRef.current = setTimeout(() => {
-      // Update browser URL
-      if (shouldPushHistory) {
-        try {
-          window.history.pushState({}, '', cleanTarget);
-          if (window.location.hash || window.location.hash === '') {
-            window.location.hash = cleanTarget;
-          }
-        } catch {
-          // Safe fallback for restricted iframe environments
+  const navigateTo = useCallback(
+    (path: string) => {
+      if (!path) return;
+      if (path.startsWith('#') && !path.startsWith('#/')) {
+        const anchorId = path.slice(1);
+        const el = typeof document !== 'undefined' ? document.getElementById(anchorId) : null;
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
         }
+        return;
       }
 
-      // Update current active route so destination renders in background
+      const cleanTarget = cleanRoutePath(path);
+      try {
+        window.history.pushState({}, '', cleanTarget);
+      } catch {
+        // Safe fallback inside restricted iframe contexts
+      }
+
       setCurrentPath(cleanTarget);
       currentPathRef.current = cleanTarget;
+      scrollAfterNavigate(cleanTarget);
+    },
+    [scrollAfterNavigate]
+  );
 
-      // Scroll to top so destination is positioned at top when revealed
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'instant' });
-      }
-    }, 40);
-
-    // 3. Failsafe recovery timer: guarantee loader never traps user indefinitely
-    failsafeTimerRef.current = setTimeout(() => {
-      if (isTransitioningRef.current) {
-        setIsFadingOut(true);
-        fadeOutTimerRef.current = setTimeout(() => {
-          isTransitioningRef.current = false;
-          setIsTransitioning(false);
-          setIsFadingOut(false);
-        }, FADE_OUT_DURATION_MS);
-      }
-    }, FAILSAFE_MAX_DURATION_MS);
-
-    // 4. Strict Minimum 5-second timer before initiating fade-out
-    transitionTimerRef.current = setTimeout(() => {
-      setIsFadingOut(true);
-
-      fadeOutTimerRef.current = setTimeout(() => {
-        isTransitioningRef.current = false;
-        setIsTransitioning(false);
-        setIsFadingOut(false);
-      }, FADE_OUT_DURATION_MS);
-    }, MIN_TRANSITION_DURATION_MS);
-  }, [clearAllTimers]);
-
-  const navigateTo = useCallback((path: string) => {
-    executeTransition(path, true);
-  }, [executeTransition]);
-
-  // Support browser Back/Forward navigation (popstate & hashchange)
   useEffect(() => {
     const handlePopStateOrHash = () => {
       const detected = getPathFromLocation();
       const cleanDetected = cleanRoutePath(detected);
 
-      // Special recovery / auth hash routes
-      if (cleanDetected.includes('type=recovery') || cleanDetected.startsWith('/reset-password') || cleanDetected.startsWith('reset-password')) {
-        executeTransition('/reset-password', false);
+      if (
+        cleanDetected.includes('type=recovery') ||
+        cleanDetected.startsWith('/reset-password') ||
+        cleanDetected.startsWith('reset-password')
+      ) {
+        setCurrentPath('/reset-password');
+        currentPathRef.current = '/reset-password';
         return;
       }
 
-      // If the detected path is different from current route, execute 5s transition
+      if (cleanDetected.startsWith('#') && !cleanDetected.startsWith('#/')) {
+        scrollAfterNavigate(cleanDetected);
+        return;
+      }
+
       if (cleanDetected !== currentPathRef.current) {
-        executeTransition(cleanDetected, false);
+        setCurrentPath(cleanDetected);
+        currentPathRef.current = cleanDetected;
+        scrollAfterNavigate(cleanDetected);
       }
     };
 
@@ -180,18 +132,19 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       window.removeEventListener('popstate', handlePopStateOrHash);
       window.removeEventListener('hashchange', handlePopStateOrHash);
     };
-  }, [executeTransition]);
+  }, [scrollAfterNavigate]);
 
-  // Global click delegator: intercept any internal anchor tag navigation clicks
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
       const target = (e.target as HTMLElement)?.closest('a');
       if (!target) return;
 
       const href = target.getAttribute('href');
       if (!href) return;
 
-      // Allow external links, protocols, downloads, and new tabs to function normally
       if (
         href.startsWith('http://') ||
         href.startsWith('https://') ||
@@ -203,10 +156,15 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return;
       }
 
-      // If internal relative route or hash route, intercept and trigger page transition
+      if (href.startsWith('#') && !href.startsWith('#/')) {
+        e.preventDefault();
+        navigateTo(href);
+        return;
+      }
+
       if (href.startsWith('/') || href.startsWith('#/')) {
         e.preventDefault();
-        const route = href.replace(/^#/, '');
+        const route = href.replace(/^#(?=\/)/, '');
         navigateTo(route);
       }
     };
@@ -216,14 +174,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [navigateTo]);
 
   return (
-    <NavigationContext.Provider value={{ currentPath, isTransitioning, navigateTo }}>
-      {/* Root DOM with aria-busy flag */}
-      <div aria-busy={isTransitioning ? 'true' : 'false'}>
-        {children}
-      </div>
-
-      {/* Global Page Transition Loader Overlay */}
-      <GlobalPageLoader isVisible={isTransitioning} isFadingOut={isFadingOut} />
+    <NavigationContext.Provider value={{ currentPath, isTransitioning: false, navigateTo }}>
+      {children}
     </NavigationContext.Provider>
   );
 };

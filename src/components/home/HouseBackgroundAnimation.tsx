@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import heroEstateImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
+const heroEstateImg = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
 
 /**
  * HouseBackgroundAnimation

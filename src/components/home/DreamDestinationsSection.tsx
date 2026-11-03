@@ -3,10 +3,10 @@ import {
   Compass, MapPin, ArrowRight, Building, 
   Waves, Mountain, Palmtree, Sun, Eye
 } from 'lucide-react';
-import heroFallbackImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
-import madridFallbackImg from '../../assets/images/prop_madrid_living_1791998371897.jpg';
-import malagaFallbackImg from '../../assets/images/prop_malaga_coastal_1791998372504.jpg';
-import miamiFallbackImg from '../../assets/images/prop_miami_luxury_1791998372925.jpg';
+const heroFallbackImg = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
+const madridFallbackImg = 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg';
+const malagaFallbackImg = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
+const miamiFallbackImg = 'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg';
 
 const DESTINATION_FALLBACKS = [
   heroFallbackImg,
@@ -44,7 +44,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       id: 'france',
       country: 'France',
       tagline: 'Lofts above Parisian rooftops & historic Loire castles',
-      image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=85',
+      image: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
       icon: Building,
       description: 'Push the gates of a private castle in the countryside or live in a triplex loft perched above the zinc rooftops of Paris with direct views of the Eiffel Tower.',
       highlights: [
@@ -59,7 +59,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       id: 'spain',
       country: 'Spain',
       tagline: 'Lunch in the shade of a secluded Mediterranean secret garden',
-      image: 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=1200&q=85',
+      image: 'https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg',
       icon: Sun,
       description: 'Discover sun-drenched courtyards framed by centuries-old stone walls, serene Balearic fincas, and grand residential palaces in the golden heart of Madrid.',
       highlights: [
@@ -74,7 +74,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       id: 'morocco',
       country: 'Morocco',
       tagline: 'Terracotta kasbahs & tranquil fountain courtyards',
-      image: 'https://images.unsplash.com/photo-1539020140153-e479b8c22e70?auto=format&fit=crop&w=1200&q=85',
+      image: 'https://files.kretzrealestate.com/19c23e6587bc7e7e96e969be390bf34.jpg',
       icon: Mountain,
       description: 'Step behind heavy cedar doors into peaceful orange-blossom riads, or gaze across the Palmeraie toward the snow-capped ridges of the Atlas Mountains.',
       highlights: [
@@ -89,7 +89,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       id: 'reunion-island',
       country: 'Reunion Island',
       tagline: 'Volcanic tropical waterfalls & Indian Ocean sanctuaries',
-      image: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=85',
+      image: 'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
       icon: Waves,
       description: 'L’Île Intense invites you to tropical cliffside villas overlooking emerald lagoons and majestic waterfalls tumbling through lush volcanic forests.',
       highlights: [
@@ -104,7 +104,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       id: 'united-states',
       country: 'United States',
       tagline: 'Manhattan skyline lofts & Florida sunshine waterfronts',
-      image: 'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?auto=format&fit=crop&w=1200&q=85',
+      image: 'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg',
       icon: Building,
       description: 'High-floor penthouses framed by iconic New York skyscrapers, alongside Biscayne Bay deepwater estates designed for the ultimate yachting lifestyle.',
       highlights: [
@@ -119,7 +119,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       id: 'st-barthelemy',
       country: 'St. Barthélemy',
       tagline: 'Crystal-clear turquoise Caribbean bays & red-roofed villas',
-      image: 'https://images.unsplash.com/photo-1548574505-5e239809ee19?auto=format&fit=crop&w=1200&q=85',
+      image: 'https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg',
       icon: Palmtree,
       description: 'The pinnacle of French Caribbean elegance. Unwind in secluded hillside retreats overlooking crystalline coral bays and white-sand beaches.',
       highlights: [
@@ -134,7 +134,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       id: 'monaco',
       country: 'Monaco',
       tagline: 'Port de Fontvieille superyacht berths & Mediterranean glamour',
-      image: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1200&q=85',
+      image: 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
       icon: Waves,
       description: 'The international crown jewel of the Riviera. Exclusive high-rise residences with panoramic yacht harbor vistas, utmost security, and tax residency prestige.',
       highlights: [

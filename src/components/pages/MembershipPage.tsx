@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { MembershipApplicationModal } from '../club/MembershipApplicationModal';
 import { UserMembershipCard } from '../club/UserMembershipCard';
-import kretzHeadquartersImg from '../../assets/images/kretz_agency_headquarters_1792092491560.jpg';
+const kretzHeadquartersImg = 'https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg';
 
 interface MembershipPageProps {
   onNavigateHome: () => void;

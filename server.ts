@@ -117,8 +117,6 @@ async function startServer() {
       try {
         let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
         template = await vite.transformIndexHtml(url, template);
-        // HMR is disabled in this preview environment; remove @vite/client to prevent broken WebSocket connection attempts
-        template = template.replace(/<script type="module" src="\/@vite\/client"><\/script>\s*/g, '');
         res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
       } catch (e) {
         next(e);

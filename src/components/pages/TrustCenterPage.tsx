@@ -26,6 +26,10 @@ import {
   ImplementationStatus,
 } from '../../data/institutionalConfig';
 import {
+  CorporateRegistryTrustCard,
+  SolanaCapitalRiskTerminalCard,
+} from '../trust/CorporateRegistryTrustCard';
+import {
   SolanaAccountVerificationResult,
   verifyInfrastructureAccountsOnMainnet,
 } from '../../lib/solanaService';
@@ -172,6 +176,17 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Corporate Registry & Trust Matrix (Image 2) & Terminal Risk Disclosure (Image 3) */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <CorporateRegistryTrustCard onNavigate={onNavigate} />
+          <div className="space-y-4 pt-0 lg:pt-14">
+            <h3 className="font-serif text-xl font-bold text-[#18211F]">
+              Solana Mainnet Verification &amp; Risk Terminal
+            </h3>
+            <SolanaCapitalRiskTerminalCard />
           </div>
         </section>
 

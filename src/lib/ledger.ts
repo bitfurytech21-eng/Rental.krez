@@ -879,7 +879,7 @@ const DEFAULT_VERIFICATION_DOCUMENTS: VerificationDocument[] = [
     category: 'deposit_proof',
     title: 'CaixaBank SEPA Wire Transfer Slip (€10,000)',
     documentType: 'Bank Wire Receipt',
-    fileUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1200&auto=format&fit=crop&q=80',
+    fileUrl: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
     fileName: 'caixabank_sepa_wire_transfer_10000eur.pdf',
     fileSize: 245000,
     uploadedAt: '2026-03-15T10:35:00Z',
@@ -897,7 +897,7 @@ const DEFAULT_VERIFICATION_DOCUMENTS: VerificationDocument[] = [
     category: 'kyc_identity',
     title: 'Biometric Passport Scan (AML5/6 Compliance)',
     documentType: 'International Passport',
-    fileUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=1200&auto=format&fit=crop&q=80',
+    fileUrl: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
     fileName: 'investor_passport_biometric_scan.jpg',
     fileSize: 1250000,
     uploadedAt: '2026-03-14T14:30:00Z',
@@ -1120,6 +1120,8 @@ class LedgerService {
           : p.status;
         return {
           ...p,
+          images: init.images,
+          bannerImage: init.bannerImage,
           status: resolvedStatus,
           monthlyTargetRate: init.monthlyTargetRate,
           estimatedAnnualYield: init.estimatedAnnualYield,
@@ -1767,6 +1769,8 @@ class LedgerService {
         if (init) {
           return {
             ...p,
+            images: init.images,
+            bannerImage: init.bannerImage,
             status: resolvedStatus,
             monthlyTargetRate: init.monthlyTargetRate,
             estimatedAnnualYield: init.estimatedAnnualYield,
@@ -1932,6 +1936,8 @@ class LedgerService {
       if (init) {
         return {
           ...p,
+          images: init.images,
+          bannerImage: init.bannerImage,
           monthlyTargetRate: init.monthlyTargetRate,
           estimatedAnnualYield: init.estimatedAnnualYield,
           totalEstimatedReturn: init.totalEstimatedReturn,

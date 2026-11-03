@@ -469,7 +469,7 @@ export const PropertyDocumentGenerator: React.FC<PropertyDocumentGeneratorProps>
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gray-200 shrink-0 border border-[#E3E8E3]">
                   <img
-                    src={property.agent?.photo || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=256&q=80"}
+                    src={property.agent?.photo || "https://files.kretzrealestate.com/e148e2d574a8577f2dc4db58923b4a8.jpg"}
                     alt={property.agent?.name || "Broker"}
                     className="w-full h-full object-cover"
                   />

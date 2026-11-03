@@ -10,10 +10,10 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 
-import heroFallbackImg from '../../assets/images/hero_real_estate_1791998371047.jpg';
-import madridFallbackImg from '../../assets/images/prop_madrid_living_1791998371897.jpg';
-import malagaFallbackImg from '../../assets/images/prop_malaga_coastal_1791998372504.jpg';
-import valenciaFallbackImg from '../../assets/images/prop_valencia_apt_1791998371242.jpg';
+const heroFallbackImg = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
+const madridFallbackImg = 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg';
+const malagaFallbackImg = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
+const valenciaFallbackImg = 'https://files.kretzrealestate.com/292b12457f5dea6736f8fb8e92c1022.jpg';
 
 const CASE_FALLBACKS = [
   malagaFallbackImg,
