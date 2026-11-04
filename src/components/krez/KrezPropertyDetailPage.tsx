@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Coins, Layers, Printer, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Property } from '../../types/property';
 import {
   KREZ_INVESTMENT_RANGES,
@@ -10,8 +10,6 @@ import { useAuth } from '../../lib/auth';
 import { contactApi } from '../../lib/api';
 import { TurnstileWidget } from '../security/TurnstileWidget';
 import { KrezImage, KrezReveal } from './KrezReveal';
-import { KrezAcquireModal } from './KrezAcquireModal';
-import { KrezCompareModal } from './KrezCompareModal';
 
 interface KrezPropertyDetailPageProps {
   buildingId: string;
@@ -56,10 +54,6 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticketId, setTicketId] = useState<string | null>(null);
-
-  // Modals
-  const [isAcquireOpen, setIsAcquireOpen] = useState(false);
-  const [isCompareOpen, setIsCompareOpen] = useState(false);
 
   if (!building) {
     return (
@@ -153,45 +147,15 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAcquireOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-pill bg-[#087F5B] px-6 py-3.5 text-xs font-bold tracking-widest uppercase text-white transition-transform duration-fast hover:scale-hover active:scale-active shadow-sm cursor-pointer"
-                >
-                  <Coins className="h-4 w-4" />
-                  <span>Acquire shares ({building.sharePrice})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsCompareOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-pill border border-border bg-secondary px-5 py-3.5 text-xs font-semibold tracking-widest uppercase text-foreground transition-colors duration-fast hover:border-foreground cursor-pointer"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  <span>Compare</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') window.print();
-                  }}
-                  className="hidden sm:inline-flex items-center gap-2 rounded-pill border border-border bg-background px-4 py-3.5 text-xs font-semibold tracking-widest uppercase text-muted hover:text-foreground hover:border-foreground transition-colors cursor-pointer"
-                  title="Print official offering fact sheet"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  <span>Fact Sheet</span>
-                </button>
-
                 <a
                   href="#enquire"
                   onClick={(e) => {
                     e.preventDefault();
                     document.getElementById('enquire')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-2 rounded-pill border border-border bg-transparent px-5 py-3.5 text-xs font-semibold tracking-widest uppercase text-foreground transition-colors duration-fast hover:bg-secondary"
+                  className="inline-flex items-center gap-2 rounded-pill bg-primary px-6 py-3.5 text-xs font-semibold tracking-widest uppercase text-white transition-transform duration-fast hover:scale-hover active:scale-active"
                 >
-                  <span>Enquire</span>
+                  <span>Enquire about this building</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </a>
 
@@ -199,9 +163,9 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
                   <button
                     type="button"
                     onClick={() => onOpenFullDossier(building.linkedLedgerProperty!)}
-                    className="rounded-pill border border-border bg-secondary px-4 py-3.5 text-xs font-semibold tracking-widest uppercase text-muted hover:text-foreground transition-colors duration-fast cursor-pointer"
+                    className="rounded-pill border border-border bg-secondary px-5 py-3.5 text-xs font-semibold tracking-widest uppercase text-foreground transition-colors duration-fast hover:border-foreground cursor-pointer"
                   >
-                    Solana Ledger
+                    Live token subscription
                   </button>
                 )}
               </div>
@@ -558,49 +522,20 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
                     </p>
                   )}
 
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="inline-flex items-center gap-2 rounded-pill bg-primary px-7 py-3.5 text-xs font-semibold tracking-widest uppercase text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
-                    >
-                      <span>{submitting ? 'Sending...' : 'Send enquiry'}</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  </form>
-                )}
-              </div>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="inline-flex items-center gap-2 rounded-pill bg-primary px-7 py-3.5 text-xs font-semibold tracking-widest uppercase text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
+                  >
+                    <span>{submitting ? 'Sending...' : 'Send enquiry'}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </form>
+              )}
             </div>
           </div>
-        </section>
-
-      {/* Modals: Acquire & Compare */}
-      <KrezAcquireModal
-        building={building}
-        isOpen={isAcquireOpen}
-        onClose={() => setIsAcquireOpen(false)}
-        onSuccess={() => {
-          // Handled inside modal
-        }}
-      />
-
-      <KrezCompareModal
-        isOpen={isCompareOpen}
-        onClose={() => setIsCompareOpen(false)}
-        buildings={[building]}
-        allBuildings={buildings}
-        onSelectBuilding={(id) => {
-          setIsCompareOpen(false);
-          onNavigate(`/properties/${id}`);
-        }}
-        onAcquireBuilding={() => {
-          setIsCompareOpen(false);
-          setIsAcquireOpen(true);
-        }}
-        onRemoveFromCompare={() => {}}
-        onAddBuildingToCompare={(id) => {
-          // Open comparison with this building and added building
-        }}
-      />
+        </div>
+      </section>
     </main>
   );
 };

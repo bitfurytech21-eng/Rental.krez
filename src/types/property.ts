@@ -118,5 +118,20 @@ export interface Property {
   tourUrl?: string;
   externalTourUrl?: string;
   youtubeId?: string;
+  monthlyTargetRate?: number;
+  spvEntityName?: string;
+  solanaMintAddress?: string;
+  solanaProgramId?: string;
+  isFullyFunded?: boolean;
+  approvedForFrontend?: boolean;
+  assignedFunction?: string;
+  assignedAt?: string;
+  assignedBy?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  approvalNotes?: string;
+  frontendVisibilityStatus?: 'visible' | 'hidden' | 'pending' | string;
+  sensitivityAnalysis?: any;
+  spvJurisdiction?: string;
 }
 

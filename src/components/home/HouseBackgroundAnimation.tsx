@@ -210,16 +210,16 @@ export const HouseBackgroundAnimation: React.FC = () => {
 
       {/* High-Legibility Scrim Overlays - Crucial for Mobile and Desktop readability */}
       {/* 1. Mobile-specific contrast scrim ensuring text is 100% crisp on navy */}
-      <div className="absolute inset-0 bg-[#141414]/85 sm:hidden" />
+      <div className="absolute inset-0 bg-[#06284B]/85 sm:hidden" />
       
-      {/* 2. Left-to-Right directional gradient (strong #141414 base behind text, opening up to villa on right) */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/92 sm:via-[#141414]/85 lg:via-[#141414]/75 to-[#141414]/40 w-full pointer-events-none" />
+      {/* 2. Left-to-Right directional gradient (strong #06284B base behind text, opening up to villa on right) */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#06284B] via-[#06284B]/92 sm:via-[#06284B]/85 lg:via-[#06284B]/75 to-[#06284B]/40 w-full pointer-events-none" />
 
       {/* 3. Top subtle vignette for header bar separation */}
-      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[#141414] to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-[#06284B] to-transparent pointer-events-none" />
 
       {/* 4. Bottom seamless blend into next page section */}
-      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-[#141414] to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-[#06284B] to-transparent pointer-events-none" />
     </div>
   );
 };

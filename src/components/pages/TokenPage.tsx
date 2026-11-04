@@ -57,7 +57,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
   };
 
   return (
-    <div className="bg-background text-foreground min-h-screen py-12">
+    <div className="bg-[#070D18] text-white min-h-screen py-12">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 space-y-12">
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center space-y-4">
@@ -73,8 +73,8 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
         </div>
 
         {/* 1. Verified Solana Mainnet Infrastructure Registry */}
-        <div className="bg-[#161616] text-white rounded-3xl border border-[#2E2E2E] p-6 sm:p-8 shadow-lg space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[#2E2E2E]">
+        <div className="bg-[#0B1B30] text-white rounded-3xl border border-[#1D3860] p-6 sm:p-8 shadow-lg space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[#1D3860]">
             <div className="space-y-1 text-left">
               <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#BEE179]">
                 Canonical Mainnet-Beta Programs &amp; Settlement Mint
@@ -82,7 +82,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
               <h2 className="font-serif text-2xl sm:text-3xl font-bold text-white">
                 Verified Solana Infrastructure Addresses
               </h2>
-              <p className="text-xs sm:text-sm text-[#A0A0A0]">
+              <p className="text-xs sm:text-sm text-[#8EA7C7]">
                 Inspect every official Solana program and stablecoin mint directly on Solana Explorer or run a live Mainnet JSON-RPC check.
               </p>
             </div>
@@ -92,7 +92,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                 type="button"
                 onClick={handleLiveVerify}
                 disabled={isVerifyingRpc}
-                className="px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                className="px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingRpc ? 'animate-spin' : ''}`} />
                 <span>{isVerifyingRpc ? 'Querying Mainnet RPC...' : 'Verify Live on Mainnet RPC'}</span>
@@ -101,7 +101,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                 <button
                   type="button"
                   onClick={onNavigateTrust}
-                  className="px-4 py-2.5 rounded-xl bg-[#1E1E1E] hover:bg-[#163058] border border-[#2E2E2E] text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-[#102442] hover:bg-[#163058] border border-[#1D3860] text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Open Trust Centre
                 </button>
@@ -121,7 +121,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
               return (
                 <div
                   key={item.id}
-                  className="bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] p-5 flex flex-col justify-between space-y-4"
+                  className="bg-[#102442] rounded-2xl border border-[#1D3860] p-5 flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -137,14 +137,14 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                       {item.name}
                     </h3>
 
-                    <div className="p-2.5 rounded-xl bg-[#161616] border border-[#2E2E2E] flex items-center justify-between gap-2 font-mono text-[11px]">
-                      <span className="truncate text-[#E2E2E2]" title={item.address}>
+                    <div className="p-2.5 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-between gap-2 font-mono text-[11px]">
+                      <span className="truncate text-[#D1E2F7]" title={item.address}>
                         {item.address}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleCopy(item.address)}
-                        className="p-1.5 rounded-lg hover:bg-[#163058] text-[#A0A0A0] hover:text-white transition-colors shrink-0 cursor-pointer"
+                        className="p-1.5 rounded-lg hover:bg-[#163058] text-[#8EA7C7] hover:text-white transition-colors shrink-0 cursor-pointer"
                         aria-label={`Copy ${item.shortLabel} address`}
                         title="Copy full Base58 address"
                       >
@@ -156,7 +156,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                       </button>
                     </div>
 
-                    <ul className="space-y-1.5 text-xs text-[#E2E2E2]">
+                    <ul className="space-y-1.5 text-xs text-[#D1E2F7]">
                       {item.statedPurposes.map((purpose) => (
                         <li key={purpose} className="flex items-start gap-2">
                           <span className="text-[#BEE179] font-bold mt-0.5">·</span>
@@ -165,7 +165,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                       ))}
                     </ul>
 
-                    <div className="p-2.5 rounded-xl bg-[#161616]/80 border border-[#2E2E2E] text-[11px] text-[#A0A0A0] leading-relaxed">
+                    <div className="p-2.5 rounded-xl bg-[#0B1B30]/80 border border-[#1D3860] text-[11px] text-[#8EA7C7] leading-relaxed">
                       {item.architecturalNotice}
                     </div>
 
@@ -180,7 +180,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-[#2E2E2E] flex items-center justify-between gap-2 text-xs">
+                  <div className="pt-3 border-t border-[#1D3860] flex items-center justify-between gap-2 text-xs">
                     <a
                       href={item.explorerUrl}
                       target="_blank"
@@ -194,7 +194,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                       href={item.solscanUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-semibold text-[#A0A0A0] hover:text-white"
+                      className="inline-flex items-center gap-1 font-semibold text-[#8EA7C7] hover:text-white"
                     >
                       <span>Solscan</span>
                       <ExternalLink className="w-3 h-3" />

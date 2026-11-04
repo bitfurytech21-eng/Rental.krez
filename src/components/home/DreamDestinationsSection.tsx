@@ -152,7 +152,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
     : destinations.filter(d => d.country.toLowerCase() === activeFilter.toLowerCase());
 
   return (
-    <section className="py-20 sm:py-28 bg-[#161616] text-white border-b border-[#2E2E2E] relative overflow-hidden">
+    <section className="py-20 sm:py-28 bg-[#0B1B30] text-white border-b border-[#1D3860] relative overflow-hidden">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 relative z-10">
         
         {/* Editorial Heading */}
@@ -165,7 +165,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
             Our Dream Destinations
           </h2>
 
-          <p className="text-base sm:text-lg text-[#E2E2E2] leading-relaxed max-w-2xl mx-auto font-normal">
+          <p className="text-base sm:text-lg text-[#D1E2F7] leading-relaxed max-w-2xl mx-auto font-normal">
             From loft residences above the zinc rooftops of Paris to secluded Balearic fincas and Caribbean hillside sanctuaries. Every property is selected for architectural significance and enduring value.
           </p>
         </div>
@@ -176,8 +176,8 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
             onClick={() => setActiveFilter('all')}
             className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
               activeFilter === 'all'
-                ? 'bg-[#BEE179] text-[#161616] shadow-xs'
-                : 'bg-[#1E1E1E] text-[#E2E2E2] hover:text-white border border-[#2E2E2E]'
+                ? 'bg-[#BEE179] text-[#0B1B30] shadow-xs'
+                : 'bg-[#102442] text-[#D1E2F7] hover:text-white border border-[#1D3860]'
             }`}
           >
             All Destinations (7)
@@ -188,8 +188,8 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
               onClick={() => setActiveFilter(d.country)}
               className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
                 activeFilter.toLowerCase() === d.country.toLowerCase()
-                  ? 'bg-[#BEE179] text-[#161616] shadow-xs'
-                  : 'bg-[#1E1E1E] text-[#E2E2E2] hover:text-white border border-[#2E2E2E]'
+                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-xs'
+                  : 'bg-[#102442] text-[#D1E2F7] hover:text-white border border-[#1D3860]'
               }`}
             >
               {d.country}
@@ -205,10 +205,10 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
             return (
               <div 
                 key={dest.id}
-                className="bg-[#1E1E1E] rounded-xl border border-[#2E2E2E] overflow-hidden hover:border-[#BEE179]/60 hover:shadow-lg transition-all duration-300 flex flex-col group"
+                className="bg-[#102442] rounded-xl border border-[#1D3860] overflow-hidden hover:border-[#BEE179]/60 hover:shadow-lg transition-all duration-300 flex flex-col group"
               >
                 {/* Visual Image Header */}
-                <div className="relative aspect-[16/10] overflow-hidden bg-[#161616]">
+                <div className="relative aspect-[16/10] overflow-hidden bg-[#0B1B30]">
                   <img 
                     src={dest.image} 
                     alt={dest.country}
@@ -248,22 +248,22 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
                       <h3 className="font-serif text-xl font-bold text-white group-hover:text-[#BEE179] transition-colors">
                         {dest.country}
                       </h3>
-                      <div className="w-8 h-8 rounded-lg bg-[#161616] border border-[#2E2E2E] flex items-center justify-center text-[#BEE179]">
+                      <div className="w-8 h-8 rounded-lg bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#BEE179]">
                         <Icon className="w-4 h-4" />
                       </div>
                     </div>
 
-                    <p className="text-xs sm:text-sm text-[#E2E2E2] leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed">
                       {dest.description}
                     </p>
 
                     {/* Key Highlights */}
-                    <div className="pt-3 border-t border-[#2E2E2E] space-y-1.5">
+                    <div className="pt-3 border-t border-[#1D3860] space-y-1.5">
                       <p className="text-[10px] font-bold text-[#BEE179] uppercase tracking-wider">
                         Signature Formats
                       </p>
                       {dest.highlights.map((h, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs text-[#E2E2E2]">
+                        <div key={i} className="flex items-center gap-2 text-xs text-[#D1E2F7]">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#BEE179] shrink-0" />
                           <span>{h}</span>
                         </div>
@@ -272,7 +272,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
                   </div>
 
                   {/* Footer Action Buttons */}
-                  <div className="pt-4 border-t border-[#2E2E2E] flex items-center justify-between gap-3">
+                  <div className="pt-4 border-t border-[#1D3860] flex items-center justify-between gap-3">
                     <button
                       onClick={() => setSelectedDestination(dest)}
                       className="text-xs font-bold text-[#BEE179] hover:underline flex items-center gap-1.5 cursor-pointer transition-colors"
@@ -283,10 +283,10 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
 
                     <button
                       onClick={onContactAgency}
-                      className="px-3.5 py-1.5 rounded-lg bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                      className="px-3.5 py-1.5 rounded-lg bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                     >
                       <span>Inquire</span>
-                      <ArrowRight className="w-3 h-3 text-[#161616]" />
+                      <ArrowRight className="w-3 h-3 text-[#0B1B30]" />
                     </button>
                   </div>
                 </div>
@@ -296,7 +296,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
         </div>
 
         {/* Global Concierge Bottom Banner */}
-        <div className="bg-[#1E1E1E] text-white rounded-xl p-8 sm:p-10 border border-[#2E2E2E] text-left flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-md">
+        <div className="bg-[#102442] text-white rounded-xl p-8 sm:p-10 border border-[#1D3860] text-left flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-md">
           <div className="space-y-2 max-w-2xl">
             <div className="flex items-center gap-2 text-xs font-bold text-[#BEE179] uppercase tracking-wider">
               <Compass className="w-4 h-4" />
@@ -305,7 +305,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
             <h3 className="font-serif text-xl sm:text-2xl font-bold text-white">
               Seeking confidential acquisition in one of these territories?
             </h3>
-            <p className="text-xs sm:text-sm text-[#E2E2E2] leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed font-normal">
               L'Agence operates a private advisory desk with discreet access to unlisted châteaux, waterfront fincas, and penthouses across all 7 prime regions.
             </p>
           </div>
@@ -313,14 +313,14 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto shrink-0">
             <button
               onClick={onContactAgency}
-              className="py-3 px-5 text-xs font-bold bg-[#BEE179] text-[#161616] hover:bg-[#AEDB5B] rounded-lg flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+              className="py-3 px-5 text-xs font-bold bg-[#BEE179] text-[#0B1B30] hover:bg-[#AEDB5B] rounded-lg flex items-center gap-2 cursor-pointer transition-all shadow-xs"
             >
               <span>Speak with a Private Broker</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={onExploreProperties}
-              className="py-3 px-4 text-xs font-bold bg-[#161616] text-white hover:bg-[#262626] border border-[#2E2E2E] rounded-lg flex items-center gap-2 cursor-pointer transition-all"
+              className="py-3 px-4 text-xs font-bold bg-[#0B1B30] text-white hover:bg-[#132745] border border-[#1D3860] rounded-lg flex items-center gap-2 cursor-pointer transition-all"
             >
               <span>Active Assets</span>
             </button>
@@ -332,7 +332,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
       {/* Destination Detail Modal */}
       {selectedDestination && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-[#FAF8F5] rounded-xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#E5E0D4]">
+          <div className="bg-[#f0f8fe] rounded-xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#d4e5f5]">
             <div className="relative aspect-[16/9] overflow-hidden">
               <img 
                 src={selectedDestination.image} 
@@ -365,7 +365,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
                 {selectedDestination.description}
               </p>
 
-              <div className="bg-white p-4 rounded-lg border border-[#E5E0D4] space-y-2 text-xs">
+              <div className="bg-white p-4 rounded-lg border border-[#d4e5f5] space-y-2 text-xs">
                 <div>
                   <span className="font-semibold text-[#1C1917]">Signature Formats: </span>
                   <span className="text-[#78716C]">{selectedDestination.propertyTypes}</span>
@@ -392,7 +392,7 @@ export const DreamDestinationsSection: React.FC<DreamDestinationsSectionProps> =
                     setSelectedDestination(null);
                     onExploreProperties();
                   }}
-                  className="flex-1 py-2.5 text-xs font-medium border border-[#E5E0D4] text-[#1C1917] hover:bg-white rounded-lg cursor-pointer transition-colors"
+                  className="flex-1 py-2.5 text-xs font-medium border border-[#d4e5f5] text-[#1C1917] hover:bg-white rounded-lg cursor-pointer transition-colors"
                 >
                   <span>Explore Assets</span>
                 </button>

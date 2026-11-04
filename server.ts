@@ -24,23 +24,8 @@ const __dirname = dirname(__filename);
 
 async function startServer() {
   const app = express();
-  function getCliArg(flag: string): string | undefined {
-    const idx = process.argv.indexOf(flag);
-    if (idx !== -1 && idx + 1 < process.argv.length) {
-      return process.argv[idx + 1];
-    }
-    const prefixArg = process.argv.find(arg => arg.startsWith(`${flag}=`));
-    if (prefixArg) {
-      return prefixArg.split('=')[1];
-    }
-    return undefined;
-  }
-
-  const cliPort = getCliArg('--port');
-  const cliHost = getCliArg('--host');
-  const PORT = parseInt(cliPort || process.env.APP_PORT || (process.env.PORT === '8080' ? '3000' : (process.env.PORT || '3000')), 10);
-  const HOST = cliHost || process.env.HOST || '0.0.0.0';
   const server = http.createServer(app);
+  const PORT = parseInt(process.env.APP_PORT || (process.env.PORT === '8080' ? '3000' : (process.env.PORT || '3000')), 10);
 
   // Body Parsers
   app.use(express.json({ limit: '2mb' }));
@@ -145,49 +130,35 @@ async function startServer() {
     });
   }
 
-  const handleShutdown = () => {
-    try {
-      server.close(() => {
-        process.exit(0);
-      });
-    } catch {
-      process.exit(0);
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`[server] Port ${PORT} already in use. A process is already listening.`);
+    } else {
+      console.error('[server] Unhandled server error:', err);
     }
+  });
+
+  const handleShutdown = () => {
+    server.close(() => {
+      process.exit(0);
+    });
     setTimeout(() => process.exit(0), 1000);
   };
 
   process.on('SIGTERM', handleShutdown);
   process.on('SIGINT', handleShutdown);
 
-  const listenWithRetry = (retries = 10, delay = 500) => {
-    server.removeAllListeners('error');
-    server.on('error', (err: any) => {
-      if (err.code === 'EADDRINUSE' && retries > 0) {
-        console.warn(`[server] Port ${PORT} already in use. Retrying in ${delay}ms... (${retries} attempts left)`);
-        setTimeout(() => {
-          try { server.close(); } catch {}
-          listenWithRetry(retries - 1, delay);
-        }, delay);
-      } else {
-        console.error('[server] Unhandled server error:', err);
-        process.exit(1);
-      }
+  server.listen(PORT, '0.0.0.0', () => {
+    logger.log({
+      level: 'info',
+      category: 'system',
+      requestId: 'req-boot',
+      eventType: 'SERVER_LISTENING',
+      outcome: 'success',
+      message: `Kretz Unified Full-Stack Platform running on port ${PORT} (/api/v1 and frontend)`
     });
-
-    server.listen(PORT, HOST, () => {
-      logger.log({
-        level: 'info',
-        category: 'system',
-        requestId: 'req-boot',
-        eventType: 'SERVER_LISTENING',
-        outcome: 'success',
-        message: `Kretz Unified Full-Stack Platform running on http://${HOST}:${PORT} (/api/v1 and frontend)`
-      });
-      console.log(`> Kretz Unified Server running on http://${HOST}:${PORT}`);
-    });
-  };
-
-  listenWithRetry();
+    console.log(`> Kretz Unified Server running on http://0.0.0.0:${PORT}`);
+  });
 }
 
 startServer().catch((err) => {

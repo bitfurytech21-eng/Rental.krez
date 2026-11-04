@@ -61,22 +61,22 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#18211F]">
       
       {/* Header Banner */}
-      <section className="relative overflow-hidden bg-[#2B1E17] text-[#F5EFE8] pt-24 pb-20 border-b border-[#594333]">
+      <section className="relative overflow-hidden bg-[#0A1613] text-white pt-24 pb-20 border-b border-[#1E332E]">
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-left">
           <div className="max-w-3xl space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#35251C] border border-[#594333] text-[#C49A6C] text-xs font-semibold uppercase tracking-widest">
-              <Trophy className="w-4 h-4 text-[#C49A6C]" />
-              <span>Audited Historical Performance &amp; Exits</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#162723] border border-[#233F39] text-[#B7E36A] text-xs font-semibold uppercase tracking-widest">
+              <Trophy className="w-4 h-4 text-[#B7E36A]" />
+              <span>Audited Historical Performance & Exits</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-[#F5EFE8] leading-tight">
-              Real Assets. <span className="text-[#C49A6C]">Verified Exits.</span> Zero Capital Loss.
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+              Real Assets. <span className="text-[#B7E36A]">Verified Exits.</span> Zero Capital Loss.
             </h1>
 
-            <p className="text-base sm:text-lg text-[#C4B5A5] leading-relaxed">
+            <p className="text-base sm:text-lg text-[#9DB2AE] leading-relaxed">
               Explore the audited historical track record of our exited tokenized properties across Spain, the Mediterranean, and global prime markets. 
               Every case record includes real-time photos, realized annualized IRR, net capital gains, rental dividends distributed, and public notary SPV dissolution deeds.
             </p>
@@ -84,14 +84,14 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 onClick={onExploreProperties}
-                className="py-3.5 px-7 text-xs font-bold bg-[#C49A6C] text-[#211711] hover:bg-[#d4ac7d] rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-md font-bold"
+                className="py-3.5 px-7 text-xs font-bold bg-[#B7E36A] text-[#0A1613] hover:bg-[#C8F07F] rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-md"
               >
                 <span>View Currently Active Offerings</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
                 onClick={onNavigateContact}
-                className="py-3.5 px-6 text-xs font-semibold border border-[#594333] bg-[#35251C] hover:bg-[#403025] text-[#F5EFE8] rounded-xl flex items-center gap-2 cursor-pointer transition-all"
+                className="py-3.5 px-6 text-xs font-semibold border border-slate-700 hover:border-slate-500 text-white rounded-xl flex items-center gap-2 cursor-pointer transition-all"
               >
                 <span>Schedule Private Consultation</span>
               </button>
@@ -101,44 +101,44 @@ export const SuccessStoriesPage: React.FC<SuccessStoriesPageProps> = ({
       </section>
 
       {/* Real-Time KPI Performance Metrics Bar */}
-      <section className="bg-[#211711] border-b border-[#594333] py-8">
+      <section className="bg-white border-b border-[#E3E8E3] py-8">
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 lg:gap-6 text-left tabular-nums">
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#2B1E17] border border-[#594333]">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#C4B5A5]">Projects Liquidated</p>
-              <p className="text-2xl sm:text-3xl font-black text-[#F5EFE8] mt-1">129+</p>
-              <p className="text-[11px] text-[#C49A6C] font-semibold mt-1">100% On-time Liquidation</p>
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Projects Liquidated</p>
+              <p className="text-2xl sm:text-3xl font-black text-[#18211F] mt-1">129+</p>
+              <p className="text-[11px] text-emerald-700 font-semibold mt-1">100% On-time Liquidation</p>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#2B1E17] border border-[#594333]">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#C4B5A5]">Avg Realized Annual IRR</p>
-              <p className="text-2xl sm:text-3xl font-black text-[#C49A6C] mt-1">15.4%</p>
-              <p className="text-[11px] text-[#C4B5A5] mt-1">Annualized compound return</p>
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Avg Realized Annual IRR</p>
+              <p className="text-2xl sm:text-3xl font-black text-emerald-800 mt-1">15.4%</p>
+              <p className="text-[11px] text-slate-500 mt-1">Annualized compound return</p>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#2B1E17] border border-[#594333]">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#C4B5A5]">Capital Returned</p>
-              <p className="text-2xl sm:text-3xl font-black text-[#F5EFE8] mt-1">€38.5M+</p>
-              <p className="text-[11px] text-[#C4B5A5] mt-1">Principal + net appreciation</p>
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Capital Returned</p>
+              <p className="text-2xl sm:text-3xl font-black text-[#18211F] mt-1">€38.5M+</p>
+              <p className="text-[11px] text-slate-500 mt-1">Principal + net appreciation</p>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#2B1E17] border border-[#594333]">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#C4B5A5]">Average Duration</p>
-              <p className="text-2xl sm:text-3xl font-black text-[#F5EFE8] mt-1">7.8 mo</p>
-              <p className="text-[11px] text-[#C49A6C] font-semibold mt-1">Rapid capital recycling</p>
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Average Duration</p>
+              <p className="text-2xl sm:text-3xl font-black text-[#18211F] mt-1">7.8 mo</p>
+              <p className="text-[11px] text-emerald-700 font-semibold mt-1">Rapid capital recycling</p>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#2B1E17] border border-[#594333] col-span-2 md:col-span-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#C4B5A5]">Capital Default Rate</p>
-              <p className="text-2xl sm:text-3xl font-black text-[#C49A6C] mt-1">0.0%</p>
-              <p className="text-[11px] text-[#C4B5A5] mt-1">Zero projects with loss</p>
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] col-span-2 md:col-span-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Capital Default Rate</p>
+              <p className="text-2xl sm:text-3xl font-black text-emerald-800 mt-1">0.0%</p>
+              <p className="text-[11px] text-slate-500 mt-1">Zero projects with loss</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Main Case Studies Section */}
-      <section className="py-14 sm:py-20 bg-background border-b border-border">
+      <section className="py-14 sm:py-20 bg-[#F8FAFC] border-b border-[#E2E8F0]">
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Filter & Search Bar */}

@@ -54,7 +54,7 @@ export const AccountTypeSwitcher: React.FC<AccountTypeSwitcherProps> = ({ user, 
   };
 
   return (
-    <div className="animate-card-entry delay-4 dashboard-card-hover dash-card p-7 rounded-3xl border shadow-sm space-y-6">
+    <div className="dash-card p-7 rounded-3xl border shadow-sm space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-inherit/30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">

@@ -87,7 +87,7 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
   const totalReturnPercent = ((currentValuation + totalDividends - initialValuation) / initialValuation) * 100;
 
   return (
-    <div className={`bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}>
+    <div className={`bg-white dark:bg-[#0D1522] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}>
       {/* Chart Top Control Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div>

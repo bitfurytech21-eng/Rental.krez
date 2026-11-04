@@ -33,7 +33,7 @@ export const KrezHowItWorksPage: React.FC<KrezHowItWorksPageProps> = ({ onNaviga
   const [openFaqId, setOpenFaqId] = useState<string | null>(KREZ_FAQS[0]?.id || null);
 
   return (
-    <main className="bg-background text-foreground">
+    <main className="bg-[#EFF4F2] text-[#162923]">
       {/* Header & 4 Steps */}
       <section className="pt-header-offset pb-section-sm md:pb-section-spacing">
         <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">

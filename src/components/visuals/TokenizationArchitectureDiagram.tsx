@@ -56,16 +56,16 @@ export const TokenizationArchitectureDiagram: React.FC<{ className?: string }> =
   const activeNode = NODES.find((n) => n.id === activeNodeId) || NODES[0];
 
   return (
-    <div className={`bg-gradient-to-br from-[#161616] via-[#0F233D] to-[#1E1E1E] text-white border border-[#2E2E2E] rounded-3xl p-6 sm:p-8 shadow-xl ${className}`}>
+    <div className={`bg-gradient-to-br from-[#0B1B30] via-[#0F233D] to-[#102442] text-white border border-[#1D3860] rounded-3xl p-6 sm:p-8 shadow-xl ${className}`}>
       {/* Title */}
       <div className="max-w-2xl mb-6">
-        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#BEE179] bg-[#1E1E1E] border border-[#2E2E2E] px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#BEE179] bg-[#102442] border border-[#1D3860] px-3 py-1 rounded-full uppercase tracking-wider mb-2">
           <FileCheck className="w-3.5 h-3.5 text-[#BEE179]" /> Regulatory & Technical Architecture
         </span>
         <h3 className="text-xl sm:text-2xl font-black text-white">
           How Physical Real Estate is Tokenized
         </h3>
-        <p className="text-xs sm:text-sm text-[#A0A0A0] mt-1 leading-relaxed">
+        <p className="text-xs sm:text-sm text-[#8EA7C7] mt-1 leading-relaxed">
           Click any step in the architectural pipeline to inspect how legal ownership and smart contract escrow protect your capital.
         </p>
       </div>
@@ -82,8 +82,8 @@ export const TokenizationArchitectureDiagram: React.FC<{ className?: string }> =
               onClick={() => setActiveNodeId(node.id)}
               className={`relative p-4 rounded-2xl border transition-all cursor-pointer ${
                 isActive
-                  ? 'bg-[#1E1E1E] border-[#BEE179] shadow-lg scale-102 ring-2 ring-[#BEE179]/30'
-                  : 'bg-[#161616]/80 border-[#2E2E2E] hover:border-[#A0A0A0]/50 hover:bg-[#1E1E1E]/60'
+                  ? 'bg-[#102442] border-[#BEE179] shadow-lg scale-102 ring-2 ring-[#BEE179]/30'
+                  : 'bg-[#0B1B30]/80 border-[#1D3860] hover:border-[#8EA7C7]/50 hover:bg-[#102442]/60'
               }`}
             >
               <div className="flex items-center justify-between gap-2 mb-3">
@@ -93,21 +93,21 @@ export const TokenizationArchitectureDiagram: React.FC<{ className?: string }> =
                 >
                   <Icon className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-[#E2E2E2] border border-white/15">
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-[#D1E2F7] border border-white/15">
                   Step 0{idx + 1}
                 </span>
               </div>
 
               <h4 className="text-xs sm:text-sm font-bold text-white mb-0.5">{node.title}</h4>
               <span className="text-[10.5px] font-mono text-[#BEE179] block mb-2">{node.subtitle}</span>
-              <p className="text-[11px] text-[#A0A0A0] line-clamp-2 leading-normal">{node.description}</p>
+              <p className="text-[11px] text-[#8EA7C7] line-clamp-2 leading-normal">{node.description}</p>
             </div>
           );
         })}
       </div>
 
       {/* Deep-Dive Inspection Card */}
-      <div className="bg-[#161616] p-5 rounded-2xl border border-[#2E2E2E] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-[#0B1B30] p-5 rounded-2xl border border-[#1D3860] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#BEE179]" />
@@ -116,12 +116,12 @@ export const TokenizationArchitectureDiagram: React.FC<{ className?: string }> =
               {activeNode.badge}
             </span>
           </div>
-          <p className="text-xs text-[#E2E2E2] max-w-2xl leading-relaxed">
+          <p className="text-xs text-[#D1E2F7] max-w-2xl leading-relaxed">
             {activeNode.description}
           </p>
         </div>
 
-        <div className="shrink-0 flex items-center gap-2 text-xs font-mono text-[#A0A0A0] bg-[#1E1E1E] px-3.5 py-2 rounded-xl border border-[#2E2E2E]">
+        <div className="shrink-0 flex items-center gap-2 text-xs font-mono text-[#8EA7C7] bg-[#102442] px-3.5 py-2 rounded-xl border border-[#1D3860]">
           <span>Enforceable across all 27 EU Member States</span>
         </div>
       </div>

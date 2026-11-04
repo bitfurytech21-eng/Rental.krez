@@ -50,38 +50,38 @@ export const ContactPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#161616] min-h-screen py-12 text-white">
+    <div className="bg-[#0B1B30] min-h-screen py-12 text-white">
       <div className="container max-w-5xl">
         <div className="max-w-2xl mb-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1E1E1E] border border-[#2E2E2E] text-xs font-bold text-[#BEE179] mb-4 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#102442] border border-[#1D3860] text-xs font-bold text-[#BEE179] mb-4 shadow-sm">
             <Mail className="w-4 h-4 text-[#BEE179]" />
             <span>Direct Investor Desk</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black text-white mb-3 tracking-tight">
             Contact Kretz
           </h1>
-          <p className="text-sm text-[#A0A0A0] leading-relaxed">
+          <p className="text-sm text-[#8EA7C7] leading-relaxed">
             Have a question regarding active offerings, institutional allocations, or luxury property developer partnerships? Reach out to our specialized team.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Contact Details Card */}
-          <div className="bg-[#1E1E1E] text-white p-8 rounded-3xl border border-[#2E2E2E] shadow-2xl space-y-6 flex flex-col justify-between">
+          <div className="bg-[#102442] text-white p-8 rounded-3xl border border-[#1D3860] shadow-2xl space-y-6 flex flex-col justify-between">
             <div className="space-y-6">
               <div>
                 <h3 className="text-xl font-black text-white mb-2">Corporate Headquarters</h3>
-                <p className="text-xs text-[#A0A0A0]">
+                <p className="text-xs text-[#8EA7C7]">
                   Kretz Real Estate S.L. · CIF B-84918239
                 </p>
               </div>
 
-              <div className="space-y-5 text-xs text-[#E2E2E2]">
+              <div className="space-y-5 text-xs text-[#D1E2F7]">
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#BEE179] shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold block text-white">Spain Office (Barcelona)</span>
-                    <span className="text-[#E2E2E2] block mt-0.5">Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain</span>
+                    <span className="text-[#D1E2F7] block mt-0.5">Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain</span>
                     <a
                       href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x12a4a3069490fcf7:0x3a4797b32e1a90ce?entry=s&sa=X&ved=2ahUKEwjuy4P6jcmXAxXyZkEAHSLXJk8Q4kB6BAgVEAA&hl=en"
                       target="_blank"
@@ -106,13 +106,13 @@ export const ContactPage: React.FC = () => {
                   <Phone className="w-4 h-4 text-[#BEE179] shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold block text-white">Investor Relations Hotline</span>
-                    <span className="text-[#E2E2E2] block mt-0.5">+34 91 084 92 10 (Mon–Fri 09:00–18:00 CET)</span>
+                    <span className="text-[#D1E2F7] block mt-0.5">+34 91 084 92 10 (Mon–Fri 09:00–18:00 CET)</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-[#161616] border border-[#2E2E2E] text-[11px] text-[#A0A0A0] space-y-1">
+            <div className="p-4 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[11px] text-[#8EA7C7] space-y-1">
               <div className="flex items-center gap-1.5 text-[#BEE179] font-bold">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Security Assurance</span>
@@ -124,7 +124,7 @@ export const ContactPage: React.FC = () => {
           </div>
 
           {/* Inquiry Form */}
-          <div className="lg:col-span-2 bg-[#1E1E1E] p-8 rounded-3xl border border-[#2E2E2E] shadow-2xl">
+          <div className="lg:col-span-2 bg-[#102442] p-8 rounded-3xl border border-[#1D3860] shadow-2xl">
             {!submitted ? (
               <form onSubmit={handleSubmit} className="space-y-5">
                 <h3 className="text-xl font-black text-[#BEE179] mb-4">Send Us a Direct Message</h3>
@@ -138,7 +138,7 @@ export const ContactPage: React.FC = () => {
                       placeholder="Jane Doe"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-[#161616] border border-[#2E2E2E] text-white placeholder-[#A0A0A0] focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-medium"
+                      className="w-full px-4 py-3 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-white placeholder-[#8EA7C7] focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-medium"
                     />
                   </div>
                   <div className="form-field">
@@ -149,7 +149,7 @@ export const ContactPage: React.FC = () => {
                       placeholder="jane@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-[#161616] border border-[#2E2E2E] text-white placeholder-[#A0A0A0] focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-medium"
+                      className="w-full px-4 py-3 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-white placeholder-[#8EA7C7] focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-medium"
                     />
                   </div>
                 </div>
@@ -159,12 +159,12 @@ export const ContactPage: React.FC = () => {
                   <select
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-[#161616] border border-[#2E2E2E] text-white focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-semibold"
+                    className="w-full px-4 py-3 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-white focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-semibold"
                   >
-                    <option value="Investor Inquiries" className="bg-[#1E1E1E] text-white">General Investor Support</option>
-                    <option value="Property Developer Submissions" className="bg-[#1E1E1E] text-white">Property Developer / Seller Submission</option>
-                    <option value="Institutional/Family Office Desk" className="bg-[#1E1E1E] text-white">Institutional / Family Office Allocation</option>
-                    <option value="Compliance/KYC" className="bg-[#1E1E1E] text-white">KYC & Compliance Question</option>
+                    <option value="Investor Inquiries" className="bg-[#102442] text-white">General Investor Support</option>
+                    <option value="Property Developer Submissions" className="bg-[#102442] text-white">Property Developer / Seller Submission</option>
+                    <option value="Institutional/Family Office Desk" className="bg-[#102442] text-white">Institutional / Family Office Allocation</option>
+                    <option value="Compliance/KYC" className="bg-[#102442] text-white">KYC & Compliance Question</option>
                   </select>
                 </div>
 
@@ -176,7 +176,7 @@ export const ContactPage: React.FC = () => {
                     placeholder="Describe your inquiry with relevant asset or investment details..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-[#161616] border border-[#2E2E2E] text-white placeholder-[#A0A0A0] focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-medium"
+                    className="w-full px-4 py-3 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-white placeholder-[#8EA7C7] focus:border-[#BEE179] focus:outline-none focus:ring-1 focus:ring-[#BEE179] text-xs font-medium"
                   />
                 </div>
 
@@ -203,7 +203,7 @@ export const ContactPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading || !turnstileToken}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#161616] font-black text-xs px-8 py-3.5 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg"
+                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black text-xs px-8 py-3.5 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg"
                 >
                   {loading ? (
                     <>
@@ -220,11 +220,11 @@ export const ContactPage: React.FC = () => {
               </form>
             ) : (
               <div className="text-center py-12 space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-[#161616] text-[#BEE179] border border-[#2E2E2E] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-16 h-16 rounded-2xl bg-[#0B1B30] text-[#BEE179] border border-[#1D3860] flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-9 h-9" />
                 </div>
                 <h3 className="text-2xl font-black text-white">Message Successfully Dispatched</h3>
-                <p className="text-xs text-[#A0A0A0] max-w-sm mx-auto">
+                <p className="text-xs text-[#8EA7C7] max-w-sm mx-auto">
                   Thank you, <strong className="text-white">{fullName}</strong>. An investor desk specialist will follow up with you at <strong className="text-[#BEE179]">{email}</strong> within 1 business day.
                 </p>
                 <button
@@ -232,7 +232,7 @@ export const ContactPage: React.FC = () => {
                     setSubmitted(false);
                     setMessage('');
                   }}
-                  className="bg-[#161616] hover:bg-[#132B4A] text-[#BEE179] border border-[#2E2E2E] font-bold text-xs px-6 py-2.5 rounded-xl transition-all mt-4 cursor-pointer"
+                  className="bg-[#0B1B30] hover:bg-[#132B4A] text-[#BEE179] border border-[#1D3860] font-bold text-xs px-6 py-2.5 rounded-xl transition-all mt-4 cursor-pointer"
                 >
                   Send Another Inquiry
                 </button>
@@ -242,20 +242,20 @@ export const ContactPage: React.FC = () => {
         </div>
 
         {/* Live Spain Office Google Map Card */}
-        <div className="mt-10 bg-[#1E1E1E] rounded-3xl border border-[#2E2E2E] shadow-2xl overflow-hidden">
-          <div className="p-6 sm:p-8 border-b border-[#2E2E2E] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="mt-10 bg-[#102442] rounded-3xl border border-[#1D3860] shadow-2xl overflow-hidden">
+          <div className="p-6 sm:p-8 border-b border-[#1D3860] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-[#161616] text-[#BEE179] border border-[#2E2E2E] flex items-center justify-center shrink-0 shadow-sm">
+              <div className="w-11 h-11 rounded-2xl bg-[#0B1B30] text-[#BEE179] border border-[#1D3860] flex items-center justify-center shrink-0 shadow-sm">
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold text-white">Kretz Spain Office · Barcelona</h3>
-                  <span className="text-[10px] font-bold bg-[#161616] text-[#BEE179] px-2.5 py-0.5 rounded-full border border-[#2E2E2E]">
+                  <span className="text-[10px] font-bold bg-[#0B1B30] text-[#BEE179] px-2.5 py-0.5 rounded-full border border-[#1D3860]">
                     Live Location
                   </span>
                 </div>
-                <p className="text-xs text-[#A0A0A0] mt-0.5">
+                <p className="text-xs text-[#8EA7C7] mt-0.5">
                   Carrer de Pau Claris, 139, Eixample, 08009 Barcelona, Spain
                 </p>
               </div>
@@ -264,13 +264,13 @@ export const ContactPage: React.FC = () => {
               href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x12a4a3069490fcf7:0x3a4797b32e1a90ce?entry=s&sa=X&ved=2ahUKEwjuy4P6jcmXAxXyZkEAHSLXJk8Q4kB6BAgVEAA&hl=en"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#161616] hover:bg-[#132B4A] text-white text-xs font-bold transition-all border border-[#2E2E2E] shadow-sm cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0B1B30] hover:bg-[#132B4A] text-white text-xs font-bold transition-all border border-[#1D3860] shadow-sm cursor-pointer shrink-0"
             >
               <span>Open in Google Maps</span>
               <ExternalLink className="w-3.5 h-3.5 text-[#BEE179]" />
             </a>
           </div>
-          <div className="w-full h-80 sm:h-96 relative bg-[#161616]">
+          <div className="w-full h-80 sm:h-96 relative bg-[#0B1B30]">
             <iframe
               title="Kretz Spain Office Location"
               src="https://maps.google.com/maps?q=Carrer+de+Pau+Claris,+139,+08009+Barcelona,+Spain&t=&z=16&ie=UTF8&iwloc=&output=embed"

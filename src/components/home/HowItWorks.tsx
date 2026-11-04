@@ -187,7 +187,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
         }
       }}
       onKeyDown={handleKeyDown}
-      className="relative py-20 sm:py-28 bg-[#161616] text-white border-b border-[#1A3358] overflow-hidden"
+      className="relative py-20 sm:py-28 bg-[#0B1B30] text-white border-b border-[#1A3358] overflow-hidden"
     >
       {/* Restrained Blockchain-Inspired Decorative Node & Connection Line SVG Background */}
       <style>{`
@@ -232,9 +232,9 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
             <line x1="660" y1="230" x2="1020" y2="150" strokeDasharray="3 5" />
             <line x1="1020" y1="150" x2="1310" y2="260" />
             <circle cx="120" cy="180" r="4" fill="#BEE179" fillOpacity="0.55" stroke="none" />
-            <circle cx="380" cy="120" r="3.5" fill="#A0A0A0" fillOpacity="0.5" stroke="none" />
+            <circle cx="380" cy="120" r="3.5" fill="#8EA7C7" fillOpacity="0.5" stroke="none" />
             <circle cx="660" cy="230" r="4.5" fill="#BEE179" fillOpacity="0.45" stroke="none" />
-            <circle cx="1020" cy="150" r="3.5" fill="#A0A0A0" fillOpacity="0.5" stroke="none" />
+            <circle cx="1020" cy="150" r="3.5" fill="#8EA7C7" fillOpacity="0.5" stroke="none" />
             <circle cx="1310" cy="260" r="4" fill="#BEE179" fillOpacity="0.5" stroke="none" />
           </g>
 
@@ -242,9 +242,9 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
             <line x1="180" y1="720" x2="490" y2="640" />
             <line x1="490" y1="640" x2="830" y2="740" strokeDasharray="5 6" />
             <line x1="830" y1="740" x2="1220" y2="630" />
-            <circle cx="180" cy="720" r="3.5" fill="#A0A0A0" fillOpacity="0.45" stroke="none" />
+            <circle cx="180" cy="720" r="3.5" fill="#8EA7C7" fillOpacity="0.45" stroke="none" />
             <circle cx="490" cy="640" r="4" fill="#BEE179" fillOpacity="0.45" stroke="none" />
-            <circle cx="830" cy="740" r="3.5" fill="#A0A0A0" fillOpacity="0.45" stroke="none" />
+            <circle cx="830" cy="740" r="3.5" fill="#8EA7C7" fillOpacity="0.45" stroke="none" />
             <circle cx="1220" cy="630" r="4.5" fill="#BEE179" fillOpacity="0.5" stroke="none" />
           </g>
         </svg>
@@ -263,7 +263,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
             >
               How Real Estate <span className="text-[#BEE179]">Tokenization Works</span>
             </h2>
-            <p className="text-sm sm:text-base text-[#E2E2E2] font-medium leading-relaxed">
+            <p className="text-sm sm:text-base text-[#D1E2F7] font-medium leading-relaxed">
               L'Agence oversees acquisition, SPV titling, property management, and tenant leasing while investors hold direct ring-fenced economic shares recorded on Solana.
             </p>
           </div>
@@ -275,7 +275,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               onClick={() => setIsAutoPlaying((prev) => !prev)}
               aria-label={isAutoPlaying ? 'Pause tokenization walkthrough' : 'Play tokenization walkthrough'}
               aria-pressed={!isAutoPlaying}
-              className="w-10 h-10 rounded-xl bg-[#1E1E1E] hover:bg-[#173158] border border-[#2E2E2E] text-[#E2E2E2] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
             >
               {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
@@ -283,18 +283,18 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               type="button"
               onClick={goPrev}
               aria-label="Previous tokenization step"
-              className="w-10 h-10 rounded-xl bg-[#1E1E1E] hover:bg-[#173158] border border-[#2E2E2E] text-[#E2E2E2] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="px-2 text-xs font-mono tabular-nums text-[#A0A0A0]">
+            <span className="px-2 text-xs font-mono tabular-nums text-[#8EA7C7]">
               Step {currentStep.step} / 06
             </span>
             <button
               type="button"
               onClick={goNext}
               aria-label="Next tokenization step"
-              className="w-10 h-10 rounded-xl bg-[#1E1E1E] hover:bg-[#173158] border border-[#2E2E2E] text-[#E2E2E2] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -305,7 +305,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
         <div
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="bg-[#1E1E1E] rounded-2xl border border-[#2E2E2E] p-6 sm:p-10 mb-8 shadow-lg"
+          className="bg-[#102442] rounded-2xl border border-[#1D3860] p-6 sm:p-10 mb-8 shadow-lg"
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -319,10 +319,10 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               {/* Left 7 Columns: Step Narrative & Deliverables */}
               <div className="lg:col-span-7 space-y-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-[#BEE179] text-[#161616] flex items-center justify-center shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-[#BEE179] text-[#0B1B30] flex items-center justify-center shrink-0">
                     <ActiveIcon className="w-5 h-5 stroke-[2.5]" />
                   </div>
-                  <div className="text-xs text-[#A0A0A0] font-medium">
+                  <div className="text-xs text-[#8EA7C7] font-medium">
                     <span className="font-mono tabular-nums font-bold text-[#BEE179]">
                       Phase {currentStep.step}
                     </span>
@@ -337,13 +337,13 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                   {currentStep.step}. {currentStep.title}
                 </h3>
 
-                <p className="text-sm sm:text-base text-[#E2E2E2] leading-relaxed">
+                <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed">
                   {currentStep.desc}
                 </p>
 
-                <div className="pt-3 border-t border-[#2E2E2E] grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="pt-3 border-t border-[#1D3860] grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {currentStep.deliverables.map((item) => (
-                    <div key={item} className="text-xs text-[#E2E2E2] leading-snug">
+                    <div key={item} className="text-xs text-[#D1E2F7] leading-snug">
                       <span className="block font-mono text-[11px] text-[#BEE179] font-bold mb-0.5">
                         Verified Safeguard
                       </span>
@@ -358,17 +358,17 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                       <button
                         type="button"
                         onClick={onExploreMarketplace}
-                        className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                        className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                       >
                         <span>Explore Tokenized Properties</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-[#161616]" />
+                        <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
                       </button>
                     )}
                     {onLearnMore && (
                       <button
                         type="button"
                         onClick={onLearnMore}
-                        className="px-5 py-2.5 rounded-xl bg-[#161616] hover:bg-[#152C4E] border border-[#2E2E2E] text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
+                        className="px-5 py-2.5 rounded-xl bg-[#0B1B30] hover:bg-[#152C4E] border border-[#1D3860] text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
                       >
                         <span>Full Legal & SPV Guide</span>
                       </button>
@@ -378,8 +378,8 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               </div>
 
               {/* Right 5 Columns: Architectural Flow Diagram */}
-              <div className="lg:col-span-5 bg-[#161616] rounded-xl border border-[#2E2E2E] p-6 space-y-5">
-                <div className="flex items-center justify-between text-xs text-[#A0A0A0]">
+              <div className="lg:col-span-5 bg-[#0B1B30] rounded-xl border border-[#1D3860] p-6 space-y-5">
+                <div className="flex items-center justify-between text-xs text-[#8EA7C7]">
                   <span className="font-semibold text-white">Architecture Sequence</span>
                   <span className="font-mono tabular-nums text-[#BEE179]">
                     {currentStep.step} of 06
@@ -399,7 +399,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     y1="62"
                     x2="325"
                     y2="62"
-                    stroke="#2E2E2E"
+                    stroke="#1D3860"
                     strokeWidth="2"
                   />
                   <line
@@ -415,7 +415,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                   <g transform="translate(55, 62)">
                     <circle
                       r="24"
-                      fill={activeIdx >= 0 ? '#132B4C' : '#161616'}
+                      fill={activeIdx >= 0 ? '#132B4C' : '#0B1B30'}
                       stroke={activeIdx === 0 || activeIdx === 3 ? '#BEE179' : '#2B4C7E'}
                       strokeWidth="2"
                     />
@@ -432,7 +432,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     <text
                       y="44"
                       textAnchor="middle"
-                      fill="#A0A0A0"
+                      fill="#8EA7C7"
                       fontSize="9.5"
                     >
                       KYC & Solana
@@ -443,7 +443,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                   <g transform="translate(190, 62)">
                     <circle
                       r="26"
-                      fill={activeIdx >= 1 ? '#132B4C' : '#161616'}
+                      fill={activeIdx >= 1 ? '#132B4C' : '#0B1B30'}
                       stroke={activeIdx === 1 || activeIdx === 2 ? '#BEE179' : '#2B4C7E'}
                       strokeWidth="2"
                     />
@@ -460,7 +460,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     <text
                       y="44"
                       textAnchor="middle"
-                      fill="#A0A0A0"
+                      fill="#8EA7C7"
                       fontSize="9.5"
                     >
                       Notarial Title
@@ -471,7 +471,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                   <g transform="translate(325, 62)">
                     <circle
                       r="24"
-                      fill={activeIdx >= 4 ? '#132B4C' : '#161616'}
+                      fill={activeIdx >= 4 ? '#132B4C' : '#0B1B30'}
                       stroke={activeIdx >= 4 ? '#BEE179' : '#2B4C7E'}
                       strokeWidth="2"
                     />
@@ -488,7 +488,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     <text
                       y="44"
                       textAnchor="middle"
-                      fill="#A0A0A0"
+                      fill="#8EA7C7"
                       fontSize="9.5"
                     >
                       Monthly Rent
@@ -496,7 +496,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                   </g>
                 </svg>
 
-                <p className="text-xs text-[#A0A0A0] leading-relaxed border-t border-[#2E2E2E] pt-3.5">
+                <p className="text-xs text-[#8EA7C7] leading-relaxed border-t border-[#1D3860] pt-3.5">
                   {currentStep.architectureSummary}
                 </p>
               </div>
@@ -523,15 +523,15 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                 className={`p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179] ${
                   isSelected
                     ? 'bg-[#152E54] border-[#BEE179] shadow-md'
-                    : 'bg-[#1E1E1E] border-[#2E2E2E] hover:border-[#383838]'
+                    : 'bg-[#102442] border-[#1D3860] hover:border-[#355A8F]'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                       isSelected
-                        ? 'bg-[#BEE179] text-[#161616]'
-                        : 'bg-[#161616] text-[#BEE179] border border-[#2E2E2E]'
+                        ? 'bg-[#BEE179] text-[#0B1B30]'
+                        : 'bg-[#0B1B30] text-[#BEE179] border border-[#1D3860]'
                     }`}
                   >
                     <Icon className="w-4 h-4 stroke-[2.25]" />

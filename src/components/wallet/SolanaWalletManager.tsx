@@ -207,12 +207,12 @@ export const SolanaWalletManager: React.FC<SolanaWalletManagerProps> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-[#181818] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}
+      className={`bg-white dark:bg-[#0D1522] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}
     >
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#161616] text-[#BEE179] border border-[#2E2E2E] flex items-center justify-center font-bold shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#0B1B30] text-[#BEE179] border border-[#1D3860] flex items-center justify-center font-bold shrink-0">
             <Wallet className="w-5 h-5" />
           </div>
           <div>
@@ -400,7 +400,7 @@ export const SolanaWalletManager: React.FC<SolanaWalletManagerProps> = ({
                   type="button"
                   onClick={handleConnectExtension}
                   disabled={isConnecting}
-                  className="px-3.5 py-2 rounded-xl bg-[#161616] hover:bg-[#282828] disabled:opacity-60 text-white font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-[#0B1B30] hover:bg-[#142D4C] disabled:opacity-60 text-white font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Wallet className="w-3.5 h-3.5 text-[#BEE179]" />
                   <span>
@@ -635,7 +635,7 @@ export const SolanaWalletManager: React.FC<SolanaWalletManagerProps> = ({
                 ? 'Request cryptographic signature from your Solana wallet'
                 : 'Connect an injected Solana wallet extension first'
             }
-            className="px-3.5 py-1.5 rounded-xl bg-[#161616] hover:bg-[#282828] text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+            className="px-3.5 py-1.5 rounded-xl bg-[#0B1B30] hover:bg-[#142D4C] text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
           >
             {isSigning ? 'Awaiting Wallet Signature...' : 'Sign Custody Proof'}
           </button>

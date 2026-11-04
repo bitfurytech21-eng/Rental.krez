@@ -225,11 +225,11 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
   return (
     <section
       aria-labelledby="solana-infrastructure-heading"
-      className="py-16 sm:py-24 bg-[#161616] text-white border-y border-[#2E2E2E] relative overflow-hidden"
+      className="py-16 sm:py-24 bg-[#0B1B30] text-white border-y border-[#1D3860] relative overflow-hidden"
     >
       <div className="container max-w-[1320px] mx-auto px-4 sm:px-6 relative z-10 space-y-14">
         {/* Section Header */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-8 border-b border-[#2E2E2E]">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-8 border-b border-[#1D3860]">
           <div className="max-w-3xl space-y-3 text-left">
             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#BEE179] block">
               Solana Mainnet Settlement &amp; Financial Cashflow Architecture
@@ -250,7 +250,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
               type="button"
               onClick={handleVerifyMainnet}
               disabled={isVerifyingRpc}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#262626] hover:bg-[#193560] border border-[#383838] text-xs font-bold text-[#BEE179] transition-colors cursor-pointer disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#13294B] hover:bg-[#193560] border border-[#274B7A] text-xs font-bold text-[#BEE179] transition-colors cursor-pointer disabled:opacity-60"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingRpc ? 'animate-spin' : ''}`} />
               <span>{isVerifyingRpc ? 'Querying Solana Mainnet…' : 'Verify Live Mainnet Accounts'}</span>
@@ -258,7 +258,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
             <button
               type="button"
               onClick={onNavigateTrust}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#cde994] text-[#161616] text-xs font-extrabold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#cde994] text-[#0B1B30] text-xs font-extrabold transition-colors cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>Open Trust Centre</span>
@@ -267,14 +267,14 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
         </div>
 
         {/* Part 1: Interactive 7-Stage Financial Cashflow & Tokenisation Pipeline */}
-        <div className="bg-[#1E1E1E] border border-[#2E2E2E] rounded-2xl p-5 sm:p-7 space-y-6">
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-5 border-b border-[#2E2E2E]">
+        <div className="bg-[#102442] border border-[#1D3860] rounded-2xl p-5 sm:p-7 space-y-6">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-5 border-b border-[#1D3860]">
             <div className="text-left space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base sm:text-lg font-bold text-white">
                   End-to-End Property &amp; USDC Cashflow Pipeline
                 </h3>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#161616] border border-[#383838] text-[#BEE179]">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded bg-[#0B1B30] border border-[#274B7A] text-[#BEE179]">
                   {pipelineMetrics.isLiveOfferingData
                     ? 'Underwritten Offering Data + Interactive Subscription Model'
                     : 'Illustrative Cashflow Model'}
@@ -291,7 +291,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
                 <div className="text-left">
                   <label
                     htmlFor="pipeline-offering-select"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#A0A0A0] mb-1"
+                    className="block text-[10px] font-bold uppercase tracking-wider text-[#8EA7C7] mb-1"
                   >
                     Reference Offering
                   </label>
@@ -299,7 +299,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
                     id="pipeline-offering-select"
                     value={activeProperty?.id || ''}
                     onChange={(e) => setSelectedPropertyId(e.target.value)}
-                    className="w-full sm:w-64 bg-[#161616] border border-[#383838] rounded-lg px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#BEE179]"
+                    className="w-full sm:w-64 bg-[#0B1B30] border border-[#274B7A] rounded-lg px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-[#BEE179]"
                   >
                     {liveOfferings.slice(0, 18).map((prop) => (
                       <option key={prop.id} value={prop.id}>
@@ -311,7 +311,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
               )}
 
               <div className="text-left min-w-[210px]">
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#A0A0A0] mb-1">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#8EA7C7] mb-1">
                   <label htmlFor="pipeline-sub-slider">Illustrative Allocation</label>
                   <span className="font-mono tabular-nums text-[#BEE179]">
                     {formatCurrency(subscriptionEur)}
@@ -350,17 +350,17 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
                   }}
                   className={`text-left p-3.5 rounded-xl border transition-colors cursor-pointer flex flex-col justify-between min-h-[148px] ${
                     isSelected
-                      ? 'bg-[#161616] border-[#BEE179] shadow-md'
-                      : 'bg-[#161616]/55 border-[#2E2E2E] hover:border-[#383838]'
+                      ? 'bg-[#0B1B30] border-[#BEE179] shadow-md'
+                      : 'bg-[#0B1B30]/55 border-[#1D3860] hover:border-[#355A8F]'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[10px] font-mono font-bold text-[#A0A0A0]">
+                    <span className="text-[10px] font-mono font-bold text-[#8EA7C7]">
                       STAGE {st.step}
                     </span>
                     <Icon
                       className={`w-4 h-4 ${
-                        isSelected ? 'text-[#BEE179]' : 'text-[#A0A0A0]'
+                        isSelected ? 'text-[#BEE179]' : 'text-[#8EA7C7]'
                       }`}
                     />
                   </div>
@@ -371,7 +371,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
                     <div className="text-sm font-mono tabular-nums font-extrabold text-[#BEE179]">
                       {st.metric}
                     </div>
-                    <div className="text-[10px] text-[#A0A0A0] mt-0.5 leading-tight">
+                    <div className="text-[10px] text-[#8EA7C7] mt-0.5 leading-tight">
                       {st.metricSub}
                     </div>
                   </div>
@@ -381,12 +381,12 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
           </div>
 
           {/* Active Stage Detail Bar */}
-          <div className="p-4 rounded-xl bg-[#161616] border border-[#2E2E2E] flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
+          <div className="p-4 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex flex-col md:flex-row md:items-center justify-between gap-4 text-left">
             <div className="space-y-1">
               <div className="text-xs font-bold text-[#BEE179]">
                 Stage {activeStage.step}: {activeStage.title} — {activeStage.metric}
               </div>
-              <p className="text-xs text-[#E2E2E2] leading-relaxed max-w-3xl">
+              <p className="text-xs text-[#D1E2F7] leading-relaxed max-w-3xl">
                 {activeStage.detail}
               </p>
             </div>
@@ -430,7 +430,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
               return (
                 <div
                   key={item.id}
-                  className="bg-[#1E1E1E] border border-[#2E2E2E] rounded-2xl p-5 flex flex-col justify-between space-y-4 text-left"
+                  className="bg-[#102442] border border-[#1D3860] rounded-2xl p-5 flex flex-col justify-between space-y-4 text-left"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -452,15 +452,15 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
                     </div>
 
                     {/* Address Copy Box */}
-                    <div className="p-2.5 rounded-xl bg-[#161616] border border-[#2E2E2E] flex items-center justify-between gap-2">
-                      <code className="text-[11px] font-mono text-[#E2E2E2] break-all">
+                    <div className="p-2.5 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-between gap-2">
+                      <code className="text-[11px] font-mono text-[#D1E2F7] break-all">
                         {item.address}
                       </code>
                       <button
                         type="button"
                         onClick={() => handleCopy(item.address)}
                         aria-label={`Copy ${item.shortLabel} address`}
-                        className="p-1.5 rounded-lg bg-[#262626] hover:bg-[#2E2E2E] text-[#BEE179] shrink-0 cursor-pointer transition-colors"
+                        className="p-1.5 rounded-lg bg-[#13294B] hover:bg-[#1D3860] text-[#BEE179] shrink-0 cursor-pointer transition-colors"
                       >
                         {copiedAddr === item.address ? (
                           <Check className="w-3.5 h-3.5" />
@@ -486,7 +486,7 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-[#2E2E2E] flex items-center justify-between gap-2 text-xs">
+                  <div className="pt-3 border-t border-[#1D3860] flex items-center justify-between gap-2 text-xs">
                     <a
                       href={item.explorerUrl}
                       target="_blank"
@@ -512,9 +512,9 @@ export const SolanaInfrastructureSection: React.FC<SolanaInfrastructureSectionPr
           </div>
 
           {/* Mandatory Architectural Distinction Notice */}
-          <div className="p-4 rounded-xl bg-[#1E1E1E] border border-amber-400/30 flex items-start gap-3 text-left">
+          <div className="p-4 rounded-xl bg-[#0E203B] border border-amber-400/30 flex items-start gap-3 text-left">
             <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
-            <p className="text-xs text-[#E2E2E2] leading-relaxed">
+            <p className="text-xs text-[#D1E2F7] leading-relaxed">
               <strong className="text-white">Architectural Disclosure:</strong>{' '}
               The USDC Mint (<code className="font-mono text-[#BEE179]">EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code>) is Circle&apos;s canonical USD Coin stablecoin mint on Solana Mainnet used for subscription settlement and rental distribution payments. It is not a property-share token mint or an automated rental distribution smart contract; individual property SPV cap-tables are maintained in the notarized SPV registry and mapped to dedicated per-asset token mints as they are deployed.
             </p>

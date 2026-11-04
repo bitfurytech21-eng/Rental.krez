@@ -20,7 +20,7 @@ export const HeaderLanguageButton: React.FC<HeaderLanguageButtonProps> = ({
         onClick={() => setIsModalOpen(true)}
         aria-label="Select Language"
         title="Select Language"
-        className={`px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-[#2E2E2E] hover:border-[#BEE179] bg-[#161616] hover:bg-[#122846] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${className}`}
+        className={`px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-[#1D3860] hover:border-[#BEE179] bg-[#0B1B30] hover:bg-[#122846] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${className}`}
       >
         <span className="text-sm leading-none shrink-0">{currentLanguageOption.flag}</span>
         <span className="font-bold text-[#BEE179] text-xs truncate max-w-[70px] sm:max-w-[100px]">

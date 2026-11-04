@@ -47,11 +47,11 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#161616] text-slate-100 rounded-3xl shadow-2xl border border-[#2E2E2E] w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden text-left">
+      <div className="bg-[#0B1B30] text-slate-100 rounded-3xl shadow-2xl border border-[#1D3860] w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden text-left">
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-[#1E1E1E] border-b border-[#2E2E2E] flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 bg-[#102442] border-b border-[#1D3860] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#2E2E2E] text-[#BEE179] flex items-center justify-center border border-[#2B4E7E]">
+            <div className="w-8 h-8 rounded-xl bg-[#1D3860] text-[#BEE179] flex items-center justify-center border border-[#2B4E7E]">
               <Globe className="w-4 h-4" />
             </div>
             <div>
@@ -62,14 +62,14 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-[#2E2E2E] text-[#A2C2EC] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full hover:bg-[#1D3860] text-[#A2C2EC] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Search Input */}
-        <div className="p-3 sm:p-4 bg-[#161616] border-b border-[#2E2E2E] shrink-0">
+        <div className="p-3 sm:p-4 bg-[#0B1B30] border-b border-[#1D3860] shrink-0">
           <div className="relative">
             <Search className="w-4 h-4 text-[#A2C2EC] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -78,13 +78,13 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search languages (e.g. Français, Spanish, Arabic, 中文)..."
-              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-[#1E1E1E] border border-[#2E2E2E] text-white placeholder-[#A0A0A0] text-xs font-medium focus:outline-none focus:border-[#BEE179]"
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-[#102442] border border-[#1D3860] text-white placeholder-[#8EA7C7] text-xs font-medium focus:outline-none focus:border-[#BEE179]"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A0A0A0] hover:text-white text-xs font-bold"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8EA7C7] hover:text-white text-xs font-bold"
               >
                 ×
               </button>
@@ -106,15 +106,15 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
                 }}
                 className={`p-2.5 rounded-xl text-left border flex items-center justify-between transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-[#2E2E2E] border-[#BEE179] text-[#BEE179] font-bold shadow-xs'
-                    : 'bg-[#1E1E1E]/60 hover:bg-[#1E1E1E] border-[#2E2E2E]/70 text-slate-200'
+                    ? 'bg-[#1D3860] border-[#BEE179] text-[#BEE179] font-bold shadow-xs'
+                    : 'bg-[#102442]/60 hover:bg-[#102442] border-[#1D3860]/70 text-slate-200'
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate min-w-0">
                   <span className="text-lg shrink-0">{lang.flag}</span>
                   <div className="flex flex-col truncate min-w-0">
                     <span className="text-xs font-bold truncate leading-tight">{lang.nativeName}</span>
-                    <span className="text-[10px] text-[#A0A0A0] font-normal truncate">{lang.name}</span>
+                    <span className="text-[10px] text-[#8EA7C7] font-normal truncate">{lang.name}</span>
                   </div>
                 </div>
                 {isSelected && <Check className="w-4 h-4 text-[#BEE179] shrink-0 ml-1" />}
@@ -123,7 +123,7 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
           })}
 
           {filteredLanguages.length === 0 && (
-            <div className="col-span-full py-8 text-center text-[#A0A0A0] space-y-1">
+            <div className="col-span-full py-8 text-center text-[#8EA7C7] space-y-1">
               <p className="text-xs font-bold text-white">No language found for "{searchQuery}"</p>
               <button
                 type="button"
@@ -137,12 +137,12 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 bg-[#1E1E1E] border-t border-[#2E2E2E] flex items-center justify-between text-xs text-[#A0A0A0] shrink-0">
+        <div className="p-3 bg-[#102442] border-t border-[#1D3860] flex items-center justify-between text-xs text-[#8EA7C7] shrink-0">
           <span className="text-[11px] font-semibold text-[#BEE179]">100+ Languages Supported</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-[#BEE179] hover:bg-[#AEDB5B] text-[#161616] font-bold text-xs transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-lg bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs transition-colors cursor-pointer"
           >
             Close
           </button>

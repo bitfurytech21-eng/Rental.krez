@@ -59,7 +59,7 @@ export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCou
   ];
 
   return (
-    <section className="relative bg-[#161616] border-b border-[#1A3358] py-12 sm:py-16 overflow-hidden">
+    <section className="relative bg-[#0B1B30] border-b border-[#1A3358] py-12 sm:py-16 overflow-hidden">
       {/* Gentle Gradient & Decorative Coordinate Motion Behind Investment Statistics */}
       <style>{`
         @keyframes statsGradientGlide {
@@ -104,7 +104,7 @@ export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCou
           />
           <path
             d="M0 60 C 420 120, 840 30, 1440 85"
-            stroke="#383838"
+            stroke="#355A8F"
             strokeOpacity="0.45"
             strokeWidth="1"
           />
@@ -112,7 +112,7 @@ export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCou
       </div>
 
       <div className="container max-w-[1340px] mx-auto px-4 sm:px-6 relative z-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-0 lg:divide-x lg:divide-[#2E2E2E]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-0 lg:divide-x lg:divide-[#1D3860]">
           {stats.map((s, idx) => (
             <motion.div
               key={s.label}
@@ -132,7 +132,7 @@ export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCou
               <div className="text-xs tracking-wider font-extrabold text-white">
                 {s.label}
               </div>
-              <p className="text-xs text-[#A0A0A0] font-medium leading-relaxed">
+              <p className="text-xs text-[#8EA7C7] font-medium leading-relaxed">
                 {s.detail}
               </p>
             </motion.div>

@@ -209,7 +209,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
     const propertyIconHtml = `
       <div style="position: relative; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;">
         <div style="position: absolute; inset: 0; background-color: rgba(39, 132, 93, 0.4); border-radius: 50%; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-        <div style="width: 40px; height: 40px; background-color: #161616; border: 3px solid #BEE179; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.4);">
+        <div style="width: 40px; height: 40px; background-color: #0B1B30; border: 3px solid #BEE179; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.4);">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BEE179" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
             <circle cx="12" cy="10" r="3"/>
@@ -229,7 +229,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
     mainMarker.bindPopup(`
       <div style="font-family: system-ui, sans-serif; padding: 4px; max-width: 220px;">
         <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #18845D; letter-spacing: 0.5px; display: block;">Verified Property</span>
-        <h4 style="font-size: 13px; font-weight: 800; color: #161616; margin: 2px 0 6px 0; line-height: 1.2;">${property.title}</h4>
+        <h4 style="font-size: 13px; font-weight: 800; color: #0B1B30; margin: 2px 0 6px 0; line-height: 1.2;">${property.title}</h4>
         <p style="font-size: 11px; color: #4A5568; margin: 0;">${property.location}</p>
       </div>
     `);
@@ -327,19 +327,19 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
           <div className="flex items-center bg-white border border-[#CBD5E1] rounded-xl p-0.5 text-xs font-bold">
             <button
               onClick={() => setMapStyle('osm')}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${mapStyle === 'osm' ? 'bg-[#161616] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${mapStyle === 'osm' ? 'bg-[#0B1B30] text-white' : 'text-slate-600 hover:text-slate-900'}`}
             >
               Standard
             </button>
             <button
               onClick={() => setMapStyle('satellite')}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${mapStyle === 'satellite' ? 'bg-[#161616] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${mapStyle === 'satellite' ? 'bg-[#0B1B30] text-white' : 'text-slate-600 hover:text-slate-900'}`}
             >
               Satellite
             </button>
             <button
               onClick={() => setMapStyle('voyager')}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${mapStyle === 'voyager' ? 'bg-[#161616] text-white' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${mapStyle === 'voyager' ? 'bg-[#0B1B30] text-white' : 'text-slate-600 hover:text-slate-900'}`}
             >
               Voyager
             </button>
@@ -347,7 +347,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
 
           <button
             onClick={handleResetView}
-            className="flex items-center gap-1.5 text-xs font-bold text-[#161616] bg-white border border-[#CBD5E1] px-3 py-2 rounded-xl hover:bg-[#F1F5F9] transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-[#0B1B30] bg-white border border-[#CBD5E1] px-3 py-2 rounded-xl hover:bg-[#F1F5F9] transition-colors"
           >
             <Compass className="w-4 h-4 text-[#27845D]" />
             <span className="hidden sm:inline">Center</span>
@@ -356,7 +356,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
       </div>
 
       {/* Category Tabs */}
-      <div className="px-6 py-3 bg-[#161616] flex items-center gap-2 overflow-x-auto border-b border-slate-800">
+      <div className="px-6 py-3 bg-[#0B1B30] flex items-center gap-2 overflow-x-auto border-b border-slate-800">
         {[
           { id: 'all', label: 'All Highlights', icon: Navigation },
           { id: 'transport', label: 'Airports & Transit', icon: Plane },
@@ -372,11 +372,11 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
               onClick={() => setActiveCategory(cat.id as any)}
               className={`flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-[#BEE179] text-[#161616] shadow-sm'
+                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-sm'
                   : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
             >
-              <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-[#161616]' : 'text-slate-400'}`} />
+              <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-[#0B1B30]' : 'text-slate-400'}`} />
               <span>{cat.label}</span>
             </button>
           );
@@ -390,7 +390,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
           <div ref={mapContainerRef} className="w-full h-full z-0" />
 
           {/* Map Overlay Badge */}
-          <div className="absolute bottom-4 left-4 z-10 bg-[#161616]/90 backdrop-blur-md text-white px-3.5 py-2 rounded-xl border border-white/10 text-xs flex items-center gap-2 shadow-lg">
+          <div className="absolute bottom-4 left-4 z-10 bg-[#0B1B30]/90 backdrop-blur-md text-white px-3.5 py-2 rounded-xl border border-white/10 text-xs flex items-center gap-2 shadow-lg">
             <span className="w-2.5 h-2.5 rounded-full bg-[#BEE179] animate-pulse"></span>
             <span className="font-semibold">{property.city}, {property.country}</span>
             <span className="text-[10px] text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/30">

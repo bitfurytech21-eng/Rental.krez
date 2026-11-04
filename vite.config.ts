@@ -8,10 +8,13 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
     resolve: {
+      dedupe: ['react', 'react-dom', 'react-is'],
       alias: {
         '@': path.resolve(import.meta.dirname || '.', 'src'),
-        'react-is': path.resolve(import.meta.dirname || '.', 'node_modules/react-is'),
       },
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-is', 'recharts', 'lucide-react'],
     },
     build: {
       chunkSizeWarningLimit: 4000,

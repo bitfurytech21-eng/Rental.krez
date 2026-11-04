@@ -332,7 +332,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1C1917] pb-24">
+    <div className="min-h-screen bg-[#f0f8fe] text-[#1C1917] pb-24">
       {/* Top Editorial Metrics Ribbon */}
       <section className="bg-[#14221F] text-white py-14 border-b border-[#233833] relative overflow-hidden max-w-full">
         <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 relative z-10">
@@ -408,9 +408,9 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
       {/* Main Content & Catalog */}
       <section className="py-10 container max-w-[1240px] mx-auto px-4 sm:px-6 space-y-6">
         {/* Navigation Tabs */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#E5E0D4] pb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#d4e5f5] pb-4">
           <div
-            className="flex items-center gap-1.5 p-1 bg-white rounded-lg border border-[#E5E0D4] overflow-x-auto"
+            className="flex items-center gap-1.5 p-1 bg-white rounded-lg border border-[#d4e5f5] overflow-x-auto"
             role="tablist"
             aria-label="Property status categories"
           >
@@ -550,7 +550,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
 
         {/* Search & Filter Bar (Hidden on Secondary P2P tab which has its own order-book filters) */}
         {activeTab !== 'secondary_p2p' && (
-          <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#E5E0D4] shadow-xs space-y-3">
+          <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#d4e5f5] shadow-xs space-y-3">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               {/* Keyword Search */}
               <div className="relative flex-1">
@@ -561,7 +561,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                   placeholder="Search by city, property name, country, ref, or ticker (e.g. Paris, Cannes, KTZ)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-9 py-2.5 rounded-lg border border-[#E5E0D4] text-xs bg-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
+                  className="w-full pl-10 pr-9 py-2.5 rounded-lg border border-[#d4e5f5] text-xs bg-[#f0f8fe] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
                 />
                 {searchQuery && (
                   <button
@@ -582,7 +582,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                   value={selectedCountry}
                   onChange={(e) => setSelectedCountry(e.target.value)}
                   aria-label="Filter properties by country"
-                  className="px-3 py-2 rounded-lg border border-[#E5E0D4] text-xs font-medium bg-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
+                  className="px-3 py-2 rounded-lg border border-[#d4e5f5] text-xs font-medium bg-[#f0f8fe] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
                 >
                   <option value="all">All Locations</option>
                   {availableCountries.map((country) => (
@@ -597,7 +597,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
                   aria-label="Filter by property category"
-                  className="px-3 py-2 rounded-lg border border-[#E5E0D4] text-xs font-medium bg-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
+                  className="px-3 py-2 rounded-lg border border-[#d4e5f5] text-xs font-medium bg-[#f0f8fe] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
                 >
                   <option value="all">All Formats</option>
                   <option value="Villa">Prestige Villas</option>
@@ -612,7 +612,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                   value={priceRange}
                   onChange={(e) => setPriceRange(e.target.value)}
                   aria-label="Filter by price or minimum entry ticket"
-                  className="px-3 py-2 rounded-lg border border-[#E5E0D4] text-xs font-medium bg-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
+                  className="px-3 py-2 rounded-lg border border-[#d4e5f5] text-xs font-medium bg-[#f0f8fe] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
                 >
                   <option value="all">Any Ticket / Price</option>
                   <option value="entry_1500">Min Ticket ≤ €1,500</option>
@@ -631,7 +631,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                     persistPreference({ marketplaceSortBy: e.target.value });
                   }}
                   aria-label="Sort properties"
-                  className="px-3 py-2 rounded-lg border border-[#E5E0D4] text-xs font-medium bg-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
+                  className="px-3 py-2 rounded-lg border border-[#d4e5f5] text-xs font-medium bg-[#f0f8fe] focus:outline-hidden focus:ring-2 focus:ring-[#1E3A34] text-[#1C1917]"
                 >
                   <option value="yield_desc">Highest Yield (Annual %)</option>
                   <option value="total_return_desc">Highest Total Return %</option>
@@ -646,7 +646,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
 
                 {/* Layout Toggle: Feed vs Grid */}
                 <div
-                  className="flex items-center gap-1 p-0.5 bg-[#FAF8F5] rounded-lg border border-[#E5E0D4] shrink-0"
+                  className="flex items-center gap-1 p-0.5 bg-[#f0f8fe] rounded-lg border border-[#d4e5f5] shrink-0"
                   role="group"
                   aria-label="Catalog layout view"
                 >
@@ -758,7 +758,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                     setPageSize(next);
                     persistPreference({ marketplacePageSize: next });
                   }}
-                  className="px-2 py-1 rounded-md border border-[#E5E0D4] bg-[#FAF8F5] text-xs font-mono font-semibold text-[#1C1917]"
+                  className="px-2 py-1 rounded-md border border-[#d4e5f5] bg-[#f0f8fe] text-xs font-mono font-semibold text-[#1C1917]"
                 >
                   <option value={6}>6</option>
                   <option value={9}>9</option>
@@ -857,7 +857,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                 {totalPages > 1 && (
                   <nav
                     aria-label="Property catalog pagination"
-                    className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E5E0D4] shadow-2xs"
+                    className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#d4e5f5] shadow-2xs"
                   >
                     <span className="text-xs text-[#57534E]">
                       Page <strong className="font-mono text-[#1C1917]">{safePage}</strong> of{' '}
@@ -873,7 +873,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                         }}
                         disabled={safePage <= 1}
                         aria-label="Previous page"
-                        className="px-3 py-1.5 rounded-lg border border-[#E5E0D4] bg-[#FAF8F5] hover:bg-[#e1effc] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#1C1917] flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg border border-[#d4e5f5] bg-[#f0f8fe] hover:bg-[#e1effc] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#1C1917] flex items-center gap-1 cursor-pointer"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                         <span>Previous</span>
@@ -891,7 +891,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                           className={`w-8 h-8 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer ${
                             safePage === pageNum
                               ? 'bg-[#1E3A34] text-white shadow-xs'
-                              : 'bg-[#FAF8F5] text-[#1C1917] hover:bg-[#e1effc] border border-[#E5E0D4]'
+                              : 'bg-[#f0f8fe] text-[#1C1917] hover:bg-[#e1effc] border border-[#d4e5f5]'
                           }`}
                         >
                           {pageNum}
@@ -906,7 +906,7 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
                         }}
                         disabled={safePage >= totalPages}
                         aria-label="Next page"
-                        className="px-3 py-1.5 rounded-lg border border-[#E5E0D4] bg-[#FAF8F5] hover:bg-[#e1effc] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#1C1917] flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg border border-[#d4e5f5] bg-[#f0f8fe] hover:bg-[#e1effc] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-[#1C1917] flex items-center gap-1 cursor-pointer"
                       >
                         <span>Next</span>
                         <ChevronRight className="w-3.5 h-3.5" />

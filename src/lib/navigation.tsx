@@ -398,7 +398,22 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 export const useNavigation = (): NavigationContextValue => {
   const context = useContext(NavigationContext);
   if (!context) {
-    throw new Error('useNavigation must be used within a NavigationProvider');
+    return {
+      currentPath: getPathFromLocation(),
+      pendingPath: null,
+      isNavigating: false,
+      navigateTo: async (path: string) => {
+        if (typeof window !== 'undefined') {
+          const clean = cleanRoutePath(path);
+          try {
+            window.history.pushState({}, '', clean);
+          } catch {
+            window.location.hash = clean;
+          }
+        }
+      },
+      registerDataPromise: () => {},
+    };
   }
   return context;
 };

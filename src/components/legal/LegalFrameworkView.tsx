@@ -177,7 +177,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
             <button
               type="button"
               onClick={onNavigateTrust}
-              className="px-4 py-2.5 rounded-xl bg-[#161616] hover:bg-[#282828] text-white text-xs font-bold inline-flex items-center gap-2 shrink-0 self-start cursor-pointer transition-colors"
+              className="px-4 py-2.5 rounded-xl bg-[#0B1B30] hover:bg-[#142D4C] text-white text-xs font-bold inline-flex items-center gap-2 shrink-0 self-start cursor-pointer transition-colors"
             >
               <span>Open Trust Centre</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#BEE179]" />
@@ -380,7 +380,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-[#E8EFEA]">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                    <span className="font-mono font-bold px-2.5 py-0.5 rounded bg-[#161616] text-[#BEE179]">
+                    <span className="font-mono font-bold px-2.5 py-0.5 rounded bg-[#0B1B30] text-[#BEE179]">
                       Document {activeDoc.number} / 12
                     </span>
                     <span className="font-semibold px-2.5 py-0.5 rounded bg-[#F0F4F2] text-[#18211F]">
@@ -562,7 +562,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
             </div>
 
             <div className="p-5 rounded-2xl bg-[#F6F9F8] border border-[#E3ECE8] space-y-2">
-              <span className="px-2.5 py-0.5 rounded bg-[#161616] text-[#BEE179] font-bold text-[10px] uppercase inline-block">
+              <span className="px-2.5 py-0.5 rounded bg-[#0B1B30] text-[#BEE179] font-bold text-[10px] uppercase inline-block">
                 Tier 3 · Solana Infrastructure
               </span>
               <h4 className="font-serif font-bold text-[#18211F] text-base">

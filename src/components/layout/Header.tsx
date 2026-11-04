@@ -12,7 +12,6 @@ interface HeaderProps {
 const PRIMARY_NAV_ITEMS = [
   { to: '/properties', label: 'Properties' },
   { to: '/how-it-works', label: 'How It Works' },
-  { to: '/team', label: 'Our Team' },
   { to: '/portfolio', label: 'Portfolio' },
   { to: '/journal', label: 'Journal' },
   { to: '/contact', label: 'Contact' },
@@ -93,32 +92,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             <span>L&apos;Agence</span>
           </button>
 
-          {/* Desktop Direct Nav Items */}
-          <nav className="hidden xl:flex items-center gap-6 text-xs font-semibold tracking-widest uppercase" aria-label="Desktop primary navigation">
-            {PRIMARY_NAV_ITEMS.map((item) => {
-              const isActive = cleanPath === item.to || (item.to !== '/' && cleanPath.startsWith(item.to));
-              return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onClick={() => handleNav(item.to)}
-                  className={`transition-colors duration-fast hover:opacity-75 cursor-pointer ${
-                    isActive ? 'text-accent underline underline-offset-4' : ''
-                  }`}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="flex items-center gap-4 sm:gap-5">
+          <div className="flex items-center gap-5">
             {user ? (
               <>
                 <button
                   type="button"
                   onClick={() => handleNav('/dashboard')}
-                  className="hidden sm:inline text-xs font-semibold tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 cursor-pointer"
+                  className="hidden sm:inline text-xs font-medium tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 cursor-pointer"
                 >
                   Dashboard
                 </button>
@@ -126,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                   <button
                     type="button"
                     onClick={() => handleNav('/admin')}
-                    className="hidden sm:inline text-xs font-semibold tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 text-accent cursor-pointer"
+                    className="hidden sm:inline text-xs font-medium tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 cursor-pointer"
                   >
                     Admin
                   </button>
@@ -134,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 <button
                   type="button"
                   onClick={() => handleNav('/account')}
-                  className="text-xs font-semibold tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 cursor-pointer"
+                  className="text-xs font-medium tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 cursor-pointer"
                 >
                   Account
                 </button>
@@ -143,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               <button
                 type="button"
                 onClick={() => openKrezAuthModal('login')}
-                className="text-xs font-semibold tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 cursor-pointer"
+                className="text-xs font-medium tracking-wider uppercase transition-opacity duration-fast hover:opacity-70 cursor-pointer"
               >
                 Sign in
               </button>
@@ -154,179 +134,105 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={menuOpen}
-              className="group flex items-center gap-2 py-2 px-2.5 rounded-full hover:bg-current/10 transition-colors cursor-pointer"
+              className="group flex flex-col justify-center gap-1.5 py-2 cursor-pointer"
             >
-              <span className="text-[11px] font-bold tracking-widest uppercase">
-                {menuOpen ? 'Close' : 'Menu'}
-              </span>
-              <div className="flex flex-col justify-center gap-1.5">
-                <span
-                  className={`block h-px w-5 bg-current transition-all duration-base ${
-                    menuOpen ? 'translate-y-[2.5px] rotate-45' : 'group-hover:w-4'
-                  }`}
-                />
-                <span
-                  className={`block h-px w-5 bg-current transition-all duration-base ${
-                    menuOpen ? '-translate-y-[2.5px] -rotate-45' : ''
-                  }`}
-                />
-              </div>
+              <span
+                className={`block h-px w-7 bg-current transition-all duration-base ${
+                  menuOpen
+                    ? 'translate-y-[3.5px] rotate-45'
+                    : 'group-hover:w-5'
+                }`}
+              />
+              <span
+                className={`block h-px w-7 bg-current transition-all duration-base ${
+                  menuOpen ? '-translate-y-[3.5px] -rotate-45' : ''
+                }`}
+              />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Full Directory Navigation Modal */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-40 flex flex-col justify-between bg-[#161616]/98 backdrop-blur-xl text-white px-gutter pt-24 pb-8 md:px-gutter-md lg:px-gutter-lg overflow-y-auto"
+          className="fixed inset-0 z-40 flex flex-col justify-between bg-background px-gutter pt-28 pb-10 md:px-gutter-md lg:px-gutter-lg"
           role="dialog"
           aria-modal="true"
-          aria-label="Complete site navigation directory"
+          aria-label="Site navigation"
         >
-          <div className="mx-auto w-full max-w-container">
-            {/* Header label in menu */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 text-xs font-mono uppercase tracking-widest text-white/50">
-              <span>L&apos;Agence · Navigation Directory</span>
-              <span>18 Curated Sections</span>
-            </div>
+          <nav
+            className="flex flex-1 flex-col items-center justify-center gap-6"
+            aria-label="Primary navigation"
+          >
+            {PRIMARY_NAV_ITEMS.map((item) => {
+              const isActive =
+                cleanPath === item.to ||
+                (item.to !== '/' && cleanPath.startsWith(item.to));
+              return (
+                <button
+                  key={item.to}
+                  type="button"
+                  onClick={() => handleNav(item.to)}
+                  className={`text-3xl sm:text-4xl font-heading font-light tracking-widest uppercase transition-colors duration-fast cursor-pointer ${
+                    isActive
+                      ? 'text-accent'
+                      : 'text-foreground hover:text-accent'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
 
-            {/* Categorized Directory Grid */}
-            <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Column 1: Core Platform */}
-              <div className="space-y-4">
-                <p className="text-[11px] font-bold tracking-widest uppercase text-[#BEE179]">
-                  01 · Core Platform
-                </p>
-                <nav className="flex flex-col space-y-2.5" aria-label="Core Platform Navigation">
-                  {[
-                    { to: '/', label: 'Home' },
-                    { to: '/properties', label: 'Landmark Properties' },
-                    { to: '/how-it-works', label: 'How Tokenization Works' },
-                    { to: '/team', label: 'Our Team & Leadership' },
-                    { to: '/portfolio', label: 'Investor Portfolio' },
-                    { to: '/journal', label: 'Investor Journal & Updates' },
-                    { to: '/contact', label: 'Direct Advisory Contact' },
-                  ].map((item) => (
-                    <button
-                      key={item.to}
-                      type="button"
-                      onClick={() => handleNav(item.to)}
-                      className={`text-left text-lg sm:text-xl font-heading tracking-wide transition-colors duration-fast cursor-pointer ${
-                        cleanPath === item.to
-                          ? 'text-[#BEE179] font-bold'
-                          : 'text-white hover:text-[#BEE179]'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-
-              {/* Column 2: Advisory & Private Club */}
-              <div className="space-y-4">
-                <p className="text-[11px] font-bold tracking-widest uppercase text-[#BEE179]">
-                  02 · Advisory &amp; Privé
-                </p>
-                <nav className="flex flex-col space-y-2.5" aria-label="Advisory Navigation">
-                  {[
-                    { to: '/club', label: 'Kretz Club Privé' },
-                    { to: '/wealth', label: 'Wealth & Family Office' },
-                    { to: '/casos-de-exito', label: 'Success Stories & Exits' },
-                    { to: '/blog', label: 'Luxury Real Estate Blog' },
-                    { to: '/insights', label: 'Real Estate Dossiers & Insights' },
-                  ].map((item) => (
-                    <button
-                      key={item.to}
-                      type="button"
-                      onClick={() => handleNav(item.to)}
-                      className={`text-left text-lg sm:text-xl font-heading tracking-wide transition-colors duration-fast cursor-pointer ${
-                        cleanPath === item.to
-                          ? 'text-[#BEE179] font-bold'
-                          : 'text-white hover:text-[#BEE179]'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-
-              {/* Column 3: Trust, Solana & Legal */}
-              <div className="space-y-4">
-                <p className="text-[11px] font-bold tracking-widest uppercase text-[#BEE179]">
-                  03 · Trust &amp; Infrastructure
-                </p>
-                <nav className="flex flex-col space-y-2.5" aria-label="Trust and Legal Navigation">
-                  {[
-                    { to: '/trust', label: 'Institutional Trust Centre' },
-                    { to: '/token', label: 'Solana Token-2022 Architecture' },
-                    { to: '/news', label: 'Company News & Broadcasts' },
-                    { to: '/guide', label: 'Passkeys & Security Guide' },
-                    { to: '/faq', label: 'Help Center & FAQ' },
-                    { to: '/legal', label: 'Legal & Compliance (12 Docs)' },
-                  ].map((item) => (
-                    <button
-                      key={item.to}
-                      type="button"
-                      onClick={() => handleNav(item.to)}
-                      className={`text-left text-lg sm:text-xl font-heading tracking-wide transition-colors duration-fast cursor-pointer ${
-                        cleanPath === item.to
-                          ? 'text-[#BEE179] font-bold'
-                          : 'text-white hover:text-[#BEE179]'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Bar in Nav Modal */}
-          <div className="mx-auto mt-8 flex w-full max-w-container flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/60">
+          <div className="mx-auto flex w-full max-w-container flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted">
             <div className="flex flex-wrap items-center gap-5">
               {user && (
                 <button
                   type="button"
                   onClick={() => handleNav('/dashboard')}
-                  className="font-bold uppercase tracking-widest text-[#BEE179] hover:underline cursor-pointer"
+                  className="font-medium uppercase tracking-widest text-foreground hover:text-accent transition-colors duration-fast cursor-pointer"
                 >
                   Investor Dashboard
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => handleNav('/insights')}
+                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+              >
+                Insights
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNav('/trust')}
+                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+              >
+                Trust Centre
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNav('/legal')}
+                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+              >
+                Legal
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNav('/token')}
+                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+              >
+                Solana Infrastructure
+              </button>
               {isAdmin && (
                 <button
                   type="button"
                   onClick={() => handleNav('/admin')}
-                  className="font-bold uppercase tracking-widest text-[#BEE179] hover:underline cursor-pointer"
+                  className="font-semibold uppercase tracking-widest text-accent hover:text-foreground transition-colors duration-fast cursor-pointer"
                 >
                   Admin Console
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => handleNav('/account')}
-                className="uppercase tracking-widest hover:text-white cursor-pointer"
-              >
-                Account Settings
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNav('/legal?doc=privacy-policy')}
-                className="uppercase tracking-widest hover:text-white cursor-pointer"
-              >
-                Privacy
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNav('/legal?doc=terms-and-conditions')}
-                className="uppercase tracking-widest hover:text-white cursor-pointer"
-              >
-                Terms
-              </button>
             </div>
 
             <div className="flex items-center gap-4">
