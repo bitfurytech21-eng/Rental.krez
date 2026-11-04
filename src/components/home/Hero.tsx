@@ -13,7 +13,7 @@ import {
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
 
-const heroEstateImg = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
+const heroEstateImg = '/assets/aistudio/IMG_7661_12a629f0.jpeg';
 const madridImg = 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg';
 const malagaImg = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
 const miamiImg = 'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg';

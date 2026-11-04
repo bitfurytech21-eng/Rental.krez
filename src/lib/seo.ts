@@ -39,7 +39,7 @@ export interface UpdateSeoOptions {
   schemaType?: 'RealEstateAgent' | 'FinancialService' | 'WebSite' | 'Article';
 }
 
-const DEFAULT_IMAGE = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
+const DEFAULT_IMAGE = '/assets/aistudio/IMG_7661_12a629f0.jpeg';
 
 export const ROUTE_SEO_MAP: Record<string, RouteSeoDefinition> = {
   '/': {

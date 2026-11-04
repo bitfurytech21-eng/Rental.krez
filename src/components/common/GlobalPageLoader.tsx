@@ -5,6 +5,8 @@ export interface GlobalPageLoaderProps {
   isVisible: boolean;
   /** Whether the loader is currently playing its exit fade-out transition */
   isFadingOut?: boolean;
+  /** Optional accessible message for screen readers */
+  accessibleMessage?: string;
 }
 
 /**
