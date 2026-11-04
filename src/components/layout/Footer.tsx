@@ -1,5 +1,4 @@
-import React from 'react';
-import { KREZ_IMAGES } from '../../data/krezTemplateData';
+import { LagenceLogo } from '../common/LagenceLogo';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
@@ -24,11 +23,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               onClick={() => onNavigate('/')}
               className="flex items-center gap-3 text-xl font-heading font-semibold tracking-tight text-white cursor-pointer"
             >
-              <img
-                src={KREZ_IMAGES.logo}
-                alt="L'Agence"
-                className="h-9 w-9 rounded-lg bg-black object-contain border border-white/25"
-              />
+              <LagenceLogo className="h-8 w-8 text-[#b68a48] shrink-0" />
               <span>L&apos;Agence</span>
             </button>
             <p className="max-w-sm text-sm leading-relaxed text-white/70">

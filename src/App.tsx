@@ -591,7 +591,7 @@ function MainApp() {
     <div
       className={`flex flex-col ${
         isDashboardView
-          ? 'bg-white h-screen overflow-hidden'
+          ? 'bg-[#090e17] text-[#f1f5f9] h-screen overflow-hidden'
           : 'bg-background text-foreground font-sans min-h-screen'
       }`}
     >
@@ -644,7 +644,7 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <LanguageProvider>
-          <NavigationProvider>
+          <NavigationProvider enableInitialLoader={false}>
             <ToastProvider>
               <MainApp />
             </ToastProvider>

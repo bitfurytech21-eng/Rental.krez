@@ -57,6 +57,9 @@
             }
 
             try {
+              if (typeof Reflect !== 'undefined' && Reflect.construct) {
+                return Reflect.construct(NativeWebSocket, arguments);
+              }
               return new (Function.prototype.bind.apply(NativeWebSocket, [null].concat(Array.prototype.slice.call(arguments))))();
             } catch (e) {
               return new NativeWebSocket(url, protocols);
@@ -136,11 +139,7 @@
     </script>
   </head>
   <body class="bg-[#f5f0ea] text-[#1a1a1a] antialiased selection:bg-[#e4dbd0] selection:text-[#213138]">
-    <div id="root">
-      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #213138; color: #f5f0ea; font-family: 'Archivo', Helvetica, sans-serif;">
-        <div style="font-weight: 700; font-size: 2.2rem; letter-spacing: -0.02em; color: #ffffff;">L'Agence</div>
-      </div>
-    </div>
+    <div id="root"></div>
     <!-- Hidden Google Translate Element for Free Website Translation -->
     <div id="google_translate_element" style="display:none !important; position:absolute; top:-9999px; left:-9999px; visibility:hidden; width:0; height:0; overflow:hidden;"></div>
     <style>

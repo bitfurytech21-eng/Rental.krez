@@ -53,19 +53,19 @@ export const cleanRoutePath = (path: string): string => {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 };
 
-const MIN_TRANSITION_MS = 5000; // Strict 5-second minimum visible time
-const FADE_OUT_DURATION_MS = 380; // Smooth exit animation duration
-const SAFETY_TIMEOUT_MS = 20000; // 20s emergency fallback to prevent hanging
+const MIN_TRANSITION_MS = 250; // Smooth 250ms page transition
+const FADE_OUT_DURATION_MS = 180; // Crisp exit animation duration
+const SAFETY_TIMEOUT_MS = 3000; // 3s emergency fallback to prevent hanging
 
 export interface NavigationProviderProps {
   children: React.ReactNode;
-  /** Enable initial 5s loader on direct URL access (default: true) */
+  /** Enable initial loader on direct URL access (default: false for instant render) */
   enableInitialLoader?: boolean;
 }
 
 export const NavigationProvider: React.FC<NavigationProviderProps> = ({
   children,
-  enableInitialLoader = true,
+  enableInitialLoader = false,
 }) => {
   const [currentPath, setCurrentPath] = useState<string>(getPathFromLocation);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
