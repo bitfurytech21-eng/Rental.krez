@@ -168,9 +168,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
-        className="bg-white rounded-2xl w-[92vw] sm:w-full max-w-[440px] max-h-[82vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-[#E3E8E3] relative my-auto overflow-hidden animate-in zoom-in-95 duration-150"
+        className="bg-[#151515] rounded-2xl w-[92vw] sm:w-full max-w-[440px] max-h-[82vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-[#303030] relative my-auto overflow-hidden animate-in zoom-in-95 duration-150 text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* State A: Success Confirmation */}
@@ -180,47 +180,47 @@ export const DepositModal: React.FC<DepositModalProps> = ({
             <div className="flex justify-end">
               <button
                 onClick={resetModal}
-                className="text-[#69736F] hover:text-[#18211F] p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                className="text-[#999999] hover:text-white p-1 rounded-lg hover:bg-[#1D1D1D] transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
-            <div className="w-11 h-11 rounded-full bg-emerald-100 text-[#27845D] flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-11 h-11 rounded-full bg-[#1D1D1D] text-[#2ECC71] border border-[#303030] flex items-center justify-center mx-auto shadow-inner">
               <CheckCircle2 className="w-6 h-6" />
             </div>
 
             <div>
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold mb-1">
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#1D1D1D] border border-[#FF9F43]/40 text-[#FF9F43] text-[10px] font-bold mb-1">
                 <Clock className="w-3 h-3" />
                 <span>Status: Awaiting Admin Confirmation</span>
               </div>
-              <h3 className="text-base sm:text-lg font-black text-[#18211F] tracking-tight">
+              <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
                 Deposit Request Submitted!
               </h3>
-              <p className="text-[10px] text-[#69736F] mt-1 max-w-sm mx-auto leading-tight">
+              <p className="text-[10px] text-[#999999] mt-1 max-w-sm mx-auto leading-tight">
                 Your deposit request has been registered in the platform treasury queue. Once our compliance team confirms receipt of the transfer, funds will be immediately credited to your wallet.
               </p>
             </div>
 
             {/* Transaction Receipt Card */}
-            <div className="p-2.5 sm:p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] text-left text-[11px] space-y-1.5">
-              <div className="flex justify-between items-center pb-1.5 border-b border-[#E3E8E3]">
-                <span className="text-[#69736F]">Deposit Reference:</span>
-                <span className="font-mono font-bold text-[#18211F]">{submittedTx.reference}</span>
+            <div className="p-2.5 sm:p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] text-left text-[11px] space-y-1.5">
+              <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
+                <span className="text-[#999999]">Deposit Reference:</span>
+                <span className="font-mono font-bold text-white">{submittedTx.reference}</span>
               </div>
-              <div className="flex justify-between items-center pb-1.5 border-b border-[#E3E8E3]">
-                <span className="text-[#69736F]">Amount:</span>
-                <span className="font-black text-[#18211F]">{formatCurrency(submittedTx.amount)} {submittedTx.currency}</span>
+              <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
+                <span className="text-[#999999]">Amount:</span>
+                <span className="font-black text-white">{formatCurrency(submittedTx.amount)} {submittedTx.currency}</span>
               </div>
-              <div className="flex justify-between items-center pb-1.5 border-b border-[#E3E8E3]">
-                <span className="text-[#69736F]">Method:</span>
-                <span className="font-semibold text-[#18211F] truncate max-w-[190px]">{submittedTx.paymentMethod}</span>
+              <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
+                <span className="text-[#999999]">Method:</span>
+                <span className="font-semibold text-white truncate max-w-[190px]">{submittedTx.paymentMethod}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[#69736F]">Investor:</span>
-                <span className="font-semibold text-[#18211F] truncate max-w-[190px]">{user.fullName} ({user.email})</span>
+                <span className="text-[#999999]">Investor:</span>
+                <span className="font-semibold text-white truncate max-w-[190px]">{user.fullName} ({user.email})</span>
               </div>
             </div>
 
@@ -243,9 +243,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     status: 'Pending'
                   });
                 }}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white border border-[#E3E8E3] hover:bg-slate-50 text-[#18211F] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-[#1D1D1D] border border-[#303030] hover:bg-[#252525] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
               >
-                <Printer className="w-3.5 h-3.5 text-[#27845D]" />
+                <Printer className="w-3.5 h-3.5 text-[#00D2FF]" />
                 <span>Print Receipt</span>
               </button>
 
@@ -257,7 +257,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     onNavigateTransactions();
                   }
                 }}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-all shadow-xs"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-[#E5E5E5] text-black font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-all shadow-xs"
               >
                 <span>View in Ledger</span>
               </button>
@@ -267,16 +267,16 @@ export const DepositModal: React.FC<DepositModalProps> = ({
           /* State B: Deposit Form with Sticky Header & Compact Scrollable Body */
           <>
             {/* Header */}
-            <div className="flex items-start justify-between p-3.5 sm:p-4 pb-2.5 border-b border-[#F0F2EE] shrink-0 bg-white">
+            <div className="flex items-start justify-between p-3.5 sm:p-4 pb-2.5 border-b border-[#303030] shrink-0 bg-[#151515]">
               <div className="space-y-0.5 pr-2">
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[#27845D] text-[9px] font-bold uppercase tracking-wider">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1D1D1D] border border-[#303030] text-[#00D2FF] text-[9px] font-bold uppercase tracking-wider">
                   <ShieldCheck className="w-2.5 h-2.5" />
                   <span>Institutional Custody · 1:1 EUR Backed</span>
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-[#18211F] tracking-tight">
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
                   Deposit Funds
                 </h2>
-                <p className="text-[11px] text-[#69736F] leading-tight">
+                <p className="text-[11px] text-[#999999] leading-tight">
                   Fund your liquidity account to purchase tokenized SPV notes.
                 </p>
               </div>
@@ -284,7 +284,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
               {/* Close Button */}
               <button
                 onClick={resetModal}
-                className="text-[#69736F] hover:text-[#18211F] p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer shrink-0 -mr-1"
+                className="text-[#999999] hover:text-white p-1.5 rounded-lg hover:bg-[#1D1D1D] transition-colors cursor-pointer shrink-0 -mr-1"
                 aria-label="Close deposit dialog"
               >
                 ✕
@@ -294,38 +294,38 @@ export const DepositModal: React.FC<DepositModalProps> = ({
             {/* Scrollable Form Body */}
             <div className="overflow-y-auto p-3.5 sm:p-4 space-y-3 text-left">
               {/* Method Tabs */}
-              <div className="grid grid-cols-2 gap-1 p-0.5 bg-[#EEF1EC] rounded-xl text-xs">
+              <div className="grid grid-cols-2 gap-1 p-0.5 bg-[#101010] border border-[#303030] rounded-xl text-xs">
                 <button
                   type="button"
                   onClick={() => setMethod('sepa')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     method === 'sepa'
-                      ? 'bg-white text-[#18211F] shadow-xs'
-                      : 'text-[#69736F] hover:text-[#18211F]'
+                      ? 'bg-white text-black shadow-xs'
+                      : 'text-[#999999] hover:text-white'
                   }`}
                 >
-                  <Building2 className="w-3 h-3 text-emerald-700" />
+                  <Building2 className={`w-3.5 h-3.5 ${method === 'sepa' ? 'text-black' : 'text-[#999999]'}`} />
                   <span>Bank Wire (SEPA)</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setMethod('crypto')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     method === 'crypto'
-                      ? 'bg-white text-[#18211F] shadow-xs'
-                      : 'text-[#69736F] hover:text-[#18211F]'
+                      ? 'bg-white text-black shadow-xs'
+                      : 'text-[#999999] hover:text-white'
                   }`}
                 >
-                  <Coins className="w-3 h-3 text-amber-600" />
+                  <Coins className={`w-3.5 h-3.5 ${method === 'crypto' ? 'text-black' : 'text-[#999999]'}`} />
                   <span>Crypto Transfer</span>
                 </button>
               </div>
 
               {/* Error Banner */}
               {error && (
-                <div className="p-2.5 rounded-xl bg-red-50 text-red-800 text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                <div className="p-2.5 rounded-xl bg-[#1D1D1D] text-[#FF4D4D] text-[11px] font-bold border border-[#FF4D4D]/40 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-[#FF4D4D] shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
@@ -333,11 +333,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({
               <form onSubmit={handleDepositSubmit} className="space-y-3">
                 {/* Amount Selection */}
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-[#18211F]">
+                  <label className="block text-[11px] font-bold text-white">
                     Deposit Amount (€ EUR)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#69736F]">€</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#999999]">€</span>
                     <input
                       type="number"
                       min="100"
@@ -345,7 +345,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                       value={amount || ''}
                       onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
                       placeholder="Enter amount..."
-                      className="w-full pl-6 pr-3 py-1.5 rounded-lg border border-[#E3E8E3] focus:border-[#182D2A] focus:outline-none text-xs font-bold text-[#18211F]"
+                      className="w-full pl-6 pr-3 py-2 rounded-lg bg-[#1D1D1D] border border-[#303030] focus:border-white focus:outline-none text-xs font-bold text-white placeholder:text-[#999999]"
                       required
                     />
                   </div>
@@ -357,10 +357,10 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                         key={preset}
                         type="button"
                         onClick={() => setAmount(preset)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${
                           amount === preset
-                            ? 'bg-[#182D2A] text-white border-[#182D2A]'
-                            : 'bg-[#F6F7F4] text-[#69736F] border-[#E3E8E3] hover:text-[#18211F]'
+                            ? 'bg-white text-black border-white'
+                            : 'bg-[#1D1D1D] text-[#D0D0D0] border-[#303030] hover:text-white hover:border-white/50'
                         }`}
                       >
                         {formatCurrency(preset)}
@@ -372,73 +372,73 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                 {/* METHOD 1: SEPA BANK WIRE */}
                 {method === 'sepa' && (
                   <div className="space-y-2">
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1.5 text-xs">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-[#18211F] text-[11px]">CaixaBank Institutional Account</span>
-                        <span className="text-[9px] text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                        <span className="font-bold text-white text-[11px]">CaixaBank Institutional Account</span>
+                        <span className="text-[9px] text-[#00D2FF] font-bold bg-[#151515] border border-[#303030] px-1.5 py-0.5 rounded-full">
                           SEPA Direct
                         </span>
                       </div>
 
                       <div className="space-y-1.5 text-[10px] sm:text-[11px]">
                         <div className="flex justify-between items-center">
-                          <span className="text-[#69736F]">Beneficiary:</span>
-                          <span className="font-bold text-[#18211F] truncate max-w-[190px]">{paymentConfig.traditional.beneficiary}</span>
+                          <span className="text-[#999999]">Beneficiary:</span>
+                          <span className="font-bold text-white truncate max-w-[190px]">{paymentConfig.traditional.beneficiary}</span>
                         </div>
 
                         <div className="flex justify-between items-center">
-                          <span className="text-[#69736F]">Bank Name:</span>
-                          <span className="font-bold text-[#18211F] truncate max-w-[190px]">{paymentConfig.traditional.bankName}</span>
+                          <span className="text-[#999999]">Bank Name:</span>
+                          <span className="font-bold text-white truncate max-w-[190px]">{paymentConfig.traditional.bankName}</span>
                         </div>
 
                         <div className="flex justify-between items-center">
-                          <span className="text-[#69736F]">IBAN:</span>
+                          <span className="text-[#999999]">IBAN:</span>
                           <div className="flex items-center gap-1">
-                            <span className="font-mono font-bold text-[#18211F] text-[10px]">{paymentConfig.traditional.iban}</span>
+                            <span className="font-mono font-bold text-white text-[10px]">{paymentConfig.traditional.iban}</span>
                             <button
                               type="button"
                               onClick={() => copyToClipboard(paymentConfig.traditional.iban, setCopiedIban)}
-                              className="p-1 rounded text-gray-500 hover:text-black cursor-pointer"
+                              className="p-1 rounded text-[#999999] hover:text-white cursor-pointer"
                               title="Copy IBAN"
                             >
-                              {copiedIban ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                              {copiedIban ? <Check className="w-3 h-3 text-[#2ECC71]" /> : <Copy className="w-3 h-3" />}
                             </button>
                           </div>
                         </div>
 
                         <div className="flex justify-between items-center">
-                          <span className="text-[#69736F]">BIC / SWIFT:</span>
+                          <span className="text-[#999999]">BIC / SWIFT:</span>
                           <div className="flex items-center gap-1">
-                            <span className="font-mono font-bold text-[#18211F] text-[10px]">{paymentConfig.traditional.bic}</span>
+                            <span className="font-mono font-bold text-white text-[10px]">{paymentConfig.traditional.bic}</span>
                             <button
                               type="button"
                               onClick={() => copyToClipboard(paymentConfig.traditional.bic, setCopiedSwift)}
-                              className="p-1 rounded text-gray-500 hover:text-black cursor-pointer"
+                              className="p-1 rounded text-[#999999] hover:text-white cursor-pointer"
                               title="Copy BIC"
                             >
-                              {copiedSwift ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                              {copiedSwift ? <Check className="w-3 h-3 text-[#2ECC71]" /> : <Copy className="w-3 h-3" />}
                             </button>
                           </div>
                         </div>
 
-                        <div className="p-2 bg-amber-50 rounded-lg border border-amber-200 mt-1">
+                        <div className="p-2 bg-[#101010] rounded-lg border border-[#FF9F43]/40 mt-1">
                           <div className="flex justify-between items-center">
                             <div>
-                              <span className="block text-[9px] uppercase font-bold text-amber-900 tracking-wider">
+                              <span className="block text-[9px] uppercase font-bold text-[#FF9F43] tracking-wider">
                                 Payment Reference (Mandatory)
                               </span>
-                              <span className="font-mono font-black text-amber-950 text-[11px]">{uniqueDepositRef}</span>
+                              <span className="font-mono font-black text-white text-[11px]">{uniqueDepositRef}</span>
                             </div>
                             <button
                               type="button"
                               onClick={() => copyToClipboard(uniqueDepositRef, setCopiedRef)}
-                              className="py-0.5 px-2 text-[9px] bg-white border border-amber-300 text-amber-950 font-bold rounded flex items-center gap-1 cursor-pointer shadow-2xs hover:bg-amber-100"
+                              className="py-0.5 px-2 text-[9px] bg-[#1D1D1D] border border-[#303030] text-white font-bold rounded flex items-center gap-1 cursor-pointer hover:bg-[#252525]"
                             >
-                              {copiedRef ? <Check className="w-2.5 h-2.5 text-emerald-600" /> : <Copy className="w-2.5 h-2.5" />}
+                              {copiedRef ? <Check className="w-2.5 h-2.5 text-[#2ECC71]" /> : <Copy className="w-2.5 h-2.5" />}
                               {copiedRef ? 'Copied' : 'Copy'}
                             </button>
                           </div>
-                          <p className="text-[9px] text-amber-800 mt-0.5">
+                          <p className="text-[9px] text-[#999999] mt-0.5">
                             Include this reference in your bank transfer note.
                           </p>
                         </div>
@@ -446,7 +446,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#69736F] mb-0.5">
+                      <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">
                         Bank Wire Note / Transaction Reference (Optional)
                       </label>
                       <input
@@ -454,7 +454,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                         value={senderReference}
                         onChange={(e) => setSenderReference(e.target.value)}
                         placeholder={`e.g. ${uniqueDepositRef} or CaixaBank Wire Ref`}
-                        className="w-full px-3 py-1.5 rounded-lg border border-[#E3E8E3] text-xs focus:outline-none focus:border-[#182D2A]"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs text-white placeholder:text-[#999999] focus:outline-none focus:border-white"
                       />
                     </div>
                   </div>
@@ -465,7 +465,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                   <div className="space-y-2.5">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] font-semibold text-[#69736F] mb-0.5">Asset</label>
+                        <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">Asset</label>
                         <select
                           value={cryptoToken}
                           onChange={(e) => {
@@ -474,23 +474,23 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                             const matching = enabledNetworks.filter(n => n.token === t);
                             if (matching[0]) setCryptoNetwork(matching[0].name);
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-xs font-bold focus:outline-none focus:border-[#182D2A]"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs font-bold text-white focus:outline-none focus:border-white"
                         >
                           {availableTokens.map((t) => (
-                            <option key={t} value={t}>{t} (Treasury)</option>
+                            <option key={t} value={t} className="bg-[#151515] text-white">{t} (Treasury)</option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-semibold text-[#69736F] mb-0.5">Network</label>
+                        <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">Network</label>
                         <select
                           value={cryptoNetwork}
                           onChange={(e) => setCryptoNetwork(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-[#E3E8E3] text-xs font-bold focus:outline-none focus:border-[#182D2A]"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs font-bold text-white focus:outline-none focus:border-white"
                         >
                           {currentTokenNetworks.map((net) => (
-                            <option key={net.id} value={net.name}>
+                            <option key={net.id} value={net.name} className="bg-[#151515] text-white">
                               {net.name} ({net.network})
                             </option>
                           ))}
@@ -498,35 +498,35 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1.5 text-xs">
+                    <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-[#18211F] text-[11px]">Dedicated Treasury Address</span>
-                        <span className="text-[9px] text-emerald-800 font-bold bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                        <span className="font-bold text-white text-[11px]">Dedicated Treasury Address</span>
+                        <span className="text-[9px] text-[#00D2FF] font-bold bg-[#151515] border border-[#303030] px-1.5 py-0.5 rounded-full">
                           {selectedNetworkConfig.network || cryptoNetwork}
                         </span>
                       </div>
 
-                      <div className="p-2 bg-white rounded-lg border border-[#E3E8E3] flex items-center justify-between gap-1.5">
-                        <span className="font-mono text-[10px] font-bold text-[#18211F] break-all select-all leading-tight">
+                      <div className="p-2 bg-[#151515] rounded-lg border border-[#303030] flex items-center justify-between gap-1.5">
+                        <span className="font-mono text-[10px] font-bold text-white break-all select-all leading-tight">
                           {selectedNetworkConfig.walletAddress}
                         </span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(selectedNetworkConfig.walletAddress, setCopiedAddress)}
-                          className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer shrink-0"
+                          className="p-1 rounded bg-[#1D1D1D] hover:bg-[#252525] text-white cursor-pointer shrink-0"
                           title="Copy Wallet Address"
                         >
-                          {copiedAddress ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          {copiedAddress ? <Check className="w-3 h-3 text-[#2ECC71]" /> : <Copy className="w-3 h-3 text-white" />}
                         </button>
                       </div>
 
-                      <p className="text-[9px] text-[#828D89] leading-tight">
+                      <p className="text-[9px] text-[#999999] leading-tight">
                         Send only {cryptoToken} on {selectedNetworkConfig.name || cryptoNetwork} to this address. Cross-chain errors may result in permanent capital loss.
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#69736F] mb-0.5">
+                      <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">
                         Blockchain Tx Hash / ID (Optional)
                       </label>
                       <input
@@ -534,22 +534,20 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                         value={declaredTxHash}
                         onChange={(e) => setDeclaredTxHash(e.target.value)}
                         placeholder="0x... or transfer identifier"
-                        className="w-full px-3 py-1.5 rounded-lg border border-[#E3E8E3] text-xs font-mono focus:outline-none focus:border-[#182D2A]"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs font-mono text-white placeholder:text-[#999999] focus:outline-none focus:border-white"
                       />
                     </div>
                   </div>
                 )}
 
-
-
                 {/* Receipt / Transfer Slip Upload */}
-                <div className="p-2.5 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1.5 text-xs">
+                <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#18211F] text-[11px] flex items-center gap-1">
-                      <UploadCloud className="w-3.5 h-3.5 text-[#27845D]" />
+                    <span className="font-bold text-white text-[11px] flex items-center gap-1">
+                      <UploadCloud className="w-3.5 h-3.5 text-[#00D2FF]" />
                       <span>Attach Payment Slip (Optional)</span>
                     </span>
-                    <span className="text-[9px] text-[#69736F]">JPG, PNG, PDF</span>
+                    <span className="text-[9px] text-[#999999]">JPG, PNG, PDF</span>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -563,11 +561,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     }}
                   />
                   {receiptFileName ? (
-                    <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-emerald-300">
+                    <div className="flex items-center justify-between p-2 bg-[#151515] rounded-lg border border-[#303030]">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="font-semibold text-[#18211F] text-[11px] truncate max-w-[200px]">{receiptFileName}</span>
-                        <span className="text-[9px] text-gray-500 shrink-0">({(receiptFileSize / 1024).toFixed(0)} KB)</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#2ECC71] shrink-0" />
+                        <span className="font-semibold text-white text-[11px] truncate max-w-[200px]">{receiptFileName}</span>
+                        <span className="text-[9px] text-[#999999] shrink-0">({(receiptFileSize / 1024).toFixed(0)} KB)</span>
                       </div>
                       <button
                         type="button"
@@ -576,7 +574,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                           setReceiptFileName('');
                           setReceiptFileSize(0);
                         }}
-                        className="text-[10px] font-bold text-red-600 hover:underline cursor-pointer ml-2"
+                        className="text-[10px] font-bold text-[#FF4D4D] hover:underline cursor-pointer ml-2"
                       >
                         Remove
                       </button>
@@ -585,13 +583,13 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full py-1.5 px-2.5 rounded-lg border border-dashed border-[#CBD5E1] bg-white hover:bg-slate-50 text-[#69736F] hover:text-[#18211F] text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="w-full py-1.5 px-2.5 rounded-lg border border-dashed border-[#303030] bg-[#151515] hover:bg-[#202020] text-[#999999] hover:text-white text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <UploadCloud className="w-3 h-3 text-[#27845D]" />
+                      <UploadCloud className="w-3 h-3 text-[#00D2FF]" />
                       <span>Upload Wire Transfer Confirmation Slip</span>
                     </button>
                   )}
-                  <p className="text-[9px] text-[#828D89] leading-tight">
+                  <p className="text-[9px] text-[#999999] leading-tight">
                     Uploading your bank receipt accelerates admin approval and credit to your account.
                   </p>
                 </div>
@@ -601,18 +599,18 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting || amount <= 0}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all disabled:opacity-50"
+                    className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-[#E5E5E5] text-black font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <ButtonLoader text="Processing Deposit..." />
                     ) : (
                       <>
-                        <ArrowDownLeft className="w-3.5 h-3.5 text-[#B7E36A]" />
+                        <ArrowDownLeft className="w-3.5 h-3.5 text-black" />
                         <span>Submit Deposit (€{amount.toLocaleString()})</span>
                       </>
                     )}
                   </button>
-                  <p className="text-[9px] text-center text-[#828D89] mt-1.5 leading-tight">
+                  <p className="text-[9px] text-center text-[#999999] mt-1.5 leading-tight">
                     Deposits are held in CaixaBank segregated client accounts in compliance with EU MiCA & CNMV.
                   </p>
                 </div>

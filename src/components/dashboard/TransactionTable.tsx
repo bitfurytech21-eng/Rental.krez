@@ -176,36 +176,36 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (type) {
       case 'deposit':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#087F5B] bg-[#DDF5EC] border border-[#BCE8D7] px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#2ECC71] bg-[#1D1D1D] border border-[#2ECC71]/30 px-2 py-0.5 rounded-full">
             <ArrowDownLeft className="w-2.5 h-2.5 stroke-[2.5]" /> Deposit
           </span>
         );
       case 'withdrawal':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#C24141] bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#FF9F43] bg-[#1D1D1D] border border-[#FF9F43]/30 px-2 py-0.5 rounded-full">
             <ArrowUpRight className="w-2.5 h-2.5" /> Withdrawal
           </span>
         );
       case 'investment':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#075B46] bg-[#F6FAF8] border border-[#E4EEEA] px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#00D2FF] bg-[#1D1D1D] border border-[#00D2FF]/30 px-2 py-0.5 rounded-full">
             <Coins className="w-2.5 h-2.5" /> Investment
           </span>
         );
       case 'distribution':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#087F5B] bg-[#DDF5EC] border border-[#BCE8D7] px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#A66CFF] bg-[#1D1D1D] border border-[#A66CFF]/30 px-2 py-0.5 rounded-full">
             <RefreshCw className="w-2.5 h-2.5" /> Dividend
           </span>
         );
       case 'fee':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#FF65B3] bg-[#1D1D1D] border border-[#FF65B3]/30 px-2 py-0.5 rounded-full">
             <RefreshCw className="w-2.5 h-2.5" /> FX / Fee
           </span>
         );
       default:
-        return <span className="text-[9.5px] uppercase font-mono">{type}</span>;
+        return <span className="text-[9.5px] uppercase font-mono text-[#D0D0D0] bg-[#1D1D1D] px-2 py-0.5 rounded-full border border-[#303030]">{type}</span>;
     }
   };
 
@@ -213,24 +213,24 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (status) {
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#087F5B]">
-            <CheckCircle2 className="w-3 h-3 text-[#087F5B]" /> Completed
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#2ECC71]">
+            <CheckCircle2 className="w-3 h-3 text-[#2ECC71]" /> Completed
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600">
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#FFD93D]">
             <Clock className="w-3 h-3" /> Pending Review
           </span>
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-rose-600">
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#FF4D4D]">
             <AlertCircle className="w-3 h-3" /> Declined
           </span>
         );
       default:
-        return <span className="text-[10px]">{status}</span>;
+        return <span className="text-[10px] text-[#999999]">{status}</span>;
     }
   };
 
@@ -268,7 +268,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
 
   if (transactions.length === 0) {
     return (
-      <div className="dash-card p-5 rounded-xl border text-center text-xs dash-muted">
+      <div className="bg-[#151515] p-6 rounded-2xl border border-[#303030] text-center text-xs text-[#999999]">
         No ledger transactions recorded for this account yet.
       </div>
     );
@@ -278,10 +278,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     <div className="space-y-3">
       {/* Search, Filter & Export Toolbar (Full Ledger View Only) */}
       {!isCompactPreview && (
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-[#F6FAF8] p-2.5 rounded-xl border border-[#E4EEEA]">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 bg-[#151515] p-3 rounded-2xl border border-[#303030]">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
             <div className="relative flex-1 max-w-sm">
-              <Search className="w-3.5 h-3.5 text-[#71817D] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-[#999999] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
@@ -291,7 +291,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                 }}
                 placeholder="Search ref, description, method, hash..."
                 aria-label="Search ledger transactions"
-                className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-[#E4EEEA] bg-white text-xs text-[#172B2A] placeholder-[#71817D] focus:outline-none focus:border-[#087F5B]"
+                className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-[#303030] bg-[#1D1D1D] text-xs text-white placeholder-[#777777] focus:outline-none focus:border-white transition-colors"
               />
               {searchQuery && (
                 <button
@@ -301,7 +301,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                     setCurrentPage(1);
                   }}
                   aria-label="Clear transaction search"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71817D] hover:text-[#172B2A] cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#999999] hover:text-white cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -315,7 +315,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                 setCurrentPage(1);
               }}
               aria-label="Filter transactions by type"
-              className="px-2.5 py-1.5 rounded-lg border border-[#E4EEEA] bg-white text-xs font-medium text-[#172B2A] focus:outline-none focus:border-[#087F5B] cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg border border-[#303030] bg-[#1D1D1D] text-xs font-medium text-white focus:outline-none focus:border-white cursor-pointer"
             >
               <option value="all">All Types</option>
               <option value="deposit">Deposits</option>
@@ -332,7 +332,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                 setCurrentPage(1);
               }}
               aria-label="Filter transactions by status"
-              className="px-2.5 py-1.5 rounded-lg border border-[#E4EEEA] bg-white text-xs font-medium text-[#172B2A] focus:outline-none focus:border-[#087F5B] cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg border border-[#303030] bg-[#1D1D1D] text-xs font-medium text-white focus:outline-none focus:border-white cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="completed">Completed</option>
@@ -344,7 +344,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               <button
                 type="button"
                 onClick={clearFilters}
-                className="px-2.5 py-1.5 rounded-lg border border-[#E4EEEA] bg-white hover:bg-slate-50 text-xs font-semibold text-[#71817D] hover:text-[#172B2A] cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg border border-[#303030] bg-[#1D1D1D] hover:bg-[#252525] text-xs font-semibold text-[#D0D0D0] hover:text-white cursor-pointer"
               >
                 Reset
               </button>
@@ -352,16 +352,16 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-2">
-            <span className="text-[11px] font-semibold text-[#71817D]">
+            <span className="text-[11px] font-semibold text-[#999999]">
               Showing {displayList.length} of {filteredTransactions.length}
             </span>
             <button
               type="button"
               onClick={handleExportCsv}
               disabled={filteredTransactions.length === 0}
-              className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-[#EEF5F1] border border-[#E4EEEA] text-xs font-semibold text-[#172B2A] inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 shadow-xs"
             >
-              <Download className="w-3.5 h-3.5 text-[#087F5B]" />
+              <Download className="w-3.5 h-3.5 text-black" />
               <span>Export CSV</span>
             </button>
           </div>
@@ -371,7 +371,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
       {/* Compact Table Count Bar when in Overview preview */}
       {isCompactPreview && (
         <div className="flex items-center justify-between mb-1 px-1">
-          <span className="text-[11px] font-semibold text-[#71817D]">
+          <span className="text-[11px] font-semibold text-[#999999]">
             Ledger Records: {displayList.length} of {transactions.length}
           </span>
         </div>
@@ -379,14 +379,14 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
 
       {/* Honest Empty Filter State */}
       {filteredTransactions.length === 0 ? (
-        <div className="p-6 rounded-xl border border-[#E4EEEA] bg-[#F6FAF8]/60 text-center space-y-2">
-          <p className="text-xs font-semibold text-[#172B2A]">
+        <div className="p-6 rounded-2xl border border-[#303030] bg-[#151515] text-center space-y-2">
+          <p className="text-xs font-semibold text-white">
             No ledger records match your active search or filters.
           </p>
           <button
             type="button"
             onClick={clearFilters}
-            className="px-3 py-1.5 rounded-lg bg-[#087F5B] text-white text-xs font-semibold hover:bg-[#075B46] transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold transition-colors cursor-pointer shadow-xs"
           >
             Clear Filters
           </button>
@@ -394,7 +394,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
       ) : (
         <>
           {/* Mobile-First Compact Transaction Feed (< 640px) */}
-          <div className="sm:hidden divide-y border border-inherit/40 rounded-xl overflow-hidden dash-card">
+          <div className="sm:hidden divide-y divide-[#303030] border border-[#303030] rounded-2xl overflow-hidden bg-[#151515]">
             {displayList.map((tx) => {
               const isFxConversion = tx.type === 'fee' && tx.reference?.startsWith('FX-');
               const isNegative =
@@ -406,15 +406,15 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               return (
                 <div
                   key={tx.id}
-                  className="p-2.5 flex items-center justify-between gap-2.5 hover:opacity-90 transition-opacity"
+                  className="p-3 flex items-center justify-between gap-2.5 hover:bg-[#1D1D1D] transition-colors"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div className="shrink-0">{getTypeBadge(tx.type)}</div>
                     <div className="min-w-0">
-                      <span className="font-semibold dash-text block text-xs truncate leading-tight">
+                      <span className="font-semibold text-white block text-xs truncate leading-tight">
                         {tx.description}
                       </span>
-                      <div className="flex items-center gap-1.5 text-[9.5px] dash-muted leading-tight mt-0.5 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-[9.5px] text-[#999999] leading-tight mt-0.5 flex-wrap">
                         <span>{formatDate(tx.createdAt)}</span>
                         <span>·</span>
                         <span className="font-mono">{tx.paymentMethod}</span>
@@ -432,10 +432,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                     <div
                       className={`font-black text-xs tabular-nums ${
                         isFxConversion
-                          ? 'text-indigo-700'
+                          ? 'text-[#FF65B3]'
                           : isNegative
-                          ? 'dash-text'
-                          : 'text-[#087F5B]'
+                          ? 'text-white'
+                          : 'text-[#2ECC71]'
                       }`}
                     >
                       {prefix}
@@ -451,29 +451,29 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           </div>
 
           {/* Desktop / Tablet Compact Table (>= 640px) */}
-          <div className="hidden sm:block dashboard-table-wrapper border border-[#E4EEEA] rounded-2xl overflow-hidden bg-white shadow-xs">
-            <table className="dashboard-table">
+          <div className="hidden sm:block dashboard-table-wrapper border border-[#303030] rounded-2xl overflow-hidden bg-[#151515] shadow-xl">
+            <table className="dashboard-table w-full text-left">
               <thead>
-                <tr className="bg-[#F6FAF8]">
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Type</th>
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">
+                <tr className="bg-[#101010] border-b border-[#303030]">
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-white font-bold uppercase tracking-wider">Type</th>
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-white font-bold uppercase tracking-wider">
                     Description &amp; Reference
                   </th>
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Date</th>
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Method</th>
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-[#71817D]">Status</th>
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-right text-[#71817D]">
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-white font-bold uppercase tracking-wider">Date</th>
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-white font-bold uppercase tracking-wider">Method</th>
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-white font-bold uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-right text-white font-bold uppercase tracking-wider">
                     Amount
                   </th>
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-right text-[#71817D]">
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-right text-white font-bold uppercase tracking-wider">
                     Balance After
                   </th>
-                  <th className="py-2.5 px-3 text-[10px] sm:text-[10.5px] text-center text-[#71817D]">
+                  <th className="py-3 px-3.5 text-[10px] sm:text-[10.5px] text-center text-white font-bold uppercase tracking-wider">
                     Receipt
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4EEEA]">
+              <tbody className="divide-y divide-[#262626]">
                 {displayList.map((tx) => {
                   const isFxConversion = tx.type === 'fee' && tx.reference?.startsWith('FX-');
                   const isNegative =
@@ -483,13 +483,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                   const prefix = isFxConversion ? '⇄ ' : isNegative ? '-' : '+';
 
                   return (
-                    <tr key={tx.id} className="hover:bg-[#F6FAF8]/70 transition-colors">
-                      <td className="py-2.5 px-3">{getTypeBadge(tx.type)}</td>
-                      <td className="py-2.5 px-3 max-w-xs">
-                        <span className="font-semibold text-[#172B2A] block text-xs truncate">
+                    <tr key={tx.id} className="hover:bg-[#1D1D1D] transition-colors">
+                      <td className="py-3 px-3.5">{getTypeBadge(tx.type)}</td>
+                      <td className="py-3 px-3.5 max-w-xs">
+                        <span className="font-semibold text-white block text-xs truncate">
                           {tx.description}
                         </span>
-                        <span className="font-mono text-[10px] text-[#71817D] flex items-center gap-1 mt-0.5">
+                        <span className="font-mono text-[10px] text-[#999999] flex items-center gap-1 mt-0.5">
                           <span>Ref: {tx.reference}</span>
                           {tx.txHash && (
                             <>
@@ -499,39 +499,39 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                           )}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-xs text-[#71817D] whitespace-nowrap font-mono">
+                      <td className="py-3 px-3.5 text-xs text-[#D0D0D0] whitespace-nowrap font-mono">
                         {formatDate(tx.createdAt)}
                       </td>
-                      <td className="py-2.5 px-3 text-xs text-[#172B2A] font-medium whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-xs text-white font-medium whitespace-nowrap">
                         {tx.paymentMethod}
                       </td>
-                      <td className="py-2.5 px-3">{getStatusBadge(tx.status)}</td>
-                      <td className="py-2.5 px-3 text-right font-bold font-mono tabular-nums text-xs sm:text-[13px] whitespace-nowrap">
+                      <td className="py-3 px-3.5">{getStatusBadge(tx.status)}</td>
+                      <td className="py-3 px-3.5 text-right font-bold font-mono tabular-nums text-xs sm:text-[13px] whitespace-nowrap">
                         <span
                           className={
                             isFxConversion
-                              ? 'text-indigo-700'
+                              ? 'text-[#FF65B3]'
                               : isNegative
-                              ? 'text-[#172B2A]'
-                              : 'text-[#087F5B]'
+                              ? 'text-white'
+                              : 'text-[#2ECC71]'
                           }
                         >
                           {prefix}
                           {formatCurrency(tx.amount, tx.currency)}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-medium font-mono tabular-nums text-xs text-[#71817D] whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-right font-medium font-mono tabular-nums text-xs text-[#D0D0D0] whitespace-nowrap">
                         {formatCurrency(tx.balanceAfter)}
                       </td>
-                      <td className="py-2.5 px-3 text-center">
+                      <td className="py-3 px-3.5 text-center">
                         <button
                           type="button"
                           onClick={() => handlePrintReceipt(tx)}
-                          className="p-1.5 rounded-lg bg-[#F6F7F4] hover:bg-[#EEF1EC] text-[#182D2A] transition-colors border border-[#E3E8E3] inline-flex items-center justify-center cursor-pointer"
+                          className="p-1.5 rounded-lg bg-[#1D1D1D] hover:bg-[#262626] text-white transition-colors border border-[#303030] inline-flex items-center justify-center cursor-pointer shadow-2xs"
                           title="Print Official Receipt"
                           aria-label={`Print receipt for ${tx.reference}`}
                         >
-                          <Printer className="w-3.5 h-3.5 text-[#27845D]" />
+                          <Printer className="w-3.5 h-3.5 text-[#00D2FF]" />
                         </button>
                       </td>
                     </tr>
@@ -544,7 +544,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           {/* Pagination Controls (Full Ledger View Only) */}
           {!isCompactPreview && totalPages > 1 && (
             <div className="flex items-center justify-between pt-1 px-1 text-xs">
-              <span className="text-[11px] text-[#71817D]">
+              <span className="text-[11px] text-[#999999]">
                 Page {safePage} of {totalPages}
               </span>
               <div className="flex items-center gap-1.5">
@@ -552,19 +552,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                   type="button"
                   disabled={safePage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="px-2.5 py-1 rounded-lg border border-[#E4EEEA] bg-white hover:bg-[#F6FAF8] text-[#172B2A] font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 rounded-lg border border-[#303030] bg-[#1D1D1D] hover:bg-[#252525] text-white font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed transition-colors"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft className="w-3.5 h-3.5 text-white" />
                   <span>Prev</span>
                 </button>
                 <button
                   type="button"
                   disabled={safePage >= totalPages}
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-2.5 py-1 rounded-lg border border-[#E4EEEA] bg-white hover:bg-[#F6FAF8] text-[#172B2A] font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+                  className="px-2.5 py-1 rounded-lg border border-[#303030] bg-[#1D1D1D] hover:bg-[#252525] text-white font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed transition-colors"
                 >
                   <span>Next</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="w-3.5 h-3.5 text-white" />
                 </button>
               </div>
             </div>

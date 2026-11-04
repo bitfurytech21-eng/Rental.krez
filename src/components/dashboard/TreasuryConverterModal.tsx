@@ -194,26 +194,26 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="treasury-converter-title"
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget && !converting) onClose();
       }}
     >
       <div
-        className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-[#E3E8E3] space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-[#151515] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-[#303030] space-y-4 max-h-[90vh] overflow-y-auto text-white"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-[#E3E8E3] pb-3">
+        <div className="flex justify-between items-center border-b border-[#303030] pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-emerald-50 text-[#27845D]">
-              <RefreshCw className="w-4 h-4" />
+            <div className="p-2 rounded-lg bg-[#1D1D1D] text-white border border-[#303030]">
+              <RefreshCw className="w-4 h-4 text-[#00D2FF]" />
             </div>
             <div>
-              <h3 id="treasury-converter-title" className="text-base font-bold text-[#18211F]">
+              <h3 id="treasury-converter-title" className="text-base font-bold text-white">
                 Treasury FX &amp; Crypto Converter
               </h3>
-              <p className="text-[11px] text-[#69736F]">Multi-currency sub-account desk · {LEDGER_FX_FEE_PERCENT}% spread</p>
+              <p className="text-[11px] text-[#999999]">Multi-currency sub-account desk · {LEDGER_FX_FEE_PERCENT}% spread</p>
             </div>
           </div>
           <button
@@ -221,7 +221,7 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
             onClick={onClose}
             disabled={converting}
             aria-label="Close converter"
-            className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+            className="text-[#999999] hover:text-white p-1 cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -229,34 +229,34 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
 
         {conversionReceipt ? (
           <div className="py-3 text-center space-y-3">
-            <div className="w-12 h-12 bg-emerald-100 text-[#27845D] rounded-full flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 bg-[#1D1D1D] text-[#2ECC71] border border-[#303030] rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-7 h-7" />
             </div>
-            <h4 className="text-base font-bold text-[#18211F]">Conversion Settled on Ledger</h4>
-            <p className="text-xs text-[#52605C]">
+            <h4 className="text-base font-bold text-white">Conversion Settled on Ledger</h4>
+            <p className="text-xs text-[#D0D0D0]">
               Exchanged{' '}
-              <strong className="font-mono text-[#18211F]">
+              <strong className="font-mono text-white">
                 {conversionReceipt.fromAmount} {conversionReceipt.fromCurrency}
               </strong>{' '}
               into{' '}
-              <strong className="font-mono text-[#27845D]">
+              <strong className="font-mono text-[#00D2FF]">
                 {conversionReceipt.toAmount} {conversionReceipt.toCurrency}
               </strong>
               .
             </p>
 
-            <div className="p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] text-left text-xs space-y-1.5 font-mono">
+            <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] text-left text-xs space-y-1.5 font-mono">
               <div className="flex justify-between">
-                <span className="text-[#69736F] font-sans">FX Reference:</span>
-                <span className="font-bold text-[#18211F]">{conversionReceipt.reference}</span>
+                <span className="text-[#999999] font-sans">FX Reference:</span>
+                <span className="font-bold text-white">{conversionReceipt.reference}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#69736F] font-sans">Desk Spread ({LEDGER_FX_FEE_PERCENT}%):</span>
-                <span className="font-semibold text-[#18211F]">{formatCurrency(conversionReceipt.feeEur)}</span>
+                <span className="text-[#999999] font-sans">Desk Spread ({LEDGER_FX_FEE_PERCENT}%):</span>
+                <span className="font-semibold text-[#D0D0D0]">{formatCurrency(conversionReceipt.feeEur)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#69736F] font-sans">Active EUR Cash Balance:</span>
-                <span className="font-bold text-[#27845D]">{formatCurrency(conversionReceipt.eurBalanceAfter)}</span>
+                <span className="text-[#999999] font-sans">Active EUR Cash Balance:</span>
+                <span className="font-bold text-[#2ECC71]">{formatCurrency(conversionReceipt.eurBalanceAfter)}</span>
               </div>
             </div>
 
@@ -264,7 +264,7 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
               <button
                 type="button"
                 onClick={() => setConversionReceipt(null)}
-                className="btn btn-secondary flex-1 text-xs font-bold"
+                className="flex-1 py-2 rounded-xl bg-[#1D1D1D] hover:bg-[#252525] border border-[#303030] text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 Convert Again
               </button>
@@ -274,7 +274,7 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                   setConversionReceipt(null);
                   onClose();
                 }}
-                className="btn btn-primary flex-1 text-xs font-bold"
+                className="flex-1 py-2 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold transition-colors cursor-pointer"
               >
                 Return to Wallet
               </button>
@@ -283,10 +283,10 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
         ) : (
           <div className="space-y-3.5 text-xs">
             {/* Active Multi-Currency Sub-Balances Strip */}
-            <div className="p-2.5 rounded-xl bg-[#F6FAF8] border border-[#E4EEEA] space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#71817D]">
-                <span className="flex items-center gap-1">
-                  <Wallet className="w-3 h-3 text-[#087F5B]" /> Treasury Sub-Balances
+            <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#999999]">
+                <span className="flex items-center gap-1 text-white">
+                  <Wallet className="w-3 h-3 text-[#00D2FF]" /> Treasury Sub-Balances
                 </span>
                 <span>Click to select source</span>
               </div>
@@ -301,10 +301,10 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                       onClick={() => handleSelectFrom(cur)}
                       className={`px-2 py-1 rounded-lg text-[10.5px] font-mono font-bold border transition-colors cursor-pointer ${
                         isActive
-                          ? 'bg-[#142421] text-white border-[#142421]'
+                          ? 'bg-white text-black border-white'
                           : bal > 0
-                          ? 'bg-white text-[#18211F] border-emerald-300 hover:border-[#27845D]'
-                          : 'bg-white/70 text-[#69736F] border-[#E3E8E3]'
+                          ? 'bg-[#151515] text-white border-[#303030] hover:border-white'
+                          : 'bg-[#151515]/50 text-[#999999] border-[#303030]/60'
                       }`}
                     >
                       {cur}: {bal.toFixed(cur === 'SOL' ? 4 : 2)}
@@ -315,14 +315,14 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
             </div>
 
             {/* From Amount */}
-            <div className="p-3.5 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-2">
+            <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-2">
               <div className="flex items-center justify-between">
-                <label htmlFor="fx-from-amount" className="text-[11px] font-bold text-[#69736F] uppercase tracking-wider">
+                <label htmlFor="fx-from-amount" className="text-[11px] font-bold text-white uppercase tracking-wider">
                   You Convert
                 </label>
                 <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="text-[#69736F] font-mono">
-                    Avail: <strong className="text-[#18211F]">{availableFrom.toFixed(sourceDecimals)} {fromCurrency}</strong>
+                  <span className="text-[#999999] font-mono">
+                    Avail: <strong className="text-white">{availableFrom.toFixed(sourceDecimals)} {fromCurrency}</strong>
                   </span>
                   {availableFrom > 0 && (
                     <button
@@ -331,7 +331,7 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                         setError(null);
                         setFromAmount(availableFrom);
                       }}
-                      className="px-1.5 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 text-[#087F5B] text-[9.5px] font-extrabold uppercase cursor-pointer"
+                      className="px-1.5 py-0.5 rounded bg-white text-black text-[9.5px] font-extrabold uppercase cursor-pointer hover:bg-[#E5E5E5]"
                     >
                       Max
                     </button>
@@ -349,16 +349,16 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                     setError(null);
                     setFromAmount(Math.max(0, parseFloat(e.target.value) || 0));
                   }}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#E3E8E3] text-lg font-mono font-bold text-[#18211F] focus:outline-hidden focus:ring-2 focus:ring-[#27845D]"
+                  className="w-full px-3 py-2 rounded-xl bg-[#151515] border border-[#303030] text-lg font-mono font-bold text-white placeholder:text-[#999999] focus:outline-none focus:border-white"
                 />
                 <select
                   aria-label="Source currency"
                   value={fromCurrency}
                   onChange={(e) => handleSelectFrom(e.target.value as SupportedCurrency)}
-                  className="px-3 py-2 rounded-xl bg-white border border-[#E3E8E3] font-bold font-mono text-xs text-[#18211F] cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-[#151515] border border-[#303030] font-bold font-mono text-xs text-white cursor-pointer focus:outline-none focus:border-white"
                 >
                   {ALL_CURRENCIES.map((c) => (
-                    <option key={c} value={c}>
+                    <option key={c} value={c} className="bg-[#151515] text-white">
                       {CURRENCY_LABELS[c]}
                     </option>
                   ))}
@@ -373,34 +373,34 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                 onClick={handleSwapCurrencies}
                 title="Swap source and target currencies"
                 aria-label="Swap source and target currencies"
-                className="w-8 h-8 rounded-full bg-[#142421] hover:bg-[#1f3732] text-white flex items-center justify-center shadow-md cursor-pointer transition-transform active:scale-95"
+                className="w-8 h-8 rounded-full bg-white hover:bg-[#E5E5E5] text-black flex items-center justify-center shadow-md cursor-pointer transition-transform active:scale-95"
               >
-                <ArrowUpDown className="w-3.5 h-3.5 text-[#B7E36A]" />
+                <ArrowUpDown className="w-3.5 h-3.5 text-black" />
               </button>
             </div>
 
             {/* To Amount */}
-            <div className="p-3.5 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-2">
+            <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-[#69736F] uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-white uppercase tracking-wider">
                   You Receive (Net After Spread)
                 </span>
-                <span className="text-[11px] font-mono text-[#69736F]">
+                <span className="text-[11px] font-mono text-[#999999]">
                   Bal: {availableTo.toFixed(targetDecimals)} {toCurrency}
                 </span>
               </div>
               <div className="flex gap-2">
-                <div className="w-full px-3 py-2 rounded-xl bg-white border border-[#E3E8E3] text-lg font-mono font-bold text-[#27845D] tabular-nums">
+                <div className="w-full px-3 py-2 rounded-xl bg-[#151515] border border-[#303030] text-lg font-mono font-bold text-[#00D2FF] tabular-nums">
                   {formattedTarget}
                 </div>
                 <select
                   aria-label="Target currency"
                   value={toCurrency}
                   onChange={(e) => handleSelectTo(e.target.value as SupportedCurrency)}
-                  className="px-3 py-2 rounded-xl bg-white border border-[#E3E8E3] font-bold font-mono text-xs text-[#18211F] cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-[#151515] border border-[#303030] font-bold font-mono text-xs text-white cursor-pointer focus:outline-none focus:border-white"
                 >
                   {ALL_CURRENCIES.map((c) => (
-                    <option key={c} value={c}>
+                    <option key={c} value={c} className="bg-[#151515] text-white">
                       {CURRENCY_LABELS[c]}
                     </option>
                   ))}
@@ -409,26 +409,26 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
             </div>
 
             {/* Rate Details Box */}
-            <div className="p-3 rounded-xl bg-[#142421] text-white space-y-1 font-mono text-[11px]">
+            <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] text-white space-y-1 font-mono text-[11px]">
               <div className="flex justify-between">
-                <span className="text-slate-300">Spot Rate:</span>
-                <span className="text-[#B7E36A] font-bold">
+                <span className="text-[#999999]">Spot Rate:</span>
+                <span className="text-[#00D2FF] font-bold">
                   1 {fromCurrency} = {unitCrossRate.toFixed(4)} {toCurrency}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-300">Desk Clearing Spread ({LEDGER_FX_FEE_PERCENT}%):</span>
-                <span className="text-emerald-300 font-bold">{formatCurrency(feeEur)}</span>
+                <span className="text-[#999999]">Desk Clearing Spread ({LEDGER_FX_FEE_PERCENT}%):</span>
+                <span className="text-[#D0D0D0] font-bold">{formatCurrency(feeEur)}</span>
               </div>
             </div>
 
             {/* Honest Insufficient Balance Warning */}
             {isInsufficient && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-2">
+              <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#FF9F43]/40 text-white space-y-2">
                 <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[11px] leading-snug">
-                    You have <strong className="font-mono">{availableFrom.toFixed(sourceDecimals)} {fromCurrency}</strong>{' '}
+                  <AlertCircle className="w-4 h-4 text-[#FF9F43] shrink-0 mt-0.5" />
+                  <p className="text-[11px] leading-snug text-[#D0D0D0]">
+                    You have <strong className="font-mono text-white">{availableFrom.toFixed(sourceDecimals)} {fromCurrency}</strong>{' '}
                     available. Fund your EUR wallet first (or select a currency with an active balance above) to convert.
                   </p>
                 </div>
@@ -439,9 +439,9 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                       onClose();
                       onOpenDeposit();
                     }}
-                    className="w-full py-1.5 px-3 rounded-lg bg-[#142421] hover:bg-[#1f3732] text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full py-1.5 px-3 rounded-lg bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5 text-[#B7E36A]" />
+                    <Plus className="w-3.5 h-3.5 text-black" />
                     <span>Deposit Funds to Wallet</span>
                   </button>
                 )}
@@ -449,8 +449,8 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
             )}
 
             {error && (
-              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#FF4D4D]/40 text-[#FF4D4D] text-xs font-semibold flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-[#FF4D4D] shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
@@ -460,11 +460,11 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                 type="button"
                 onClick={handleExecuteConversion}
                 disabled={converting || fromAmount <= 0 || isInsufficient}
-                className="btn btn-primary flex-1 text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black flex-1 text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 transition-colors"
               >
                 {converting ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
                     <span>Settling FX...</span>
                   </>
                 ) : (
@@ -475,7 +475,7 @@ export const TreasuryConverterModal: React.FC<TreasuryConverterModalProps> = ({
                 type="button"
                 onClick={onClose}
                 disabled={converting}
-                className="btn btn-secondary text-xs font-bold cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-[#1D1D1D] hover:bg-[#252525] border border-[#303030] text-white flex-1 text-xs font-bold cursor-pointer transition-colors"
               >
                 Cancel
               </button>

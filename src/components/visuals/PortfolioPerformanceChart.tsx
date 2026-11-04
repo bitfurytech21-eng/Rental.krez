@@ -87,19 +87,19 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
   const totalReturnPercent = ((currentValuation + totalDividends - initialValuation) / initialValuation) * 100;
 
   return (
-    <div className={`bg-white dark:bg-[#0D1522] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}>
+    <div className={`bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 text-white ${className}`}>
       {/* Chart Top Control Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#303030]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-emerald-600 dark:text-emerald-400">
+            <span className="p-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-[#00D2FF]">
               <TrendingUp className="w-4 h-4" />
             </span>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
-              Portfolio Growth & Distribution Curve
+            <h3 className="text-sm sm:text-base font-bold text-white">
+              Portfolio Growth &amp; Distribution Curve
             </h3>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-[#999999] mt-0.5">
             Realized property asset NAV progression and cumulative monthly dividends
           </p>
         </div>
@@ -107,23 +107,23 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Metric Selector */}
-          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-lg text-xs font-semibold">
+          <div className="flex items-center p-1 bg-[#1D1D1D] border border-[#303030] rounded-lg text-xs font-semibold">
             <button
               onClick={() => setMetric('valuation')}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                 metric === 'valuation'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'bg-white text-black font-bold shadow-sm'
+                  : 'text-[#D0D0D0] hover:text-white'
               }`}
             >
               NAV Value
             </button>
             <button
               onClick={() => setMetric('dividends')}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                 metric === 'dividends'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'bg-white text-black font-bold shadow-sm'
+                  : 'text-[#D0D0D0] hover:text-white'
               }`}
             >
               Dividends
@@ -131,15 +131,15 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
           </div>
 
           {/* Time Range Selector */}
-          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-lg text-xs font-semibold">
+          <div className="flex items-center p-1 bg-[#1D1D1D] border border-[#303030] rounded-lg text-xs font-semibold">
             {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeRange[]).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-2 py-1 rounded-md transition-colors ${
+                className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
                   timeRange === range
-                    ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                    ? 'bg-white text-black font-bold shadow-sm'
+                    : 'text-[#D0D0D0] hover:text-white'
                 }`}
               >
                 {range}
@@ -150,36 +150,36 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
       </div>
 
       {/* Summary KPI Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-[#1D1D1D] border border-[#303030]">
         <div>
-          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+          <span className="text-[10px] font-bold text-[#999999] uppercase tracking-wider block">
             Current Holdings Value
           </span>
-          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-slate-900 dark:text-slate-100">
+          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-white">
             {formatCurrency(currentValuation)}
           </span>
         </div>
         <div>
-          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+          <span className="text-[10px] font-bold text-[#999999] uppercase tracking-wider block">
             Cumulative Dividends
           </span>
-          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-[#2ECC71]">
             +{formatCurrency(totalDividends)}
           </span>
         </div>
         <div>
-          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+          <span className="text-[10px] font-bold text-[#999999] uppercase tracking-wider block">
             Total Capital Growth
           </span>
-          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-[#00D2FF]">
             +{formatCurrency(currentValuation - initialValuation)}
           </span>
         </div>
         <div>
-          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+          <span className="text-[10px] font-bold text-[#999999] uppercase tracking-wider block">
             Overall Net ROI
           </span>
-          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+          <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-[#FFD93D]">
             +{formatPercent(totalReturnPercent)}
           </span>
         </div>
@@ -192,16 +192,16 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
           className="w-full h-auto overflow-visible select-none"
         >
           <defs>
-            {/* Emerald Valuation Gradient */}
+            {/* Cyan Valuation Gradient */}
             <linearGradient id="valuationGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#087F5B" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#087F5B" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#00D2FF" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#00D2FF" stopOpacity="0.0" />
             </linearGradient>
 
-            {/* Blue Dividend Gradient */}
+            {/* Pink/Purple Dividend Gradient */}
             <linearGradient id="dividendGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#FF65B3" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#A66CFF" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
@@ -216,16 +216,15 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
                   y1={y}
                   x2={width - padding.right}
                   y2={y}
-                  stroke="currentColor"
-                  strokeOpacity="0.1"
+                  stroke="#262626"
+                  strokeOpacity="0.8"
                   strokeDasharray="4 4"
-                  className="text-slate-400 dark:text-slate-600"
                 />
                 <text
                   x={padding.left - 8}
                   y={y + 4}
                   textAnchor="end"
-                  className="text-[10px] font-mono fill-slate-400 dark:fill-slate-500"
+                  className="text-[10px] font-mono fill-[#D0D0D0]"
                 >
                   €{Math.round(val / 1000)}k
                 </text>
@@ -242,8 +241,8 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
           {/* Vector Line */}
           <polyline
             fill="none"
-            stroke={metric === 'dividends' ? '#2563EB' : '#087F5B'}
-            strokeWidth="2.5"
+            stroke={metric === 'dividends' ? '#FF65B3' : '#00D2FF'}
+            strokeWidth="2.75"
             strokeLinecap="round"
             strokeLinejoin="round"
             points={points}
@@ -259,7 +258,7 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
                 x={x}
                 y={height - 10}
                 textAnchor="middle"
-                className="text-[9.5px] font-mono fill-slate-400 dark:fill-slate-500"
+                className="text-[9.5px] font-mono fill-[#999999]"
               >
                 {d.date}
               </text>
@@ -287,7 +286,7 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
                     y1={padding.top}
                     x2={x}
                     y2={height - padding.bottom}
-                    stroke="#087F5B"
+                    stroke="#FFFFFF"
                     strokeWidth="1.5"
                     strokeDasharray="3 3"
                   />
@@ -298,11 +297,9 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
                   cx={x}
                   cy={y}
                   r={isHovered ? 6 : 3.5}
-                  className={`transition-all duration-150 ${
-                    metric === 'dividends'
-                      ? 'fill-blue-600 stroke-white dark:stroke-slate-900'
-                      : 'fill-emerald-600 stroke-white dark:stroke-slate-900'
-                  }`}
+                  className="transition-all duration-150"
+                  fill={metric === 'dividends' ? '#FF65B3' : '#00D2FF'}
+                  stroke="#FFFFFF"
                   strokeWidth={isHovered ? 2.5 : 1.5}
                 />
               </g>
@@ -312,17 +309,17 @@ export const PortfolioPerformanceChart: React.FC<PortfolioPerformanceChartProps>
 
         {/* Hover Tooltip Overlay */}
         {hoveredPoint && (
-          <div className="absolute top-2 right-2 p-2.5 rounded-xl bg-slate-900/95 text-white text-xs shadow-xl border border-slate-700 font-mono space-y-1 animate-fadeIn">
-            <div className="text-[10px] text-slate-400 pb-1 border-b border-slate-800">
+          <div className="absolute top-2 right-2 p-2.5 rounded-xl bg-[#151515] text-white text-xs shadow-2xl border border-[#303030] font-mono space-y-1 animate-fadeIn">
+            <div className="text-[10px] text-[#999999] pb-1 border-b border-[#303030]">
               {hoveredPoint.label}
             </div>
             <div className="flex justify-between gap-4 text-xs font-bold">
-              <span className="text-slate-300">NAV Value:</span>
-              <span className="text-emerald-400">{formatCurrency(hoveredPoint.valuation)}</span>
+              <span className="text-[#D0D0D0]">NAV Value:</span>
+              <span className="text-[#00D2FF]">{formatCurrency(hoveredPoint.valuation)}</span>
             </div>
             <div className="flex justify-between gap-4 text-xs font-bold">
-              <span className="text-slate-300">Dividends Paid:</span>
-              <span className="text-blue-400">+{formatCurrency(hoveredPoint.dividends)}</span>
+              <span className="text-[#D0D0D0]">Dividends Paid:</span>
+              <span className="text-[#FF65B3]">+{formatCurrency(hoveredPoint.dividends)}</span>
             </div>
           </div>
         )}

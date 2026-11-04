@@ -21,10 +21,10 @@
       (function() {
         if (typeof window === 'undefined') return;
 
-        // 1. Intercept Vite HMR WebSocket connections to prevent "@vite/client:225:39" rejection
+        // 1. Intercept Vite HMR WebSocket connections cleanly
         var NativeWebSocket = window.WebSocket;
         if (NativeWebSocket) {
-          window.WebSocket = function(url, protocols) {
+          var SafeWebSocket = function(url, protocols) {
             var isViteHmr = (typeof url === 'string' && (url.indexOf('vite-hmr') !== -1 || url.indexOf('vite') !== -1)) ||
                             (typeof protocols === 'string' && protocols.indexOf('vite') !== -1) ||
                             (Array.isArray(protocols) && protocols.some(function(p) { return typeof p === 'string' && p.indexOf('vite') !== -1; }));
@@ -57,38 +57,31 @@
             }
 
             try {
-              if (typeof Reflect !== 'undefined' && Reflect.construct) {
-                return Reflect.construct(NativeWebSocket, arguments);
-              }
-              return new (Function.prototype.bind.apply(NativeWebSocket, [null].concat(Array.prototype.slice.call(arguments))))();
+              return protocols !== undefined ? new NativeWebSocket(url, protocols) : new NativeWebSocket(url);
             } catch (e) {
-              return new NativeWebSocket(url, protocols);
+              return new NativeWebSocket(url);
             }
           };
-          window.WebSocket.prototype = NativeWebSocket.prototype;
-          window.WebSocket.CONNECTING = 0;
-          window.WebSocket.OPEN = 1;
-          window.WebSocket.CLOSING = 2;
-          window.WebSocket.CLOSED = 3;
+
+          SafeWebSocket.prototype = NativeWebSocket.prototype;
+          SafeWebSocket.CONNECTING = 0;
+          SafeWebSocket.OPEN = 1;
+          SafeWebSocket.CLOSING = 2;
+          SafeWebSocket.CLOSED = 3;
+          window.WebSocket = SafeWebSocket;
         }
 
-        // 2. Suppress unhandled errors and rejections from vite client in iframe environment
+        // 2. Suppress Vite HMR noise in iframe environment
         function shouldSuppress(err, msg, file, stack) {
           var str = (msg || '') + ' ' + (file || '') + ' ' + (stack || '') + ' ' + (err && err.stack ? err.stack : '') + ' ' + (err && err.message ? err.message : '');
           return str.indexOf('@vite/client') !== -1 ||
                  str.indexOf('vite/client') !== -1 ||
-                 str.indexOf('WebSocket') !== -1 ||
                  str.indexOf('ws://') !== -1 ||
-                 str.indexOf('wss://') !== -1 ||
-                 str.indexOf('Script error') !== -1;
+                 str.indexOf('wss://') !== -1;
         }
 
         window.addEventListener('error', function(event) {
-          var err = event.error;
-          var msg = event.message;
-          var file = event.filename;
-          var stack = err && err.stack ? err.stack : '';
-          if (shouldSuppress(err, msg, file, stack)) {
+          if (shouldSuppress(event.error, event.message, event.filename, event.error && event.error.stack)) {
             event.preventDefault();
             event.stopPropagation();
             return true;
@@ -102,26 +95,6 @@
             event.stopPropagation();
           }
         }, true);
-
-        var origConsoleError = console.error;
-        console.error = function() {
-          var args = Array.prototype.slice.call(arguments);
-          var str = args.map(function(a) { return String(a || ''); }).join(' ');
-          if (shouldSuppress(null, str, '', '')) {
-            return;
-          }
-          return origConsoleError.apply(console, args);
-        };
-
-        var origConsoleWarn = console.warn;
-        console.warn = function() {
-          var args = Array.prototype.slice.call(arguments);
-          var str = args.map(function(a) { return String(a || ''); }).join(' ');
-          if (shouldSuppress(null, str, '', '')) {
-            return;
-          }
-          return origConsoleWarn.apply(console, args);
-        };
       })();
     </script>
     <meta name="theme-color" content="#f5f0ea" />
@@ -139,7 +112,11 @@
     </script>
   </head>
   <body class="bg-[#f5f0ea] text-[#1a1a1a] antialiased selection:bg-[#e4dbd0] selection:text-[#213138]">
-    <div id="root"></div>
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #213138; color: #f5f0ea; font-family: 'Archivo', Helvetica, sans-serif;">
+        <div style="font-weight: 700; font-size: 2.2rem; letter-spacing: -0.02em; color: #ffffff;">L'Agence</div>
+      </div>
+    </div>
     <!-- Hidden Google Translate Element for Free Website Translation -->
     <div id="google_translate_element" style="display:none !important; position:absolute; top:-9999px; left:-9999px; visibility:hidden; width:0; height:0; overflow:hidden;"></div>
     <style>

@@ -4,6 +4,8 @@ import { BarChart3, Calendar } from 'lucide-react';
 import { Transaction } from '../../types/transaction';
 import { Investment } from '../../types/investment';
 
+import { RAINBOW_COLORS } from '../../lib/chartTheme';
+
 export interface MonthlyPayout {
   month: string;
   amount: number;
@@ -77,43 +79,43 @@ export const YieldPayoutTrendsChart: React.FC<{
 
   return (
     <div
-      className={`bg-white dark:bg-[#0D1522] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4 ${className}`}
+      className={`bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 text-white ${className}`}
     >
       {/* Chart Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#303030]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400">
+            <span className="p-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-[#00D2FF]">
               <BarChart3 className="w-4 h-4" />
             </span>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm sm:text-base font-bold text-white">
               Monthly Dividend Payout &amp; APY Yield Trends
             </h3>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-[#999999] mt-0.5">
             Settled rental distribution payouts verified on your account ledger
           </p>
         </div>
 
         <div className="flex items-center gap-3 text-xs font-mono">
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-xs bg-emerald-500" />
-            <span className="text-slate-600 dark:text-slate-400">Settled Payout (€)</span>
+            <span className="w-3 h-3 rounded-xs bg-[#00D2FF]" />
+            <span className="text-[#D0D0D0]">Settled Payout (€)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-amber-500" />
-            <span className="text-slate-600 dark:text-slate-400">Underwritten APY %</span>
+            <span className="w-3 h-0.5 bg-[#FFD93D]" />
+            <span className="text-[#D0D0D0]">Underwritten APY %</span>
           </div>
         </div>
       </div>
 
       {resolvedPayouts.length === 0 ? (
-        <div className="py-8 px-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1.5">
-          <Calendar className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mx-auto opacity-80" />
-          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+        <div className="py-8 px-4 rounded-xl bg-[#1D1D1D] border border-dashed border-[#303030] text-center space-y-1.5">
+          <Calendar className="w-6 h-6 text-[#00D2FF] mx-auto opacity-80" />
+          <p className="text-xs font-bold text-white">
             No settled monthly rental distributions on record yet
           </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          <p className="text-[11px] text-[#999999] max-w-md mx-auto">
             {investments.length > 0
               ? `Your ${investments.length} active property ${
                   investments.length === 1 ? 'holding accrues' : 'holdings accrue'
@@ -126,7 +128,7 @@ export const YieldPayoutTrendsChart: React.FC<{
       ) : (
         <div className="relative pt-4 pb-2">
           <div
-            className="grid gap-2 sm:gap-4 items-end h-44 border-b border-slate-200 dark:border-slate-700 px-2"
+            className="grid gap-2 sm:gap-4 items-end h-44 border-b border-[#303030] px-2"
             style={{
               gridTemplateColumns: `repeat(${Math.max(1, resolvedPayouts.length)}, minmax(0, 1fr))`,
             }}
@@ -134,6 +136,7 @@ export const YieldPayoutTrendsChart: React.FC<{
             {resolvedPayouts.map((p, idx) => {
               const heightPercent = Math.max(8, Math.round((p.amount / maxAmount) * 100));
               const isHovered = hoveredMonth?.month === p.month;
+              const barColor = RAINBOW_COLORS[idx % RAINBOW_COLORS.length];
 
               return (
                 <div
@@ -145,40 +148,43 @@ export const YieldPayoutTrendsChart: React.FC<{
                   <div
                     className={`w-full max-w-[40px] rounded-t-lg transition-all duration-300 ${
                       isHovered
-                        ? 'bg-emerald-600 dark:bg-emerald-400 scale-105 shadow-md'
-                        : 'bg-gradient-to-t from-emerald-600 to-emerald-500 dark:from-emerald-700 dark:to-emerald-500'
+                        ? 'scale-105 shadow-lg brightness-110'
+                        : 'opacity-90 hover:opacity-100'
                     }`}
-                    style={{ height: `${heightPercent}%` }}
+                    style={{
+                      height: `${heightPercent}%`,
+                      backgroundColor: barColor,
+                    }}
                   >
-                    <div className="text-[10px] font-mono tabular-nums font-bold text-slate-700 dark:text-slate-200 text-center -mt-5">
+                    <div className="text-[10px] font-mono tabular-nums font-bold text-white text-center -mt-5">
                       {formatCurrency(p.amount)}
                     </div>
                   </div>
 
                   <div
-                    className="absolute w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-white dark:border-slate-900 z-10 transition-all duration-300"
+                    className="absolute w-2.5 h-2.5 rounded-full bg-[#FFD93D] border-2 border-[#151515] z-10 transition-all duration-300"
                     style={{ bottom: `${Math.min(95, Math.round((p.apy / maxApy) * 100))}%` }}
                     title={`${p.apy}% APY`}
                   />
 
-                  <span className="text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 mt-2">
+                  <span className="text-[11px] font-mono font-semibold text-[#D0D0D0] mt-2">
                     {p.month}
                   </span>
 
                   {isHovered && (
-                    <div className="absolute bottom-full mb-2 w-48 z-30 p-2.5 rounded-xl bg-slate-900 text-white text-xs shadow-xl border border-slate-700 font-mono">
-                      <div className="text-[10px] text-slate-400 pb-1 border-b border-slate-800">
+                    <div className="absolute bottom-full mb-2 w-48 z-30 p-2.5 rounded-xl bg-[#151515] text-white text-xs shadow-2xl border border-[#303030] font-mono">
+                      <div className="text-[10px] text-[#999999] pb-1 border-b border-[#303030]">
                         {p.month} Distribution Record
                       </div>
                       <div className="flex justify-between items-center text-xs font-bold mt-1 tabular-nums">
-                        <span className="text-slate-300">Net Payout:</span>
-                        <span className="text-emerald-400">+{formatCurrency(p.amount)}</span>
+                        <span className="text-[#D0D0D0]">Net Payout:</span>
+                        <span style={{ color: barColor }}>+{formatCurrency(p.amount)}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs font-bold tabular-nums">
-                        <span className="text-slate-300">Target APY:</span>
-                        <span className="text-amber-400">{formatPercent(p.apy)}</span>
+                        <span className="text-[#D0D0D0]">Target APY:</span>
+                        <span className="text-[#FFD93D]">{formatPercent(p.apy)}</span>
                       </div>
-                      <div className="text-[9.5px] text-slate-400 mt-1 pt-1 border-t border-slate-800">
+                      <div className="text-[9.5px] text-[#999999] mt-1 pt-1 border-t border-[#303030]">
                         Across {p.propertyCount} active {p.propertyCount === 1 ? 'property' : 'properties'}
                       </div>
                     </div>
@@ -191,16 +197,16 @@ export const YieldPayoutTrendsChart: React.FC<{
       )}
 
       {/* Footer Stats Summary */}
-      <div className="flex flex-wrap items-center justify-between text-xs font-mono tabular-nums pt-1 text-slate-600 dark:text-slate-400">
+      <div className="flex flex-wrap items-center justify-between text-xs font-mono tabular-nums pt-1 text-[#D0D0D0]">
         <div>
           Settled Distributions Tracked:{' '}
-          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+          <span className="font-bold text-[#2ECC71]">
             {formatCurrency(totalEarned)}
           </span>
         </div>
         <div>
           Weighted Portfolio Target APY:{' '}
-          <span className="font-bold text-amber-600 dark:text-amber-400">
+          <span className="font-bold text-[#FFD93D]">
             {formatPercent(avgApy)}
           </span>
         </div>

@@ -27,6 +27,7 @@ import {
   SlidersHorizontal,
   Building2,
 } from 'lucide-react';
+import { RAINBOW_COLORS, CHART_THEME } from '../../lib/chartTheme';
 
 interface ProjectedYieldGrowthChartProps {
   properties: Property[];
@@ -39,14 +40,14 @@ type ChartMetricMode = 'yield_percent' | 'annual_eur' | 'by_property';
 type IndexationPreset = 1.5 | 2.5 | 3.5;
 
 const SERIES_PALETTE = [
-  '#087F5B',
-  '#1D4ED8',
-  '#B45309',
-  '#0F766E',
-  '#4338CA',
-  '#BE123C',
-  '#15803D',
-  '#334155',
+  '#00D2FF', // Cyan
+  '#2ECC71', // Green
+  '#FFD93D', // Yellow
+  '#FF9F43', // Orange
+  '#FF4D4D', // Red
+  '#FF65B3', // Pink
+  '#A66CFF', // Purple
+  '#4287FF', // Blue
 ];
 
 const ALLOCATION_PRESETS = [2500, 5000, 10000, 25000];
@@ -256,10 +257,10 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
     const rawPoint = payload[0]?.payload;
 
     return (
-      <div className="bg-slate-900/95 text-white p-3.5 rounded-xl border border-slate-700 shadow-xl text-xs space-y-2 max-w-xs z-50">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-800 pb-1.5">
-          <span className="font-bold text-slate-100">{label}</span>
-          <span className="font-mono tabular-nums text-[10.5px] text-slate-400">
+      <div className="bg-[#151515] text-white p-3.5 rounded-xl border border-[#303030] shadow-2xl text-xs space-y-2 max-w-xs z-50">
+        <div className="flex items-center justify-between gap-4 border-b border-[#303030] pb-1.5">
+          <span className="font-bold text-[#FFFFFF]">{label}</span>
+          <span className="font-mono tabular-nums text-[10.5px] text-[#999999]">
             CPI +{indexationPreset}%/yr
           </span>
         </div>
@@ -271,9 +272,9 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
               metricMode === 'yield_percent' ? formatPercent(val) : formatCurrency(val);
             return (
               <div key={entry.dataKey} className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5 font-sans text-[11px] text-slate-300 truncate">
+                <span className="flex items-center gap-1.5 font-sans text-[11px] text-[#D0D0D0] truncate">
                   <span
-                    className="w-2 h-2 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
                     style={{ backgroundColor: entry.color }}
                   />
                   <span className="truncate">{entry.name}</span>
@@ -285,9 +286,9 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
         </div>
 
         {rawPoint && metricMode !== 'by_property' && (
-          <div className="pt-1.5 border-t border-slate-800 text-[10.5px] font-mono tabular-nums text-slate-400 flex items-center justify-between gap-2">
+          <div className="pt-1.5 border-t border-[#303030] text-[10.5px] font-mono tabular-nums text-[#999999] flex items-center justify-between gap-2">
             <span>Cumulative Reinvested Rent:</span>
-            <span className="text-emerald-400 font-bold">
+            <span className="text-[#00D2FF] font-bold">
               +{formatCurrency(rawPoint.cumulativeCompoundedYieldEUR)}
             </span>
           </div>
@@ -299,13 +300,13 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
   return (
     <section
       aria-label="5-Year Projected Annual Rental Yield Growth"
-      className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4"
+      className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 text-white"
     >
       {/* Header & Top-Level Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 pb-4 border-b border-[#E4EEEA] dark:border-slate-800">
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 pb-4 border-b border-[#303030]">
         <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#71817D] dark:text-slate-400">
-            <span className="font-semibold text-[#087F5B] dark:text-[#3BD4AE]">
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[#999999]">
+            <span className="font-semibold text-[#00D2FF]">
               5-Year Rental Yield Forecast
             </span>
             <span aria-hidden="true">·</span>
@@ -322,11 +323,11 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
                 : 'Model Portfolio Simulation'}
             </span>
           </div>
-          <h2 className="text-base sm:text-lg font-bold text-[#172B2A] dark:text-white flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-[#087F5B] dark:text-[#3BD4AE] shrink-0" />
+          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-[#00D2FF] shrink-0" />
             <span>Projected Annual Rental Yield Growth (5-Year Horizon)</span>
           </h2>
-          <p className="text-xs text-[#71817D] dark:text-slate-400 max-w-2xl">
+          <p className="text-xs text-[#999999] max-w-2xl">
             Models contractual European lease indexation, reinvested SPV dividend compounding, and occupancy stress-testing across your selected property portfolio.
           </p>
         </div>
@@ -337,15 +338,15 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
           <div
             role="group"
             aria-label="Chart metric view"
-            className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700 text-xs"
+            className="inline-flex items-center p-0.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs"
           >
             <button
               type="button"
               onClick={() => setMetricMode('yield_percent')}
               className={`px-2.5 py-1.5 rounded-md font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 metricMode === 'yield_percent'
-                  ? 'bg-white dark:bg-slate-700 text-[#172B2A] dark:text-white shadow-2xs'
-                  : 'text-[#71817D] dark:text-slate-400 hover:text-[#172B2A] dark:hover:text-slate-200'
+                  ? 'bg-white text-[#080808] font-bold shadow-sm'
+                  : 'text-[#D0D0D0] hover:text-white'
               }`}
             >
               Yield Rate (% p.a.)
@@ -355,8 +356,8 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
               onClick={() => setMetricMode('annual_eur')}
               className={`px-2.5 py-1.5 rounded-md font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 metricMode === 'annual_eur'
-                  ? 'bg-white dark:bg-slate-700 text-[#172B2A] dark:text-white shadow-2xs'
-                  : 'text-[#71817D] dark:text-slate-400 hover:text-[#172B2A] dark:hover:text-slate-200'
+                  ? 'bg-white text-[#080808] font-bold shadow-sm'
+                  : 'text-[#D0D0D0] hover:text-white'
               }`}
             >
               Annual Income (€)
@@ -366,8 +367,8 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
               onClick={() => setMetricMode('by_property')}
               className={`px-2.5 py-1.5 rounded-md font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 metricMode === 'by_property'
-                  ? 'bg-white dark:bg-slate-700 text-[#172B2A] dark:text-white shadow-2xs'
-                  : 'text-[#71817D] dark:text-slate-400 hover:text-[#172B2A] dark:hover:text-slate-200'
+                  ? 'bg-white text-[#080808] font-bold shadow-sm'
+                  : 'text-[#D0D0D0] hover:text-white'
               }`}
             >
               By Property (€)
@@ -378,7 +379,7 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
           <div
             role="group"
             aria-label="Annual lease indexation assumption"
-            className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700 text-xs"
+            className="inline-flex items-center p-0.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs"
           >
             {([1.5, 2.5, 3.5] as IndexationPreset[]).map((rate) => (
               <button
@@ -388,8 +389,8 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
                 title={`Annual lease CPI escalation +${rate}%`}
                 className={`px-2 py-1.5 rounded-md font-mono tabular-nums font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   indexationPreset === rate
-                    ? 'bg-[#087F5B] text-white shadow-2xs'
-                    : 'text-[#71817D] dark:text-slate-400 hover:text-[#172B2A] dark:hover:text-slate-200'
+                    ? 'bg-white text-[#080808] font-bold shadow-sm'
+                    : 'text-[#D0D0D0] hover:text-white'
                 }`}
               >
                 +{rate}% CPI
@@ -403,12 +404,12 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
       <div className="space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-[#087F5B] dark:text-[#3BD4AE]" />
-            <span className="font-bold text-[#172B2A] dark:text-slate-200">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#00D2FF]" />
+            <span className="font-bold text-white">
               Selected Property Portfolio
             </span>
             {!hasOwnedHoldings && (
-              <span className="text-[11px] text-[#71817D] dark:text-slate-400">
+              <span className="text-[11px] text-[#999999]">
                 · No owned SPVs yet — modeling starter catalog selection
               </span>
             )}
@@ -419,9 +420,9 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
               <button
                 type="button"
                 onClick={() => setShowCatalogPicker((v) => !v)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#E4EEEA] dark:border-slate-700 bg-[#F6FAF8] dark:bg-slate-900 hover:border-[#087F5B] text-[#172B2A] dark:text-slate-200 font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#303030] bg-[#1D1D1D] hover:border-white text-white font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
-                <Plus className="w-3 h-3 text-[#087F5B]" />
+                <Plus className="w-3 h-3 text-[#00D2FF]" />
                 <span>
                   {showCatalogPicker ? 'Hide Catalog Offerings' : 'Simulate Additional Offerings'}
                 </span>
@@ -431,7 +432,7 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
             <button
               type="button"
               onClick={handleResetSelection}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#E4EEEA] dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#71817D] dark:text-slate-300 font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#303030] bg-[#1D1D1D] hover:bg-[#252525] text-[#D0D0D0] hover:text-white font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Reset Selection</span>
@@ -442,8 +443,9 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
         {/* Owned Holdings Toggle Buttons */}
         {ownedPositions.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {ownedPositions.map((pos) => {
+            {ownedPositions.map((pos, idx) => {
               const isSelected = selectedIds.includes(pos.propertyId);
+              const rainbowBadgeColor = RAINBOW_COLORS[idx % RAINBOW_COLORS.length];
               return (
                 <button
                   key={pos.propertyId}
@@ -451,30 +453,33 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
                   onClick={() => togglePropertySelection(pos.propertyId)}
                   className={`text-left p-2.5 rounded-xl border transition-colors flex items-center justify-between gap-2.5 cursor-pointer ${
                     isSelected
-                      ? 'border-[#087F5B] bg-[#F6FAF8] dark:bg-emerald-950/30 dark:border-emerald-700'
-                      : 'border-[#E4EEEA] dark:border-slate-800 bg-white dark:bg-slate-900/40 opacity-70 hover:opacity-100'
+                      ? 'border-white bg-[#1D1D1D]'
+                      : 'border-[#303030] bg-[#151515] opacity-60 hover:opacity-100'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
                         isSelected
-                          ? 'bg-[#087F5B] border-[#087F5B] text-white'
-                          : 'border-slate-300 dark:border-slate-600'
+                          ? 'bg-white border-white text-black'
+                          : 'border-[#444444]'
                       }`}
                     >
                       {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                     </span>
                     <div className="min-w-0">
-                      <span className="text-xs font-bold text-[#172B2A] dark:text-white block truncate">
+                      <span className="text-xs font-bold text-white block truncate">
                         {pos.title}
                       </span>
-                      <span className="text-[10.5px] font-mono tabular-nums text-[#71817D] dark:text-slate-400 block truncate">
+                      <span className="text-[10.5px] font-mono tabular-nums text-[#999999] block truncate">
                         {formatCurrency(pos.allocatedCapitalEUR)} · {pos.tokens} units
                       </span>
                     </div>
                   </div>
-                  <span className="font-mono tabular-nums text-xs font-bold text-[#087F5B] dark:text-emerald-400 shrink-0">
+                  <span
+                    className="font-mono tabular-nums text-xs font-bold shrink-0"
+                    style={{ color: rainbowBadgeColor }}
+                  >
                     {formatPercent(pos.annualYieldPercent)}
                   </span>
                 </button>
@@ -485,15 +490,15 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
 
         {/* Simulated Catalog Offerings Picker */}
         {showCatalogPicker && catalogCandidates.length > 0 && (
-          <div className="pt-2 border-t border-[#E4EEEA] dark:border-slate-800 space-y-2">
+          <div className="pt-2 border-t border-[#303030] space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-[11px] font-semibold text-[#71817D] dark:text-slate-400">
+              <span className="text-[11px] font-semibold text-[#999999]">
                 {hasOwnedHoldings
                   ? 'Select marketplace properties to model expanding your portfolio:'
                   : 'Select Kretz offerings and allocation per property to project 5-year yield growth:'}
               </span>
               <div className="inline-flex items-center gap-1 font-mono tabular-nums text-[11px]">
-                <span className="text-[#71817D] dark:text-slate-400 mr-1">Per-Asset Capital:</span>
+                <span className="text-[#999999] mr-1">Per-Asset Capital:</span>
                 {ALLOCATION_PRESETS.map((amt) => (
                   <button
                     key={amt}
@@ -501,8 +506,8 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
                     onClick={() => setSimulatedAllocationEUR(amt)}
                     className={`px-2 py-0.5 rounded border cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
                       simulatedAllocationEUR === amt
-                        ? 'bg-[#172B2A] dark:bg-emerald-600 text-white border-[#172B2A] dark:border-emerald-600 font-bold'
-                        : 'border-[#E4EEEA] dark:border-slate-700 text-[#71817D] dark:text-slate-300 hover:border-slate-400'
+                        ? 'bg-white text-black border-white font-bold'
+                        : 'border-[#303030] text-[#D0D0D0] hover:border-[#666666]'
                     }`}
                   >
                     {formatCurrency(amt)}
@@ -512,8 +517,9 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-              {catalogCandidates.map((cand) => {
+              {catalogCandidates.map((cand, idx) => {
                 const isSelected = selectedIds.includes(cand.propertyId);
+                const rainbowBadgeColor = RAINBOW_COLORS[(idx + 2) % RAINBOW_COLORS.length];
                 return (
                   <button
                     key={cand.propertyId}
@@ -521,30 +527,33 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
                     onClick={() => togglePropertySelection(cand.propertyId)}
                     className={`text-left p-2.5 rounded-xl border transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                       isSelected
-                        ? 'border-[#1D4ED8] bg-blue-50/50 dark:bg-blue-950/30 dark:border-blue-700'
-                        : 'border-[#E4EEEA] dark:border-slate-800 bg-white dark:bg-slate-900/40 opacity-75 hover:opacity-100'
+                        ? 'border-white bg-[#1D1D1D]'
+                        : 'border-[#303030] bg-[#151515] opacity-65 hover:opacity-100'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span
                         className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
                           isSelected
-                            ? 'bg-[#1D4ED8] border-[#1D4ED8] text-white'
-                            : 'border-slate-300 dark:border-slate-600'
+                            ? 'bg-white border-white text-black'
+                            : 'border-[#444444]'
                         }`}
                       >
                         {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                       </span>
                       <div className="min-w-0">
-                        <span className="text-xs font-semibold text-[#172B2A] dark:text-slate-100 block truncate">
+                        <span className="text-xs font-semibold text-white block truncate">
                           {cand.title}
                         </span>
-                        <span className="text-[10px] text-[#71817D] dark:text-slate-400 block truncate">
+                        <span className="text-[10px] text-[#999999] block truncate">
                           {cand.location}
                         </span>
                       </div>
                     </div>
-                    <span className="font-mono tabular-nums text-[11px] font-bold text-[#1D4ED8] dark:text-blue-400 shrink-0">
+                    <span
+                      className="font-mono tabular-nums text-[11px] font-bold shrink-0"
+                      style={{ color: rainbowBadgeColor }}
+                    >
                       {formatPercent(cand.annualYieldPercent)}
                     </span>
                   </button>
@@ -557,13 +566,13 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
 
       {/* Empty Selection Guard vs Populated Projection */}
       {activePositions.length === 0 ? (
-        <div className="py-10 px-4 text-center space-y-3 bg-[#F6FAF8] dark:bg-slate-900/50 rounded-xl border border-dashed border-[#DCE8E3] dark:border-slate-800">
-          <Building2 className="w-7 h-7 text-[#71817D] mx-auto opacity-60" />
+        <div className="py-10 px-4 text-center space-y-3 bg-[#1D1D1D] rounded-xl border border-dashed border-[#303030]">
+          <Building2 className="w-7 h-7 text-[#999999] mx-auto opacity-60" />
           <div className="space-y-1">
-            <p className="text-xs font-bold text-[#172B2A] dark:text-slate-200">
+            <p className="text-xs font-bold text-white">
               Select at least one property to calculate the 5-year rental yield curve
             </p>
-            <p className="text-[11px] text-[#71817D] dark:text-slate-400 max-w-md mx-auto">
+            <p className="text-[11px] text-[#999999] max-w-md mx-auto">
               Toggle one or more SPV properties above to inspect projected annual yield-on-cost, reinvested compounding, and downside sensitivity.
             </p>
           </div>
@@ -571,14 +580,14 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
             <button
               type="button"
               onClick={handleResetSelection}
-              className="px-3.5 py-1.5 rounded-lg bg-[#087F5B] hover:bg-[#075B46] text-white text-xs font-semibold cursor-pointer transition-colors"
+              className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold cursor-pointer transition-colors shadow-sm"
             >
               Restore Default Portfolio
             </button>
             <button
               type="button"
               onClick={onExploreProperties}
-              className="px-3.5 py-1.5 rounded-lg border border-[#E4EEEA] dark:border-slate-700 text-xs font-semibold text-[#172B2A] dark:text-slate-200 cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1"
+              className="px-3.5 py-1.5 rounded-lg border border-[#303030] text-xs font-semibold text-white cursor-pointer bg-[#151515] hover:bg-[#252525] transition-colors inline-flex items-center gap-1"
             >
               <span>Browse Marketplace</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -589,71 +598,73 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
         <>
           {/* 4 Summary KPI Cells */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+            <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
                 Selected Portfolio Capital
               </span>
-              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-[#172B2A] dark:text-white mt-1">
+              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-white mt-1">
                 {formatCurrency(projection.totalCapitalEUR)}
               </div>
-              <span className="text-[11px] text-[#71817D] dark:text-slate-400 mt-0.5 block font-mono tabular-nums">
+              <span className="text-[11px] text-[#D0D0D0] mt-0.5 block font-mono tabular-nums">
                 Across {activePositions.length} SPV{' '}
                 {activePositions.length === 1 ? 'asset' : 'assets'}
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+            <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
                 Year 1 Initial Net Yield
               </span>
-              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-[#172B2A] dark:text-white mt-1">
+              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-white mt-1">
                 {formatPercent(projection.weightedYear1YieldPercent)}
               </div>
-              <span className="text-[11px] text-[#71817D] dark:text-slate-400 mt-0.5 block font-mono tabular-nums">
+              <span className="text-[11px] text-[#D0D0D0] mt-0.5 block font-mono tabular-nums">
                 {formatCurrency(projection.year1AnnualYieldEUR)} / yr initial run-rate
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+            <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
                 Year 5 Compounded Yield-on-Cost
               </span>
-              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-[#087F5B] dark:text-emerald-400 mt-1">
+              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-[#00D2FF] mt-1">
                 {formatPercent(projection.year5CompoundedYieldOnCostPercent)}
               </div>
-              <span className="text-[11px] text-[#087F5B] dark:text-emerald-400 mt-0.5 block font-mono tabular-nums">
+              <span className="text-[11px] text-[#2ECC71] mt-0.5 block font-mono tabular-nums font-semibold">
                 +{projection.fiveYearYieldExpansionPercent.toFixed(2)}% yield expansion ({formatCurrency(projection.year5CompoundedYieldEUR)}/yr)
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+            <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
                 5-Year Cumulative Net Rent
               </span>
-              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-[#172B2A] dark:text-white mt-1">
+              <div className="text-lg sm:text-xl font-bold font-mono tabular-nums text-white mt-1">
                 +{formatCurrency(projection.totalFiveYearCompoundedDistributionsEUR)}
               </div>
-              <span className="text-[11px] text-[#71817D] dark:text-slate-400 mt-0.5 block font-mono tabular-nums">
+              <span className="text-[11px] text-[#D0D0D0] mt-0.5 block font-mono tabular-nums">
                 +{formatCurrency(projection.compoundingAdvantageEUR)} vs. cash payout
               </span>
             </div>
           </div>
 
-          {/* Primary Recharts 5-Year LineChart */}
+          {/* Primary Recharts 5-Year LineChart with Rainbow Visuals */}
           <div className="h-72 sm:h-80 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={chartData}
                 margin={{ top: 12, right: 18, left: 4, bottom: 4 }}
               >
-                <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.8} />
                 <XAxis
                   dataKey="yearLabel"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: '#D0D0D0' }}
                   tickMargin={8}
+                  stroke="#303030"
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: '#D0D0D0' }}
+                  stroke="#303030"
                   width={68}
                   domain={metricMode === 'yield_percent' ? ['auto', 'auto'] : [0, 'auto']}
                   tickFormatter={(v) =>
@@ -663,41 +674,41 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
                   }
                 />
                 <Tooltip content={renderCustomTooltip} />
-                <Legend wrapperStyle={{ fontSize: '11.5px', paddingTop: '8px' }} />
+                <Legend wrapperStyle={{ fontSize: '11.5px', paddingTop: '8px', color: '#FFFFFF' }} />
 
                 {metricMode === 'yield_percent' && (
                   <>
                     <ReferenceLine
                       y={projection.weightedYear1YieldPercent}
-                      stroke="#94A3B8"
+                      stroke="#4287FF"
                       strokeDasharray="3 3"
                     />
                     <Line
                       type="monotone"
                       dataKey="compoundedYieldOnCostPercent"
                       name="Compounded Reinvestment YoC (%)"
-                      stroke="#087F5B"
+                      stroke="#00D2FF"
                       strokeWidth={2.75}
-                      dot={{ r: 4, strokeWidth: 2, fill: '#087F5B' }}
+                      dot={{ r: 4, strokeWidth: 2, fill: '#00D2FF' }}
                       activeDot={{ r: 6 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="cashYieldOnCostPercent"
                       name="Cash Payout Lease-Indexed YoC (%)"
-                      stroke="#1D4ED8"
+                      stroke="#2ECC71"
                       strokeWidth={2.25}
-                      dot={{ r: 3.5, strokeWidth: 2, fill: '#1D4ED8' }}
+                      dot={{ r: 3.5, strokeWidth: 2, fill: '#2ECC71' }}
                       activeDot={{ r: 5.5 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="downsideYieldOnCostPercent"
                       name="Stress-Tested Downside YoC (%)"
-                      stroke="#D97706"
+                      stroke="#FF4D4D"
                       strokeWidth={1.75}
                       strokeDasharray="5 4"
-                      dot={{ r: 3, fill: '#D97706' }}
+                      dot={{ r: 3, fill: '#FF4D4D' }}
                       activeDot={{ r: 5 }}
                     />
                   </>
@@ -709,28 +720,28 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
                       type="monotone"
                       dataKey="compoundedAnnualYieldEUR"
                       name="Compounded Annual Rent (€)"
-                      stroke="#087F5B"
+                      stroke="#00D2FF"
                       strokeWidth={2.75}
-                      dot={{ r: 4, strokeWidth: 2, fill: '#087F5B' }}
+                      dot={{ r: 4, strokeWidth: 2, fill: '#00D2FF' }}
                       activeDot={{ r: 6 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="cashAnnualYieldEUR"
                       name="Standard Cash Payout Rent (€)"
-                      stroke="#1D4ED8"
+                      stroke="#2ECC71"
                       strokeWidth={2.25}
-                      dot={{ r: 3.5, strokeWidth: 2, fill: '#1D4ED8' }}
+                      dot={{ r: 3.5, strokeWidth: 2, fill: '#2ECC71' }}
                       activeDot={{ r: 5.5 }}
                     />
                     <Line
                       type="monotone"
                       dataKey="downsideAnnualYieldEUR"
                       name="Stress-Tested Downside Rent (€)"
-                      stroke="#D97706"
+                      stroke="#FF9F43"
                       strokeWidth={1.75}
                       strokeDasharray="5 4"
-                      dot={{ r: 3, fill: '#D97706' }}
+                      dot={{ r: 3, fill: '#FF9F43' }}
                       activeDot={{ r: 5 }}
                     />
                   </>
@@ -759,47 +770,47 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
           </div>
 
           {/* 5-Year Annual Yield Schedule Table */}
-          <div className="pt-3 border-t border-[#E4EEEA] dark:border-slate-800 overflow-x-auto">
+          <div className="pt-3 border-t border-[#303030] overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[#E4EEEA] dark:border-slate-800 text-[10px] uppercase tracking-wider text-[#71817D] dark:text-slate-400">
-                  <th className="py-2 pr-3">Projection Year</th>
-                  <th className="py-2 px-3 text-right">Cash Payout (€/yr)</th>
-                  <th className="py-2 px-3 text-right">Cash YoC</th>
-                  <th className="py-2 px-3 text-right">Compounded Rent (€/yr)</th>
-                  <th className="py-2 px-3 text-right">Compounded YoC</th>
-                  <th className="py-2 px-3 text-right">Downside Stress (€/yr)</th>
-                  <th className="py-2 pl-3 text-right">Cumulative Reinvested</th>
+                <tr className="border-b border-[#303030] text-[10px] uppercase tracking-wider text-[#999999] bg-[#101010]">
+                  <th className="py-2.5 px-3">Projection Year</th>
+                  <th className="py-2.5 px-3 text-right">Cash Payout (€/yr)</th>
+                  <th className="py-2.5 px-3 text-right">Cash YoC</th>
+                  <th className="py-2.5 px-3 text-right">Compounded Rent (€/yr)</th>
+                  <th className="py-2.5 px-3 text-right">Compounded YoC</th>
+                  <th className="py-2.5 px-3 text-right">Downside Stress (€/yr)</th>
+                  <th className="py-2.5 px-3 text-right">Cumulative Reinvested</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4EEEA] dark:divide-slate-800 font-mono tabular-nums">
+              <tbody className="divide-y divide-[#262626] font-mono tabular-nums bg-[#151515]">
                 {projection.points.map((pt) => (
                   <tr
                     key={pt.yearIndex}
-                    className="hover:bg-[#F6FAF8]/60 dark:hover:bg-slate-900/40"
+                    className="hover:bg-[#1D1D1D] transition-colors"
                   >
-                    <td className="py-2 pr-3 font-sans font-bold text-[#172B2A] dark:text-white whitespace-nowrap">
+                    <td className="py-2.5 px-3 font-sans font-bold text-white whitespace-nowrap">
                       {pt.yearLabel}{' '}
-                      <span className="font-normal text-[#71817D] dark:text-slate-400">
+                      <span className="font-normal text-[#999999]">
                         ({pt.calendarYear})
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-right text-[#172B2A] dark:text-slate-200">
+                    <td className="py-2.5 px-3 text-right text-[#D0D0D0]">
                       {formatCurrency(pt.cashAnnualYieldEUR)}
                     </td>
-                    <td className="py-2 px-3 text-right text-[#1D4ED8] dark:text-blue-400 font-semibold">
+                    <td className="py-2.5 px-3 text-right text-[#00D2FF] font-semibold">
                       {formatPercent(pt.cashYieldOnCostPercent)}
                     </td>
-                    <td className="py-2 px-3 text-right text-[#087F5B] dark:text-emerald-400 font-semibold">
+                    <td className="py-2.5 px-3 text-right text-[#2ECC71] font-semibold">
                       {formatCurrency(pt.compoundedAnnualYieldEUR)}
                     </td>
-                    <td className="py-2 px-3 text-right text-[#087F5B] dark:text-emerald-400 font-bold">
+                    <td className="py-2.5 px-3 text-right text-[#2ECC71] font-bold">
                       {formatPercent(pt.compoundedYieldOnCostPercent)}
                     </td>
-                    <td className="py-2 px-3 text-right text-amber-700 dark:text-amber-400">
+                    <td className="py-2.5 px-3 text-right text-[#FF9F43]">
                       {formatCurrency(pt.downsideAnnualYieldEUR)}
                     </td>
-                    <td className="py-2 pl-3 text-right font-bold text-[#172B2A] dark:text-white">
+                    <td className="py-2.5 px-3 text-right font-bold text-white">
                       +{formatCurrency(pt.cumulativeCompoundedYieldEUR)}
                     </td>
                   </tr>
@@ -808,7 +819,7 @@ export const ProjectedYieldGrowthChart: React.FC<ProjectedYieldGrowthChartProps>
             </table>
           </div>
 
-          <p className="text-[11px] text-[#71817D] dark:text-slate-400 leading-relaxed">
+          <p className="text-[11px] text-[#999999] leading-relaxed">
             Methodology: Projections apply each selected SPV&rsquo;s contractual net rental yield, selected annual European CPI lease escalation (+{indexationPreset}% p.a.), and optional annual dividend reinvestment. Stress-tested downside curves apply property-level vacancy sensitivity assumptions. Forward projections are illustrative and do not guarantee future distributions.
           </p>
         </>

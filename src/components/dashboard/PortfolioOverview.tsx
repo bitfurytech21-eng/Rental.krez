@@ -63,18 +63,18 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
   if (investments.length === 0) {
     return (
-      <div className="border border-[#E3E8E3] rounded-xl p-5 sm:p-6 text-center bg-white">
-        <div className="w-10 h-10 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] text-[#18211F] flex items-center justify-center mx-auto mb-2.5">
-          <Building2 className="w-5 h-5" />
+      <div className="border border-[#303030] rounded-2xl p-6 sm:p-8 text-center bg-[#151515]">
+        <div className="w-12 h-12 rounded-xl bg-[#1D1D1D] border border-[#303030] text-white flex items-center justify-center mx-auto mb-3 shadow-inner">
+          <Building2 className="w-6 h-6 text-[#00D2FF]" />
         </div>
-        <h3 className="text-xs sm:text-sm font-bold text-[#18211F] mb-1">No Active Property Holdings Yet</h3>
-        <p className="text-[10.5px] sm:text-xs text-[#69736F] max-w-sm mx-auto mb-3.5 leading-relaxed">
+        <h3 className="text-sm sm:text-base font-bold text-white mb-1.5">No Active Property Holdings Yet</h3>
+        <p className="text-xs text-[#999999] max-w-sm mx-auto mb-4 leading-relaxed">
           Start building your real estate portfolio today. Choose from our vetted European residential, coliving, and holiday properties.
         </p>
         {onExploreMore && (
           <button 
             onClick={onExploreMore} 
-            className="bg-[#182D2A] hover:bg-[#24423C] text-white px-4 py-1.5 text-xs font-semibold rounded-full shadow-xs transition-colors cursor-pointer"
+            className="bg-white hover:bg-neutral-200 text-black px-5 py-2 text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
           >
             Browse Active Properties
           </button>
@@ -84,23 +84,22 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-sm sm:text-base font-bold text-[#172B2A]">Active Property Assets</h3>
-          <p className="text-xs text-[#71817D]">
+          <h3 className="text-sm sm:text-base font-bold text-white">Active Property Assets</h3>
+          <p className="text-xs text-[#999999]">
             {investments.length} {investments.length === 1 ? 'Holding' : 'Holdings'} generating monthly distributions
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-
           <button
             onClick={handlePrintPortfolio}
-            className="py-1.5 px-3 bg-white hover:bg-[#EAF8F4] border border-[#E4EEEA] text-[#087F5B] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="py-1.5 px-3 bg-[#1D1D1D] hover:bg-[#252525] border border-[#303030] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             title="Print official Portfolio Performance Report"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <Printer className="w-3.5 h-3.5 text-[#00D2FF]" />
             <span>Print Report</span>
           </button>
         </div>
@@ -110,12 +109,12 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         {investments.map((inv) => (
           <div
             key={inv.id}
-            className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E4EEEA] shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            className="bg-[#151515] p-4 rounded-2xl border border-[#303030] shadow-lg hover:border-[#454545] transition-all flex flex-col justify-between"
           >
             <div>
-              <div className="flex items-start justify-between gap-2.5 mb-2.5">
+              <div className="flex items-start justify-between gap-2.5 mb-3">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-[#E4EEEA]">
+                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-[#1D1D1D] shrink-0 border border-[#303030]">
                     <img
                       src={inv.propertyImage}
                       alt={inv.propertyTitle}
@@ -124,63 +123,63 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-bold text-[#172B2A] truncate">{inv.propertyTitle}</h4>
-                    <span className="text-[11px] text-[#71817D] truncate block">{inv.propertyLocation}</span>
+                    <h4 className="text-xs sm:text-sm font-bold text-white truncate">{inv.propertyTitle}</h4>
+                    <span className="text-[11px] text-[#999999] truncate block mt-0.5">{inv.propertyLocation}</span>
                   </div>
                 </div>
 
-                <span className="text-[9.5px] font-bold tracking-wide text-[#087F5B] bg-[#DDF5EC] px-2 py-0.5 rounded-full border border-[#BCE8D7] shrink-0">
+                <span className="text-[9.5px] font-bold tracking-wide text-[#2ECC71] bg-[#2ECC71]/15 px-2.5 py-0.5 rounded-full border border-[#2ECC71]/30 shrink-0">
                   Active
                 </span>
               </div>
 
               {/* Stats Grid with Distinct Projected vs Realized Performance Labels */}
-              <div className="grid grid-cols-3 gap-2 p-2.5 bg-[#F6FAF8] rounded-xl border border-[#E4EEEA] text-[11px] mb-2">
+              <div className="grid grid-cols-3 gap-2 p-2.5 bg-[#1D1D1D] rounded-xl border border-[#303030] text-[11px] mb-3">
                 <div>
-                  <span className="text-[#71817D] block text-[9px] font-semibold uppercase tracking-wider">Holding</span>
-                  <span className="font-bold font-mono tabular-nums text-[#172B2A] text-xs sm:text-[13px] block mt-0.5">{inv.tokensPurchased} Units</span>
-                  <span className="text-[9.5px] text-[#71817D] block font-mono font-medium">{formatCurrency(inv.totalAmountInvested)}</span>
+                  <span className="text-[#999999] block text-[9px] font-semibold uppercase tracking-wider">Holding</span>
+                  <span className="font-bold font-mono tabular-nums text-white text-xs sm:text-[13px] block mt-0.5">{inv.tokensPurchased} Units</span>
+                  <span className="text-[9.5px] text-[#D0D0D0] block font-mono font-medium">{formatCurrency(inv.totalAmountInvested)}</span>
                 </div>
 
-                <div className="border-x border-[#E4EEEA] px-1.5">
+                <div className="border-x border-[#303030] px-2">
                   <div className="flex items-center gap-1 mb-0.5">
-                    <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold text-[#087F5B] bg-[#DDF5EC] border border-[#BCE8D7] px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                    <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold text-[#00D2FF] bg-[#00D2FF]/15 border border-[#00D2FF]/30 px-1.5 py-0.2 rounded-full uppercase tracking-wider">
                       Projected
                     </span>
                   </div>
-                  <span className="text-[9px] font-bold text-[#71817D] uppercase block truncate">Annual Yield</span>
-                  <span className="font-bold font-mono tabular-nums text-[#087F5B] text-xs sm:text-[13px] block mt-0.5">{formatPercent(inv.estimatedAnnualYield)}</span>
+                  <span className="text-[9px] font-bold text-[#999999] uppercase block truncate">Annual Yield</span>
+                  <span className="font-bold font-mono tabular-nums text-[#00D2FF] text-xs sm:text-[13px] block mt-0.5">{formatPercent(inv.estimatedAnnualYield)}</span>
                 </div>
 
                 <div>
                   <div className="flex items-center gap-1 mb-0.5">
-                    <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold text-[#075B46] bg-[#EAF8F4] border border-[#087F5B]/30 px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                    <span className="inline-flex items-center gap-0.5 text-[8px] font-extrabold text-[#2ECC71] bg-[#2ECC71]/15 border border-[#2ECC71]/30 px-1.5 py-0.2 rounded-full uppercase tracking-wider">
                       Realized
                     </span>
                   </div>
-                  <span className="text-[9px] font-bold text-[#71817D] uppercase block truncate">Performance</span>
-                  <span className="font-bold font-mono tabular-nums text-[#075B46] text-xs sm:text-[13px] block mt-0.5">
+                  <span className="text-[9px] font-bold text-[#999999] uppercase block truncate">Performance</span>
+                  <span className="font-bold font-mono tabular-nums text-[#2ECC71] text-xs sm:text-[13px] block mt-0.5">
                     +{formatCurrency(inv.totalDividendsReceived)}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-1.5">
+            <div className="flex items-center justify-between text-xs pt-1.5 border-t border-[#303030]">
               <button
                 type="button"
                 onClick={() => setSelectedInvestmentForDocs(inv)}
-                className="font-semibold text-[#075B46] hover:underline flex items-center gap-1.5 bg-[#DDF5EC] border border-[#BCE8D7] px-2 py-1 rounded-lg text-[10.5px] cursor-pointer transition-colors"
+                className="font-semibold text-white hover:text-white flex items-center gap-1.5 bg-[#1D1D1D] hover:bg-[#262626] border border-[#303030] px-2.5 py-1 rounded-lg text-[10.5px] cursor-pointer transition-colors"
               >
-                <FileText className="w-3 h-3 text-[#087F5B]" /> Legal Docs
+                <FileText className="w-3 h-3 text-[#00D2FF]" /> Legal Docs
               </button>
 
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[9px] text-[#71817D] hidden sm:inline">{inv.certificateId}</span>
+                <span className="font-mono text-[9px] text-[#999999] hidden sm:inline">{inv.certificateId}</span>
                 {onSelectProperty && (
                   <button
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="font-bold text-[#087F5B] hover:text-[#075B46] flex items-center gap-1 text-xs cursor-pointer transition-colors"
+                    className="font-bold text-white hover:text-[#D0D0D0] flex items-center gap-1 text-xs cursor-pointer transition-colors bg-white hover:bg-neutral-200 text-black px-2.5 py-1 rounded-lg font-bold"
                   >
                     View Asset <ArrowRight className="w-3 h-3" />
                   </button>

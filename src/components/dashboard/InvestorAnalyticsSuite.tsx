@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import { SOLANA_USDC_MINT_ADDRESS } from '../../lib/solanaService';
 
+import { RAINBOW_COLORS, CHART_THEME } from '../../lib/chartTheme';
+
 interface InvestorAnalyticsSuiteProps {
   properties: Property[];
   investments: Investment[];
@@ -44,14 +46,14 @@ interface InvestorAnalyticsSuiteProps {
 }
 
 const CHART_PALETTE = [
-  '#087F5B',
-  '#1D4ED8',
-  '#B45309',
-  '#0F766E',
-  '#4338CA',
-  '#BE123C',
-  '#15803D',
-  '#334155',
+  '#00D2FF', // Cyan
+  '#2ECC71', // Green
+  '#FFD93D', // Yellow
+  '#FF9F43', // Orange
+  '#FF4D4D', // Red
+  '#FF65B3', // Pink
+  '#A66CFF', // Purple
+  '#4287FF', // Blue
 ];
 
 function formatPeriodMonthLabel(ym: string): string {
@@ -425,23 +427,24 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Institutional KPI Summary Strip */}
-      <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E4EEEA] dark:border-slate-800">
+      {/* Top Institutional KPI Summary Strip */}
+      <div className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#303030]">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#087F5B] dark:text-[#3BD4AE] block">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#00D2FF] block">
               Verified Ledger Analytics
             </span>
-            <h2 className="text-base sm:text-lg font-bold text-[#172B2A] dark:text-white">
+            <h2 className="text-base sm:text-lg font-bold text-white">
               Portfolio Analytics &amp; Financial Statements
             </h2>
           </div>
-          <div className="flex items-center gap-2 text-[11px] font-mono text-[#71817D] dark:text-slate-400">
+          <div className="flex items-center gap-2 text-[11px] font-mono text-[#999999]">
             <span>USDC Settlement Mint:</span>
             <a
               href={`https://explorer.solana.com/address/${SOLANA_USDC_MINT_ADDRESS}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#087F5B] dark:text-[#3BD4AE] hover:underline inline-flex items-center gap-1 font-semibold"
+              className="text-[#00D2FF] hover:underline inline-flex items-center gap-1 font-semibold"
             >
               {SOLANA_USDC_MINT_ADDRESS.slice(0, 6)}…{SOLANA_USDC_MINT_ADDRESS.slice(-4)}
               <ExternalLink className="w-3 h-3" />
@@ -450,50 +453,50 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
-          <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+          <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
               Total Account Equity
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#172B2A] dark:text-white mt-1">
+            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-white mt-1">
               {formatCurrency(metrics.totalEquity)}
             </div>
-            <span className="text-[11px] text-[#71817D] dark:text-slate-400 mt-1 block font-mono tabular-nums">
+            <span className="text-[11px] text-[#D0D0D0] mt-1 block font-mono tabular-nums">
               Cash: {formatCurrency(walletBalance)} · SPVs: {formatCurrency(metrics.totalHoldingsValue)}
             </span>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+          <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
               Subscribed Property Capital
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#172B2A] dark:text-white mt-1">
+            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-white mt-1">
               {formatCurrency(metrics.totalInvested)}
             </div>
-            <span className="text-[11px] text-[#087F5B] dark:text-emerald-400 mt-1 block font-mono tabular-nums">
+            <span className="text-[11px] text-[#00D2FF] mt-1 block font-mono tabular-nums font-semibold">
               {allocationByProperty.length} Active {allocationByProperty.length === 1 ? 'Property' : 'Properties'}
             </span>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+          <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
               Realized Rental Distributions
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#087F5B] dark:text-emerald-400 mt-1">
+            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#2ECC71] mt-1">
               +{formatCurrency(metrics.totalRealizedDistributions)}
             </div>
-            <span className="text-[11px] text-[#71817D] dark:text-slate-400 mt-1 block font-mono tabular-nums">
+            <span className="text-[11px] text-[#D0D0D0] mt-1 block font-mono tabular-nums">
               Est. Run-Rate: {formatCurrency(metrics.projectedMonthlyIncome)}/mo
             </span>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#F6FAF8] dark:bg-slate-900/70 border border-[#E4EEEA] dark:border-slate-800">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 block">
+          <div className="p-3.5 rounded-xl bg-[#1D1D1D] border border-[#303030]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999] block">
               Weighted Target Net Yield
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#172B2A] dark:text-white mt-1">
+            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#FFD93D] mt-1">
               {formatPercent(metrics.weightedApy)}
             </div>
-            <span className="text-[11px] text-[#71817D] dark:text-slate-400 mt-1 block">
+            <span className="text-[11px] text-[#D0D0D0] mt-1 block">
               {diversification.concentrationLabel}
             </span>
           </div>
@@ -503,37 +506,37 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       {/* Row 1: Portfolio Value Over Time + Rental Distributions Over Time */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 1: Portfolio Value Over Time */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#E4EEEA] dark:border-slate-800 mb-3">
+        <div className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col justify-between text-white">
+          <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#303030] mb-3">
             <div>
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-[#087F5B]" />
-                <h3 className="text-sm sm:text-base font-bold text-[#172B2A] dark:text-white">
+                <TrendingUp className="w-4 h-4 text-[#00D2FF]" />
+                <h3 className="text-sm sm:text-base font-bold text-white">
                   Portfolio Value Over Time
                 </h3>
               </div>
-              <p className="text-xs text-[#71817D] dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#999999] mt-0.5">
                 Chronological account equity curve derived from verified ledger events
               </p>
             </div>
-            <span className="text-xs font-mono font-bold tabular-nums text-[#087F5B] dark:text-emerald-400">
+            <span className="text-xs font-mono font-bold tabular-nums text-[#00D2FF]">
               {formatCurrency(metrics.totalEquity)}
             </span>
           </div>
 
           {portfolioTimeline.length === 0 ? (
-            <div className="py-10 px-4 text-center space-y-2.5 bg-[#F6FAF8] dark:bg-slate-900/50 rounded-xl border border-dashed border-[#DCE8E3] dark:border-slate-800">
-              <BarChart3 className="w-7 h-7 text-[#71817D] mx-auto opacity-60" />
-              <p className="text-xs font-semibold text-[#172B2A] dark:text-slate-200">
+            <div className="py-10 px-4 text-center space-y-2.5 bg-[#1D1D1D] rounded-xl border border-dashed border-[#303030]">
+              <BarChart3 className="w-7 h-7 text-[#999999] mx-auto opacity-60" />
+              <p className="text-xs font-semibold text-white">
                 No historical portfolio valuation events recorded yet
               </p>
-              <p className="text-[11px] text-[#71817D] dark:text-slate-400 max-w-sm mx-auto">
+              <p className="text-[11px] text-[#999999] max-w-sm mx-auto">
                 Deposit funds or subscribe to a tokenized SPV property offering to populate your real-time equity curve.
               </p>
               <button
                 type="button"
                 onClick={onExploreProperties}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#1E3A34] text-white text-xs font-semibold cursor-pointer hover:bg-[#162B27] transition-colors"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white text-black text-xs font-bold cursor-pointer hover:bg-[#E5E5E5] transition-colors"
               >
                 <span>Browse Offerings</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -545,14 +548,21 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                 <AreaChart data={portfolioTimeline} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="portfolioEquityGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#087F5B" stopOpacity={0.32} />
-                      <stop offset="95%" stopColor="#087F5B" stopOpacity={0.0} />
+                      <stop offset="5%" stopColor="#00D2FF" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#00D2FF" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-                  <XAxis dataKey="dateLabel" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.8} />
+                  <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: '#D0D0D0' }} stroke="#303030" />
+                  <YAxis tick={{ fontSize: 11, fill: '#D0D0D0' }} stroke="#303030" />
                   <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#151515',
+                      borderColor: '#303030',
+                      borderRadius: '12px',
+                      color: '#FFFFFF',
+                      fontSize: '12px',
+                    }}
                     formatter={(value: any, name: any) => [
                       formatCurrency(Number(value || 0)),
                       name === 'totalPortfolioValue'
@@ -565,15 +575,15 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                   <Area
                     type="monotone"
                     dataKey="totalPortfolioValue"
-                    stroke="#087F5B"
-                    strokeWidth={2.25}
+                    stroke="#00D2FF"
+                    strokeWidth={2.5}
                     fill="url(#portfolioEquityGrad)"
                   />
                   <Area
                     type="monotone"
                     dataKey="propertyHoldings"
-                    stroke="#1D4ED8"
-                    strokeWidth={1.5}
+                    stroke="#A66CFF"
+                    strokeWidth={1.8}
                     fillOpacity={0}
                   />
                 </AreaChart>
@@ -583,31 +593,31 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
         </div>
 
         {/* Chart 2: Rental Distributions Over Time */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#E4EEEA] dark:border-slate-800 mb-3">
+        <div className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col justify-between text-white">
+          <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#303030] mb-3">
             <div>
               <div className="flex items-center gap-2">
-                <Coins className="w-4 h-4 text-[#087F5B]" />
-                <h3 className="text-sm sm:text-base font-bold text-[#172B2A] dark:text-white">
+                <Coins className="w-4 h-4 text-[#2ECC71]" />
+                <h3 className="text-sm sm:text-base font-bold text-white">
                   Rental Distributions Over Time
                 </h3>
               </div>
-              <p className="text-xs text-[#71817D] dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#999999] mt-0.5">
                 Settled monthly rental dividends credited to your investor ledger
               </p>
             </div>
-            <span className="text-xs font-mono font-bold tabular-nums text-[#087F5B] dark:text-emerald-400">
+            <span className="text-xs font-mono font-bold tabular-nums text-[#2ECC71]">
               +{formatCurrency(metrics.totalRealizedDistributions)}
             </span>
           </div>
 
           {distributionsTimeline.length === 0 ? (
-            <div className="py-8 px-4 text-center space-y-2.5 bg-[#F6FAF8] dark:bg-slate-900/50 rounded-xl border border-dashed border-[#DCE8E3] dark:border-slate-800">
-              <Calendar className="w-7 h-7 text-[#087F5B] mx-auto opacity-75" />
-              <p className="text-xs font-semibold text-[#172B2A] dark:text-slate-200">
+            <div className="py-8 px-4 text-center space-y-2.5 bg-[#1D1D1D] rounded-xl border border-dashed border-[#303030]">
+              <Calendar className="w-7 h-7 text-[#2ECC71] mx-auto opacity-75" />
+              <p className="text-xs font-semibold text-white">
                 No settled distribution payouts recorded on this account yet
               </p>
-              <p className="text-[11px] text-[#71817D] dark:text-slate-400 max-w-sm mx-auto">
+              <p className="text-[11px] text-[#999999] max-w-sm mx-auto">
                 {investments.length > 0
                   ? `Your ${investments.length} active property ${
                       investments.length === 1 ? 'holding has' : 'holdings have'
@@ -621,13 +631,24 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
             <div className="h-60 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={distributionsTimeline} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.8} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#D0D0D0' }} stroke="#303030" />
+                  <YAxis tick={{ fontSize: 11, fill: '#D0D0D0' }} stroke="#303030" />
                   <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#151515',
+                      borderColor: '#303030',
+                      borderRadius: '12px',
+                      color: '#FFFFFF',
+                      fontSize: '12px',
+                    }}
                     formatter={(value: any) => [formatCurrency(Number(value || 0)), 'Settled Distribution']}
                   />
-                  <Bar dataKey="amount" fill="#087F5B" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
+                    {distributionsTimeline.map((_, index) => (
+                      <Cell key={`bar-cell-${index}`} fill={RAINBOW_COLORS[index % RAINBOW_COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -638,25 +659,25 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       {/* Row 2: Investment Allocation by Property + Property Performance Comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 3: Investment Allocation by Property */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
+        <div className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-3 text-white">
+          <div className="flex items-center justify-between pb-3 border-b border-[#303030]">
             <div>
               <div className="flex items-center gap-2">
-                <PieChartIcon className="w-4 h-4 text-[#087F5B]" />
-                <h3 className="text-sm sm:text-base font-bold text-[#172B2A] dark:text-white">
+                <PieChartIcon className="w-4 h-4 text-[#FF65B3]" />
+                <h3 className="text-sm sm:text-base font-bold text-white">
                   Investment Allocation by Property
                 </h3>
               </div>
-              <p className="text-xs text-[#71817D] dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#999999] mt-0.5">
                 Proportional capital weight across notarized SPV holdings
               </p>
             </div>
           </div>
 
           {allocationByProperty.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[#71817D] dark:text-slate-400 bg-[#F6FAF8] dark:bg-slate-900/50 rounded-xl border border-dashed border-[#DCE8E3] dark:border-slate-800 p-4 space-y-2">
-              <p className="font-semibold text-[#172B2A] dark:text-slate-200">No active property allocations</p>
-              <p className="text-[11px]">
+            <div className="py-8 text-center text-xs text-[#999999] bg-[#1D1D1D] rounded-xl border border-dashed border-[#303030] p-4 space-y-2">
+              <p className="font-semibold text-white">No active property allocations</p>
+              <p className="text-[11px] text-[#999999]">
                 Once you purchase fractional SPV units, your exact property weights and valuations appear here.
               </p>
             </div>
@@ -680,6 +701,13 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                       ))}
                     </Pie>
                     <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#151515',
+                        borderColor: '#303030',
+                        borderRadius: '12px',
+                        color: '#FFFFFF',
+                        fontSize: '12px',
+                      }}
                       formatter={(val: any) => [formatCurrency(Number(val || 0)), 'Holding Valuation']}
                     />
                   </PieChart>
@@ -692,23 +720,23 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                     key={item.propertyId}
                     type="button"
                     onClick={() => onSelectProperty(item.propertyId)}
-                    className="w-full text-left p-2.5 rounded-xl border border-[#E4EEEA] dark:border-slate-800 bg-[#F6FAF8] dark:bg-slate-900/60 hover:border-[#087F5B] transition-colors cursor-pointer"
+                    className="w-full text-left p-2.5 rounded-xl border border-[#303030] bg-[#1D1D1D] hover:border-white transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="flex items-center gap-2 min-w-0 font-bold text-[#172B2A] dark:text-white truncate">
+                      <span className="flex items-center gap-2 min-w-0 font-bold text-white truncate">
                         <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
                           style={{ backgroundColor: item.color }}
                         />
                         <span className="truncate">{item.title}</span>
                       </span>
-                      <span className="font-mono tabular-nums font-bold text-[#087F5B] shrink-0">
+                      <span className="font-mono tabular-nums font-bold text-[#00D2FF] shrink-0">
                         {item.weightPercent}%
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-[10.5px] font-mono tabular-nums text-[#71817D] dark:text-slate-400 mt-1">
+                    <div className="flex items-center justify-between text-[10.5px] font-mono tabular-nums text-[#999999] mt-1">
                       <span>{item.tokens} units</span>
-                      <span>{formatCurrency(item.valuation)}</span>
+                      <span className="text-white font-semibold">{formatCurrency(item.valuation)}</span>
                     </div>
                   </button>
                 ))}
@@ -718,25 +746,25 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
         </div>
 
         {/* Chart 4: Property Performance Comparison */}
-        <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
+        <div className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-3 text-white">
+          <div className="flex items-center justify-between pb-3 border-b border-[#303030]">
             <div>
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#1D4ED8]" />
-                <h3 className="text-sm sm:text-base font-bold text-[#172B2A] dark:text-white">
+                <Building2 className="w-4 h-4 text-[#4287FF]" />
+                <h3 className="text-sm sm:text-base font-bold text-white">
                   Property Performance Breakdown
                 </h3>
               </div>
-              <p className="text-xs text-[#71817D] dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#999999] mt-0.5">
                 Subscribed cost basis vs. current valuation and realized dividends
               </p>
             </div>
           </div>
 
           {allocationByProperty.length === 0 ? (
-            <div className="py-8 text-center text-xs text-[#71817D] dark:text-slate-400 bg-[#F6FAF8] dark:bg-slate-900/50 rounded-xl border border-dashed border-[#DCE8E3] dark:border-slate-800 p-4 space-y-2">
-              <p className="font-semibold text-[#172B2A] dark:text-slate-200">No property performance records yet</p>
-              <p className="text-[11px]">
+            <div className="py-8 text-center text-xs text-[#999999] bg-[#1D1D1D] rounded-xl border border-dashed border-[#303030] p-4 space-y-2">
+              <p className="font-semibold text-white">No property performance records yet</p>
+              <p className="text-[11px] text-[#999999]">
                 Asset-level cost basis, valuation, and dividend yield attribution are calculated from your active holdings.
               </p>
             </div>
@@ -748,10 +776,17 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                     data={allocationByProperty}
                     margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.18} />
-                    <XAxis dataKey="shortTitle" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.8} />
+                    <XAxis dataKey="shortTitle" tick={{ fontSize: 10, fill: '#D0D0D0' }} stroke="#303030" />
+                    <YAxis tick={{ fontSize: 10, fill: '#D0D0D0' }} stroke="#303030" />
                     <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#151515',
+                        borderColor: '#303030',
+                        borderRadius: '12px',
+                        color: '#FFFFFF',
+                        fontSize: '12px',
+                      }}
                       formatter={(val: any, key: any) => [
                         formatCurrency(Number(val || 0)),
                         key === 'invested'
@@ -761,8 +796,8 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                           : 'Realized Dividends',
                       ]}
                     />
-                    <Bar dataKey="invested" fill="#64748B" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="valuation" fill="#087F5B" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="invested" fill="#4287FF" radius={[4, 4, 0, 0]} name="Cost Basis" />
+                    <Bar dataKey="valuation" fill="#2ECC71" radius={[4, 4, 0, 0]} name="Current Valuation" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -770,26 +805,26 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-[#E4EEEA] dark:border-slate-800 text-[10px] uppercase tracking-wider text-[#71817D] dark:text-slate-400">
-                      <th className="py-1.5 pr-2">Asset</th>
-                      <th className="py-1.5 px-2 text-right">Cost Basis</th>
-                      <th className="py-1.5 px-2 text-right">Dividends</th>
-                      <th className="py-1.5 pl-2 text-right">Target APY</th>
+                    <tr className="border-b border-[#303030] text-[10px] uppercase tracking-wider text-[#999999] bg-[#101010]">
+                      <th className="py-2 px-2.5">Asset</th>
+                      <th className="py-2 px-2 text-right">Cost Basis</th>
+                      <th className="py-2 px-2 text-right">Dividends</th>
+                      <th className="py-2 pl-2 text-right">Target APY</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E4EEEA] dark:divide-slate-800 font-mono tabular-nums">
+                  <tbody className="divide-y divide-[#262626] font-mono tabular-nums bg-[#151515]">
                     {allocationByProperty.map((item) => (
-                      <tr key={item.propertyId}>
-                        <td className="py-2 pr-2 font-sans font-semibold text-[#172B2A] dark:text-slate-100 truncate max-w-[160px]">
+                      <tr key={item.propertyId} className="hover:bg-[#1D1D1D] transition-colors">
+                        <td className="py-2 px-2.5 font-sans font-semibold text-white truncate max-w-[160px]">
                           {item.title}
                         </td>
-                        <td className="py-2 px-2 text-right text-[#172B2A] dark:text-slate-200">
+                        <td className="py-2 px-2 text-right text-[#D0D0D0]">
                           {formatCurrency(item.invested)}
                         </td>
-                        <td className="py-2 px-2 text-right text-[#087F5B] dark:text-emerald-400">
+                        <td className="py-2 px-2 text-right text-[#2ECC71] font-semibold">
                           +{formatCurrency(item.dividends)}
                         </td>
-                        <td className="py-2 pl-2 text-right font-bold text-[#172B2A] dark:text-slate-100">
+                        <td className="py-2 pl-2 text-right font-bold text-white">
                           {formatPercent(item.apy)}
                         </td>
                       </tr>
@@ -803,47 +838,50 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       </div>
 
       {/* Row 3: Investment Diversification (Geography & Property Class) */}
-      <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
+      <div className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#303030]">
           <div>
             <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-[#087F5B]" />
-              <h3 className="text-sm sm:text-base font-bold text-[#172B2A] dark:text-white">
+              <Globe className="w-4 h-4 text-[#00D2FF]" />
+              <h3 className="text-sm sm:text-base font-bold text-white">
                 Investment Diversification Matrix
               </h3>
             </div>
-            <p className="text-xs text-[#71817D] dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-[#999999] mt-0.5">
               Jurisdictional exposure and property typology across your active SPV holdings
             </p>
           </div>
-          <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-[#F6FAF8] dark:bg-slate-900 border border-[#E4EEEA] dark:border-slate-800 text-[#172B2A] dark:text-slate-200 self-start sm:self-auto">
+          <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white self-start sm:self-auto">
             Profile: {diversification.concentrationLabel}
           </span>
         </div>
 
         {investments.length === 0 ? (
-          <div className="py-6 text-center text-xs text-[#71817D] dark:text-slate-400">
+          <div className="py-6 text-center text-xs text-[#999999]">
             Diversification exposure across European markets and asset classes will populate automatically after your first SPV subscription.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Geographic Exposure */}
             <div className="space-y-2.5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-[#087F5B]" /> Geographic Exposure
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#999999] flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-[#00D2FF]" /> Geographic Exposure
               </h4>
-              {diversification.byRegion.map((reg) => (
+              {diversification.byRegion.map((reg, idx) => (
                 <div key={reg.name} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-[#172B2A] dark:text-slate-200">{reg.name}</span>
-                    <span className="font-mono tabular-nums text-[#71817D] dark:text-slate-400">
+                    <span className="font-semibold text-white">{reg.name}</span>
+                    <span className="font-mono tabular-nums text-[#D0D0D0]">
                       {formatCurrency(reg.value)} ({reg.percent}%)
                     </span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-[#1D1D1D] overflow-hidden">
                     <div
-                      className="h-full bg-[#087F5B] rounded-full transition-transform duration-500 origin-left"
-                      style={{ width: `${Math.min(100, reg.percent)}%` }}
+                      className="h-full rounded-full transition-transform duration-500 origin-left"
+                      style={{
+                        backgroundColor: RAINBOW_COLORS[idx % RAINBOW_COLORS.length],
+                        width: `${Math.min(100, reg.percent)}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -852,21 +890,24 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
 
             {/* Asset Class Exposure */}
             <div className="space-y-2.5">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#71817D] dark:text-slate-400 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-[#1D4ED8]" /> Asset Typology Exposure
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#999999] flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#A66CFF]" /> Asset Typology Exposure
               </h4>
-              {diversification.byType.map((typ) => (
+              {diversification.byType.map((typ, idx) => (
                 <div key={typ.name} className="space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-[#172B2A] dark:text-slate-200">{typ.name}</span>
-                    <span className="font-mono tabular-nums text-[#71817D] dark:text-slate-400">
+                    <span className="font-semibold text-white">{typ.name}</span>
+                    <span className="font-mono tabular-nums text-[#D0D0D0]">
                       {formatCurrency(typ.value)} ({typ.percent}%)
                     </span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-[#1D1D1D] overflow-hidden">
                     <div
-                      className="h-full bg-[#1D4ED8] rounded-full transition-transform duration-500 origin-left"
-                      style={{ width: `${Math.min(100, typ.percent)}%` }}
+                      className="h-full rounded-full transition-transform duration-500 origin-left"
+                      style={{
+                        backgroundColor: RAINBOW_COLORS[(idx + 4) % RAINBOW_COLORS.length],
+                        width: `${Math.min(100, typ.percent)}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -877,29 +918,29 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
       </div>
 
       {/* Row 4: Monthly & Annual Financial Summaries + CSV Export */}
-      <div className="bg-white dark:bg-[#0D1522] border border-[#E4EEEA] dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4EEEA] dark:border-slate-800">
+      <div className="bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#303030]">
           <div>
             <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-[#087F5B]" />
-              <h3 className="text-sm sm:text-base font-bold text-[#172B2A] dark:text-white">
+              <History className="w-4 h-4 text-[#FFD93D]" />
+              <h3 className="text-sm sm:text-base font-bold text-white">
                 Monthly &amp; Annual Financial Summaries
               </h3>
             </div>
-            <p className="text-xs text-[#71817D] dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-[#999999] mt-0.5">
               Reconciled double-entry cashflow statement aggregated from your verified account ledger
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold">
+            <div className="inline-flex rounded-lg bg-[#1D1D1D] border border-[#303030] p-0.5 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setSummaryGranularity('monthly')}
                 className={`px-3 py-1 rounded-md cursor-pointer transition-colors ${
                   summaryGranularity === 'monthly'
-                    ? 'bg-white dark:bg-slate-700 text-[#172B2A] dark:text-white shadow-2xs font-bold'
-                    : 'text-[#71817D] dark:text-slate-400'
+                    ? 'bg-white text-black font-bold shadow-sm'
+                    : 'text-[#D0D0D0] hover:text-white'
                 }`}
               >
                 Monthly
@@ -909,8 +950,8 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                 onClick={() => setSummaryGranularity('annual')}
                 className={`px-3 py-1 rounded-md cursor-pointer transition-colors ${
                   summaryGranularity === 'annual'
-                    ? 'bg-white dark:bg-slate-700 text-[#172B2A] dark:text-white shadow-2xs font-bold'
-                    : 'text-[#71817D] dark:text-slate-400'
+                    ? 'bg-white text-black font-bold shadow-sm'
+                    : 'text-[#D0D0D0] hover:text-white'
                 }`}
               >
                 Annual
@@ -921,9 +962,9 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
               <button
                 type="button"
                 onClick={handleExportCsv}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E4EEEA] dark:border-slate-700 bg-[#F6FAF8] dark:bg-slate-900 hover:bg-[#EAF5F0] text-xs font-semibold text-[#172B2A] dark:text-slate-200 cursor-pointer transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#303030] bg-[#1D1D1D] hover:bg-[#252525] text-xs font-semibold text-white cursor-pointer transition-colors"
               >
-                <Download className="w-3.5 h-3.5 text-[#087F5B]" />
+                <Download className="w-3.5 h-3.5 text-white" />
                 <span>Export CSV</span>
               </button>
             )}
@@ -931,11 +972,11 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
         </div>
 
         {financialSummaries.length === 0 ? (
-          <div className="py-8 text-center text-xs text-[#71817D] dark:text-slate-400 space-y-2">
-            <p className="font-semibold text-[#172B2A] dark:text-slate-200">
+          <div className="py-8 text-center text-xs text-[#999999] space-y-2">
+            <p className="font-semibold text-white">
               No ledger transactions recorded yet for {summaryGranularity} reconciliation.
             </p>
-            <p className="text-[11px]">
+            <p className="text-[11px] text-[#999999]">
               All deposits, SPV subscriptions, monthly rental distributions, and withdrawals will be summarized here automatically.
             </p>
           </div>
@@ -943,20 +984,20 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[#E4EEEA] dark:border-slate-800 text-[10px] uppercase tracking-wider text-[#71817D] dark:text-slate-400">
-                  <th className="py-2 pr-3">Period</th>
-                  <th className="py-2 px-3 text-right">Deposits</th>
-                  <th className="py-2 px-3 text-right">SPV Subscriptions</th>
-                  <th className="py-2 px-3 text-right">Rental Distributions</th>
-                  <th className="py-2 px-3 text-right">Withdrawals &amp; Fees</th>
-                  <th className="py-2 px-3 text-right">Net Cash Movement</th>
-                  <th className="py-2 pl-3 text-right">Ledger Entries</th>
+                <tr className="border-b border-[#303030] text-[10px] uppercase tracking-wider text-[#999999] bg-[#101010]">
+                  <th className="py-2.5 px-3">Period</th>
+                  <th className="py-2.5 px-3 text-right">Deposits</th>
+                  <th className="py-2.5 px-3 text-right">SPV Subscriptions</th>
+                  <th className="py-2.5 px-3 text-right">Rental Distributions</th>
+                  <th className="py-2.5 px-3 text-right">Withdrawals &amp; Fees</th>
+                  <th className="py-2.5 px-3 text-right">Net Cash Movement</th>
+                  <th className="py-2.5 pl-3 text-right">Ledger Entries</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E4EEEA] dark:divide-slate-800 font-mono tabular-nums">
+              <tbody className="divide-y divide-[#262626] font-mono tabular-nums bg-[#151515]">
                 {financialSummaries.map((row) => (
-                  <tr key={row.periodKey} className="hover:bg-[#F6FAF8]/60 dark:hover:bg-slate-900/40">
-                    <td className="py-2.5 pr-3 font-sans font-bold text-[#172B2A] dark:text-white">
+                  <tr key={row.periodKey} className="hover:bg-[#1D1D1D] transition-colors">
+                    <td className="py-2.5 px-3 font-sans font-bold text-white">
                       {row.periodLabel}
                     </td>
                     <td className="py-2.5 px-3 text-right text-[#172B2A] dark:text-slate-200">

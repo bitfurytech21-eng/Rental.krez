@@ -109,19 +109,19 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center pb-2.5 mb-2.5 border-b border-white/5">
+        <div className="flex justify-between items-center pb-2.5 mb-2.5 border-b border-[#303030]">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-red-500/15 text-red-400 border border-red-500/30 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-[#1D1D1D] text-[#FF4D4D] border border-[#303030] flex items-center justify-center shrink-0">
               <ArrowUpRight className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold dash-text">Withdraw Funds</h3>
-              <p className="text-[11px] dash-muted">Transfer capital to your bank account or crypto wallet</p>
+              <h3 className="text-base font-bold text-white">Withdraw Funds</h3>
+              <p className="text-[11px] text-[#999999]">Transfer capital to your bank account or crypto wallet</p>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="dash-muted hover:opacity-80 text-lg font-bold p-1 cursor-pointer"
+            className="text-[#999999] hover:text-white text-lg font-bold p-1 cursor-pointer transition-colors"
             aria-label="Close"
           >
             ✕
@@ -130,11 +130,11 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 
         {!isKYCVerified ? (
           <div className="text-center py-6 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-[#1D1D1D] text-[#FF9F43] border border-[#303030] flex items-center justify-center mx-auto">
               <ShieldAlert className="w-8 h-8" />
             </div>
-            <h4 className="text-lg font-bold dash-text">Identity Verification Required</h4>
-            <p className="text-xs dash-muted max-w-xs mx-auto leading-relaxed">
+            <h4 className="text-lg font-bold text-white">Identity Verification Required</h4>
+            <p className="text-xs text-[#999999] max-w-xs mx-auto leading-relaxed">
               In adherence to European AML/CFT regulations, withdrawals can only be processed to verified investor accounts.
             </p>
 
@@ -145,7 +145,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                   onClose();
                   onNavigateProfile();
                 }}
-                className="btn btn-primary text-xs font-semibold w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
               >
                 <span>Submit Verification Documents in Profile</span>
               </button>
@@ -153,7 +153,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
               <button 
                 type="button" 
                 onClick={onClose} 
-                className="btn btn-secondary text-xs font-medium w-full cursor-pointer"
+                className="w-full py-2 rounded-xl bg-[#151515] hover:bg-[#252525] border border-[#303030] text-white text-xs font-medium cursor-pointer transition-colors"
               >
                 Return to Dashboard
               </button>
@@ -162,17 +162,17 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
         ) : !success ? (
           <form onSubmit={handleWithdrawalSubmit} className="space-y-3">
             {/* Method Toggle: SEPA vs Crypto */}
-            <div className="flex dash-inner p-0.5 rounded-xl border">
+            <div className="flex bg-[#101010] p-0.5 rounded-xl border border-[#303030]">
               <button
                 type="button"
                 onClick={() => setMethod('sepa')}
                 className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   method === 'sepa'
-                    ? 'bg-gradient-to-r from-[#059669] to-[#10B981] text-white shadow-xs'
-                    : 'dash-muted hover:opacity-90'
+                    ? 'bg-white text-black shadow-xs'
+                    : 'text-[#999999] hover:text-white'
                 }`}
               >
-                <Building2 className="w-3 h-3" />
+                <Building2 className={`w-3.5 h-3.5 ${method === 'sepa' ? 'text-black' : 'text-[#999999]'}`} />
                 SEPA Bank Wire
               </button>
               <button
@@ -180,24 +180,24 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                 onClick={() => setMethod('crypto')}
                 className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   method === 'crypto'
-                    ? 'bg-gradient-to-r from-[#059669] to-[#10B981] text-white shadow-xs'
-                    : 'dash-muted hover:opacity-90'
+                    ? 'bg-white text-black shadow-xs'
+                    : 'text-[#999999] hover:text-white'
                 }`}
               >
-                <Coins className="w-3 h-3" />
+                <Coins className={`w-3.5 h-3.5 ${method === 'crypto' ? 'text-black' : 'text-[#999999]'}`} />
                 Crypto Wallet
               </button>
             </div>
 
             {/* Available Balance Box */}
-            <div className="dash-inner p-2.5 rounded-xl border flex justify-between items-center text-xs">
-              <span className="dash-muted text-[11px]">Available for Withdrawal:</span>
-              <span className="text-sm font-extrabold text-emerald-400">{formatCurrency(user.walletBalance)}</span>
+            <div className="bg-[#1D1D1D] p-2.5 rounded-xl border border-[#303030] flex justify-between items-center text-xs">
+              <span className="text-[#999999] text-[11px]">Available for Withdrawal:</span>
+              <span className="text-sm font-extrabold text-white">{formatCurrency(user.walletBalance)}</span>
             </div>
 
             {/* Withdrawal Amount */}
-            <div className="form-field space-y-1">
-              <label className="text-[11px]">Withdrawal Amount (EUR)</label>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-white block">Withdrawal Amount (EUR)</label>
               <div className="relative">
                 <input
                   type="number"
@@ -207,12 +207,12 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
                   required
-                  className="font-bold text-sm w-full pr-14 py-1.5"
+                  className="font-bold text-sm w-full pr-14 py-2 px-3 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white focus:outline-none focus:border-white"
                 />
                 <button
                   type="button"
                   onClick={() => setAmount(user.walletBalance)}
-                  className="absolute right-2.5 top-2 text-[10px] font-bold text-[#27845D] hover:underline cursor-pointer"
+                  className="absolute right-2.5 top-2.5 text-[10px] font-bold text-[#00D2FF] hover:underline cursor-pointer"
                 >
                   MAX
                 </button>
@@ -221,25 +221,25 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 
             {/* Method-specific fields */}
             {method === 'sepa' ? (
-              <div className="form-field space-y-1">
-                <label className="text-[11px]">Destination European Bank IBAN</label>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-white block">Destination European Bank IBAN</label>
                 <input
                   type="text"
                   value={iban}
                   onChange={(e) => setIban(e.target.value)}
                   placeholder="ES91 2100 0418 ..."
                   required
-                  className="font-mono text-xs uppercase py-1.5"
+                  className="font-mono text-xs uppercase py-2 px-3 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white w-full focus:outline-none focus:border-white"
                 />
-                <span className="text-[10px] text-[#69736F] mt-0.5 block leading-tight">
-                  Beneficiary name must match verified account: <strong>{user.fullName}</strong>
+                <span className="text-[10px] text-[#999999] mt-0.5 block leading-tight">
+                  Beneficiary name must match verified account: <strong className="text-white">{user.fullName}</strong>
                 </span>
               </div>
             ) : (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold dash-text mb-0.5">Asset / Token</label>
+                    <label className="block text-[10px] font-bold text-white mb-0.5">Asset / Token</label>
                     <select
                       value={cryptoToken}
                       onChange={(e) => {
@@ -248,40 +248,40 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                         const nets = networkChoices[token] || ['Ethereum (ERC20)'];
                         setCryptoNetwork(nets[0]);
                       }}
-                      className="w-full text-xs font-bold p-1.5 rounded-lg border dash-inner dash-text focus:outline-none focus:border-emerald-500"
+                      className="w-full text-xs font-bold p-2 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white focus:outline-none focus:border-white"
                     >
-                      <option value="USDT">USDT (Tether)</option>
-                      <option value="USDC">USDC (USD Coin)</option>
-                      <option value="ETH">ETH (Ethereum)</option>
-                      <option value="BTC">BTC (Bitcoin)</option>
-                      <option value="SOL">SOL (Solana)</option>
+                      <option value="USDT" className="bg-[#151515] text-white">USDT (Tether)</option>
+                      <option value="USDC" className="bg-[#151515] text-white">USDC (USD Coin)</option>
+                      <option value="ETH" className="bg-[#151515] text-white">ETH (Ethereum)</option>
+                      <option value="BTC" className="bg-[#151515] text-white">BTC (Bitcoin)</option>
+                      <option value="SOL" className="bg-[#151515] text-white">SOL (Solana)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold dash-text mb-0.5">Network</label>
+                    <label className="block text-[10px] font-bold text-white mb-0.5">Network</label>
                     <select
                       value={cryptoNetwork}
                       onChange={(e) => setCryptoNetwork(e.target.value)}
-                      className="w-full text-xs font-bold p-1.5 rounded-lg border dash-inner dash-text focus:outline-none focus:border-emerald-500"
+                      className="w-full text-xs font-bold p-2 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white focus:outline-none focus:border-white"
                     >
                       {(networkChoices[cryptoToken] || ['Ethereum (ERC20)']).map(net => (
-                        <option key={net} value={net}>{net}</option>
+                        <option key={net} value={net} className="bg-[#151515] text-white">{net}</option>
                       ))}
                     </select>
                   </div>
                 </div>
 
-                <div className="form-field space-y-1">
-                  <label className="dash-text text-[11px]">Destination {cryptoToken} Wallet Address ({cryptoNetwork})</label>
+                <div className="space-y-1">
+                  <label className="text-white text-[11px] block">Destination {cryptoToken} Wallet Address ({cryptoNetwork})</label>
                   <input
                     type="text"
                     value={cryptoAddress}
                     onChange={(e) => setCryptoAddress(e.target.value)}
                     placeholder="0x... or wallet address"
                     required
-                    className="font-mono text-xs dash-inner dash-text py-1.5"
+                    className="font-mono text-xs py-2 px-3 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white w-full focus:outline-none focus:border-white"
                   />
-                  <span className="text-[9px] dash-muted mt-0.5 block leading-tight">
+                  <span className="text-[9px] text-[#999999] mt-0.5 block leading-tight">
                     Verify the network carefully. Transfers sent to incompatible networks cannot be reversed.
                   </span>
                 </div>
@@ -289,22 +289,22 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
             )}
 
             {error && (
-              <div className="p-2.5 rounded-xl bg-red-500/15 text-red-400 text-[11px] font-medium border border-red-500/30 flex items-center gap-1.5">
+              <div className="p-2.5 rounded-xl bg-[#1D1D1D] text-[#FF4D4D] text-[11px] font-medium border border-[#FF4D4D]/40 flex items-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="p-2.5 rounded-xl dash-inner border text-[10px] dash-muted leading-tight space-y-1">
-              <p>• <strong>Processing:</strong> {method === 'sepa' ? '1–2 European banking business days' : '15–30 minutes blockchain confirmation'}.</p>
-              <p>• <strong>Fee:</strong> €0.00 (Zero withdrawal fee charged).</p>
+            <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#303030] text-[10px] text-[#D0D0D0] leading-tight space-y-1">
+              <p>• <strong className="text-white">Processing:</strong> {method === 'sepa' ? '1–2 European banking business days' : '15–30 minutes blockchain confirmation'}.</p>
+              <p>• <strong className="text-white">Fee:</strong> €0.00 (Zero withdrawal fee charged).</p>
             </div>
 
             <div className="pt-1 flex flex-col gap-1.5">
               <button
                 type="submit"
                 disabled={isSubmitting || user.walletBalance <= 0 || amount <= 0 || amount > user.walletBalance}
-                className="btn btn-primary text-xs font-bold w-full py-2.5 flex items-center justify-center cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold flex items-center justify-center cursor-pointer transition-colors disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <ButtonLoader text="Processing Withdrawal..." />
@@ -315,7 +315,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
               <button 
                 type="button" 
                 onClick={onClose} 
-                className="btn btn-secondary text-xs font-medium w-full py-2 cursor-pointer"
+                className="w-full py-2 rounded-xl bg-[#151515] hover:bg-[#252525] border border-[#303030] text-white text-xs font-medium cursor-pointer transition-colors"
               >
                 Cancel
               </button>
@@ -323,23 +323,23 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
           </form>
         ) : (
           <div className="text-center py-6 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-[#1D1D1D] text-[#2ECC71] border border-[#303030] flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h4 className="text-xl font-bold dash-text">Withdrawal Request Registered</h4>
-            <p className="text-xs dash-muted max-w-xs mx-auto leading-relaxed">
-              Your withdrawal of <strong>{formatCurrency(amount)}</strong> via {method === 'sepa' ? 'SEPA Bank Wire' : `${cryptoToken} (${cryptoNetwork})`} has been safely locked on the ledger and sent to compliance administration.
+            <h4 className="text-xl font-bold text-white">Withdrawal Request Registered</h4>
+            <p className="text-xs text-[#D0D0D0] max-w-xs mx-auto leading-relaxed">
+              Your withdrawal of <strong className="text-white">{formatCurrency(amount)}</strong> via {method === 'sepa' ? 'SEPA Bank Wire' : `${cryptoToken} (${cryptoNetwork})`} has been safely locked on the ledger and sent to compliance administration.
             </p>
-            <div className="dash-inner p-3.5 rounded-2xl border text-left text-xs space-y-1 font-mono">
+            <div className="bg-[#1D1D1D] p-3.5 rounded-2xl border border-[#303030] text-left text-xs space-y-1 font-mono">
               <div className="flex justify-between">
-                <span className="dash-muted">Destination:</span>
-                <span className="font-bold dash-text truncate max-w-[200px]">
+                <span className="text-[#999999]">Destination:</span>
+                <span className="font-bold text-white truncate max-w-[200px]">
                   {method === 'sepa' ? iban : cryptoAddress}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="dash-muted">Status:</span>
-                <span className="font-bold text-amber-500">Pending Admin Approval</span>
+                <span className="text-[#999999]">Status:</span>
+                <span className="font-bold text-[#FF9F43]">Pending Admin Approval</span>
               </div>
             </div>
             <button 
@@ -347,7 +347,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                 setSuccess(false);
                 onClose();
               }} 
-              className="btn btn-primary text-xs font-bold w-full mt-4 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold mt-4 cursor-pointer transition-colors"
             >
               Return to Dashboard
             </button>
