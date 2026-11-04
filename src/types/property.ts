@@ -20,11 +20,6 @@ export interface PropertyDocument {
   size: string;
   url: string;
   updatedAt: string;
-  verificationStatus?: 'verified' | 'pending_verification' | 'unverified';
-  issuer?: string;
-  issueDate?: string;
-  reviewDate?: string;
-  version?: string;
 }
 
 export interface FinancialBreakdown {
@@ -75,21 +70,18 @@ export interface Property {
   bannerImage: string;
   targetAmount: number;
   fundedAmount: number;
-  tokenPrice: number; // e.g. €364 per token/unit
+  tokenPrice: number; // e.g. €100 per token
   totalTokens: number;
   availableTokens: number;
   estimatedAnnualYield: number; // e.g. 11.4%
-  monthlyTargetRate?: number; // e.g. 6.0 (% monthly target percentage, 6%–12% range)
   capitalAppreciationYield: number; // e.g. 4.2%
   totalEstimatedReturn: number; // e.g. 15.6%
   durationMonths: number; // e.g. 36 or 48 months
   minimumInvestment: number; // Strictly >= €750
   distributionFrequency: 'Monthly' | 'Quarterly';
   tokenTicker: string; // e.g. RENT-VAL01
-  blockchainNetwork: string; // e.g. 'Solana Mainnet-Beta / Devnet'
+  blockchainNetwork: string; // e.g. 'Polygon POS'
   tokenContractAddress: string;
-  solanaMintAddress?: string;
-  solanaProgramId?: string;
   description: string;
   investmentStructure: string;
   highlights: string[];
@@ -125,28 +117,6 @@ export interface Property {
   isOffMarket?: boolean;
   tourUrl?: string;
   externalTourUrl?: string;
-  isFullyFunded?: boolean;
-  verificationStatus?: 'verified' | 'under_review' | 'unverified';
-  valuationBasis?: string;
-  legalOwnerEntity?: string;
-  spvEntityName?: string;
-  spvJurisdiction?: string;
-  spvRegistrationNumber?: string;
-  sensitivityAnalysis?: {
-    baseCaseYield: number;
-    downsideCaseYield: number;
-    stressTestYield: number;
-    vacancyAssumption: string;
-  };
-  assignedFunction?: string;
-  assignedRole?: string;
-  assignedAgentName?: string;
-  assignedAt?: string;
-  assignedBy?: string;
-  approvedForFrontend?: boolean;
-  approvedAt?: string;
-  approvedBy?: string;
-  approvalNotes?: string;
-  frontendVisibilityStatus?: 'admin_only' | 'live_frontend';
+  youtubeId?: string;
 }
 
