@@ -36,7 +36,6 @@ import { AdminPanel } from './components/admin/AdminPanel';
 import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
 import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
-import { SmartsuppWidget } from './components/support/SmartsuppWidget';
 import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
 import { updatePageSeo } from './lib/seo';
 import { InsightsEditorialHome } from './components/insights/InsightsEditorialHome';
@@ -625,8 +624,6 @@ function MainApp() {
       {!isDashboardView && !isIsolatedAdminEnvironment && (
         <Footer onNavigate={navigateTo} />
       )}
-
-      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
 
       {!isIsolatedAdminEnvironment && (
         <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />

@@ -544,7 +544,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </aside>
 
       {/* Main Content Area */}
-      <div className="app-main-area pb-14 md:pb-0 flex-1 flex flex-col h-screen overflow-hidden bg-[#090e17]">
+      <div className="app-main-area pb-14 md:pb-0 flex-1 flex flex-col h-screen overflow-hidden bg-[#090e17] relative">
+        {/* Animated Skyscraper Atmospheric Background */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+          <img
+            src="/assets/aistudio/IMG_7668_dab9a604.jpeg"
+            alt="Skyscraper architectural skyline background"
+            loading="eager"
+            className="w-full h-full object-cover object-center opacity-45 anim-dashboard-bg transition-all duration-1000 mix-blend-screen"
+          />
+          {/* Subtle Deep Obsidian & Cyan Vignette Overlay */}
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(circle at 50% 30%, rgba(9, 14, 23, 0.52) 0%, rgba(9, 14, 23, 0.90) 75%, #090e17 100%)',
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0d1522]/80 via-transparent to-[#090e17]" />
+          {/* Alive Cyan/Emerald Breathing Aura Glow */}
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[650px] h-[650px] bg-gradient-to-tr from-[#0e7a6b]/20 via-[#3b82f6]/15 to-[#c59b4c]/15 rounded-full blur-[130px] anim-dashboard-aura" />
+        </div>
+
         {/* Executive Dashboard Header */}
         <header className="bg-[#0d1522]/95 border-b border-[#1a2638] backdrop-blur-md h-16 shrink-0 z-40 px-4 sm:px-6 flex items-center justify-between sticky top-0 shadow-md">
           {/* Left: Brand Name on Mobile & Active Workspace Label */}
@@ -817,7 +837,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         )}
 
         {/* Scrollable Content Area */}
-        <main className="app-content-scroll flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        <main className="app-content-scroll flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 relative z-10">
           <div className="max-w-[1400px] w-full mx-auto space-y-6 text-left">
 
             {/* 1. EXECUTIVE COMMAND CENTER OVERVIEW */}
@@ -825,43 +845,59 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="space-y-6 animate-in fade-in duration-200">
                 {/* Top Executive KPI Metric Strip */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
-                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md">
-                    <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Portfolio Net Valuation</p>
+                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md hover:border-[#2a3c58] transition-all">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Portfolio Net Valuation</p>
+                      <span className="text-[9px] font-mono text-slate-500">Valued Today</span>
+                    </div>
                     <p className="text-xl sm:text-2xl font-extrabold font-mono text-white mt-1">
                       {formatCurrency(totalPortfolioValue)}
                     </p>
-                    <p className="text-[10px] text-emerald-400 font-medium mt-1">
-                      +{investments.length} Active SPV Holdings
+                    <p className="text-[10px] text-emerald-400 font-medium mt-1 flex items-center justify-between">
+                      <span>+{investments.length} Active SPV Holdings</span>
+                      {totalInvestedAmount > 0 && <span className="text-slate-400">€{totalInvestedAmount.toLocaleString()} equity</span>}
                     </p>
                   </div>
 
-                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md">
-                    <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Available Liquid Cash</p>
+                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md hover:border-[#2a3c58] transition-all">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Available Liquid Cash</p>
+                      <span className="text-[9px] font-mono font-bold text-emerald-400">Cleared</span>
+                    </div>
                     <p className="text-xl sm:text-2xl font-extrabold font-mono text-[#c59b4c] mt-1">
                       {formatCurrency(user.walletBalance)}
                     </p>
-                    <p className="text-[10px] text-slate-400 font-medium mt-1">
-                      CaixaBank Escrow Account
+                    <p className="text-[10px] text-slate-400 font-medium mt-1 flex items-center justify-between">
+                      <span>CaixaBank Escrow</span>
+                      <span>100% Withdrawable</span>
                     </p>
                   </div>
 
-                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md">
-                    <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Estimated Monthly Rent</p>
+                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md hover:border-[#2a3c58] transition-all">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Estimated Monthly Rent</p>
+                      <span className="text-[9px] font-mono text-emerald-400 font-semibold">1st of Month</span>
+                    </div>
                     <p className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400 mt-1">
                       {formatCurrency(totalMonthlyYieldEstimated)}
                     </p>
-                    <p className="text-[10px] text-emerald-400 font-medium mt-1">
-                      Credited on 1st of month
+                    <p className="text-[10px] text-slate-400 font-medium mt-1 flex items-center justify-between">
+                      <span>Collected: +{formatCurrency(totalDividendsEarned)}</span>
+                      <span className="text-emerald-400 font-bold">Projected APY</span>
                     </p>
                   </div>
 
-                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md">
-                    <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Tokenized Shares Held</p>
+                  <div className="bg-[#101a2a] p-4 sm:p-5 rounded-2xl border border-[#1e2c40] shadow-md hover:border-[#2a3c58] transition-all">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">Tokenized Shares Held</p>
+                      <span className="text-[9px] font-mono text-[#c59b4c] font-bold">On-Chain Verified</span>
+                    </div>
                     <p className="text-xl sm:text-2xl font-extrabold font-mono text-white mt-1">
                       {totalTokensHeld} Units
                     </p>
-                    <p className="text-[10px] text-[#c59b4c] font-medium mt-1">
-                      100% Notarized Legal Deeds
+                    <p className="text-[10px] text-[#c59b4c] font-medium mt-1 flex items-center justify-between">
+                      <span>100% Notarized Legal Deeds</span>
+                      <span>SPV Confirmed</span>
                     </p>
                   </div>
                 </div>
@@ -909,7 +945,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 {/* Account Lifecycle Pipeline */}
                 <ColoredPipeline
                   title="Investor Account &amp; Ownership Lifecycle"
-                  subtitle="Regulated European participatory model progression"
+                  subtitle="Regulated European participatory model progression — Click stage to open workspace"
+                  onStageClick={(stage) => {
+                    if (stage.id === 'stg-1') {
+                      setActiveTab('profile');
+                      setSettingsSection('profile');
+                    } else if (stage.id === 'stg-2') {
+                      setActiveTab('documents');
+                    } else if (stage.id === 'stg-3') {
+                      setActiveTab('wallet');
+                      setIsDepositOpen(true);
+                    } else if (stage.id === 'stg-4') {
+                      setActiveTab('portfolio');
+                    } else if (stage.id === 'stg-5') {
+                      setActiveTab('analytics');
+                    }
+                  }}
                   stages={[
                     {
                       id: 'stg-1',
