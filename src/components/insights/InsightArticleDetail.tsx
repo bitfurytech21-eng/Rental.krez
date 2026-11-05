@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   Building2,
   FileText,
-  Printer
+  Printer,
+  Video
 } from 'lucide-react';
 import { formatDate } from '../../lib/utils';
 import { updatePageSeo } from '../../lib/seo';
@@ -288,6 +289,28 @@ export const InsightArticleDetail: React.FC<InsightArticleDetailProps> = ({
       {/* 5. Main Editorial Body Container */}
       <main className="py-8 px-4 sm:px-6 max-w-[960px] mx-auto text-left">
         
+        {/* Executive Video Briefing if available */}
+        {article.youtubeId && (
+          <div className="mb-10 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-[#BEE179]">
+              <span className="flex items-center gap-2">
+                <Video className="w-4 h-4 text-red-500 animate-pulse" />
+                <span>Executive Video Briefing &amp; Market Broadcast</span>
+              </span>
+              <span className="text-[10px] text-[#8EA7C7] font-mono">HD 1080p</span>
+            </div>
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-[#1D3860] bg-[#0B1B30] shadow-2xl">
+              <iframe
+                src={`https://www.youtube.com/embed/${article.youtubeId}?autoplay=0&rel=0`}
+                title={`Video briefing for ${article.title}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full border-0"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Executive Summary Box */}
         {article.keyTakeaways && article.keyTakeaways.length > 0 && (
           <aside className="mb-10 p-6 sm:p-8 rounded-3xl bg-[#102442] border-2 border-[#1D3860] shadow-xs space-y-4">

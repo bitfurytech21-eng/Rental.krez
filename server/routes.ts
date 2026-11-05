@@ -50,6 +50,8 @@ import {
   recordAdminFailedAttempt,
   resetAdminFailedAttempts
 } from './adminAuth';
+import { ALL_KRETZ_MEMBERS } from '../src/data/kretzTeam';
+import { BLOG_POSTS } from '../src/data/blogPosts';
 
 const router = Router();
 
@@ -57,7 +59,89 @@ const router = Router();
 router.post('/translate', handleTranslationRequest);
 router.get('/translate/providers', handleGetProviders);
 router.post('/translate/switch', handleSwitchProvider);
-router.post('/translate/test', handleTestTranslation);
+/**
+ * GET /api/v1/blog & /api/blog
+ * Returns editorial blog articles with category & search filters
+ */
+router.get('/blog', (req: AuthenticatedRequest, res: Response) => {
+  const { category, search } = req.query;
+  let posts = [...BLOG_POSTS];
+
+  if (category && typeof category === 'string' && category !== 'all') {
+    posts = posts.filter(p => p.category === category);
+  }
+
+  if (search && typeof search === 'string') {
+    const q = search.toLowerCase().trim();
+    posts = posts.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      p.excerpt.toLowerCase().includes(q) ||
+      p.tags.some(t => t.toLowerCase().includes(q))
+    );
+  }
+
+  return res.json({
+    success: true,
+    data: posts,
+    total: posts.length,
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/blog/:slug & /api/blog/:slug
+ */
+router.get('/blog/:slug', (req: AuthenticatedRequest, res: Response) => {
+  const { slug } = req.params;
+  const post = BLOG_POSTS.find(p => p.slug === slug || p.id === slug);
+
+  if (!post) {
+    return res.status(404).json({
+      success: false,
+      error: 'Blog article not found',
+      requestId: req.id
+    });
+  }
+
+  return res.json({
+    success: true,
+    data: post,
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/team & /api/team
+ * Returns global Kretz executive leadership & regional team members
+ */
+router.get('/team', (req: AuthenticatedRequest, res: Response) => {
+  const { category, search } = req.query;
+  let members = ALL_KRETZ_MEMBERS.map(m => ({
+    ...m,
+    image: m.remoteImage || (typeof m.image === 'string' ? m.image : 'https://files.kretzrealestate.com/placeholder.jpg')
+  }));
+
+  if (category && typeof category === 'string' && category !== 'all') {
+    members = members.filter(m => m.category === category);
+  }
+
+  if (search && typeof search === 'string') {
+    const q = search.toLowerCase().trim();
+    members = members.filter(m =>
+      m.name.toLowerCase().includes(q) ||
+      m.role.toLowerCase().includes(q) ||
+      m.location.toLowerCase().includes(q) ||
+      m.specialty.toLowerCase().includes(q)
+    );
+  }
+
+  return res.json({
+    success: true,
+    data: members,
+    total: members.length,
+    requestId: req.id
+  });
+});
 
 const contactLimiter = rateLimiter({
   windowMs: 60 * 1000,
@@ -3796,6 +3880,57 @@ router.get('/insights/:slug', (req, res) => {
     success: true,
     data: article,
     requestId: (req as any).id
+  });
+});
+
+/**
+ * GET /api/v1/blog & /api/blog
+ * Returns editorial blog articles with category & search filters
+ */
+router.get('/blog', (req: AuthenticatedRequest, res: Response) => {
+  const { category, search } = req.query;
+  let posts = [...BLOG_POSTS];
+
+  if (category && typeof category === 'string' && category !== 'all') {
+    posts = posts.filter(p => p.category === category);
+  }
+
+  if (search && typeof search === 'string') {
+    const q = search.toLowerCase().trim();
+    posts = posts.filter(p =>
+      p.title.toLowerCase().includes(q) ||
+      p.excerpt.toLowerCase().includes(q) ||
+      p.tags.some(t => t.toLowerCase().includes(q))
+    );
+  }
+
+  return res.json({
+    success: true,
+    data: posts,
+    total: posts.length,
+    requestId: req.id
+  });
+});
+
+/**
+ * GET /api/v1/blog/:slug & /api/blog/:slug
+ */
+router.get('/blog/:slug', (req: AuthenticatedRequest, res: Response) => {
+  const { slug } = req.params;
+  const post = BLOG_POSTS.find(p => p.slug === slug || p.id === slug);
+
+  if (!post) {
+    return res.status(404).json({
+      success: false,
+      error: 'Blog article not found',
+      requestId: req.id
+    });
+  }
+
+  return res.json({
+    success: true,
+    data: post,
+    requestId: req.id
   });
 });
 

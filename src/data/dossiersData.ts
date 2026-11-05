@@ -113,6 +113,8 @@ export const INITIAL_INSIGHT_ARTICLES: InsightArticle[] = [
     coverImageAttribution: 'Photo by Laurent Perrier / Kretz Editorial License',
     isFeatured: true,
     isEditorsPick: true,
+    youtubeId: 'dwmIqvREPz8',
+    youtubeUrl: 'https://www.youtube.com/watch?v=dwmIqvREPz8',
     tags: ['Market Barometer', 'Yields', 'Paris Real Estate', 'Madrid Prime', 'SPV Tokenization', 'Cap Rates'],
     keyTakeaways: [
       'Prime residential capitalization rates in Central Paris have normalized to 4.1% - 4.4% net, driven by persistent international demand for turn-key luxury assets.',
@@ -257,6 +259,8 @@ For the remainder of the decade, the Kretz research committee recommends a balan
     coverImageAttribution: 'Photo by Kretz Blockchain Laboratory',
     isFeatured: false,
     isEditorsPick: true,
+    youtubeId: 'DnIbo-CBXos',
+    youtubeUrl: 'https://youtu.be/DnIbo-CBXos',
     tags: ['Tokenization', 'PropTech', 'Smart Contracts', 'MiCA', 'SPV Custody', 'Blockchain'],
     keyTakeaways: [
       'Each asset is ring-fenced within a dedicated limited liability company (SL in Spain, SAS in France), strictly insulating investors from platform bankruptcy risk.',
@@ -408,6 +412,8 @@ Platforms operating under registered CASP licenses benefit from **European passp
     coverImageAttribution: 'Photo by Javier Gutierrez / Kretz Legal Review',
     isFeatured: false,
     isEditorsPick: false,
+    youtubeId: 'wYFKyG5xC1Y',
+    youtubeUrl: 'https://youtu.be/wYFKyG5xC1Y',
     tags: ['Tax Strategy', 'Golden Visa', 'Beckham Law', 'Wealth Tax', 'Spain Real Estate', 'Family Office'],
     keyTakeaways: [
       'The discontinuation of Spain’s €500,000 property-linked Golden Visa has redirected foreign capital toward the Digital Nomad Visa and Entrepreneurial Residency regimes.',
@@ -517,6 +523,8 @@ For property investors holding assets via corporate holding entities or debt ins
     coverImageAttribution: 'Photo by Kretz Paris Archive',
     isFeatured: false,
     isEditorsPick: true,
+    youtubeId: 'hJlujgm6GH4',
+    youtubeUrl: 'https://youtu.be/hJlujgm6GH4',
     tags: ['Paris Luxury', 'Haussmannian', 'Golden Triangle', 'Ultra-Prime', 'Family Office', 'Heritage'],
     keyTakeaways: [
       'Properties priced above €4,000,000 in Central Paris experienced 0% reliance on bank financing, with 94% of deals closing on all-cash liquidity.',

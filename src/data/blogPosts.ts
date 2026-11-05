@@ -13,6 +13,7 @@ export interface BlogPost {
   publishedAt: string;
   readTime: string;
   image: string;
+  youtubeId?: string;
   tags: string[];
 }
 
@@ -26,6 +27,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readTime: '6 min read',
     publishedAt: '2026-03-12',
     image: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
+    youtubeId: 'dwmIqvREPz8',
     tags: ['Tokenization', 'Smart Contracts', 'SPV', 'Dividends'],
     author: {
       name: 'Adrián Fariza',
@@ -59,6 +61,7 @@ Investors can withdraw their capital via instant SEPA wire transfers or reinvest
     readTime: '5 min read',
     publishedAt: '2026-02-28',
     image: 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
+    youtubeId: 'wYFKyG5xC1Y',
     tags: ['TIR', 'Plusvalía', 'ROI', 'Financial Metrics'],
     author: {
       name: 'Elena Rostova',
@@ -92,6 +95,7 @@ Plusvalía represents the positive difference between the acquisition cost and t
     readTime: '7 min read',
     publishedAt: '2026-02-14',
     image: 'https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg',
+    youtubeId: 'DnIbo-CBXos',
     tags: ['MiCA', 'Regulation', 'Compliance', 'EU Law', 'CNMV'],
     author: {
       name: 'Carlos Menéndez',
@@ -121,6 +125,7 @@ Creditors of the platform have zero claim against the underlying real estate ass
     readTime: '6 min read',
     publishedAt: '2026-01-22',
     image: 'https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg',
+    youtubeId: 'hJlujgm6GH4',
     tags: ['Málaga', 'Madrid', 'Valencia', 'Flipping', 'Rental Yield'],
     author: {
       name: 'Adrián Fariza',
@@ -152,6 +157,7 @@ Spain’s real estate market offers two fundamentally distinct strategies for fr
     readTime: '5 min read',
     publishedAt: '2026-01-08',
     image: 'https://files.kretzrealestate.com/67ec4082a8f72d825044d16021ae9bdf.jpg',
+    youtubeId: 'dwmIqvREPz8',
     tags: ['SOCIMI', 'REIT', 'Fractional', 'Comparison'],
     author: {
       name: 'Elena Rostova',
@@ -179,6 +185,7 @@ For decades, European investors looking for real estate exposure without managin
     readTime: '6 min read',
     publishedAt: '2025-12-15',
     image: 'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg',
+    youtubeId: 'DnIbo-CBXos',
     tags: ['Family Office', 'Treasury', 'Institutional', 'Wealth Management'],
     author: {
       name: 'Carlos Menéndez',
@@ -207,6 +214,7 @@ By deploying €100,000 to €500,000 tickets across 10 to 20 vetted residential
     readTime: '8 min read',
     publishedAt: '2025-11-30',
     image: 'https://files.kretzrealestate.com/d92edb3b50aae9836a6fd0808b3fd4f.jpg',
+    youtubeId: 'wYFKyG5xC1Y',
     tags: ['Taxation', 'Spain', 'IRPF', 'Modelo 721', 'Withholdings'],
     author: {
       name: 'Carlos Menéndez',
@@ -241,6 +249,7 @@ Because our tokens represent participatory claims against a Spanish legal entity
     readTime: '5 min read',
     publishedAt: '2025-11-12',
     image: 'https://files.kretzrealestate.com/48be4374b5dfd9ec1fac98496621c72.jpg',
+    youtubeId: 'hJlujgm6GH4',
     tags: ['Secondary Market', 'Liquidity', 'P2P', 'Trading', 'Polygon'],
     author: {
       name: 'Elena Rostova',
@@ -266,6 +275,7 @@ Traditional real estate requires months of listing, brokerage commissions (often
     readTime: '7 min read',
     publishedAt: '2025-10-20',
     image: 'https://files.kretzrealestate.com/19c23e6587bc7e7e96e969be390bf34.jpg',
+    youtubeId: 'dwmIqvREPz8',
     tags: ['Due Diligence', 'Underwriting', 'RICS', 'Safety', 'Audit'],
     author: {
       name: 'Adrián Fariza',

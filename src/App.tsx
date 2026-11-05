@@ -247,6 +247,17 @@ function MainApp() {
       );
     }
 
+    if (basePath.startsWith('/blog/')) {
+      const slug = basePath.replace('/blog/', '');
+      return (
+        <BlogPage
+          initialSlug={slug}
+          onExploreProperties={() => navigateTo('/properties')}
+          onNavigateContact={() => navigateTo('/contact')}
+        />
+      );
+    }
+
     switch (basePath) {
       case '/':
       case '':

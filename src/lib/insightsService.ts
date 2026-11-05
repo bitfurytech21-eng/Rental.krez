@@ -25,9 +25,19 @@ class InsightsService {
       if (storedArticles) {
         const parsed = JSON.parse(storedArticles);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge missing initial articles
+          // Merge missing initial articles and sync youtubeId
+          const initialMap = new Map(INITIAL_INSIGHT_ARTICLES.map(a => [a.slug, a]));
           const existingSlugs = new Set(parsed.map(a => a.slug));
           const missing = INITIAL_INSIGHT_ARTICLES.filter(a => !existingSlugs.has(a.slug));
+          
+          parsed.forEach((art: any) => {
+            const init = initialMap.get(art.slug);
+            if (init && init.youtubeId && !art.youtubeId) {
+              art.youtubeId = init.youtubeId;
+              art.youtubeUrl = init.youtubeUrl;
+            }
+          });
+
           this.articles = [...parsed, ...missing];
         } else {
           this.articles = [...INITIAL_INSIGHT_ARTICLES];

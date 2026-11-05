@@ -378,6 +378,25 @@ export const propertiesApi = {
 };
 
 /**
+ * Team & Executive Leadership Endpoints
+ */
+export const teamApi = {
+  getTeam: (params?: { category?: string; search?: string }) =>
+    api.get<{ success: boolean; data: any[]; total: number }>('/team', { params, skipAuth: true }),
+};
+
+/**
+ * Editorial Blog & Insights Academy Endpoints
+ */
+export const blogApi = {
+  getPosts: (params?: { category?: string; search?: string }) =>
+    api.get<{ success: boolean; data: any[]; total: number }>('/blog', { params, skipAuth: true }),
+
+  getPostBySlug: (slug: string) =>
+    api.get<{ success: boolean; data: any }>(`/blog/${slug}`, { skipAuth: true }),
+};
+
+/**
  * User Profile, Dashboard & Portfolio Endpoints
  */
 export const userApi = {

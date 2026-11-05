@@ -15,6 +15,8 @@ const PRIMARY_NAV_ITEMS = [
   { to: '/properties', label: 'Properties' },
   { to: '/how-it-works', label: 'How It Works' },
   { to: '/portfolio', label: 'Portfolio' },
+  { to: '/team', label: 'Team' },
+  { to: '/blog', label: 'Blog' },
   { to: '/journal', label: 'Journal' },
   { to: '/insights', label: 'Insights' },
   { to: '/contact', label: 'Contact' },

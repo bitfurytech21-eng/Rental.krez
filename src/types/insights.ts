@@ -63,4 +63,6 @@ export interface InsightArticle {
   sharesCount: number;
   downloadableResource?: DownloadableResource;
   relatedArticleSlugs?: string[];
+  youtubeId?: string;
+  youtubeUrl?: string;
 }
