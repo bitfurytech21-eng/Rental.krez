@@ -206,11 +206,11 @@ export const TrustedByInvestorsSection: React.FC = () => {
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 relative z-10">
         {/* Section Header */}
         <div className="max-w-3xl mx-auto text-center space-y-3 mb-12 sm:mb-16">
-          <p className="text-[11px] font-extrabold text-[#BEE179] tracking-[0.2em] uppercase">
+          <p className="text-[11px] font-extrabold text-[#C5A880] tracking-[0.2em] uppercase">
             Institutional Ecosystem & Custody
           </p>
 
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#BEE179] tracking-tight drop-shadow-xs">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#C5A880] tracking-tight drop-shadow-xs">
             Trusted by Private & Institutional Investors
           </h2>
 
@@ -231,7 +231,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
                 return (
                   <div
                     key={`partner-${partner.id}-${idx}`}
-                    className="p-4 sm:p-5 rounded-lg bg-[#0B1B30] border border-[#1D3860] shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center min-w-[180px] sm:min-w-[220px] h-16 sm:h-20 shrink-0 group hover:border-[#BEE179]/40"
+                    className="p-4 sm:p-5 rounded-lg bg-[#0B1B30] border border-[#1D3860] shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-center min-w-[180px] sm:min-w-[220px] h-16 sm:h-20 shrink-0 group hover:border-[#C5A880]/40"
                   >
                     <PartnerSvg className="h-6 sm:h-7 w-auto max-w-[85%] filter brightness-200 group-hover:brightness-100 transition-all duration-300 opacity-80 group-hover:opacity-100" />
                   </div>
@@ -244,7 +244,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
         {/* Marquee 2: Regulatory Compliance */}
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center gap-2 mb-4 text-center">
-            <Lock className="w-3.5 h-3.5 text-[#BEE179]" />
+            <Lock className="w-3.5 h-3.5 text-[#C5A880]" />
             <span className="text-[11px] font-extrabold uppercase tracking-wider text-white">
               Regulatory Frameworks & Institutional Safeguards
             </span>
@@ -261,7 +261,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
                   return (
                     <div
                       key={`reg-${badge.id}-${idx}`}
-                      className="bg-[#0B1B30] border border-[#1D3860] hover:border-[#BEE179]/40 rounded-lg p-3.5 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-3.5 min-w-[260px] sm:min-w-[300px] h-16 sm:h-20 shrink-0 group"
+                      className="bg-[#0B1B30] border border-[#1D3860] hover:border-[#C5A880]/40 rounded-lg p-3.5 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-3.5 min-w-[260px] sm:min-w-[300px] h-16 sm:h-20 shrink-0 group"
                     >
                       <div className="shrink-0 p-1 bg-white rounded border border-[#1D3860]">
                         <AuthLogo className="h-7 sm:h-8 w-auto" />
@@ -269,15 +269,15 @@ export const TrustedByInvestorsSection: React.FC = () => {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs font-bold text-white truncate group-hover:text-[#BEE179] transition-colors">
+                          <span className="text-xs font-bold text-white truncate group-hover:text-[#C5A880] transition-colors">
                             {badge.code}
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#0B1B30] bg-[#BEE179] px-1.5 py-0.5 rounded shrink-0">
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#0B1B30] bg-[#C5A880] px-1.5 py-0.5 rounded shrink-0">
                             <CheckCircle2 className="w-2.5 h-2.5 text-[#0B1B30]" />
                             {badge.tag}
                           </span>
                         </div>
-                        <div className="text-[11px] font-bold text-[#BEE179] leading-snug truncate">
+                        <div className="text-[11px] font-bold text-[#C5A880] leading-snug truncate">
                           {badge.title}
                         </div>
                         <div className="text-[10px] text-[#8EA7C7] leading-tight truncate">
@@ -294,7 +294,7 @@ export const TrustedByInvestorsSection: React.FC = () => {
 
         {/* Sub-bar / Trust Statement */}
         <div className="mt-8 text-center text-xs text-[#8EA7C7] font-semibold flex items-center justify-center gap-2 px-2">
-          <Award className="w-3.5 h-3.5 text-[#BEE179] shrink-0" />
+          <Award className="w-3.5 h-3.5 text-[#C5A880] shrink-0" />
           <span>Notarial Deed Escrow · RICS Certified Appraisals · Rigorous SPV Due Diligence</span>
         </div>
       </div>

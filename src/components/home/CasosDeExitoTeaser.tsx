@@ -106,7 +106,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
         {/* Section Header */}
         <div className="flex flex-col lg:flex-row items-start lg:items-end justify-between gap-6 mb-12">
           <div className="space-y-3 max-w-2xl">
-            <p className="text-xs font-bold text-[#BEE179] tracking-wider">
+            <p className="text-xs font-bold text-[#C5A880] tracking-wider">
               Proven Performance · Audited SPV Dissolution Track Record
             </p>
 
@@ -115,7 +115,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
               style={{ textWrap: 'balance' }}
             >
               129+ Properties Exited with{' '}
-              <span className="text-[#BEE179]">15.4% Avg Realized IRR</span>
+              <span className="text-[#C5A880]">15.4% Avg Realized IRR</span>
             </h2>
 
             <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed font-normal">
@@ -130,7 +130,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                   type="button"
                   onClick={handlePrev}
                   aria-label="Previous realized case study"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -141,7 +141,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                   type="button"
                   onClick={handleNext}
                   aria-label="Next realized case study"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -151,7 +151,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
             <button
               type="button"
               onClick={onNavigateCasos}
-              className="py-2.5 px-5 text-xs font-bold bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="py-2.5 px-5 text-xs font-bold bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] rounded-xl flex items-center gap-2 cursor-pointer shadow-xs transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <span>All Realized Cases</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -186,7 +186,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                 >
                   <article
                     onClick={onNavigateCasos}
-                    className="h-full bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden hover:border-[#BEE179]/60 transition-colors duration-200 flex flex-col justify-between group cursor-pointer"
+                    className="h-full bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden hover:border-[#C5A880]/60 transition-colors duration-200 flex flex-col justify-between group cursor-pointer"
                   >
                     <div>
                       <div className="relative aspect-[16/10] overflow-hidden bg-[#0B1B30]">
@@ -208,7 +208,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
 
                         <div className="absolute bottom-3 left-3.5 right-3.5 text-left">
                           <div className="flex items-center gap-1.5 text-xs text-[#D1E2F7]">
-                            <span className="text-[#BEE179] font-semibold">
+                            <span className="text-[#C5A880] font-semibold">
                               {study.city}, {study.country}
                             </span>
                             <span aria-hidden="true">·</span>
@@ -224,7 +224,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                         <div className="grid grid-cols-3 gap-2 py-3 border-y border-[#1D3860] text-center">
                           <div>
                             <p className="text-[11px] text-[#8EA7C7] font-medium">Realized IRR</p>
-                            <p className="font-mono tabular-nums text-lg sm:text-xl font-bold text-[#BEE179]">
+                            <p className="font-mono tabular-nums text-lg sm:text-xl font-bold text-[#C5A880]">
                               {study.realTIR}%
                             </p>
                           </div>
@@ -257,7 +257,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-[#8EA7C7]">Notary Deed</span>
-                            <span className="font-mono tabular-nums text-[#BEE179] text-[11px] font-bold">
+                            <span className="font-mono tabular-nums text-[#C5A880] text-[11px] font-bold">
                               {study.spvDeedId}
                             </span>
                           </div>
@@ -269,7 +269,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                       </div>
                     </div>
 
-                    <div className="px-5 sm:px-6 py-4 border-t border-[#1D3860] flex items-center justify-between text-xs font-bold text-[#BEE179] group-hover:underline">
+                    <div className="px-5 sm:px-6 py-4 border-t border-[#1D3860] flex items-center justify-between text-xs font-bold text-[#C5A880] group-hover:underline">
                       <span>View Notarial Deed & Audit</span>
                       <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -291,7 +291,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                   onClick={() => setCurrentIndex(idx)}
                   className={`h-2 rounded-full transition-all duration-200 cursor-pointer ${
                     idx === currentIndex
-                      ? 'w-8 bg-[#BEE179]'
+                      ? 'w-8 bg-[#C5A880]'
                       : 'w-2.5 bg-[#1D3860] hover:bg-[#355A8F]'
                   }`}
                 />
@@ -303,8 +303,8 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
         {/* Dual Banner: Educational Blog & Academy */}
         <div className="p-8 sm:p-10 rounded-2xl bg-[#102442] border border-[#1D3860] shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-8 text-left">
           <div className="space-y-3 max-w-xl">
-            <p className="text-xs font-bold text-[#BEE179] tracking-wider flex items-center gap-2">
-              <BookOpen className="w-3.5 h-3.5 text-[#BEE179]" />
+            <p className="text-xs font-bold text-[#C5A880] tracking-wider flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5 text-[#C5A880]" />
               <span>Investment Academy & Legal Guides</span>
             </p>
             <h3 className="font-serif text-2xl font-bold text-white">
@@ -317,7 +317,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
               <button
                 type="button"
                 onClick={onNavigateBlog}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#BEE179] hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C5A880] hover:underline cursor-pointer"
               >
                 <span>Browse Educational Guides</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -334,7 +334,7 @@ export const CasosDeExitoTeaser: React.FC<CasosDeExitoTeaserProps> = ({
                 className="p-4 rounded-xl bg-[#0B1B30] hover:bg-[#132745] border border-[#1D3860] transition-colors cursor-pointer space-y-1"
               >
                 <div className="flex items-center gap-2 text-[11px] text-[#8EA7C7]">
-                  <span className="font-bold text-[#BEE179]">{art.category}</span>
+                  <span className="font-bold text-[#C5A880]">{art.category}</span>
                   <span aria-hidden="true">·</span>
                   <span className="font-mono tabular-nums">{art.readTime}</span>
                 </div>

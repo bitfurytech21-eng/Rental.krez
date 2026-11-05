@@ -97,7 +97,7 @@ export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCou
         >
           <path
             d="M0 150 C 360 95, 720 185, 1080 115 C 1260 80, 1360 110, 1440 95"
-            stroke="#BEE179"
+            stroke="#C5A880"
             strokeOpacity="0.35"
             strokeWidth="1"
             strokeDasharray="4 6"
@@ -126,7 +126,7 @@ export const PlatformStats: React.FC<PlatformStatsProps> = ({ activeOfferingsCou
               }}
               className="text-left lg:px-8 first:lg:pl-0 last:lg:pr-0 space-y-2"
             >
-              <div className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-black text-[#BEE179] tracking-tight tabular-nums">
+              <div className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-black text-[#C5A880] tracking-tight tabular-nums">
                 {s.value}
               </div>
               <div className="text-xs tracking-wider font-extrabold text-white">

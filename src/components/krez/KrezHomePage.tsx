@@ -297,25 +297,25 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
       </section>
 
       {/* Section 3.5: Kretz Family & Executive Team Spotlight */}
-      <section className="bg-[#211711] text-[#F5EFE8] py-section-sm md:py-section-spacing border-t border-[#594333]">
+      <section className="bg-[#0B1B30] text-white py-section-sm md:py-section-spacing border-t border-[#1D3860]">
         <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
           <KrezReveal>
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
-                <p className="text-xs font-semibold tracking-widest uppercase text-[#C49A6C]">
+                <p className="text-xs font-semibold tracking-widest uppercase text-[#C5A880]">
                   Leadership & Legacy
                 </p>
-                <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-[#F5EFE8] md:text-4xl">
+                <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-white md:text-4xl">
                   The Kretz Family & Partners
                 </h2>
-                <p className="mt-2 text-sm text-[#C4B5A5] max-w-xl">
+                <p className="mt-2 text-sm text-[#D1E2F7] max-w-xl">
                   Stars of Netflix “The Parisian Agency” (L'Agence) and pioneers in European prestige real estate and tokenized fractional liquidity.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => onNavigate('/team')}
-                className="inline-flex items-center gap-2 self-start text-xs font-extrabold tracking-widest uppercase px-5 py-2.5 rounded-xl bg-[#C49A6C] text-[#211711] hover:bg-[#b0875a] transition-colors md:self-auto cursor-pointer"
+                className="inline-flex items-center gap-2 self-start text-xs font-extrabold tracking-widest uppercase px-5 py-2.5 rounded-xl bg-[#C5A880] text-[#1A1A1A] hover:bg-[#B39369] transition-colors md:self-auto cursor-pointer shadow-sm"
               >
                 <span>Meet Full Team (41 Members)</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -328,9 +328,9 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
               <KrezReveal key={member.id} delay={idx * 0.05}>
                 <div
                   onClick={() => onNavigate('/team')}
-                  className="group cursor-pointer rounded-2xl border border-[#594333] bg-[#2B1E17] p-4.5 shadow-sm transition-all duration-300 hover:border-[#C49A6C] hover:-translate-y-1 flex items-center gap-4"
+                  className="group cursor-pointer rounded-2xl border border-[#1D3860] bg-[#102442] p-4.5 shadow-sm transition-all duration-300 hover:border-[#C5A880] hover:-translate-y-1 flex items-center gap-4"
                 >
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#211711] border border-[#594333]">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#0B1B30] border border-[#1D3860]">
                     <img
                       src={member.image || member.remoteImage}
                       alt={member.name}
@@ -338,11 +338,11 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
                     />
                   </div>
                   <div className="min-w-0 flex-1 text-left">
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#C49A6C] block truncate">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#C5A880] block truncate">
                       {member.role.split('·')[0]}
                     </span>
-                    <h3 className="text-base font-bold text-[#F5EFE8] truncate">{member.name}</h3>
-                    <p className="text-xs text-[#C4B5A5] truncate mt-0.5">{member.location}</p>
+                    <h3 className="text-base font-bold text-white truncate">{member.name}</h3>
+                    <p className="text-xs text-[#8EA7C7] truncate mt-0.5">{member.location}</p>
                   </div>
                 </div>
               </KrezReveal>
@@ -352,25 +352,25 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
       </section>
 
       {/* Section 3.75: Tokenization & Market Academy (Blog) */}
-      <section className="bg-[#2B1E17] text-[#F5EFE8] py-section-sm md:py-section-spacing border-t border-[#594333]">
+      <section className="bg-[#FAF8F5] text-[#1A1A1A] py-section-sm md:py-section-spacing border-t border-[#E5DDD1]">
         <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
           <KrezReveal>
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
-                <p className="text-xs font-semibold tracking-widest uppercase text-[#C49A6C]">
+                <p className="text-xs font-semibold tracking-widest uppercase text-[#9a7b3f]">
                   Real Estate Tokenization Academy
                 </p>
-                <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-[#F5EFE8] md:text-4xl">
+                <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-[#1A1A1A] md:text-4xl">
                   Featured Insights &amp; Legal Guides
                 </h2>
-                <p className="mt-2 text-sm text-[#C4B5A5] max-w-xl">
+                <p className="mt-2 text-sm text-[#6A635C] max-w-xl">
                   In-depth articles covering Notarial SPVs, MiCA regulations, participatory loan structures, secondary market liquidity, and yield optimization.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => onNavigate('/blog')}
-                className="inline-flex items-center gap-2 self-start text-xs font-extrabold tracking-widest uppercase px-5 py-2.5 rounded-xl bg-[#C49A6C] text-[#211711] hover:bg-[#b0875a] transition-colors md:self-auto cursor-pointer"
+                className="inline-flex items-center gap-2 self-start text-xs font-extrabold tracking-widest uppercase px-5 py-2.5 rounded-xl bg-[#213138] text-white hover:bg-[#18252b] transition-colors md:self-auto cursor-pointer shadow-sm"
               >
                 <span>Visit Blog &amp; Academy ({BLOG_POSTS.length} Articles)</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -383,37 +383,37 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
               <KrezReveal key={post.id} delay={idx * 0.06}>
                 <article
                   onClick={() => onNavigate(`/blog/${post.slug}`)}
-                  className="flex h-full flex-col justify-between rounded-2xl border border-[#594333] bg-[#211711] overflow-hidden p-5 shadow-sm transition-all duration-300 hover:border-[#C49A6C] hover:-translate-y-1 cursor-pointer group"
+                  className="flex h-full flex-col justify-between rounded-2xl border border-[#D9CFC2] bg-white overflow-hidden p-5 shadow-sm transition-all duration-300 hover:border-[#9a7b3f] hover:-translate-y-1 cursor-pointer group"
                 >
                   <div>
-                    <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#2B1E17] mb-4 border border-[#594333]">
+                    <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-[#FAF8F5] mb-4 border border-[#E5DDD1]">
                       <img
                         src={post.image}
                         alt={post.title}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
-                      <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-[#211711]/90 backdrop-blur-md text-[#C49A6C] text-[10px] font-bold border border-[#594333]">
+                      <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-[#213138] text-white text-[10px] font-bold">
                         {post.category}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[11px] text-[#C4B5A5] mb-2">
+                    <div className="flex items-center gap-2 text-[11px] text-[#6A635C] mb-2">
                       <span>{post.readTime}</span>
                       <span>·</span>
                       <span>{post.publishedAt}</span>
                     </div>
 
-                    <h3 className="text-base font-bold text-[#F5EFE8] group-hover:text-[#C49A6C] transition-colors leading-snug">
+                    <h3 className="text-base font-bold text-[#1A1A1A] group-hover:text-[#9a7b3f] transition-colors leading-snug">
                       {post.title}
                     </h3>
-                    <p className="mt-2 text-xs text-[#C4B5A5] leading-relaxed line-clamp-3">
+                    <p className="mt-2 text-xs text-[#6A635C] leading-relaxed line-clamp-3">
                       {post.excerpt}
                     </p>
                   </div>
 
-                  <div className="mt-5 pt-3 border-t border-[#594333] flex items-center justify-between text-xs text-[#C49A6C] font-extrabold">
+                  <div className="mt-5 pt-3 border-t border-[#E5DDD1] flex items-center justify-between text-xs text-[#9a7b3f] font-extrabold">
                     <span>Read Article &rarr;</span>
-                    <span className="text-[10px] text-[#C4B5A5] font-medium">By {post.author.name}</span>
+                    <span className="text-[10px] text-[#6A635C] font-medium">By {post.author.name}</span>
                   </div>
                 </article>
               </KrezReveal>

@@ -231,11 +231,11 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
             <line x1="380" y1="120" x2="660" y2="230" />
             <line x1="660" y1="230" x2="1020" y2="150" strokeDasharray="3 5" />
             <line x1="1020" y1="150" x2="1310" y2="260" />
-            <circle cx="120" cy="180" r="4" fill="#BEE179" fillOpacity="0.55" stroke="none" />
+            <circle cx="120" cy="180" r="4" fill="#C5A880" fillOpacity="0.55" stroke="none" />
             <circle cx="380" cy="120" r="3.5" fill="#8EA7C7" fillOpacity="0.5" stroke="none" />
-            <circle cx="660" cy="230" r="4.5" fill="#BEE179" fillOpacity="0.45" stroke="none" />
+            <circle cx="660" cy="230" r="4.5" fill="#C5A880" fillOpacity="0.45" stroke="none" />
             <circle cx="1020" cy="150" r="3.5" fill="#8EA7C7" fillOpacity="0.5" stroke="none" />
-            <circle cx="1310" cy="260" r="4" fill="#BEE179" fillOpacity="0.5" stroke="none" />
+            <circle cx="1310" cy="260" r="4" fill="#C5A880" fillOpacity="0.5" stroke="none" />
           </g>
 
           <g className="token-network-drift-b" stroke="#1F3E6C" strokeWidth="1">
@@ -243,9 +243,9 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
             <line x1="490" y1="640" x2="830" y2="740" strokeDasharray="5 6" />
             <line x1="830" y1="740" x2="1220" y2="630" />
             <circle cx="180" cy="720" r="3.5" fill="#8EA7C7" fillOpacity="0.45" stroke="none" />
-            <circle cx="490" cy="640" r="4" fill="#BEE179" fillOpacity="0.45" stroke="none" />
+            <circle cx="490" cy="640" r="4" fill="#C5A880" fillOpacity="0.45" stroke="none" />
             <circle cx="830" cy="740" r="3.5" fill="#8EA7C7" fillOpacity="0.45" stroke="none" />
-            <circle cx="1220" cy="630" r="4.5" fill="#BEE179" fillOpacity="0.5" stroke="none" />
+            <circle cx="1220" cy="630" r="4.5" fill="#C5A880" fillOpacity="0.5" stroke="none" />
           </g>
         </svg>
       </div>
@@ -254,14 +254,14 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
         {/* Section Heading */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12 text-left">
           <div className="max-w-2xl space-y-3">
-            <p className="text-xs font-extrabold text-[#BEE179] tracking-wider">
+            <p className="text-xs font-extrabold text-[#C5A880] tracking-wider">
               Operational Lifecycle · From Appraisal to On-Chain Ownership
             </p>
             <h2
               className="font-serif text-3xl sm:text-4xl lg:text-[2.75rem] font-black text-white tracking-tight leading-[1.12]"
               style={{ textWrap: 'balance' }}
             >
-              How Real Estate <span className="text-[#BEE179]">Tokenization Works</span>
+              How Real Estate <span className="text-[#C5A880]">Tokenization Works</span>
             </h2>
             <p className="text-sm sm:text-base text-[#D1E2F7] font-medium leading-relaxed">
               L'Agence oversees acquisition, SPV titling, property management, and tenant leasing while investors hold direct ring-fenced economic shares recorded on Solana.
@@ -275,7 +275,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               onClick={() => setIsAutoPlaying((prev) => !prev)}
               aria-label={isAutoPlaying ? 'Pause tokenization walkthrough' : 'Play tokenization walkthrough'}
               aria-pressed={!isAutoPlaying}
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
             >
               {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
@@ -283,7 +283,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               type="button"
               onClick={goPrev}
               aria-label="Previous tokenization step"
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -294,7 +294,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               type="button"
               onClick={goNext}
               aria-label="Next tokenization step"
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -319,11 +319,11 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               {/* Left 7 Columns: Step Narrative & Deliverables */}
               <div className="lg:col-span-7 space-y-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-[#BEE179] text-[#0B1B30] flex items-center justify-center shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-[#C5A880] text-[#1A1A1A] flex items-center justify-center shrink-0">
                     <ActiveIcon className="w-5 h-5 stroke-[2.5]" />
                   </div>
                   <div className="text-xs text-[#8EA7C7] font-medium">
-                    <span className="font-mono tabular-nums font-bold text-[#BEE179]">
+                    <span className="font-mono tabular-nums font-bold text-[#C5A880]">
                       Phase {currentStep.step}
                     </span>
                     <span className="mx-2" aria-hidden="true">
@@ -344,7 +344,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                 <div className="pt-3 border-t border-[#1D3860] grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {currentStep.deliverables.map((item) => (
                     <div key={item} className="text-xs text-[#D1E2F7] leading-snug">
-                      <span className="block font-mono text-[11px] text-[#BEE179] font-bold mb-0.5">
+                      <span className="block font-mono text-[11px] text-[#C5A880] font-bold mb-0.5">
                         Verified Safeguard
                       </span>
                       <span>{item}</span>
@@ -358,10 +358,10 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                       <button
                         type="button"
                         onClick={onExploreMarketplace}
-                        className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+                        className="px-5 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                       >
                         <span>Explore Tokenized Properties</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
+                        <ArrowRight className="w-3.5 h-3.5 text-[#1A1A1A]" />
                       </button>
                     )}
                     {onLearnMore && (
@@ -381,7 +381,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
               <div className="lg:col-span-5 bg-[#0B1B30] rounded-xl border border-[#1D3860] p-6 space-y-5">
                 <div className="flex items-center justify-between text-xs text-[#8EA7C7]">
                   <span className="font-semibold text-white">Architecture Sequence</span>
-                  <span className="font-mono tabular-nums text-[#BEE179]">
+                  <span className="font-mono tabular-nums text-[#C5A880]">
                     {currentStep.step} of 06
                   </span>
                 </div>
@@ -407,7 +407,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     y1="62"
                     x2={55 + (activeIdx / (steps.length - 1)) * 270}
                     y2="62"
-                    stroke="#BEE179"
+                    stroke="#C5A880"
                     strokeWidth="2.5"
                   />
 
@@ -416,7 +416,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     <circle
                       r="24"
                       fill={activeIdx >= 0 ? '#132B4C' : '#0B1B30'}
-                      stroke={activeIdx === 0 || activeIdx === 3 ? '#BEE179' : '#2B4C7E'}
+                      stroke={activeIdx === 0 || activeIdx === 3 ? '#C5A880' : '#2B4C7E'}
                       strokeWidth="2"
                     />
                     <text
@@ -444,13 +444,13 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     <circle
                       r="26"
                       fill={activeIdx >= 1 ? '#132B4C' : '#0B1B30'}
-                      stroke={activeIdx === 1 || activeIdx === 2 ? '#BEE179' : '#2B4C7E'}
+                      stroke={activeIdx === 1 || activeIdx === 2 ? '#C5A880' : '#2B4C7E'}
                       strokeWidth="2"
                     />
                     <text
                       y="4"
                       textAnchor="middle"
-                      fill="#BEE179"
+                      fill="#C5A880"
                       fontSize="10"
                       fontFamily="monospace"
                       fontWeight="700"
@@ -472,7 +472,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                     <circle
                       r="24"
                       fill={activeIdx >= 4 ? '#132B4C' : '#0B1B30'}
-                      stroke={activeIdx >= 4 ? '#BEE179' : '#2B4C7E'}
+                      stroke={activeIdx >= 4 ? '#C5A880' : '#2B4C7E'}
                       strokeWidth="2"
                     />
                     <text
@@ -520,9 +520,9 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                 role="tab"
                 aria-selected={isSelected}
                 onClick={() => setActiveIdx(idx)}
-                className={`p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179] ${
+                className={`p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880] ${
                   isSelected
-                    ? 'bg-[#152E54] border-[#BEE179] shadow-md'
+                    ? 'bg-[#152E54] border-[#C5A880] shadow-md'
                     : 'bg-[#102442] border-[#1D3860] hover:border-[#355A8F]'
                 }`}
               >
@@ -530,15 +530,15 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                       isSelected
-                        ? 'bg-[#BEE179] text-[#0B1B30]'
-                        : 'bg-[#0B1B30] text-[#BEE179] border border-[#1D3860]'
+                        ? 'bg-[#C5A880] text-[#1A1A1A]'
+                        : 'bg-[#0B1B30] text-[#C5A880] border border-[#1D3860]'
                     }`}
                   >
                     <Icon className="w-4 h-4 stroke-[2.25]" />
                   </div>
                   <span
                     className={`font-mono tabular-nums text-sm font-black ${
-                      isSelected ? 'text-[#BEE179]' : 'text-[#6484B0]'
+                      isSelected ? 'text-[#C5A880]' : 'text-[#6484B0]'
                     }`}
                   >
                     {s.step}

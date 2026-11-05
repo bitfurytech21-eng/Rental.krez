@@ -208,9 +208,9 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
     // Custom Icon for Property
     const propertyIconHtml = `
       <div style="position: relative; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;">
-        <div style="position: absolute; inset: 0; background-color: rgba(39, 132, 93, 0.4); border-radius: 50%; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-        <div style="width: 40px; height: 40px; background-color: #0B1B30; border: 3px solid #BEE179; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.4);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BEE179" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <div style="position: absolute; inset: 0; background-color: rgba(197, 168, 128, 0.4); border-radius: 50%; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+        <div style="width: 40px; height: 40px; background-color: #0B1B30; border: 3px solid #C5A880; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.4);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C5A880" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
@@ -372,11 +372,11 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
               onClick={() => setActiveCategory(cat.id as any)}
               className={`flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-sm'
+                  ? 'bg-[#C5A880] text-[#1A1A1A] shadow-sm'
                   : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
             >
-              <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-[#0B1B30]' : 'text-slate-400'}`} />
+              <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-[#1A1A1A]' : 'text-slate-400'}`} />
               <span>{cat.label}</span>
             </button>
           );
@@ -391,9 +391,9 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
 
           {/* Map Overlay Badge */}
           <div className="absolute bottom-4 left-4 z-10 bg-[#0B1B30]/90 backdrop-blur-md text-white px-3.5 py-2 rounded-xl border border-white/10 text-xs flex items-center gap-2 shadow-lg">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#BEE179] animate-pulse"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#C5A880] animate-pulse"></span>
             <span className="font-semibold">{property.city}, {property.country}</span>
-            <span className="text-[10px] text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-500/30">
+            <span className="text-[10px] text-[#C5A880] bg-[#0B1B30] px-2 py-0.5 rounded border border-[#C5A880]/30 font-bold">
               Live Free Map API
             </span>
           </div>

@@ -212,7 +212,7 @@ export const SolanaWalletManager: React.FC<SolanaWalletManagerProps> = ({
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#0B1B30] text-[#BEE179] border border-[#1D3860] flex items-center justify-center font-bold shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#0B1B30] text-[#C5A880] border border-[#1D3860] flex items-center justify-center font-bold shrink-0">
             <Wallet className="w-5 h-5" />
           </div>
           <div>
@@ -320,7 +320,7 @@ export const SolanaWalletManager: React.FC<SolanaWalletManagerProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="View address on Solana Explorer"
-                  className="p-1.5 rounded-md text-[#1E3A34] dark:text-[#BEE179] hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
+                  className="p-1.5 rounded-md text-[#1E3A34] dark:text-[#C5A880] hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
                   title="View on Solana Explorer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -402,7 +402,7 @@ export const SolanaWalletManager: React.FC<SolanaWalletManagerProps> = ({
                   disabled={isConnecting}
                   className="px-3.5 py-2 rounded-xl bg-[#0B1B30] hover:bg-[#142D4C] disabled:opacity-60 text-white font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  <Wallet className="w-3.5 h-3.5 text-[#BEE179]" />
+                  <Wallet className="w-3.5 h-3.5 text-[#C5A880]" />
                   <span>
                     {isConnecting
                       ? 'Connecting...'
@@ -613,7 +613,7 @@ export const SolanaWalletManager: React.FC<SolanaWalletManagerProps> = ({
       <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-[#1E3A34] dark:text-[#BEE179]" />
+            <KeyRound className="w-4 h-4 text-[#1E3A34] dark:text-[#C5A880]" />
             <span className="font-bold text-slate-900 dark:text-slate-100">
               Cryptographic Wallet Attestation
             </span>

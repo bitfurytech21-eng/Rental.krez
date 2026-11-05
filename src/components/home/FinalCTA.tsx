@@ -56,7 +56,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
               className="absolute -top-28 -left-20 w-[420px] h-[340px] rounded-full cta-orb-drift"
               style={{
                 background:
-                  'radial-gradient(circle, rgba(190, 225, 121, 0.14) 0%, rgba(29, 56, 96, 0.35) 50%, rgba(16, 36, 66, 0) 76%)',
+                  'radial-gradient(circle, rgba(197, 168, 128, 0.14) 0%, rgba(29, 56, 96, 0.35) 50%, rgba(16, 36, 66, 0) 76%)',
               }}
             />
             <div
@@ -64,7 +64,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
               style={{
                 animationDelay: '6s',
                 background:
-                  'radial-gradient(circle, rgba(43, 76, 126, 0.55) 0%, rgba(190, 225, 121, 0.08) 48%, rgba(16, 36, 66, 0) 76%)',
+                  'radial-gradient(circle, rgba(43, 76, 126, 0.55) 0%, rgba(197, 168, 128, 0.08) 48%, rgba(16, 36, 66, 0) 76%)',
               }}
             />
             <svg
@@ -75,7 +75,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
             >
               <polygon
                 points="980,40 1160,150 1090,340 900,260"
-                stroke="#BEE179"
+                stroke="#C5A880"
                 strokeOpacity="0.28"
                 strokeWidth="1"
               />
@@ -89,8 +89,8 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
           </div>
 
           <div className="max-w-3xl mx-auto space-y-5 relative z-10">
-            <p className="text-xs font-bold text-[#BEE179] tracking-wider flex items-center justify-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#BEE179] shrink-0" />
+            <p className="text-xs font-bold text-[#C5A880] tracking-wider flex items-center justify-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#C5A880] shrink-0" />
               <span>Regulated European SPV Custody · Direct Tokenized Ownership</span>
             </p>
 
@@ -99,7 +99,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
               style={{ textWrap: 'balance' }}
             >
               Build a Curated Real Estate Portfolio with{' '}
-              <span className="text-[#BEE179]">Monthly Yields</span>
+              <span className="text-[#C5A880]">Monthly Yields</span>
             </h2>
 
             <p className="text-sm sm:text-base text-[#D1E2F7] max-w-xl mx-auto font-normal leading-relaxed">
@@ -110,7 +110,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
               <button
                 type="button"
                 onClick={onRegister}
-                className="py-3.5 px-7 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs tracking-wide transition-all duration-150 cursor-pointer shadow-xs flex items-center gap-2 whitespace-nowrap active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="py-3.5 px-7 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#0B1B30] font-bold text-xs tracking-wide transition-all duration-150 cursor-pointer shadow-xs flex items-center gap-2 whitespace-nowrap active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <span>Create Investor Account</span>
                 <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
@@ -118,7 +118,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
               <button
                 type="button"
                 onClick={onExplore}
-                className="py-3.5 px-7 rounded-xl bg-[#0B1B30] hover:bg-[#132745] border border-[#1D3860] text-white font-bold text-xs tracking-wide transition-colors duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                className="py-3.5 px-7 rounded-xl bg-[#0B1B30] hover:bg-[#132745] border border-[#1D3860] text-white font-bold text-xs tracking-wide transition-colors duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
               >
                 <span>Browse Active Assets</span>
               </button>
@@ -126,13 +126,13 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onRegister, onExplore }) => 
 
             <div className="flex flex-wrap items-center justify-center gap-y-3 gap-x-8 text-xs text-[#D1E2F7] font-medium pt-8 border-t border-[#1D3860]">
               <span className="flex items-center gap-1.5 font-mono tabular-nums">
-                <Check className="w-3.5 h-3.5 text-[#BEE179] shrink-0" /> Entry Ticket from €750
+                <Check className="w-3.5 h-3.5 text-[#C5A880] shrink-0" /> Entry Ticket from €750
               </span>
               <span className="flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-[#BEE179] shrink-0" /> Ring-Fenced SPV Legal Custody
+                <Check className="w-3.5 h-3.5 text-[#C5A880] shrink-0" /> Ring-Fenced SPV Legal Custody
               </span>
               <span className="flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-[#BEE179] shrink-0" /> Direct Monthly Distributions
+                <Check className="w-3.5 h-3.5 text-[#C5A880] shrink-0" /> Direct Monthly Distributions
               </span>
             </div>
           </div>

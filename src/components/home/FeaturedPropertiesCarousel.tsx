@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   ArrowRight,
@@ -6,31 +6,28 @@ import {
   ChevronRight,
   MapPin,
   ShieldCheck,
+  Building2,
   Pause,
   Play,
   SlidersHorizontal,
-  Building2,
 } from 'lucide-react';
+import { ledger } from '../../lib/ledger';
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
-import { apiRequest } from '../../lib/api';
 
-const heroFallbackImg = 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg';
-const madridFallbackImg = 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg';
-const malagaFallbackImg = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
-const miamiFallbackImg = 'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg';
-const valenciaFallbackImg = 'https://files.kretzrealestate.com/292b12457f5dea6736f8fb8e92c1022.jpg';
+import fallbackProperty1 from '../../assets/images/properties/paris_saint_germain.jpg';
+import fallbackProperty2 from '../../assets/images/properties/madrid_salamanca.jpg';
+import fallbackProperty3 from '../../assets/images/properties/barcelona_eixample.jpg';
+import fallbackProperty4 from '../../assets/images/properties/valencia_arts.jpg';
 
 const LOCAL_PROPERTY_FALLBACKS = [
-  heroFallbackImg,
-  madridFallbackImg,
-  malagaFallbackImg,
-  miamiFallbackImg,
-  valenciaFallbackImg,
+  fallbackProperty1,
+  fallbackProperty2,
+  fallbackProperty3,
+  fallbackProperty4,
 ];
 
 interface FeaturedPropertiesCarouselProps {
-  properties: Property[];
   onSelectProperty: (property: Property) => void;
   onInvestProperty: (property: Property) => void;
   onExploreAll: () => void;
@@ -40,116 +37,108 @@ interface FeaturedPropertiesCarouselProps {
 type CategoryFilter = 'all' | 'residential' | 'coastal_villa' | 'high_yield';
 
 export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProps> = ({
-  properties,
   onSelectProperty,
   onInvestProperty,
   onExploreAll,
   onHowItWorks,
 }) => {
   const prefersReducedMotion = useReducedMotion();
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [cardsPerView, setCardsPerView] = useState(3);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [remoteProperties, setRemoteProperties] = useState<Property[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
-  // Sync responsive cards-per-view without causing layout shift
+  const [visibleOfferings, setVisibleOfferings] = useState<Property[]>([]);
+  const [isSyncing, setIsSyncing] = useState(true);
+
+  // Synchronize with Real Platform Ledger Data
   useEffect(() => {
-    const updateCardsPerView = () => {
-      if (typeof window === 'undefined') return;
-      if (window.innerWidth < 768) {
-        setCardsPerView(1);
-      } else if (window.innerWidth < 1120) {
-        setCardsPerView(2);
-      } else {
-        setCardsPerView(3);
+    let isMounted = true;
+    const syncFromLedger = () => {
+      try {
+        const allLedger = ledger.getFrontendProperties();
+        const activePublic = allLedger.filter(
+          (p) => p.status === 'funding' || p.status === 'funded' || p.status === 'completed'
+        );
+        if (isMounted) {
+          setVisibleOfferings(activePublic);
+          setIsSyncing(false);
+        }
+      } catch {
+        if (isMounted) {
+          setIsSyncing(false);
+        }
       }
     };
-    updateCardsPerView();
-    window.addEventListener('resize', updateCardsPerView, { passive: true });
-    return () => window.removeEventListener('resize', updateCardsPerView);
+
+    syncFromLedger();
+    const unsubscribe = ledger.subscribe(syncFromLedger);
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
-  // Optional background sync with /api/v1/listings if local ledger list is empty
-  useEffect(() => {
-    let cancelled = false;
-    if (properties.length === 0) {
-      setIsSyncing(true);
-      apiRequest<{ listings?: Property[]; data?: { listings?: Property[] } }>('/listings', {
-        skipAuth: true,
-      })
-        .then((res) => {
-          const list = Array.isArray(res?.listings)
-            ? res.listings
-            : Array.isArray(res?.data?.listings)
-            ? res.data.listings
-            : [];
-          if (!cancelled && list.length > 0) {
-            setRemoteProperties(list);
-          }
-        })
-        .catch(() => {
-          // Keep existing local ledger state silently
-        })
-        .finally(() => {
-          if (!cancelled) setIsSyncing(false);
-        });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [properties.length]);
-
-  // Strict frontend visibility invariant matching PropertiesPage & App.tsx
-  const visibleOfferings = useMemo(() => {
-    const source = properties.length > 0 ? properties : remoteProperties;
-    return source.filter(
-      (p) =>
-        p.status !== 'hidden' &&
-        p.status !== 'pending_approval' &&
-        p.approvedForFrontend !== false &&
-        Boolean(p.assignedFunction)
-    );
-  }, [properties, remoteProperties]);
-
-  const filteredOfferings = useMemo(() => {
-    if (categoryFilter === 'all') return visibleOfferings;
+  // Filter Logic Based on Genuine Property Attributes
+  const filteredOfferings = visibleOfferings.filter((prop) => {
+    if (categoryFilter === 'all') return true;
     if (categoryFilter === 'residential') {
-      return visibleOfferings.filter((p) =>
-        ['Residential', 'Apartment', 'Coliving', 'House', 'Private Mansion'].includes(p.type)
-      );
+      const t = prop.type.toLowerCase();
+      return t.includes('residen') || t.includes('apartment') || t.includes('penthouse');
     }
     if (categoryFilter === 'coastal_villa') {
-      return visibleOfferings.filter((p) =>
-        ['Villa', 'Vacation Rental', 'Château', 'Estate / Property', 'Commercial', 'Chalet'].includes(p.type)
+      const t = prop.type.toLowerCase();
+      const loc = prop.location.toLowerCase();
+      return (
+        t.includes('villa') ||
+        t.includes('estate') ||
+        loc.includes('marbella') ||
+        loc.includes('cannes') ||
+        loc.includes('ibiza') ||
+        loc.includes('mallorca')
       );
     }
-    // high_yield: >= 9.5% projected annual yield
-    return visibleOfferings.filter((p) => (p.estimatedAnnualYield || 0) >= 9.5);
-  }, [visibleOfferings, categoryFilter]);
+    if (categoryFilter === 'high_yield') {
+      return (Number(prop.estimatedAnnualYield) || 0) >= 9.5;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window === 'undefined') return;
+      if (window.innerWidth < 768) setCardsPerView(1);
+      else if (window.innerWidth < 1120) setCardsPerView(2);
+      else setCardsPerView(3);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const maxStartIndex = Math.max(0, filteredOfferings.length - cardsPerView);
 
-  // Clamp index when filter or viewport changes
   useEffect(() => {
     setCurrentIndex((prev) => Math.min(prev, maxStartIndex));
   }, [maxStartIndex, categoryFilter]);
 
   const handlePrev = useCallback(() => {
+    if (filteredOfferings.length <= cardsPerView) return;
     setCurrentIndex((prev) => (prev <= 0 ? maxStartIndex : prev - 1));
-  }, [maxStartIndex]);
+  }, [filteredOfferings.length, cardsPerView, maxStartIndex]);
 
   const handleNext = useCallback(() => {
+    if (filteredOfferings.length <= cardsPerView) return;
     setCurrentIndex((prev) => (prev >= maxStartIndex ? 0 : prev + 1));
-  }, [maxStartIndex]);
+  }, [filteredOfferings.length, cardsPerView, maxStartIndex]);
 
-  // Automatic gentle advance when enabled and not hovered/focused/reduced-motion
+  // Pause Autoplay when Hovered, Focused, or Reduced Motion is Preferred
   useEffect(() => {
     if (
       prefersReducedMotion ||
@@ -160,19 +149,9 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
     ) {
       return;
     }
-    const timer = window.setInterval(() => {
-      setCurrentIndex((prev) => (prev >= maxStartIndex ? 0 : prev + 1));
-    }, 6800);
+    const timer = window.setInterval(handleNext, 6500);
     return () => window.clearInterval(timer);
-  }, [
-    prefersReducedMotion,
-    isAutoPlaying,
-    isHovered,
-    isFocused,
-    filteredOfferings.length,
-    cardsPerView,
-    maxStartIndex,
-  ]);
+  }, [prefersReducedMotion, isAutoPlaying, isHovered, isFocused, filteredOfferings.length, cardsPerView, handleNext]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowLeft') {
@@ -191,32 +170,26 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null || touchStartY.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-    if (Math.abs(deltaX) > 44 && Math.abs(deltaX) > Math.abs(deltaY)) {
-      if (deltaX < 0) handleNext();
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) handleNext();
       else handlePrev();
     }
     touchStartX.current = null;
     touchStartY.current = null;
   };
 
-  // Aggregate real stats from visible offerings
-  const avgYield = useMemo(() => {
-    if (visibleOfferings.length === 0) return null;
-    const sum = visibleOfferings.reduce((acc, p) => acc + (Number(p.estimatedAnnualYield) || 0), 0);
-    return (sum / visibleOfferings.length).toFixed(1);
-  }, [visibleOfferings]);
-
-  const minTicket = useMemo(() => {
-    if (visibleOfferings.length === 0) return 750;
-    const mins = visibleOfferings
-      .map((p) => Number(p.minimumInvestment) || 750)
-      .filter((v) => v > 0);
-    return mins.length > 0 ? Math.min(...mins) : 750;
-  }, [visibleOfferings]);
-
   const totalPages = maxStartIndex + 1;
+  const avgYield = visibleOfferings.length
+    ? (
+        visibleOfferings.reduce((sum, p) => sum + (Number(p.estimatedAnnualYield) || 0), 0) /
+        visibleOfferings.length
+      ).toFixed(1)
+    : null;
+  const minTicket = visibleOfferings.length
+    ? Math.min(...visibleOfferings.map((p) => Number(p.tokenPrice) || 100))
+    : 100;
 
   return (
     <section
@@ -231,48 +204,13 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
         }
       }}
       onKeyDown={handleKeyDown}
-      className="relative py-16 sm:py-24 bg-[#0B1B30] border-b border-[#1D3860] text-white overflow-hidden"
+      className="py-20 sm:py-28 bg-[#0B1B30] border-b border-[#1D3860] text-white text-left overflow-hidden relative"
     >
-      {/* Subtle Parallax / Slow-Drifting Ambient Background Layer */}
-      <style>{`
-        @keyframes featuredGlowDrift {
-          0%, 100% { transform: translate3d(0px, 0px, 0) scale(1); opacity: 0.35; }
-          50% { transform: translate3d(28px, -18px, 0) scale(1.06); opacity: 0.55; }
-        }
-        .featured-ambient-glow {
-          animation: featuredGlowDrift 22s ease-in-out infinite;
-          will-change: transform, opacity;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .featured-ambient-glow {
-            animation: none !important;
-            transform: none !important;
-          }
-        }
-      `}</style>
-      <div
-        className="absolute -top-32 right-[8%] w-[460px] h-[460px] rounded-full pointer-events-none featured-ambient-glow"
-        style={{
-          background:
-            'radial-gradient(circle, rgba(190, 225, 121, 0.10) 0%, rgba(29, 56, 96, 0.25) 45%, rgba(11, 27, 48, 0) 75%)',
-        }}
-        aria-hidden="true"
-      />
-      <div
-        className="absolute -bottom-36 left-[5%] w-[520px] h-[420px] rounded-full pointer-events-none featured-ambient-glow"
-        style={{
-          animationDelay: '6s',
-          background:
-            'radial-gradient(circle, rgba(29, 56, 96, 0.45) 0%, rgba(16, 36, 66, 0.2) 55%, rgba(11, 27, 48, 0) 78%)',
-        }}
-        aria-hidden="true"
-      />
-
       <div className="container max-w-[1280px] mx-auto px-4 sm:px-6 relative z-10">
         {/* Top Header Row */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8 sm:mb-10 text-left">
           <div className="space-y-3 max-w-2xl">
-            <p className="text-xs font-semibold text-[#BEE179] tracking-wider">
+            <p className="text-xs font-semibold text-[#C5A880] tracking-wider">
               Tokenized Real Estate · Segregated European SPVs
             </p>
             <h2
@@ -280,7 +218,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               style={{ textWrap: 'balance' }}
             >
               Featured Properties &{' '}
-              <span className="text-[#BEE179]">Investment Opportunities</span>
+              <span className="text-[#C5A880]">Investment Opportunities</span>
             </h2>
             <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed">
               Inspect live fractional property offerings backed by notarized SPV deeds, RICS appraisals, and Solana SPL ownership records.
@@ -296,7 +234,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                   onClick={() => setIsAutoPlaying((prev) => !prev)}
                   aria-label={isAutoPlaying ? 'Pause property carousel' : 'Play property carousel'}
                   aria-pressed={!isAutoPlaying}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                 >
                   {isAutoPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                 </button>
@@ -304,7 +242,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                   type="button"
                   onClick={handlePrev}
                   aria-label="Previous properties"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -315,7 +253,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                   type="button"
                   onClick={handleNext}
                   aria-label="Next properties"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-[#D1E2F7] hover:text-white hover:bg-[#173158] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -325,10 +263,10 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
             <button
               type="button"
               onClick={onExploreAll}
-              className="py-2.5 px-5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs tracking-wide flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="py-2.5 px-5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-bold text-xs tracking-wide flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               <span>Enter Marketplace</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#1A1A1A]" />
             </button>
           </div>
         </div>
@@ -357,9 +295,9 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                     setCategoryFilter(tab.id);
                     setCurrentIndex(0);
                   }}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179] ${
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880] ${
                     active
-                      ? 'bg-[#BEE179] text-[#0B1B30]'
+                      ? 'bg-[#C5A880] text-[#1A1A1A]'
                       : 'text-[#D1E2F7] hover:text-white hover:bg-[#163056]'
                   }`}
                 >
@@ -382,7 +320,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               <>
                 <span aria-hidden="true">·</span>
                 <span>
-                  Avg. Projected Yield <strong className="text-[#BEE179]">{avgYield}% p.a.</strong>
+                  Avg. Projected Yield <strong className="text-[#C5A880]">{avgYield}% p.a.</strong>
                 </span>
               </>
             )}
@@ -410,7 +348,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
         ) : filteredOfferings.length === 0 ? (
           /* Honest Empty / Filter-No-Match State */
           <div className="bg-[#102442] rounded-2xl border border-[#1D3860] p-10 sm:p-12 text-center space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center mx-auto text-[#BEE179]">
+            <div className="w-12 h-12 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center mx-auto text-[#C5A880]">
               {visibleOfferings.length === 0 ? (
                 <Building2 className="w-5 h-5" />
               ) : (
@@ -432,7 +370,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                 <button
                   type="button"
                   onClick={() => setCategoryFilter('all')}
-                  className="px-5 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold transition-colors cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] text-xs font-bold transition-colors cursor-pointer"
                 >
                   Show All Offerings ({visibleOfferings.length})
                 </button>
@@ -485,7 +423,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                     style={{ width: `${100 / cardsPerView}%` }}
                     className="px-3 shrink-0"
                   >
-                    <article className="h-full bg-[#102442] rounded-2xl border border-[#1D3860] hover:border-[#BEE179]/60 transition-colors duration-200 overflow-hidden flex flex-col justify-between group text-left">
+                    <article className="h-full bg-[#102442] rounded-2xl border border-[#1D3860] hover:border-[#C5A880]/60 transition-colors duration-200 overflow-hidden flex flex-col justify-between group text-left">
                       <div>
                         {/* Fixed-Ratio Image Container Preventing Layout Shift */}
                         <div
@@ -511,12 +449,12 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                           {/* Bottom-Left Location & Yield Overlay */}
                           <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-3">
                             <div className="flex items-center gap-1.5 text-xs text-white/95 font-medium truncate">
-                              <MapPin className="w-3.5 h-3.5 text-[#BEE179] shrink-0" />
+                              <MapPin className="w-3.5 h-3.5 text-[#C5A880] shrink-0" />
                               <span className="truncate">{property.location}</span>
                             </div>
                             <div className="text-right shrink-0">
                               <span className="block text-[10px] text-[#D1E2F7]">Target Net Yield</span>
-                              <span className="font-mono tabular-nums text-sm font-black text-[#BEE179]">
+                              <span className="font-mono tabular-nums text-sm font-black text-[#C5A880]">
                                 {property.estimatedAnnualYield}% p.a.
                               </span>
                             </div>
@@ -527,7 +465,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                         <div className="p-5 sm:p-6 space-y-4">
                           {/* Clean Unboxed Metadata Line */}
                           <div className="flex items-center gap-2 text-xs text-[#8EA7C7] truncate">
-                            <span className="text-[#BEE179] font-semibold">{property.type}</span>
+                            <span className="text-[#C5A880] font-semibold">{property.type}</span>
                             <span aria-hidden="true">·</span>
                             <span className="font-mono tabular-nums">{property.tokenTicker}</span>
                             <span aria-hidden="true">·</span>
@@ -538,7 +476,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
 
                           <h3
                             onClick={() => onSelectProperty(property)}
-                            className="font-serif text-lg sm:text-xl font-bold text-white group-hover:text-[#BEE179] transition-colors cursor-pointer line-clamp-1"
+                            className="font-serif text-lg sm:text-xl font-bold text-white group-hover:text-[#C5A880] transition-colors cursor-pointer line-clamp-1"
                           >
                             {property.title}
                           </h3>
@@ -559,7 +497,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                             </div>
                             <div>
                               <span className="block text-[11px] text-[#8EA7C7]">Available</span>
-                              <span className="font-mono tabular-nums font-bold text-[#BEE179]">
+                              <span className="font-mono tabular-nums font-bold text-[#C5A880]">
                                 {property.availableTokens.toLocaleString()} units
                               </span>
                             </div>
@@ -575,7 +513,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                             </div>
                             <div className="h-1.5 w-full rounded-full bg-[#0B1B30] overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-[#BEE179] transition-transform duration-500 origin-left"
+                                className="h-full rounded-full bg-[#C5A880] transition-transform duration-500 origin-left"
                                 style={{
                                   width: `${fundedPct}%`,
                                 }}
@@ -590,7 +528,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                         <button
                           type="button"
                           onClick={() => onSelectProperty(property)}
-                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#0B1B30] hover:bg-[#142B4D] border border-[#1D3860] text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#0B1B30] hover:bg-[#142B4D] border border-[#1D3860] text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                         >
                           Property Details
                         </button>
@@ -599,10 +537,10 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                           onClick={() =>
                             isFunded ? onSelectProperty(property) : onInvestProperty(property)
                           }
-                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                          className="flex-1 py-2.5 px-4 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                         >
                           <span>{isFunded ? 'Inspect SPV' : 'Acquire Tokens'}</span>
-                          <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30]" />
+                          <ArrowRight className="w-3.5 h-3.5 text-[#1A1A1A]" />
                         </button>
                       </div>
                     </article>
@@ -625,9 +563,9 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
                         aria-selected={isActive}
                         aria-label={`Go to property slide ${pageIdx + 1}`}
                         onClick={() => setCurrentIndex(pageIdx)}
-                        className={`h-2 rounded-full transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179] ${
+                        className={`h-2 rounded-full transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880] ${
                           isActive
-                            ? 'w-8 bg-[#BEE179]'
+                            ? 'w-8 bg-[#C5A880]'
                             : 'w-2.5 bg-[#1D3860] hover:bg-[#355A8F]'
                         }`}
                       />
@@ -639,7 +577,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               )}
 
               <div className="flex items-center gap-2 text-xs text-[#8EA7C7]">
-                <ShieldCheck className="w-4 h-4 text-[#BEE179] shrink-0" />
+                <ShieldCheck className="w-4 h-4 text-[#C5A880] shrink-0" />
                 <span>
                   Every listing reflects real platform ledger availability and notarized European SPV custody.
                 </span>

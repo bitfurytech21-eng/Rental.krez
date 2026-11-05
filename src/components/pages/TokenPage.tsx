@@ -76,7 +76,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
         <div className="bg-[#0B1B30] text-white rounded-3xl border border-[#1D3860] p-6 sm:p-8 shadow-lg space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[#1D3860]">
             <div className="space-y-1 text-left">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#BEE179]">
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#C5A880]">
                 Canonical Mainnet-Beta Programs &amp; Settlement Mint
               </p>
               <h2 className="font-serif text-2xl sm:text-3xl font-bold text-white">
@@ -92,7 +92,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                 type="button"
                 onClick={handleLiveVerify}
                 disabled={isVerifyingRpc}
-                className="px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                className="px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#0B1B30] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingRpc ? 'animate-spin' : ''}`} />
                 <span>{isVerifyingRpc ? 'Querying Mainnet RPC...' : 'Verify Live on Mainnet RPC'}</span>
@@ -125,11 +125,11 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-[#BEE179]">
+                      <span className="font-mono text-xs font-bold text-[#C5A880]">
                         0{idx + 1} · {item.category}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-700/50">
-                        <CheckCircle2 className="w-3 h-3" /> Mainnet Verified
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-[#1A332D] text-[#C5A880] border border-[#1D3860]">
+                        <CheckCircle2 className="w-3 h-3 text-[#C5A880]" /> Mainnet Verified
                       </span>
                     </div>
 
@@ -149,7 +149,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                         title="Copy full Base58 address"
                       >
                         {copiedAddr === item.address ? (
-                          <Check className="w-3.5 h-3.5 text-[#BEE179]" />
+                          <Check className="w-3.5 h-3.5 text-[#C5A880]" />
                         ) : (
                           <Copy className="w-3.5 h-3.5" />
                         )}
@@ -159,7 +159,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                     <ul className="space-y-1.5 text-xs text-[#D1E2F7]">
                       {item.statedPurposes.map((purpose) => (
                         <li key={purpose} className="flex items-start gap-2">
-                          <span className="text-[#BEE179] font-bold mt-0.5">·</span>
+                          <span className="text-[#C5A880] font-bold mt-0.5">·</span>
                           <span>{purpose}</span>
                         </li>
                       ))}
@@ -170,8 +170,8 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                     </div>
 
                     {liveCheck && (
-                      <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 font-mono text-[10.5px] text-emerald-200 space-y-0.5">
-                        <div className="font-bold text-emerald-300">
+                      <div className="p-2.5 rounded-xl bg-[#102442] border border-[#1D3860] font-mono text-[10.5px] text-[#D1E2F7] space-y-0.5">
+                        <div className="font-bold text-[#C5A880]">
                           RPC Confirmed: {liveCheck.exists ? 'Account Live on Mainnet' : 'Not Found'}
                         </div>
                         <div>Executable Program: {liveCheck.executable ? 'Yes' : 'No (Mint Account)'}</div>
@@ -185,7 +185,7 @@ export const TokenPage: React.FC<TokenPageProps> = ({ onExplore, onNavigateTrust
                       href={item.explorerUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 font-bold text-[#BEE179] hover:underline"
+                      className="inline-flex items-center gap-1.5 font-bold text-[#C5A880] hover:underline"
                     >
                       <span>Solana Explorer</span>
                       <ExternalLink className="w-3.5 h-3.5" />

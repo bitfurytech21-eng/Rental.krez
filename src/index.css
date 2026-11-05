@@ -456,7 +456,7 @@
 }
 
 .btn:focus-visible {
-  outline: 2px solid #BEE179;
+  outline: 2px solid #C5A880;
   outline-offset: 2px;
 }
 
@@ -496,7 +496,7 @@
 
 .btn-secondary:hover {
   background: #152e54;
-  border-color: #BEE179;
+  border-color: #C5A880;
 }
 
 .btn-block {
@@ -842,7 +842,7 @@
 .form-field label {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #BEE179;
+  color: #C5A880;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -875,8 +875,8 @@
 .form-field select:focus,
 .form-field textarea:focus {
   outline: none;
-  border-color: #BEE179;
-  box-shadow: 0 0 0 1px #BEE179;
+  border-color: #C5A880;
+  box-shadow: 0 0 0 1px #C5A880;
 }
 
 /* Adapt .form-field inside dashboard shell (light & dark themes) and white modals */
@@ -1406,7 +1406,7 @@
 
 /* Accessible focus outlines for keyboard navigation */
 :focus-visible {
-  outline: 2px solid #BEE179;
+  outline: 2px solid #C5A880;
   outline-offset: 2px;
 }
 

@@ -75,7 +75,7 @@ export const Benefits: React.FC = () => {
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
         {/* Section Heading */}
         <div className="max-w-3xl mx-auto text-center mb-14 sm:mb-16 space-y-4">
-          <p className="text-xs font-extrabold text-[#BEE179] tracking-wider">
+          <p className="text-xs font-extrabold text-[#C5A880] tracking-wider">
             Platform Capabilities · Institutional Asset Protections
           </p>
           <h2
@@ -83,7 +83,7 @@ export const Benefits: React.FC = () => {
             style={{ textWrap: 'balance' }}
           >
             Institutional Fundamentals with{' '}
-            <span className="text-[#BEE179]">Verified Custody</span>
+            <span className="text-[#C5A880]">Verified Custody</span>
           </h2>
           <p className="text-sm sm:text-base text-[#D1E2F7] max-w-2xl mx-auto font-medium leading-relaxed">
             Every property offering adheres to rigorous European legal structuring, independent notarial recording, and programmable Solana registry transparency.
@@ -98,7 +98,7 @@ export const Benefits: React.FC = () => {
             return (
               <div className="bg-[#102442] p-6 rounded-2xl border border-[#1D3860] text-left space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="w-11 h-11 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center">
+                  <div className="w-11 h-11 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] flex items-center justify-center">
                     <ActiveIcon className="w-5 h-5 stroke-[2.25]" />
                   </div>
                   <span className="font-mono tabular-nums text-xs text-[#8EA7C7]">
@@ -106,7 +106,7 @@ export const Benefits: React.FC = () => {
                   </span>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-[#BEE179]">{activeItem.kicker}</p>
+                  <p className="text-xs font-semibold text-[#C5A880]">{activeItem.kicker}</p>
                   <h3 className="font-serif text-xl font-bold text-white">{activeItem.title}</h3>
                   <p className="text-sm text-[#D1E2F7] leading-relaxed">{activeItem.desc}</p>
                 </div>
@@ -126,7 +126,7 @@ export const Benefits: React.FC = () => {
                   aria-label={`View capability ${idx + 1}: ${b.title}`}
                   onClick={() => setMobileSlide(idx)}
                   className={`h-2 rounded-full transition-all cursor-pointer ${
-                    idx === mobileSlide ? 'w-7 bg-[#BEE179]' : 'w-2 bg-[#1D3860]'
+                    idx === mobileSlide ? 'w-7 bg-[#C5A880]' : 'w-2 bg-[#1D3860]'
                   }`}
                 />
               ))}
@@ -167,14 +167,14 @@ export const Benefits: React.FC = () => {
                   delay: prefersReducedMotion ? 0 : idx * 0.05,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                className="bg-[#102442] p-7 rounded-2xl border border-[#1D3860] hover:border-[#BEE179]/55 transition-colors duration-200 flex flex-col justify-between text-left group"
+                className="bg-[#102442] p-7 rounded-2xl border border-[#1D3860] hover:border-[#C5A880]/55 transition-colors duration-200 flex flex-col justify-between text-left group"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div className="w-11 h-11 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] group-hover:bg-[#BEE179] group-hover:text-[#0B1B30] transition-colors duration-200 flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] group-hover:bg-[#C5A880] group-hover:text-[#0B1B30] transition-colors duration-200 flex items-center justify-center">
                       <Icon className="w-5 h-5 stroke-[2.25]" />
                     </div>
-                    <span className="font-mono tabular-nums text-xs font-bold text-[#6484B0] group-hover:text-[#BEE179] transition-colors">
+                    <span className="font-mono tabular-nums text-xs font-bold text-[#6484B0] group-hover:text-[#C5A880] transition-colors">
                       {b.index}
                     </span>
                   </div>

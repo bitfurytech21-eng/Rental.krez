@@ -48,7 +48,7 @@ export const KrezJournalPage: React.FC<KrezJournalPageProps> = () => {
   };
 
   return (
-    <main className="bg-[#211711] text-[#F5EFE8]">
+    <main className="bg-[#FAF8F5] text-[#1a1a1a]">
       <section className="pt-header-offset pb-section-sm md:pb-section-spacing">
         <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
           <KrezReveal>

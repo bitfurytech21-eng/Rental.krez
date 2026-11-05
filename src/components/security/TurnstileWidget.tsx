@@ -189,11 +189,11 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
       {label && (
         <div className="flex items-center justify-between text-[11px] font-bold text-[#D1E2F7]">
           <span className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#BEE179]" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#C5A880]" />
             <span>{label}</span>
           </span>
           {status === 'verified' && (
-            <span className="text-[#BEE179] font-bold flex items-center gap-1 text-[10px]">
+            <span className="text-[#C5A880] font-bold flex items-center gap-1 text-[10px]">
               <CheckCircle2 className="w-3.5 h-3.5" />
               Verified Human
             </span>
@@ -226,7 +226,7 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
             <button
               type="button"
               onClick={handleFallbackPass}
-              className="text-xs font-semibold px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded cursor-pointer"
+              className="text-xs font-semibold px-2 py-1 bg-[#213138] hover:bg-[#18252b] text-white rounded cursor-pointer"
             >
               Verify
             </button>

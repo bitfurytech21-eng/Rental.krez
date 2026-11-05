@@ -59,8 +59,8 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       
       {/* Toast Notification */}
       {successToast && (
-        <div className="fixed top-20 right-6 z-50 max-w-md bg-[#102442] text-white p-4 rounded-2xl shadow-2xl border border-[#BEE179]/60 flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 className="w-5 h-5 text-[#BEE179] flex-shrink-0 mt-0.5" />
+        <div className="fixed top-20 right-6 z-50 max-w-md bg-[#102442] text-white p-4 rounded-2xl shadow-2xl border border-[#C5A880]/60 flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
+          <CheckCircle2 className="w-5 h-5 text-[#C5A880] flex-shrink-0 mt-0.5" />
           <div className="text-xs space-y-1">
             <p className="font-bold text-white">Membership Activated</p>
             <p className="text-[#D1E2F7]">{successToast}</p>
@@ -82,13 +82,13 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
 
         <div className="container max-w-[1240px] mx-auto px-4 relative z-10 text-left">
           <div className="max-w-3xl space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#102442] border border-[#1D3860] text-[#BEE179] text-xs font-bold uppercase tracking-widest">
-              <Crown className="w-4 h-4 text-[#BEE179]" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#102442] border border-[#1D3860] text-[#C5A880] text-xs font-bold uppercase tracking-widest">
+              <Crown className="w-4 h-4 text-[#C5A880]" />
               <span>Kretz Club Privé · España & International</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
-              A Private Circle for <span className="text-[#BEE179]">Exceptional Real Estate</span>
+              A Private Circle for <span className="text-[#C5A880]">Exceptional Real Estate</span>
             </h1>
 
             <p className="text-base sm:text-lg text-[#D1E2F7] leading-relaxed">
@@ -100,7 +100,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 onClick={() => handleOpenApplication('sovereign')}
-                className="py-3.5 px-7 text-xs font-black bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-lg"
+                className="py-3.5 px-7 text-xs font-black bg-[#C5A880] hover:bg-[#B39369] text-[#0B1B30] rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-lg"
               >
                 <span>Apply for Membership</span>
                 <ArrowRight className="w-4 h-4" />
@@ -110,7 +110,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                 onClick={onNavigateContact}
                 className="py-3.5 px-6 text-xs font-bold bg-[#102442] hover:bg-[#152e54] text-white border border-[#1D3860] rounded-xl flex items-center gap-2 cursor-pointer transition-all shadow-md"
               >
-                <PhoneCall className="w-4 h-4 text-[#BEE179]" />
+                <PhoneCall className="w-4 h-4 text-[#C5A880]" />
                 <span>Speak with Membership Desk</span>
               </button>
             </div>
@@ -124,7 +124,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
           <div className="container max-w-[1240px] mx-auto px-4">
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#BEE179] flex items-center gap-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#C5A880] flex items-center gap-1.5">
                   <Crown className="w-4 h-4" />
                   Your Active Member Credentials
                 </span>
@@ -146,11 +146,11 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
         <div className="container max-w-[1240px] mx-auto px-4 text-center">
           
           <div className="max-w-2xl mx-auto mb-14 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#102442] border border-[#1D3860] text-[#BEE179] text-xs font-bold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#102442] border border-[#1D3860] text-[#C5A880] text-xs font-bold uppercase tracking-wider">
               <span>Tailored Membership Tiers</span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl font-black text-[#BEE179] tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-black text-[#C5A880] tracking-tight">
               Select Your Circle of Privileges
             </h2>
 
@@ -165,7 +165,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                   onClick={() => setBillingCycle('annual')}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     billingCycle === 'annual'
-                      ? 'bg-[#BEE179] text-[#0B1B30] shadow-sm font-black'
+                      ? 'bg-[#C5A880] text-[#0B1B30] shadow-sm font-black'
                       : 'text-[#8EA7C7] hover:text-white'
                   }`}
                 >
@@ -175,7 +175,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                   onClick={() => setBillingCycle('monthly')}
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     billingCycle === 'monthly'
-                      ? 'bg-[#BEE179] text-[#0B1B30] shadow-sm font-black'
+                      ? 'bg-[#C5A880] text-[#0B1B30] shadow-sm font-black'
                       : 'text-[#8EA7C7] hover:text-white'
                   }`}
                 >
@@ -195,19 +195,19 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                   key={t.id}
                   className={`bg-[#102442] rounded-3xl border overflow-hidden p-8 flex flex-col justify-between transition-all duration-300 relative ${
                     t.popular 
-                      ? 'border-[#BEE179] shadow-2xl ring-2 ring-[#BEE179]/30 lg:-translate-y-2' 
+                      ? 'border-[#C5A880] shadow-2xl ring-2 ring-[#C5A880]/30 lg:-translate-y-2' 
                       : 'border-[#1D3860] shadow-xl hover:shadow-2xl'
                   }`}
                 >
                   {t.popular && (
-                    <div className="absolute top-0 right-0 bg-[#BEE179] text-[#0B1B30] px-4 py-1 text-[11px] font-black rounded-bl-2xl uppercase tracking-wider">
+                    <div className="absolute top-0 right-0 bg-[#C5A880] text-[#0B1B30] px-4 py-1 text-[11px] font-black rounded-bl-2xl uppercase tracking-wider">
                       Most Selected
                     </div>
                   )}
 
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#BEE179]">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#C5A880]">
                         {t.badge}
                       </span>
                     </div>
@@ -217,7 +217,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
 
                     <div className="mb-6 pb-6 border-b border-[#1D3860]">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl sm:text-4xl font-black text-[#BEE179] font-mono tabular-nums">
+                        <span className="text-3xl sm:text-4xl font-black text-[#C5A880] font-mono tabular-nums">
                           {formatCurrency(price)}
                         </span>
                         <span className="text-xs text-[#8EA7C7] font-medium">
@@ -225,7 +225,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                         </span>
                       </div>
                       {billingCycle === 'annual' && (
-                        <p className="text-[11px] text-[#BEE179] font-bold mt-1">
+                        <p className="text-[11px] text-[#C5A880] font-bold mt-1">
                           Includes 2 months complimentary dues
                         </p>
                       )}
@@ -237,7 +237,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                       </p>
                       {t.benefits.map((b, i) => (
                         <div key={i} className="flex items-start gap-2.5 text-[#D1E2F7]">
-                          <CheckCircle2 className="w-4 h-4 text-[#BEE179] flex-shrink-0 mt-0.5" />
+                          <CheckCircle2 className="w-4 h-4 text-[#C5A880] flex-shrink-0 mt-0.5" />
                           <span className="leading-snug">{b}</span>
                         </div>
                       ))}
@@ -246,7 +246,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
 
                   <div className="pt-4 border-t border-[#1D3860]">
                     {isCurrentTier ? (
-                      <div className="w-full py-3 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] text-xs font-bold text-center">
+                      <div className="w-full py-3 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] text-xs font-bold text-center">
                         ✓ Your Current Membership
                       </div>
                     ) : (
@@ -254,12 +254,12 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
                         onClick={() => handleOpenApplication(t.id)}
                         className={`w-full py-3.5 px-6 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
                           t.popular 
-                            ? 'bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30]' 
+                            ? 'bg-[#C5A880] hover:bg-[#B39369] text-[#0B1B30]' 
                             : 'bg-[#0B1B30] hover:bg-[#132745] text-white border border-[#1D3860]'
                         }`}
                       >
                         <span>{t.invitationOnly ? 'Request Invitation' : 'Join Membership'}</span>
-                        <ArrowRight className="w-4 h-4 text-[#BEE179]" />
+                        <ArrowRight className="w-4 h-4 text-[#C5A880]" />
                       </button>
                     )}
                   </div>
@@ -270,8 +270,8 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
 
           {/* Section 7 Mandatory Legal & Financial Safeguard Box */}
           <div className="max-w-4xl mx-auto p-6 sm:p-8 rounded-3xl bg-[#102442] border border-[#1D3860] shadow-xl text-left space-y-4">
-            <div className="flex items-center gap-2 text-[#BEE179] font-black text-xs uppercase tracking-wider">
-              <ShieldCheck className="w-5 h-5 text-[#BEE179] flex-shrink-0" />
+            <div className="flex items-center gap-2 text-[#C5A880] font-black text-xs uppercase tracking-wider">
+              <ShieldCheck className="w-5 h-5 text-[#C5A880] flex-shrink-0" />
               <span>Section 7: Legal and Financial Safeguards & Regulatory Disclosures</span>
             </div>
 
@@ -310,10 +310,10 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
         <div className="container max-w-[1240px] mx-auto px-4 text-left">
           
           <div className="max-w-2xl mb-16 space-y-3">
-            <span className="text-xs font-bold text-[#BEE179] uppercase tracking-wider">
+            <span className="text-xs font-bold text-[#C5A880] uppercase tracking-wider">
               The Kretz Advantage
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-[#BEE179] tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-black text-[#C5A880] tracking-tight">
               Unrivaled Access Behind Closed Doors
             </h2>
             <p className="text-sm text-[#D1E2F7]">
@@ -324,7 +324,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             <div className="p-6 rounded-2xl bg-[#102442] border border-[#1D3860] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#BEE179] shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#C5A880] shadow-sm">
                 <Lock className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-white">Confidential Off-Market</h3>
@@ -334,7 +334,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
             </div>
 
             <div className="p-6 rounded-2xl bg-[#102442] border border-[#1D3860] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#BEE179] shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#C5A880] shadow-sm">
                 <Users className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-white">Private Estate Salons</h3>
@@ -344,7 +344,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
             </div>
 
             <div className="p-6 rounded-2xl bg-[#102442] border border-[#1D3860] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#BEE179] shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#C5A880] shadow-sm">
                 <Building2 className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-white">Staging & Notarial Audits</h3>
@@ -354,7 +354,7 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
             </div>
 
             <div className="p-6 rounded-2xl bg-[#102442] border border-[#1D3860] space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#BEE179] shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#C5A880] shadow-sm">
                 <Compass className="w-5 h-5" />
               </div>
               <h3 className="text-base font-bold text-white">Lifestyle Concierge</h3>
@@ -372,8 +372,8 @@ export const MembershipPage: React.FC<MembershipPageProps> = ({
       <section className="py-20 bg-[#0B1B30]">
         <div className="container max-w-[900px] mx-auto px-4 text-left">
           <div className="text-center mb-12 space-y-2">
-            <span className="text-xs font-bold text-[#BEE179] uppercase tracking-wider">Common Questions</span>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#BEE179]">Membership Club Inquiries</h2>
+            <span className="text-xs font-bold text-[#C5A880] uppercase tracking-wider">Common Questions</span>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#C5A880]">Membership Club Inquiries</h2>
           </div>
 
           <div className="space-y-4 text-xs sm:text-sm">

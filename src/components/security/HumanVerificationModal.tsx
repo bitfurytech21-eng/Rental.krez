@@ -41,14 +41,14 @@ export const HumanVerificationModal: React.FC<HumanVerificationModalProps> = ({
       >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#BEE179]">
+            <div className="w-10 h-10 rounded-xl bg-[#0B1B30] border border-[#1D3860] flex items-center justify-center text-[#C5A880]">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-base sm:text-lg text-white">
                 {title}
               </h3>
-              <span className="text-[10px] uppercase tracking-wider text-[#BEE179] font-bold">
+              <span className="text-[10px] uppercase tracking-wider text-[#C5A880] font-bold">
                 Cloudflare Managed Protection
               </span>
             </div>
@@ -99,7 +99,7 @@ export const HumanVerificationModal: React.FC<HumanVerificationModalProps> = ({
             type="button"
             disabled={!token}
             onClick={handleComplete}
-            className="px-6 py-2.5 text-xs font-black bg-[#BEE179] hover:bg-[#aed860] disabled:opacity-40 disabled:cursor-not-allowed text-[#0B1B30] rounded-xl shadow-md transition-all cursor-pointer"
+            className="px-6 py-2.5 text-xs font-black bg-[#C5A880] hover:bg-[#B39369] disabled:opacity-40 disabled:cursor-not-allowed text-[#1A1A1A] rounded-xl shadow-md transition-all cursor-pointer"
           >
             Confirm & Continue
           </button>

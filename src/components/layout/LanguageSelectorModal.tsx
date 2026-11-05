@@ -51,11 +51,11 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
         {/* Header */}
         <div className="p-4 sm:p-5 bg-[#102442] border-b border-[#1D3860] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#1D3860] text-[#BEE179] flex items-center justify-center border border-[#2B4E7E]">
+            <div className="w-8 h-8 rounded-xl bg-[#1D3860] text-[#C5A880] flex items-center justify-center border border-[#2B4E7E]">
               <Globe className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-[#BEE179] leading-tight">Select Platform Language</h3>
+              <h3 className="text-sm font-extrabold text-[#C5A880] leading-tight">Select Platform Language</h3>
               <p className="text-[11px] text-[#A2C2EC] mt-0.5">Instant free translation across 100+ languages</p>
             </div>
           </div>
@@ -78,7 +78,7 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search languages (e.g. Français, Spanish, Arabic, 中文)..."
-              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-[#102442] border border-[#1D3860] text-white placeholder-[#8EA7C7] text-xs font-medium focus:outline-none focus:border-[#BEE179]"
+              className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-[#102442] border border-[#1D3860] text-white placeholder-[#8EA7C7] text-xs font-medium focus:outline-none focus:border-[#C5A880]"
             />
             {searchQuery && (
               <button
@@ -106,7 +106,7 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
                 }}
                 className={`p-2.5 rounded-xl text-left border flex items-center justify-between transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-[#1D3860] border-[#BEE179] text-[#BEE179] font-bold shadow-xs'
+                    ? 'bg-[#1D3860] border-[#C5A880] text-[#C5A880] font-bold shadow-xs'
                     : 'bg-[#102442]/60 hover:bg-[#102442] border-[#1D3860]/70 text-slate-200'
                 }`}
               >
@@ -117,7 +117,7 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
                     <span className="text-[10px] text-[#8EA7C7] font-normal truncate">{lang.name}</span>
                   </div>
                 </div>
-                {isSelected && <Check className="w-4 h-4 text-[#BEE179] shrink-0 ml-1" />}
+                {isSelected && <Check className="w-4 h-4 text-[#C5A880] shrink-0 ml-1" />}
               </button>
             );
           })}
@@ -128,7 +128,7 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="text-xs text-[#BEE179] hover:underline cursor-pointer"
+                className="text-xs text-[#C5A880] hover:underline cursor-pointer"
               >
                 Show all languages
               </button>
@@ -138,11 +138,11 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({ is
 
         {/* Modal Footer */}
         <div className="p-3 bg-[#102442] border-t border-[#1D3860] flex items-center justify-between text-xs text-[#8EA7C7] shrink-0">
-          <span className="text-[11px] font-semibold text-[#BEE179]">100+ Languages Supported</span>
+          <span className="text-[11px] font-semibold text-[#C5A880]">100+ Languages Supported</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] font-bold text-xs transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-lg bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-bold text-xs transition-colors cursor-pointer"
           >
             Close
           </button>

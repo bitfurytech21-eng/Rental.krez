@@ -25,12 +25,12 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ onNavigateFAQ, onNavigat
     <section className="py-20 sm:py-28 bg-[#0B1B30] text-white border-b border-[#1A3358]" id="faq">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6">
         
-        {/* Section Heading with Yellow / Lime Accent matching request */}
+        {/* Section Heading with Warm Gold Accent */}
         <div className="max-w-3xl mx-auto text-center mb-12 space-y-4">
-          <p className="text-[11px] font-extrabold text-[#BEE179] tracking-[0.2em] uppercase">
+          <p className="text-[11px] font-extrabold text-[#C5A880] tracking-[0.2em] uppercase">
             Inquiries & Clarifications
           </p>
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#BEE179] tracking-tight drop-shadow-xs">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-[#C5A880] tracking-tight drop-shadow-xs">
             Frequently Asked Questions
           </h2>
           <p className="text-base text-[#D1E2F7] max-w-2xl mx-auto font-medium leading-relaxed">
@@ -46,7 +46,7 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ onNavigateFAQ, onNavigat
               onClick={() => setActiveCategory(cat)}
               className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
                 activeCategory === cat
-                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-md'
+                  ? 'bg-[#C5A880] text-[#0B1B30] shadow-md'
                   : 'bg-[#132745] text-slate-200 hover:text-white border border-[#23406D]'
               }`}
             >
@@ -62,23 +62,23 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ onNavigateFAQ, onNavigat
             return (
               <div
                 key={item.id}
-                className="bg-[#102442] border border-[#1D3860] rounded-xl overflow-hidden transition-all shadow-sm hover:border-[#BEE179]/50"
+                className="bg-[#102442] border border-[#1D3860] rounded-xl overflow-hidden transition-all shadow-sm hover:border-[#C5A880]/50"
               >
                 <button
                   onClick={() => toggle(item.id)}
-                  className="w-full px-6 py-5 text-left flex items-center justify-between gap-4 font-serif text-base font-bold text-white hover:text-[#BEE179] transition-colors cursor-pointer"
+                  className="w-full px-6 py-5 text-left flex items-center justify-between gap-4 font-serif text-base font-bold text-white hover:text-[#C5A880] transition-colors cursor-pointer"
                 >
                   <span>{item.question}</span>
                   <ChevronDown
                     className={`w-4 h-4 text-[#8EA7C7] shrink-0 transition-transform duration-200 ${
-                      isOpen ? 'transform rotate-180 text-[#BEE179]' : ''
+                      isOpen ? 'transform rotate-180 text-[#C5A880]' : ''
                     }`}
                   />
                 </button>
                 {isOpen && (
                   <div className="px-6 pb-6 text-xs sm:text-sm text-[#D1E2F7] font-medium leading-relaxed border-t border-[#1D3860] pt-4">
                     <p>{item.answer}</p>
-                    <div className="mt-3 text-[10px] uppercase tracking-wider font-extrabold text-[#BEE179]">
+                    <div className="mt-3 text-[10px] uppercase tracking-wider font-extrabold text-[#C5A880]">
                       Topic: {item.category}
                     </div>
                   </div>
@@ -97,7 +97,7 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ onNavigateFAQ, onNavigat
             {onNavigateContact && (
               <button
                 onClick={onNavigateContact}
-                className="py-2.5 px-5 text-xs font-extrabold bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] rounded-lg cursor-pointer transition-all shadow-sm flex items-center gap-2"
+                className="py-2.5 px-5 text-xs font-extrabold bg-[#C5A880] hover:bg-[#B39369] text-[#0B1B30] rounded-lg cursor-pointer transition-all shadow-sm flex items-center gap-2"
               >
                 <span>Contact Advisory Desk</span>
                 <ArrowRight className="w-3.5 h-3.5 text-[#0B1B30] stroke-[2.5]" />

@@ -17,12 +17,12 @@ export const ClubTeaserSection: React.FC<ClubTeaserSectionProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
             <div className="lg:col-span-8 space-y-4">
-              <p className="text-[11px] font-bold text-[#BEE179] tracking-[0.2em] uppercase flex items-center gap-2">
-                <Crown className="w-3.5 h-3.5 text-[#BEE179]" />
+              <p className="text-[11px] font-bold text-[#C5A880] tracking-[0.2em] uppercase flex items-center gap-2">
+                <Crown className="w-3.5 h-3.5 text-[#C5A880]" />
                 <span>L'Agence Club Privé · Invitation & Membership</span>
               </p>
 
-              <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-black text-[#BEE179] tracking-tight leading-snug">
+              <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-black text-[#C5A880] tracking-tight leading-snug">
                 Step Inside Spain & France’s Most Exclusive Real Estate Circle
               </h2>
 
@@ -33,15 +33,15 @@ export const ClubTeaserSection: React.FC<ClubTeaserSectionProps> = ({
 
               <div className="pt-2 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-[#D1E2F7]">
                 <div className="flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-[#BEE179]" />
+                  <Lock className="w-3.5 h-3.5 text-[#C5A880]" />
                   <span>Confidential Off-Market Scouting</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-[#BEE179]" />
+                  <Users className="w-3.5 h-3.5 text-[#C5A880]" />
                   <span>Private Estate Salons</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#BEE179]" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#C5A880]" />
                   <span>Distinct from Investment Products</span>
                 </div>
               </div>
@@ -50,7 +50,7 @@ export const ClubTeaserSection: React.FC<ClubTeaserSectionProps> = ({
             <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-3 justify-center">
               <button
                 onClick={onExploreClub}
-                className="py-3.5 px-6 text-xs font-bold bg-[#BEE179] text-[#0B1B30] hover:bg-[#AEDB5B] rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
+                className="py-3.5 px-6 text-xs font-bold bg-[#C5A880] text-[#0B1B30] hover:bg-[#B39369] rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
               >
                 <Crown className="w-4 h-4 text-[#0B1B30]" />
                 <span>Explore Membership Tiers</span>

@@ -220,19 +220,19 @@ export const ContactPage: React.FC = () => {
               </form>
             ) : (
               <div className="text-center py-12 space-y-4">
-                <div className="w-16 h-16 rounded-2xl bg-[#0B1B30] text-[#BEE179] border border-[#1D3860] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-16 h-16 rounded-2xl bg-[#0B1B30] text-[#C5A880] border border-[#1D3860] flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-9 h-9" />
                 </div>
                 <h3 className="text-2xl font-black text-white">Message Successfully Dispatched</h3>
                 <p className="text-xs text-[#8EA7C7] max-w-sm mx-auto">
-                  Thank you, <strong className="text-white">{fullName}</strong>. An investor desk specialist will follow up with you at <strong className="text-[#BEE179]">{email}</strong> within 1 business day.
+                  Thank you, <strong className="text-white">{fullName}</strong>. An investor desk specialist will follow up with you at <strong className="text-[#C5A880]">{email}</strong> within 1 business day.
                 </p>
                 <button
                   onClick={() => {
                     setSubmitted(false);
                     setMessage('');
                   }}
-                  className="bg-[#0B1B30] hover:bg-[#132B4A] text-[#BEE179] border border-[#1D3860] font-bold text-xs px-6 py-2.5 rounded-xl transition-all mt-4 cursor-pointer"
+                  className="bg-[#0B1B30] hover:bg-[#132B4A] text-[#C5A880] border border-[#1D3860] font-bold text-xs px-6 py-2.5 rounded-xl transition-all mt-4 cursor-pointer"
                 >
                   Send Another Inquiry
                 </button>
@@ -245,13 +245,13 @@ export const ContactPage: React.FC = () => {
         <div className="mt-10 bg-[#102442] rounded-3xl border border-[#1D3860] shadow-2xl overflow-hidden">
           <div className="p-6 sm:p-8 border-b border-[#1D3860] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-[#0B1B30] text-[#BEE179] border border-[#1D3860] flex items-center justify-center shrink-0 shadow-sm">
+              <div className="w-11 h-11 rounded-2xl bg-[#0B1B30] text-[#C5A880] border border-[#1D3860] flex items-center justify-center shrink-0 shadow-sm">
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold text-white">Kretz Spain Office · Barcelona</h3>
-                  <span className="text-[10px] font-bold bg-[#0B1B30] text-[#BEE179] px-2.5 py-0.5 rounded-full border border-[#1D3860]">
+                  <span className="text-[10px] font-bold bg-[#0B1B30] text-[#C5A880] px-2.5 py-0.5 rounded-full border border-[#1D3860]">
                     Live Location
                   </span>
                 </div>
@@ -267,7 +267,7 @@ export const ContactPage: React.FC = () => {
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0B1B30] hover:bg-[#132B4A] text-white text-xs font-bold transition-all border border-[#1D3860] shadow-sm cursor-pointer shrink-0"
             >
               <span>Open in Google Maps</span>
-              <ExternalLink className="w-3.5 h-3.5 text-[#BEE179]" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#C5A880]" />
             </a>
           </div>
           <div className="w-full h-80 sm:h-96 relative bg-[#0B1B30]">

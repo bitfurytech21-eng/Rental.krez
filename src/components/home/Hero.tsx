@@ -322,18 +322,18 @@ export const Hero: React.FC<HeroProps> = ({
           style={{
             animationDelay: '7s',
             background:
-              'radial-gradient(circle, rgba(190, 225, 121, 0.10) 0%, rgba(29, 56, 96, 0.38) 50%, rgba(11, 27, 48, 0) 78%)',
+              'radial-gradient(circle, rgba(197, 168, 128, 0.10) 0%, rgba(29, 56, 96, 0.38) 50%, rgba(11, 27, 48, 0) 78%)',
           }}
         />
 
         {/* Subtle Floating Ambient Micro-Particles */}
-        <div className="hidden sm:block absolute top-[24%] right-[34%] w-1.5 h-1.5 rounded-full bg-[#BEE179]/40 hero-particle" />
+        <div className="hidden sm:block absolute top-[24%] right-[34%] w-1.5 h-1.5 rounded-full bg-[#C5A880]/40 hero-particle" />
         <div
           className="hidden sm:block absolute top-[58%] right-[16%] w-2 h-2 rounded-full bg-[#8EA7C7]/35 hero-particle"
           style={{ animationDelay: '4s' }}
         />
         <div
-          className="hidden sm:block absolute bottom-[26%] left-[44%] w-1.5 h-1.5 rounded-full bg-[#BEE179]/35 hero-particle"
+          className="hidden sm:block absolute bottom-[26%] left-[44%] w-1.5 h-1.5 rounded-full bg-[#C5A880]/35 hero-particle"
           style={{ animationDelay: '8s' }}
         />
       </div>
@@ -354,8 +354,8 @@ export const Hero: React.FC<HeroProps> = ({
               >
                 {/* Clean Unboxed Institutional Kicker */}
                 <div className="inline-flex flex-wrap items-center gap-2 text-xs">
-                  <ShieldCheck className="w-4 h-4 text-[#BEE179] shrink-0 stroke-[2.5]" />
-                  <span className="text-[#BEE179] font-extrabold tracking-wider">
+                  <ShieldCheck className="w-4 h-4 text-[#C5A880] shrink-0 stroke-[2.5]" />
+                  <span className="text-[#C5A880] font-extrabold tracking-wider">
                     {currentSlide.kickerLead}
                   </span>
                   <span className="text-[#6484B0]" aria-hidden="true">
@@ -372,7 +372,7 @@ export const Hero: React.FC<HeroProps> = ({
                   style={{ textWrap: 'balance' }}
                 >
                   {currentSlide.headlinePrefix}{' '}
-                  <span className="text-[#BEE179] font-black not-italic">
+                  <span className="text-[#C5A880] font-black not-italic">
                     {currentSlide.headlineHighlight}
                   </span>
                 </h1>
@@ -387,16 +387,16 @@ export const Hero: React.FC<HeroProps> = ({
                   <button
                     type="button"
                     onClick={handlePrimaryAction}
-                    className="px-7 py-3.5 rounded-xl bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-md transition-all duration-150 cursor-pointer active:scale-[0.98] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    className="px-7 py-3.5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black text-sm tracking-wide flex items-center justify-center gap-2 shadow-md transition-all duration-150 cursor-pointer active:scale-[0.98] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   >
                     <span>{currentSlide.primaryCtaLabel}</span>
-                    <ArrowRight className="w-4 h-4 text-[#0B1B30] stroke-[2.75]" />
+                    <ArrowRight className="w-4 h-4 text-[#1A1A1A] stroke-[2.75]" />
                   </button>
 
                   <button
                     type="button"
                     onClick={handleSecondaryAction}
-                    className="px-6 py-3.5 rounded-xl bg-[#132745] hover:bg-[#1A3258] border border-[#2B4C7E] text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                    className="px-6 py-3.5 rounded-xl bg-[#132745] hover:bg-[#1A3258] border border-[#2B4C7E] text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                   >
                     <span>{currentSlide.secondaryCtaLabel}</span>
                     <ArrowRight className="w-4 h-4 text-[#D1E2F7] stroke-[2.25]" />
@@ -408,15 +408,15 @@ export const Hero: React.FC<HeroProps> = ({
             {/* Institutional Trust Triad */}
             <div className="pt-5 border-t border-[#1F3E6C] grid grid-cols-1 sm:grid-cols-3 gap-3 text-left text-xs font-bold text-white">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#BEE179] shrink-0 stroke-[2.5]" />
+                <CheckCircle2 className="w-4 h-4 text-[#C5A880] shrink-0 stroke-[2.5]" />
                 <span>100% Ring-Fenced SPVs</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#BEE179] shrink-0 stroke-[2.5]" />
+                <CheckCircle2 className="w-4 h-4 text-[#C5A880] shrink-0 stroke-[2.5]" />
                 <span>Automated Monthly Yields</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#BEE179] shrink-0 stroke-[2.5]" />
+                <CheckCircle2 className="w-4 h-4 text-[#C5A880] shrink-0 stroke-[2.5]" />
                 <span>Secondary Liquidity Desk</span>
               </div>
             </div>
@@ -441,7 +441,7 @@ export const Hero: React.FC<HeroProps> = ({
                   }
                 }}
                 aria-label={`View offering details for ${currentSlide.spotlightTitle}`}
-                className="bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden shadow-xl hover:border-[#BEE179]/60 transition-colors duration-200 cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+                className="bg-[#102442] rounded-2xl border border-[#1D3860] overflow-hidden shadow-xl hover:border-[#C5A880]/60 transition-colors duration-200 cursor-pointer group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
               >
                 {/* Fixed Aspect-Ratio Property Photography (Zero CLS) */}
                 <div className="relative aspect-[16/11] overflow-hidden bg-[#0A1729]">
@@ -463,13 +463,13 @@ export const Hero: React.FC<HeroProps> = ({
 
                   <div className="absolute bottom-3.5 left-4 right-4 flex items-end justify-between gap-3">
                     <div className="flex items-center gap-1.5 text-xs text-white/95 font-medium truncate">
-                      <MapPin className="w-3.5 h-3.5 text-[#BEE179] shrink-0" />
+                      <MapPin className="w-3.5 h-3.5 text-[#C5A880] shrink-0" />
                       <span className="truncate">{currentSlide.spotlightLocation}</span>
                     </div>
                     {activeProperty && (
                       <div className="text-right shrink-0">
                         <span className="block text-[10px] text-[#D1E2F7]">Projected Yield</span>
-                        <span className="font-mono tabular-nums text-sm font-black text-[#BEE179]">
+                        <span className="font-mono tabular-nums text-sm font-black text-[#C5A880]">
                           {activeProperty.estimatedAnnualYield}% p.a.
                         </span>
                       </div>
@@ -483,7 +483,7 @@ export const Hero: React.FC<HeroProps> = ({
                     <div className="text-xs text-[#8EA7C7] font-medium truncate">
                       {currentSlide.spotlightSubtitle}
                     </div>
-                    <h2 className="font-serif text-lg sm:text-xl font-bold text-white mt-0.5 group-hover:text-[#BEE179] transition-colors line-clamp-1">
+                    <h2 className="font-serif text-lg sm:text-xl font-bold text-white mt-0.5 group-hover:text-[#C5A880] transition-colors line-clamp-1">
                       {currentSlide.spotlightTitle}
                     </h2>
                   </div>
@@ -510,7 +510,7 @@ export const Hero: React.FC<HeroProps> = ({
                         <span className="text-[#8EA7C7] block text-[11px] font-sans">
                           Subscription
                         </span>
-                        <span className="font-bold text-[#BEE179]">{fundedPercent}% Funded</span>
+                        <span className="font-bold text-[#C5A880]">{fundedPercent}% Funded</span>
                       </div>
                     </div>
                   ) : (
@@ -519,7 +519,7 @@ export const Hero: React.FC<HeroProps> = ({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-xs font-bold text-[#BEE179]">
+                  <div className="flex items-center justify-between text-xs font-bold text-[#C5A880]">
                     <span>
                       {activeProperty ? 'Open Property Dossier & Token Ledger' : 'Browse Marketplace Offerings'}
                     </span>
@@ -545,9 +545,9 @@ export const Hero: React.FC<HeroProps> = ({
                   aria-selected={isActive}
                   aria-label={`Slide ${idx + 1}: ${slide.headlineHighlight}`}
                   onClick={() => setActiveSlideIdx(idx)}
-                  className={`h-2 rounded-full transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179] ${
+                  className={`h-2 rounded-full transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880] ${
                     isActive
-                      ? 'w-10 bg-[#BEE179]'
+                      ? 'w-10 bg-[#C5A880]'
                       : 'w-2.5 bg-[#23436D] hover:bg-[#3A649B]'
                   }`}
                 />
@@ -565,7 +565,7 @@ export const Hero: React.FC<HeroProps> = ({
               onClick={() => setIsAutoPlaying((prev) => !prev)}
               aria-label={isAutoPlaying ? 'Pause hero slideshow' : 'Play hero slideshow'}
               aria-pressed={!isAutoPlaying}
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
             >
               {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
             </button>
@@ -573,7 +573,7 @@ export const Hero: React.FC<HeroProps> = ({
               type="button"
               onClick={goToPrev}
               aria-label="Previous hero slide"
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -581,7 +581,7 @@ export const Hero: React.FC<HeroProps> = ({
               type="button"
               onClick={goToNext}
               aria-label="Next hero slide"
-              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BEE179]"
+              className="w-10 h-10 rounded-xl bg-[#102442] hover:bg-[#173158] border border-[#1D3860] text-[#D1E2F7] hover:text-white flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C5A880]"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

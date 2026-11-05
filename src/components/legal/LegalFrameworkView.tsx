@@ -562,7 +562,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
             </div>
 
             <div className="p-5 rounded-2xl bg-[#F6F9F8] border border-[#E3ECE8] space-y-2">
-              <span className="px-2.5 py-0.5 rounded bg-[#0B1B30] text-[#BEE179] font-bold text-[10px] uppercase inline-block">
+              <span className="px-2.5 py-0.5 rounded bg-[#0B1B30] text-[#C5A880] font-bold text-[10px] uppercase inline-block">
                 Tier 3 · Solana Infrastructure
               </span>
               <h4 className="font-serif font-bold text-[#18211F] text-base">

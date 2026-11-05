@@ -286,7 +286,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-[10px] uppercase font-bold text-[#BEE179] block">
+              <span className="text-[10px] uppercase font-bold text-[#C5A880] block">
                 Preserved Investment Selection
               </span>
               <h4 className="font-bold text-white truncate">{preservedProperty.title}</h4>
@@ -344,7 +344,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   onClick={() => switchMode('login')}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-900/60 hover:bg-red-800/80 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer mt-1 border border-red-500/30"
                 >
-                  <Lock className="w-3 h-3 text-[#BEE179]" />
+                  <Lock className="w-3 h-3 text-[#C5A880]" />
                   <span>Click here to sign in with this email &rarr;</span>
                 </button>
               )}
@@ -360,7 +360,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               onClick={() => switchMode('login')}
               className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 mode === 'login'
-                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-md font-black'
+                  ? 'bg-[#C5A880] text-[#1A1A1A] shadow-md font-black'
                   : 'text-[#8EA7C7] hover:text-white'
               }`}
             >
@@ -372,7 +372,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               onClick={() => switchMode('register')}
               className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 mode === 'register'
-                  ? 'bg-[#BEE179] text-[#0B1B30] shadow-md font-black'
+                  ? 'bg-[#C5A880] text-[#1A1A1A] shadow-md font-black'
                   : 'text-[#8EA7C7] hover:text-white'
               }`}
             >
@@ -386,24 +386,24 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         {mode === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="form-field space-y-1">
-              <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">Email Address</label>
+              <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
               <input
                 type="email"
                 required
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
               />
             </div>
 
             <div className="form-field space-y-1">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">Password</label>
+                <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password</label>
                 <button
                   type="button"
                   onClick={() => switchMode('forgot-password')}
-                  className="text-[11px] font-bold text-[#BEE179] hover:underline cursor-pointer"
+                  className="text-[11px] font-bold text-[#C5A880] hover:underline cursor-pointer"
                 >
                   Forgot Password?
                 </button>
@@ -414,7 +414,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
               />
             </div>
 
@@ -434,11 +434,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
             <button
               type="submit"
               disabled={loading || !turnstileToken}
-              className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+              className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
             >
               {loading ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                  <span className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
                   <span>Signing in...</span>
                 </>
               ) : preservedProperty ? (
@@ -453,7 +453,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               <button
                 type="button"
                 onClick={() => switchMode('register')}
-                className="text-xs font-bold text-[#BEE179] hover:underline cursor-pointer"
+                className="text-xs font-bold text-[#C5A880] hover:underline cursor-pointer"
               >
                 Register Here
               </button>
@@ -467,38 +467,38 @@ export const AuthPages: React.FC<AuthPageProps> = ({
             {!verificationPending ? (
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="form-field space-y-1">
-                  <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">Full Legal Name</label>
+                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Full Legal Name</label>
                   <input
                     type="text"
                     required
                     placeholder="David Vance"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
                   <p className="text-[10px] text-[#8EA7C7]">Stored securely in Supabase user metadata for SPV compliance.</p>
                 </div>
 
                 <div className="form-field space-y-1">
-                  <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">Email Address</label>
+                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
                   <input
                     type="email"
                     required
                     placeholder="david@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
                 </div>
 
                 {/* Country of Residence Selection */}
                 <div className="form-field space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-[#BEE179]" />
+                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-[#C5A880]" />
                       <span>Country of Residence</span>
                     </label>
-                    <span className="text-[10px] font-bold text-[#BEE179] bg-[#0B1B30] px-2 py-0.5 rounded-full border border-[#1D3860]">
+                    <span className="text-[10px] font-bold text-[#C5A880] bg-[#0B1B30] px-2 py-0.5 rounded-full border border-[#1D3860]">
                       SPV Compliance
                     </span>
                   </div>
@@ -509,7 +509,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       setSelectedCountryCode(newCode);
                       setPhoneCountryCode(newCode);
                     }}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#C5A880]"
                   >
                     {COUNTRIES.map((country) => (
                       <option key={country.code} value={country.code} className="bg-[#102442] text-white">
@@ -522,8 +522,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 {/* Country Code & Phone Number Digits */}
                 <div className="form-field space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-[#BEE179]" />
+                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-[#C5A880]" />
                       <span>Phone Number</span>
                     </label>
                     <span className="text-[10px] text-[#8EA7C7]">Country Code & Digits</span>
@@ -534,7 +534,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       <select
                         value={phoneCountryCode}
                         onChange={(e) => setPhoneCountryCode(e.target.value)}
-                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-2.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179] truncate"
+                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-2.5 py-3 font-semibold text-white focus:outline-none focus:border-[#C5A880] truncate"
                         title="Select Country Dialing Code"
                       >
                         {COUNTRIES.map((c) => (
@@ -555,7 +555,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                           const val = e.target.value.replace(/[^\d\s-]/g, '');
                           setPhoneDigits(val);
                         }}
-                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                       />
                     </div>
                   </div>
@@ -566,15 +566,15 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
                 <div className="form-field space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider">Account Type</label>
-                    <span className="text-[10px] font-bold text-[#BEE179] bg-[#0B1B30] px-2.5 py-0.5 rounded-full border border-[#1D3860]">
+                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider">Account Type</label>
+                    <span className="text-[10px] font-bold text-[#C5A880] bg-[#0B1B30] px-2.5 py-0.5 rounded-full border border-[#1D3860]">
                       {ACCOUNT_TYPES.find(t => t.id === accountType)?.badge || 'Investor'}
                     </span>
                   </div>
                   <select
                     value={accountType}
                     onChange={(e) => setAccountType(e.target.value as AccountType)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#C5A880]"
                   >
                     {ACCOUNT_TYPES.filter(type => type.id !== 'admin').map((type) => (
                       <option key={type.id} value={type.id} className="bg-[#102442] text-white">
@@ -587,12 +587,12 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     if (!activeType) return null;
                     return (
                       <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl text-[11px] text-[#8EA7C7] flex items-start gap-2">
-                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#BEE179] shrink-0" />
+                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[#C5A880] shrink-0" />
                         <div className="space-y-0.5 flex-1">
                           <p className="leading-snug text-white font-medium">{activeType.description}</p>
                           {activeType.minInvestment && activeType.minInvestment !== 'N/A' && (
                             <p className="text-[10px] font-bold text-white">
-                              Minimum Allocation: <span className="text-[#BEE179] font-mono">{activeType.minInvestment}</span>
+                              Minimum Allocation: <span className="text-[#C5A880] font-mono">{activeType.minInvestment}</span>
                             </p>
                           )}
                         </div>
@@ -605,21 +605,21 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 {referralCode ? (
                   <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl flex items-center justify-between text-xs text-white">
                     <div className="flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-[#BEE179] shrink-0" />
+                      <Tag className="w-4 h-4 text-[#C5A880] shrink-0" />
                       <div>
-                        <div className="text-[10px] text-[#BEE179] font-bold">VIP Partner Invitation Active</div>
+                        <div className="text-[10px] text-[#C5A880] font-bold">VIP Partner Invitation Active</div>
                         <div className="font-mono font-bold text-white text-xs">CODE: {referralCode}</div>
                       </div>
                     </div>
-                    <span className="font-bold text-[#0B1B30] bg-[#BEE179] px-2.5 py-1 rounded-full shadow-xs text-[10.5px] shrink-0">
+                    <span className="font-bold text-[#1A1A1A] bg-[#C5A880] px-2.5 py-1 rounded-full shadow-xs text-[10.5px] shrink-0">
                       +€500 Bonus
                     </span>
                   </div>
                 ) : (
                   <div className="form-field space-y-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5 text-[#BEE179]" />
+                      <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-[#C5A880]" />
                         <span>Referral / Partner Code (Optional)</span>
                       </label>
                       <span className="text-[10px] text-[#8EA7C7]">€500 Welcome Allocation</span>
@@ -629,25 +629,25 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       placeholder="e.g. KRETZ-VIP"
                       value={referralCode}
                       onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                      className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-2.5 font-mono font-semibold text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179] uppercase placeholder:normal-case"
+                      className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-2.5 font-mono font-semibold text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880] uppercase placeholder:normal-case"
                     />
                   </div>
                 )}
 
                 <div className="form-field space-y-1">
-                  <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">Password (Min 8 Characters)</label>
+                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Min 8 Characters)</label>
                   <input
                     type="password"
                     required
                     placeholder="Create secure password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
                 </div>
 
                 <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl text-[11px] text-[#8EA7C7] space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-[#BEE179]">
+                  <div className="flex items-center gap-1.5 font-bold text-[#C5A880]">
                     <Shield className="w-3.5 h-3.5" />
                     <span>Identity & Email Verification</span>
                   </div>
@@ -672,11 +672,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <button
                   type="submit"
                   disabled={loading || !turnstileToken}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                  className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {loading ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
                       <span>Creating account...</span>
                     </>
                   ) : preservedProperty ? (
@@ -691,7 +691,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-xs font-bold text-[#BEE179] hover:underline cursor-pointer"
+                    className="text-xs font-bold text-[#C5A880] hover:underline cursor-pointer"
                   >
                     Sign In
                   </button>
@@ -699,7 +699,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               </form>
             ) : (
               <div className="text-center py-4 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] flex items-center justify-center mx-auto shadow-md">
                   <Mail className="w-7 h-7" />
                 </div>
                 <h3 className="text-xl font-black text-white">Verify Your Email</h3>
@@ -716,7 +716,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     setVerificationPending(false);
                     switchMode('login');
                   }}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                  className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
                 >
                   Proceed to Sign In
                 </button>
@@ -731,14 +731,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
             {!resetSent ? (
               <form onSubmit={handleResetRequest} className="space-y-4">
                 <div className="form-field space-y-1">
-                  <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">Registered Email Address</label>
+                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Registered Email Address</label>
                   <input
                     type="email"
                     required
                     placeholder="name@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
                 </div>
 
@@ -758,11 +758,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <button
                   type="submit"
                   disabled={loading || !turnstileToken}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                  className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {loading ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
                       <span>Sending Recovery Link...</span>
                     </>
                   ) : (
@@ -774,7 +774,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="text-xs font-bold text-[#BEE179] hover:underline cursor-pointer"
+                    className="text-xs font-bold text-[#C5A880] hover:underline cursor-pointer"
                   >
                     Back to Sign In
                   </button>
@@ -782,7 +782,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               </form>
             ) : (
               <div className="text-center py-4 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
                 <h4 className="text-lg font-bold text-white">Recovery Email Sent</h4>
@@ -795,7 +795,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     setResetSent(false);
                     switchMode('login');
                   }}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                  className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
                 >
                   Return to Sign In
                 </button>
@@ -810,42 +810,42 @@ export const AuthPages: React.FC<AuthPageProps> = ({
             {!passwordResetSuccess ? (
               <form onSubmit={handleUpdatePassword} className="space-y-4">
                 <div className="p-3 bg-[#0B1B30] border border-[#1D3860] rounded-xl text-xs text-white flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-[#BEE179]" />
+                  <KeyRound className="w-4 h-4 text-[#C5A880]" />
                   <span>Authenticated via Supabase recovery token</span>
                 </div>
 
                 <div className="form-field space-y-1">
-                  <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">New Password (Min 8 Characters)</label>
+                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 8 Characters)</label>
                   <input
                     type="password"
                     required
                     placeholder="Enter new password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
                 </div>
 
                 <div className="form-field space-y-1">
-                  <label className="text-xs font-bold text-[#BEE179] uppercase tracking-wider block">Confirm New Password</label>
+                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Confirm New Password</label>
                   <input
                     type="password"
                     required
                     placeholder="Repeat new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#BEE179]"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                  className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {loading ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-[#0B1B30] border-t-transparent rounded-full animate-spin" />
+                      <span className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
                       <span>Updating Password in Supabase...</span>
                     </>
                   ) : (
@@ -855,7 +855,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               </form>
             ) : (
               <div className="text-center py-4 space-y-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#BEE179] flex items-center justify-center mx-auto shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] flex items-center justify-center mx-auto shadow-md">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
                 <h4 className="text-lg font-bold text-white">Password Updated!</h4>
@@ -864,7 +864,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 </p>
                 <button
                   onClick={() => switchMode('login')}
-                  className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                  className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
                 >
                   Proceed to Sign In
                 </button>

@@ -105,8 +105,8 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all ${
               isDragging
-                ? 'border-[#27845D] bg-green-50/50'
-                : 'border-[#E3E8E3] bg-white hover:border-[#27845D]/60 hover:bg-[#F9FAFB]'
+                ? 'border-[#C5A880] bg-[#FAF8F5]'
+                : 'border-[#E3DDD1] bg-white hover:border-[#C5A880]/60 hover:bg-[#FAF8F5]'
             }`}
           >
             <input
@@ -116,8 +116,8 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
               onChange={handleFileChange}
               className="hidden"
             />
-            <div className="flex items-center justify-center gap-2 text-xs text-[#18211F] font-bold">
-              <UploadCloud className="w-4 h-4 text-[#27845D]" />
+            <div className="flex items-center justify-center gap-2 text-xs text-[#0B1B30] font-bold">
+              <UploadCloud className="w-4 h-4 text-[#C5A880]" />
               <span>Click to browse or drag & drop photo here</span>
             </div>
           </div>
