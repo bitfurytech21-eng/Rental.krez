@@ -21,8 +21,10 @@ const INTRO_BRAND_TEXT = "L'Agence";
 
 const IntroOverlay: React.FC<{ onRevealHero: () => void }> = ({ onRevealHero }) => {
   const prefersReducedMotion = useReducedMotion();
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
   const [alreadySeen] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
+    if (isIframe) return true;
     try {
       return window.sessionStorage.getItem(INTRO_SESSION_KEY) === 'seen';
     } catch {
@@ -32,19 +34,27 @@ const IntroOverlay: React.FC<{ onRevealHero: () => void }> = ({ onRevealHero }) 
 
   const [typedCount, setTypedCount] = useState(0);
   const [phase, setPhase] = useState<'typing' | 'lifting' | 'done'>(() =>
-    alreadySeen ? 'done' : 'typing'
+    alreadySeen || isIframe ? 'done' : 'typing'
   );
 
+  const dismiss = () => {
+    setPhase('done');
+    try {
+      window.sessionStorage.setItem(INTRO_SESSION_KEY, 'seen');
+    } catch {}
+    onRevealHero();
+  };
+
   useEffect(() => {
-    if (alreadySeen || prefersReducedMotion) {
+    if (alreadySeen || prefersReducedMotion || isIframe) {
       setPhase('done');
       onRevealHero();
       return;
     }
 
     const timers: number[] = [];
-    const startDelay = 500;
-    const stepMs = 105;
+    const startDelay = 150;
+    const stepMs = 60;
 
     for (let i = 1; i <= INTRO_BRAND_TEXT.length; i += 1) {
       timers.push(
@@ -54,7 +64,7 @@ const IntroOverlay: React.FC<{ onRevealHero: () => void }> = ({ onRevealHero }) 
       );
     }
 
-    const liftTime = startDelay + INTRO_BRAND_TEXT.length * stepMs + 420;
+    const liftTime = startDelay + INTRO_BRAND_TEXT.length * stepMs + 250;
     timers.push(
       window.setTimeout(() => {
         setPhase('lifting');
@@ -70,13 +80,13 @@ const IntroOverlay: React.FC<{ onRevealHero: () => void }> = ({ onRevealHero }) 
     timers.push(
       window.setTimeout(() => {
         setPhase('done');
-      }, liftTime + 1550)
+      }, liftTime + 700)
     );
 
     return () => {
       timers.forEach((id) => window.clearTimeout(id));
     };
-  }, [alreadySeen, prefersReducedMotion, onRevealHero]);
+  }, [alreadySeen, prefersReducedMotion, onRevealHero, isIframe]);
 
   if (phase === 'done') return null;
 
@@ -84,10 +94,14 @@ const IntroOverlay: React.FC<{ onRevealHero: () => void }> = ({ onRevealHero }) 
 
   return (
     <div
-      aria-hidden="true"
-      className={`intro-overlay ${phase === 'lifting' ? 'is-lifting' : ''}`}
+      role="button"
+      tabIndex={0}
+      onClick={dismiss}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') dismiss(); }}
+      aria-label="Skip introduction animation"
+      className={`intro-overlay ${phase === 'lifting' ? 'is-lifting' : ''} cursor-pointer`}
     >
-      <div className="intro-word">
+      <div className="intro-word select-none">
         <span>{visibleWord}</span>
         {typedCount === INTRO_BRAND_TEXT.length && (
           <span className="intro-dot">.</span>

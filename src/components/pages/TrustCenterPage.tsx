@@ -100,14 +100,14 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
   };
 
   return (
-    <div className="bg-[#F6F9F8] min-h-screen py-10 sm:py-16 text-left">
+    <div className="bg-[#FAF8F5] min-h-screen py-10 sm:py-16 text-left">
       <div className="container max-w-[1240px] mx-auto px-4 sm:px-6 space-y-12">
         {/* 1. Institutional Trust Centre Hero Header */}
         <section className="bg-[#0B1B30] text-white rounded-3xl border border-[#1D3860] p-6 sm:p-10 shadow-xl space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-[#1D3860]">
             <div className="space-y-3 max-w-3xl">
-              <div className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-[#BEE179]">
-                <ShieldCheck className="w-4 h-4 text-[#BEE179]" />
+              <div className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-[#C5A880]">
+                <ShieldCheck className="w-4 h-4 text-[#C5A880]" />
                 <span>Institutional Transparency &amp; Verification Hub</span>
               </div>
               <h1 className="font-serif text-3xl sm:text-5xl font-black text-white tracking-tight leading-[1.1]">
@@ -122,9 +122,9 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
               <button
                 type="button"
                 onClick={() => onNavigate('/legal')}
-                className="px-4 py-2.5 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
               >
-                <FileText className="w-3.5 h-3.5" />
+                <FileText className="w-3.5 h-3.5 text-[#1A1A1A]" />
                 <span>Legal Documentation (12)</span>
               </button>
               <button
@@ -154,7 +154,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#8EA7C7]">
                     {item.label}
                   </span>
-                  <span className="text-[9.5px] font-mono text-[#BEE179]">{item.status}</span>
+                  <span className="text-[9.5px] font-mono text-[#C5A880]">{item.status}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs sm:text-sm font-bold text-white truncate" title={item.value}>
@@ -168,7 +168,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
                     title={`Copy ${item.label}`}
                   >
                     {copiedKey === item.value ? (
-                      <Check className="w-3.5 h-3.5 text-[#BEE179]" />
+                      <Check className="w-3.5 h-3.5 text-[#C5A880]" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
@@ -210,7 +210,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
               type="button"
               onClick={handleVerifyMainnet}
               disabled={isVerifyingRpc}
-              className="px-4 py-2.5 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold inline-flex items-center gap-2 shrink-0 self-start md:self-auto cursor-pointer disabled:opacity-60"
+              className="px-4 py-2.5 rounded-xl bg-[#213138] hover:bg-[#18252b] text-white text-xs font-bold inline-flex items-center gap-2 shrink-0 self-start md:self-auto cursor-pointer disabled:opacity-60"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingRpc ? 'animate-spin' : ''}`} />
               <span>{isVerifyingRpc ? 'Verifying on Solana Mainnet...' : 'Verify Live via Mainnet RPC'}</span>
@@ -429,7 +429,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
             <button
               type="button"
               onClick={() => onNavigate('/properties')}
-              className="px-4 py-2 rounded-xl bg-[#182D2A] hover:bg-[#24423C] text-white text-xs font-bold inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#213138] hover:bg-[#18252b] text-white text-xs font-bold inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
             >
               <span>Inspect All Data Rooms</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -587,7 +587,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
             <p className="text-xs sm:text-sm text-[#D1E2F7] leading-relaxed">
               Request notarized SPV extracts, submit formal due-diligence inquiries, or verify corporate documentation directly with our Paris and Barcelona desks.
             </p>
-            <div className="flex flex-wrap items-center gap-5 pt-2 text-xs text-[#BEE179] font-semibold">
+            <div className="flex flex-wrap items-center gap-5 pt-2 text-xs text-[#C5A880] font-semibold">
               <span className="inline-flex items-center gap-1.5">
                 <Mail className="w-4 h-4" />
                 {COMPANY_REGISTRATION.primaryEmail}
@@ -602,7 +602,7 @@ export const TrustCenterPage: React.FC<TrustCenterPageProps> = ({ onNavigate }) 
           <button
             type="button"
             onClick={() => onNavigate('/contact')}
-            className="px-5 py-3 rounded-xl bg-[#BEE179] hover:bg-[#AEDB5B] text-[#0B1B30] text-xs font-bold inline-flex items-center gap-2 shrink-0 cursor-pointer"
+            className="px-5 py-3 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] text-xs font-bold inline-flex items-center gap-2 shrink-0 cursor-pointer shadow-sm"
           >
             <span>Submit Compliance Inquiry</span>
             <ArrowRight className="w-4 h-4" />

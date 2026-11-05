@@ -3,8 +3,8 @@ import { INITIAL_PROPERTIES } from './properties';
 
 export const KREZ_IMAGES = {
   logo: '/assets/aistudio/IMG_7234_bd44519a.jpeg',
-  ogImage: '/assets/aistudio/clean_hero_bg.jpg',
-  heroBackground: '/assets/aistudio/clean_hero_bg.jpg',
+  ogImage: '/assets/aistudio/IMG_7661_12a629f0.jpeg',
+  heroBackground: '/assets/aistudio/IMG_7661_12a629f0.jpeg',
   defaultProperty: 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
   galleryAtrium: 'https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg',
   galleryLobby: 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',

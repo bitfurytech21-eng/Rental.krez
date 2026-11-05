@@ -26,7 +26,7 @@ export const CorporateRegistryTrustCard: React.FC<CorporateRegistryTrustCardProp
     <div className={`space-y-6 ${className}`}>
       {/* Section Header */}
       <div className="space-y-2 text-left">
-        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#27845D]">
+        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#9a7b3f]">
           Corporate Registry &amp; Legal Transparency
         </p>
         <h2 className="font-serif text-2xl sm:text-4xl font-bold text-[#18211F] tracking-tight">
@@ -43,15 +43,15 @@ export const CorporateRegistryTrustCard: React.FC<CorporateRegistryTrustCardProp
             onClick={() => onNavigate?.('/legal')}
             className="px-4 py-2.5 rounded-full border border-[#DCE5E2] bg-white hover:bg-[#F4F7F5] text-[#18211F] text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer shadow-2xs"
           >
-            <FileText className="w-4 h-4 text-[#27845D]" />
+            <FileText className="w-4 h-4 text-[#9a7b3f]" />
             <span>Legal Documentation (12)</span>
           </button>
           <button
             type="button"
             onClick={() => onNavigate?.('/trust')}
-            className="px-5 py-2.5 rounded-full bg-[#1C312E] hover:bg-[#274440] text-white text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer shadow-2xs"
+            className="px-5 py-2.5 rounded-full bg-[#213138] hover:bg-[#18252b] text-white text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer shadow-2xs"
           >
-            <CheckCircle2 className="w-4 h-4 text-[#BEE179]" />
+            <CheckCircle2 className="w-4 h-4 text-[#C5A880]" />
             <span>Explore Full Trust Centre</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
@@ -61,7 +61,7 @@ export const CorporateRegistryTrustCard: React.FC<CorporateRegistryTrustCardProp
       {/* Corporate Registration Data Card (Image 2 design) */}
       <div className="p-6 sm:p-7 rounded-3xl bg-white border border-[#DCE5E2] shadow-2xs space-y-6 text-left">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl bg-[#1C312E] text-[#BEE179] shrink-0">
+          <div className="p-3 rounded-2xl bg-[#102442] text-[#C5A880] border border-[#1D3860] shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
           <div>
@@ -157,8 +157,8 @@ export const SolanaCapitalRiskTerminalCard: React.FC<{ className?: string }> = (
 
       {/* Badges & Links */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div className="inline-flex items-center gap-2 text-[#BEE179] font-sans font-extrabold">
-          <CheckCircle2 className="w-4 h-4 text-[#BEE179]" />
+        <div className="inline-flex items-center gap-2 text-[#C5A880] font-sans font-extrabold">
+          <CheckCircle2 className="w-4 h-4 text-[#C5A880]" />
           <span>EU Ring-Fenced SPV Custody · Solana Mainnet</span>
         </div>
 
@@ -178,7 +178,7 @@ export const SolanaCapitalRiskTerminalCard: React.FC<{ className?: string }> = (
             className="p-1 rounded hover:bg-[#16273B] text-[#8BA5C9] hover:text-white cursor-pointer"
             aria-label="Copy USDC Mint address"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-[#BEE179]" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-[#C5A880]" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>

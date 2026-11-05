@@ -15,8 +15,8 @@ const PRIMARY_NAV_ITEMS = [
   { to: '/properties', label: 'Properties' },
   { to: '/how-it-works', label: 'How It Works' },
   { to: '/portfolio', label: 'Portfolio' },
-  { to: '/team', label: 'Team' },
-  { to: '/blog', label: 'Blog' },
+  { to: '/news', label: 'Company News' },
+  { to: '/team', label: 'The Team' },
   { to: '/journal', label: 'Journal' },
   { to: '/insights', label: 'Insights' },
   { to: '/contact', label: 'Contact' },
@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
           </button>
 
           {/* Complete Desktop Horizontal Navigation Bar */}
-          <nav aria-label="Desktop primary navigation" className="hidden lg:flex items-center gap-7 xl:gap-9">
+          <nav aria-label="Desktop primary navigation" className="hidden lg:flex items-center gap-4.5 xl:gap-6">
             {PRIMARY_NAV_ITEMS.map((item) => {
               const isActive =
                 cleanPath === item.to ||

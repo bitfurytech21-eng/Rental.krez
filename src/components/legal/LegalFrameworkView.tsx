@@ -161,8 +161,8 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#DCE5E2] shadow-2xs space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
           <div className="space-y-2.5 max-w-3xl">
-            <div className="inline-flex items-center gap-2 text-[#1E3A34] font-extrabold text-xs uppercase tracking-[0.15em]">
-              <ShieldCheck className="w-4 h-4 text-[#27845D]" />
+            <div className="inline-flex items-center gap-2 text-primary font-extrabold text-xs uppercase tracking-[0.15em]">
+              <ShieldCheck className="w-4 h-4 text-[#9a7b3f]" />
               <span>Legal Documentation Centre &amp; Corporate Registry</span>
             </div>
             <h1 className="font-serif text-2xl sm:text-4xl font-black text-[#18211F] tracking-tight">
@@ -180,7 +180,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
               className="px-4 py-2.5 rounded-xl bg-[#0B1B30] hover:bg-[#142D4C] text-white text-xs font-bold inline-flex items-center gap-2 shrink-0 self-start cursor-pointer transition-colors"
             >
               <span>Open Trust Centre</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#BEE179]" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#C5A880]" />
             </button>
           )}
         </div>
@@ -230,7 +230,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
             onClick={() => setActiveTab('documents')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'documents'
-                ? 'bg-[#182D2A] text-white'
+                ? 'bg-[#213138] text-white shadow-xs'
                 : 'bg-[#F4F7F5] text-[#52605C] hover:bg-[#E8EFEA]'
             }`}
           >
@@ -242,7 +242,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
             onClick={() => setActiveTab('entity')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'entity'
-                ? 'bg-[#182D2A] text-white'
+                ? 'bg-[#213138] text-white shadow-xs'
                 : 'bg-[#F4F7F5] text-[#52605C] hover:bg-[#E8EFEA]'
             }`}
           >
@@ -254,7 +254,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
             onClick={() => setActiveTab('structure')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'structure'
-                ? 'bg-[#182D2A] text-white'
+                ? 'bg-[#213138] text-white shadow-xs'
                 : 'bg-[#F4F7F5] text-[#52605C] hover:bg-[#E8EFEA]'
             }`}
           >
@@ -267,7 +267,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
               onClick={() => setActiveTab('checklist')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'checklist'
-                  ? 'bg-[#182D2A] text-white'
+                  ? 'bg-[#213138] text-white shadow-xs'
                   : 'bg-[#F4F7F5] text-[#52605C] hover:bg-[#E8EFEA]'
               }`}
             >
@@ -308,7 +308,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
                   onClick={() => setCategoryFilter(cat.id)}
                   className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
                     categoryFilter === cat.id
-                      ? 'bg-[#182D2A] text-white'
+                      ? 'bg-[#213138] text-white shadow-2xs'
                       : 'bg-[#F6F9F8] text-[#52605C] hover:bg-[#E8EFEA]'
                   }`}
                 >
@@ -342,14 +342,14 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
                         onClick={() => setSelectedDocId(doc.id)}
                         className={`w-full text-left p-4 transition-colors cursor-pointer flex items-start gap-3 ${
                           isSelected
-                            ? 'bg-[#EAF4F0] text-[#18211F]'
+                            ? 'bg-[#F4F1EA] text-[#18211F]'
                             : 'hover:bg-[#F8FAF9] text-[#4A5854]'
                         }`}
                       >
                         <span
                           className={`font-mono text-xs font-bold px-2 py-0.5 rounded shrink-0 mt-0.5 tabular-nums ${
                             isSelected
-                              ? 'bg-[#182D2A] text-[#BEE179]'
+                              ? 'bg-[#213138] text-[#C5A880]'
                               : 'bg-[#F0F4F2] text-[#52605C]'
                           }`}
                         >
@@ -363,7 +363,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
                             {doc.summary}
                           </div>
                           <div className="flex items-center gap-2 pt-0.5 text-[10px] font-mono">
-                            <span className="text-[#27845D] font-semibold">{doc.version}</span>
+                            <span className="text-[#9a7b3f] font-semibold">{doc.version}</span>
                             <span>·</span>
                             <span className="text-[#69736F]">{doc.category}</span>
                           </div>
@@ -380,7 +380,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-[#E8EFEA]">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                    <span className="font-mono font-bold px-2.5 py-0.5 rounded bg-[#0B1B30] text-[#BEE179]">
+                    <span className="font-mono font-bold px-2.5 py-0.5 rounded bg-[#0B1B30] text-[#C5A880]">
                       Document {activeDoc.number} / 12
                     </span>
                     <span className="font-semibold px-2.5 py-0.5 rounded bg-[#F0F4F2] text-[#18211F]">

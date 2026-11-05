@@ -22,10 +22,24 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Global resilience listeners to prevent unexpected dev server process exits
+process.on('uncaughtException', (err: any) => {
+  console.error('[server] Uncaught Exception caught safely:', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason: any) => {
+  console.error('[server] Unhandled Rejection caught safely:', reason?.message || reason);
+});
+
 async function startServer() {
   const app = express();
   const server = http.createServer(app);
-  const PORT = parseInt(process.env.APP_PORT || (process.env.PORT === '8080' ? '3000' : (process.env.PORT || '3000')), 10);
+
+  // Resolve port and environment for both AI Studio dev server and Cloud deployments (Cloud Run, etc.)
+  const portArgIndex = process.argv.indexOf('--port');
+  const portArg = portArgIndex !== -1 && process.argv[portArgIndex + 1] ? parseInt(process.argv[portArgIndex + 1], 10) : null;
+  const isProd = process.env.NODE_ENV === 'production';
+  const PORT = portArg || (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
 
   // Body Parsers
   app.use(express.json({ limit: '2mb' }));
@@ -93,7 +107,7 @@ async function startServer() {
   app.use('/api', errorHandler);
 
   // In development, mount Vite dev server middlewares
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProd) {
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
@@ -126,22 +140,40 @@ async function startServer() {
     // Production static file serving
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      if (req.originalUrl.startsWith('/api')) {
+        return res.status(404).json({ success: false, error: 'Endpoint not found', code: 'NOT_FOUND' });
+      }
+      const distIndexPath = path.resolve(__dirname, 'dist', 'index.html');
+      if (fs.existsSync(distIndexPath)) {
+        res.sendFile(distIndexPath);
+      } else {
+        res.sendFile(path.resolve(__dirname, 'index.html'));
+      }
     });
   }
 
   server.on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
-      console.warn(`[server] Port ${PORT} already in use. A process is already listening.`);
+      console.warn(`[server] Port ${PORT} already in use. Retrying in 1s...`);
+      setTimeout(() => {
+        try {
+          server.close();
+        } catch (_) {}
+        server.listen(PORT, '0.0.0.0');
+      }, 1000);
     } else {
       console.error('[server] Unhandled server error:', err);
     }
   });
 
   const handleShutdown = () => {
-    server.close(() => {
+    try {
+      server.close(() => {
+        process.exit(0);
+      });
+    } catch (_) {
       process.exit(0);
-    });
+    }
     setTimeout(() => process.exit(0), 1000);
   };
 
@@ -163,5 +195,8 @@ async function startServer() {
 
 startServer().catch((err) => {
   console.error('Failed to start server:', err);
-  process.exit(1);
+  // Retry instead of immediately exiting the process
+  setTimeout(() => {
+    startServer().catch((e) => console.error('Secondary start failure:', e));
+  }, 2000);
 });
