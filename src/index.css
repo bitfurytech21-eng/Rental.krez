@@ -269,6 +269,12 @@
     font: inherit;
   }
 
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+
   button,
   a {
     -webkit-tap-highlight-color: transparent;
