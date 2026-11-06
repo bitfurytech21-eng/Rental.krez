@@ -1,0 +1,80 @@
+name: Apply audited security fix to server/routes.ts
+
+# Applies security-fixes/0001-fix-security-routes.patch to server/routes.ts and
+# commits it, but ONLY if the resulting file matches the reviewed blob hash
+# byte-for-byte. If the hash does not match, the job fails and nothing is pushed.
+#
+# Triggers:
+#   - automatically when this workflow or the patch under security-fixes/ changes
+#   - manually from the Actions tab ("Run workflow")
+#
+# server/routes.ts is ~146 KB, so the fix is landed server-side rather than by
+# retransmitting the whole file. The blob-hash gate makes the result provably
+# identical to the reviewed fix (912f9d0ce228fe501d1d0ff52b073e3345633420).
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/apply-security-fix.yml'
+      - 'security-fixes/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-security-fix
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip if already applied
+        id: guard
+        run: |
+          set -euo pipefail
+          EXPECTED="912f9d0ce228fe501d1d0ff52b073e3345633420"
+          ACTUAL="$(git hash-object server/routes.ts)"
+          echo "expected=$EXPECTED"
+          echo "actual  =$ACTUAL"
+          if [ "$ACTUAL" = "$EXPECTED" ]; then
+            echo "Already applied - nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply patch
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          git apply --check security-fixes/0001-fix-security-routes.patch
+          git apply security-fixes/0001-fix-security-routes.patch
+
+      - name: Verify blob hash
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          EXPECTED="912f9d0ce228fe501d1d0ff52b073e3345633420"
+          ACTUAL="$(git hash-object server/routes.ts)"
+          echo "expected=$EXPECTED"
+          echo "actual  =$ACTUAL"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Blob mismatch - refusing to commit."
+            exit 1
+          fi
+
+      - name: Commit and push
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          git config user.name "bitfurytech21-eng"
+          git config user.email "bitfurytech21-eng@users.noreply.github.com"
+          git add server/routes.ts
+          git commit -m "fix(security): block admin privilege escalation in login and validate password-reset tokens"
+          git push
