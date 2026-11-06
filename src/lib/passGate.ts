@@ -9,17 +9,20 @@ const PASSGATE_CUSTOM_CODE_KEY = 'kretz_admin_passgate_custom_secret';
 const PASSGATE_ATTEMPTS_KEY = 'kretz_admin_passgate_attempts';
 const PASSGATE_LOCKOUT_KEY = 'kretz_admin_passgate_lockout_until';
 
-// Default authorized master passcodes recognized by the executive pass gate
-export const DEFAULT_MASTER_PASSCODES = [
-  'kretz2026',
-  'Kretz2026!',
-  'admin2026',
-  '774921',
-  'kretz-admin',
-  'admin123',
-];
+// Authorized master passcode is supplied via environment configuration only.
+// Hardcoded default passcodes were removed for security: the previous list
+// ('kretz2026', 'admin123', '774921', ...) was publicly guessable and shipped in
+// the client bundle, allowing anyone to unlock the executive pass gate.
+export const DEFAULT_MASTER_PASSCODES: string[] = (() => {
+  const envCode =
+    (typeof import.meta !== 'undefined' &&
+      (import.meta as any).env?.VITE_ADMIN_PASSGATE_CODE) ||
+    '';
+  const trimmed = String(envCode).trim();
+  return trimmed ? [trimmed] : [];
+})();
 
-export const PRIMARY_DEFAULT_PASSCODE = 'kretz2026';
+export const PRIMARY_DEFAULT_PASSCODE = DEFAULT_MASTER_PASSCODES[0] || '';
 
 import { ledger } from './ledger';
 
