@@ -45,12 +45,35 @@ export const isSupabaseConfigured = (): boolean => {
 const supabaseUrl = isSupabaseConfigured() ? rawUrl : 'https://placeholder.supabase.co';
 const supabaseKey = isSupabaseConfigured() ? rawKey : 'placeholder-anon-key-unconfigured';
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+const isBrowser = typeof window !== 'undefined';
+
+// Lazily create the Supabase client. Creating it eagerly at module load (with realtime
+// enabled) crashes under Node / test runners, where `window`, `localStorage` and a
+// WebSocket implementation are unavailable. Deferring creation until first use keeps
+// browser behaviour identical while making the module safe to import server-side.
+let _supabaseClient: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  if (!_supabaseClient) {
+    _supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: isBrowser,
+        autoRefreshToken: isBrowser,
+        detectSessionInUrl: isBrowser,
+        storage: isBrowser ? window.localStorage : undefined,
+      },
+      // Disable the realtime socket outside the browser to avoid Node WebSocket crashes.
+      realtime: isBrowser ? undefined : { params: { eventsPerSecond: 0 } },
+    });
+  }
+  return _supabaseClient;
+}
+
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    const client = getSupabaseClient();
+    const value = Reflect.get(client as any, prop, receiver);
+    return typeof value === 'function' ? value.bind(client) : value;
   },
 });
 

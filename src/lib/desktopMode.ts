@@ -26,7 +26,7 @@ export function applyDesktopMode(enabled: boolean): void {
     localStorage.setItem('desktop_mode_active', 'true');
   } else {
     if (meta) {
-      meta.content = 'width=device-width, initial-scale=1.0, maximum-[#182D2A]';
+      meta.content = 'width=device-width, initial-scale=1.0';
     }
     document.documentElement.classList.remove('desktop-mode-active');
     document.body.classList.remove('desktop-mode-active');
