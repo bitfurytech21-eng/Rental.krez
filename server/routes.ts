@@ -494,9 +494,11 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
       id: `usr-${crypto.randomBytes(4).toString('hex')}`,
       email: normalizedEmail,
       fullName: normalizedEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-      role: normalizedEmail.includes('admin') ? 'admin' : 'investor',
-      kycStatus: 'approved',
-      balance: 15000,
+      // Public login must never grant elevated privileges: any email containing
+      // the substring "admin" previously auto-provisioned an administrator account.
+      role: 'investor',
+      kycStatus: 'pending',
+      balance: 0,
       currency: 'EUR',
       createdAt: new Date().toISOString()
     };
@@ -1763,11 +1765,46 @@ router.post('/security/verify-turnstile', securityLimiter, async (req: Authentic
 router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) => {
   const { token, newPassword } = req.body || {};
 
-  if (!newPassword || newPassword.length < 6) {
+  if (!token || typeof token !== 'string') {
     return res.status(400).json({
       success: false,
-      error: 'New password must be at least 6 characters.',
+      error: 'A valid password reset token is required.',
+      code: 'MISSING_RESET_TOKEN',
+      requestId: req.id
+    });
+  }
+
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({
+      success: false,
+      error: 'New password must be at least 8 characters.',
       code: 'WEAK_PASSWORD',
+      requestId: req.id
+    });
+  }
+
+  // Validate and single-use consume the recovery token BEFORE applying any change.
+  // Previously this endpoint reset the password without ever checking the token,
+  // allowing an unauthenticated attacker to reset any account's password.
+  const verification = verifyAndConsumeToken(token, 'password_reset');
+  if (!verification.valid) {
+    logger.log({
+      level: 'warn',
+      category: 'security',
+      requestId: req.id || 'req-reset-invalid',
+      method: 'POST',
+      route: '/api/v1/auth/password/reset',
+      statusCode: 400,
+      eventType: 'PASSWORD_RESET_REJECTED',
+      outcome: 'failure',
+      message: `Password reset rejected: ${verification.error}`,
+      errorCode: 'INVALID_RESET_TOKEN'
+    });
+
+    return res.status(400).json({
+      success: false,
+      error: verification.error || 'Invalid or expired password reset token.',
+      code: 'INVALID_RESET_TOKEN',
       requestId: req.id
     });
   }
@@ -1781,7 +1818,7 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
     statusCode: 200,
     eventType: 'PASSWORD_RESET_COMPLETED',
     outcome: 'success',
-    message: 'Password successfully updated via recovery authorization.'
+    message: `Password successfully updated via recovery authorization for ${verification.email}.`
   });
 
   res.json({
