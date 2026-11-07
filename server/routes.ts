@@ -382,6 +382,27 @@ let mockTransactions = [
   }
 ];
 
+let platformConfig = {
+  platformName: 'Kretz Prime Real Estate Platform',
+  baseCurrency: 'EUR',
+  minInvestment: 750,
+  maxInvestmentPerInvestor: 500000,
+  tradingEnabled: true,
+  depositsEnabled: true,
+  withdrawalsEnabled: true,
+  maintenanceMode: false,
+  announcementBanner: {
+    active: false,
+    text: '',
+    type: 'info'
+  },
+  kycEnforcement: 'STRICT',
+  supportedChains: ['Ethereum (ERC20)', 'Tron (TRC20)', 'Polygon POS', 'BNB Chain', 'Base'],
+  settlementTimeHours: 24,
+  updatedAt: new Date().toISOString(),
+  updatedBy: 'usr-admin-01'
+};
+
 let mockAuditLogs = [
   {
     id: 'audit-001',
@@ -2134,21 +2155,90 @@ router.get('/admin/system-health', requireAdmin, (req: AuthenticatedRequest, res
 });
 
 /**
+ * GET /api/v1/config
+ * Public configuration retrieval for frontend & customer dashboards
+ */
+router.get('/config', (req: AuthenticatedRequest, res: Response) => {
+  return res.json({
+    success: true,
+    data: platformConfig,
+    requestId: req.id
+  });
+});
+
+/**
  * GET /api/v1/admin/settings
  */
 router.get('/admin/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  res.json({
+  return res.json({
     success: true,
-    data: {
-      platformName: 'Kretz Prime Real Estate Platform',
-      baseCurrency: 'EUR',
-      minInvestment: 750,
-      maxInvestmentPerInvestor: 500000,
-      kycEnforcement: 'STRICT',
-      supportedChains: ['Ethereum (ERC20)', 'Tron (TRC20)', 'Polygon POS', 'BNB Chain', 'Base'],
-      treasuryStatus: 'ACTIVE',
-      settlementTimeHours: 24
-    },
+    data: platformConfig,
+    requestId: req.id
+  });
+});
+
+/**
+ * PUT /api/v1/admin/settings
+ * Update authoritative platform configuration with mandatory audit logging and validation
+ */
+router.put('/admin/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  const adminUser = req.user;
+  const updates = req.body || {};
+
+  const oldConfigSnapshot = { ...platformConfig };
+
+  if (typeof updates.platformName === 'string') platformConfig.platformName = updates.platformName.trim();
+  if (typeof updates.tradingEnabled === 'boolean') platformConfig.tradingEnabled = updates.tradingEnabled;
+  if (typeof updates.depositsEnabled === 'boolean') platformConfig.depositsEnabled = updates.depositsEnabled;
+  if (typeof updates.withdrawalsEnabled === 'boolean') platformConfig.withdrawalsEnabled = updates.withdrawalsEnabled;
+  if (typeof updates.maintenanceMode === 'boolean') platformConfig.maintenanceMode = updates.maintenanceMode;
+  if (typeof updates.minInvestment === 'number') platformConfig.minInvestment = updates.minInvestment;
+  if (typeof updates.maxInvestmentPerInvestor === 'number') platformConfig.maxInvestmentPerInvestor = updates.maxInvestmentPerInvestor;
+  if (updates.announcementBanner && typeof updates.announcementBanner === 'object') {
+    platformConfig.announcementBanner = {
+      active: Boolean(updates.announcementBanner.active),
+      text: String(updates.announcementBanner.text || ''),
+      type: ['info', 'warning', 'success'].includes(updates.announcementBanner.type) ? updates.announcementBanner.type : 'info'
+    };
+  }
+
+  platformConfig.updatedAt = new Date().toISOString();
+  platformConfig.updatedBy = adminUser?.email || 'admin@kretz.com';
+
+  const auditEntry = {
+    id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    adminId: adminUser?.id || 'usr-admin-01',
+    adminEmail: adminUser?.email || 'admin@kretz.com',
+    action: 'PLATFORM_SETTINGS_UPDATE',
+    details: `Administrative settings and feature flags updated. Trading: ${platformConfig.tradingEnabled}, Deposits: ${platformConfig.depositsEnabled}, Withdrawals: ${platformConfig.withdrawalsEnabled}, Maintenance: ${platformConfig.maintenanceMode}`,
+    previousSetting: oldConfigSnapshot,
+    newSetting: platformConfig,
+    timestamp: new Date().toISOString(),
+    status: 'success',
+    affectedSections: ['Public Frontend', 'Customer Dashboards', 'Financial Operations', 'Property Marketplace']
+  };
+
+  mockAuditLogs.unshift(auditEntry);
+
+  logger.log({
+    level: 'info',
+    category: 'admin',
+    requestId: req.id || 'req-admin-settings',
+    method: 'PUT',
+    route: '/api/v1/admin/settings',
+    statusCode: 200,
+    userId: adminUser?.id,
+    userRole: adminUser?.role,
+    eventType: 'ADMIN_COMMAND_EXECUTED',
+    outcome: 'success',
+    message: `Administrator ${adminUser?.email} successfully updated platform settings.`,
+    metadata: { updates, platformConfig }
+  });
+
+  return res.json({
+    success: true,
+    data: platformConfig,
+    message: 'Platform settings updated and synchronized across frontend and customer dashboards.',
     requestId: req.id
   });
 });
@@ -3006,6 +3096,32 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
  * POST /api/v1/deposits
  */
 router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  if (!platformConfig.depositsEnabled) {
+    return res.status(403).json({
+      success: false,
+      error: 'New deposits are temporarily suspended by platform administration.',
+      code: 'DEPOSITS_SUSPENDED',
+      requestId: req.id
+    });
+  }
+  if (platformConfig.maintenanceMode && req.user?.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Platform is currently under scheduled maintenance. Financial operations are suspended.',
+      code: 'MAINTENANCE_MODE_ACTIVE',
+      requestId: req.id
+    });
+  }
+  const foundUserRecord = findUserRecordForRequest(req);
+  if (foundUserRecord && foundUserRecord.status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      error: 'Account access restricted by administrative compliance.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
   const { amount, currency = 'EUR', method = 'SEPA Bank Wire', txHash } = req.body || {};
 
   if (!amount || Number(amount) < 100) {
@@ -3121,6 +3237,32 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
  * POST /api/v1/withdrawals
  */
 router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  if (!platformConfig.withdrawalsEnabled) {
+    return res.status(403).json({
+      success: false,
+      error: 'Withdrawals are temporarily suspended by platform administration.',
+      code: 'WITHDRAWALS_SUSPENDED',
+      requestId: req.id
+    });
+  }
+  if (platformConfig.maintenanceMode && req.user?.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Platform is currently under scheduled maintenance. Financial operations are suspended.',
+      code: 'MAINTENANCE_MODE_ACTIVE',
+      requestId: req.id
+    });
+  }
+  const userRecordCheck = mockUsers.find(u => u.id === req.user?.id);
+  if (userRecordCheck && userRecordCheck.status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      error: 'Account access restricted by administrative compliance.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
   const { amount, destination, method = 'Bank Wire SEPA' } = req.body || {};
 
   if (!amount || Number(amount) < 250) {
@@ -3243,6 +3385,32 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
  * Execute fractional asset investment with idempotency protection
  */
 router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  if (!platformConfig.tradingEnabled) {
+    return res.status(403).json({
+      success: false,
+      error: 'Property purchasing is temporarily suspended by platform administration.',
+      code: 'TRADING_SUSPENDED',
+      requestId: req.id
+    });
+  }
+  if (platformConfig.maintenanceMode && req.user?.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Platform is currently under scheduled maintenance. Financial operations are suspended.',
+      code: 'MAINTENANCE_MODE_ACTIVE',
+      requestId: req.id
+    });
+  }
+  const userRecordCheck = mockUsers.find(u => u.id === req.user?.id);
+  if (userRecordCheck && userRecordCheck.status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      error: 'Account access restricted by administrative compliance.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
   const { propertyId, tokensCount, paymentMethod = 'Platform Balance', feePercent, idempotencyKey } = req.body || {};
 
   if (!propertyId || !tokensCount || Number(tokensCount) < 1) {
