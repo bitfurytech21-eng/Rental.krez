@@ -94,9 +94,18 @@ function loadCustomCredentials(): CustomAdminCredentials | null {
   return null;
 }
 
+let ephemeralSessionSecret: string | null = null;
+function getEphemeralSessionSecret(): string {
+  if (!ephemeralSessionSecret) {
+    ephemeralSessionSecret = crypto.randomBytes(32).toString('hex');
+  }
+  return ephemeralSessionSecret;
+}
+
 /**
  * Resolve Administrator configuration from custom store or server environment variables
  */
+
 export function getAdminConfig() {
   const custom = loadCustomCredentials();
   const rawEnvEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
@@ -117,10 +126,13 @@ export function getAdminConfig() {
     rawPlain === 'your_secure_password';
   const envPlaintextPassword = isPlaceholderPlain ? null : rawPlain;
 
+  // No public default: a known fallback would let anyone forge admin session tokens.
+  // Without SESSION_SECRET/JWT_SECRET a random per-process secret is used (sessions reset on
+  // restart); production should always set one (render.yaml generates it).
   const sessionSecret =
     process.env.SESSION_SECRET ||
     process.env.JWT_SECRET ||
-    'kretz_prime_session_secret_2026_default_key';
+    getEphemeralSessionSecret();
 
   if (custom) {
     return {
