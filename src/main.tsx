@@ -10,8 +10,10 @@ if (!container) {
 }
 
 try {
+  console.log('[main.tsx] Attempting to create root and render App...');
   const root = createRoot(container);
   root.render(<App />);
+  console.log('[main.tsx] App successfully rendered to root.');
 } catch (err: any) {
   console.error('[main.tsx] Error rendering App component:', err);
   // Build the fallback notice with safe DOM APIs instead of innerHTML so that an

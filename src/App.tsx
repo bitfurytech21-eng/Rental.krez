@@ -7,6 +7,7 @@ import { ledger } from './lib/ledger';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
+import { SmartsuppWidget } from './components/support/SmartsuppWidget';
 
 // Krez Template Pages
 import { KrezHomePage } from './components/krez/KrezHomePage';
@@ -655,6 +656,7 @@ function MainApp() {
       <ViewportDesktopMonitor />
 
       <SchemaJsonLd property={selectedProperty} />
+      <SmartsuppWidget />
     </div>
   );
 }
