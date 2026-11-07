@@ -98,7 +98,7 @@ let emailSettings: EmailSenderSettings = {
   replyToAddress: process.env.EMAIL_REPLY_TO || 'support@kretzdespain.com',
   supportEmail: process.env.EMAIL_SUPPORT || 'info@kretzdespain.com',
   supportPhone: '+34 912 345 678',
-  platformUrl: 'https://kretzdespain.com',
+  platformUrl: (process.env.PUBLIC_APP_URL || process.env.PLATFORM_URL || 'https://kretzdespain.com').trim().replace(/\/+$/, ''),
   primaryBrandColor: '#2563EB', // Signature Royal Blue from reference image
   testMode: process.env.EMAIL_TEST_MODE === 'true',
   subjectOverrides: {},
@@ -1353,7 +1353,10 @@ function getTransporter(): Transporter {
       secure: (prov as any).port === 465,
       auth: { user: (prov as any).user, pass: (prov as any).pass },
       pool: true,
-      maxConnections: 5
+      maxConnections: 5,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000
     });
   }
 
@@ -1500,9 +1503,9 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
           })
         });
         if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          console.warn('[Resend API Error, falling back to sandbox]:', errData);
-          mode = 'sandbox';
+          const errData: any = await response.json().catch(() => ({}));
+          // Surface the real failure instead of silently pretending the email was delivered.
+          throw new Error(`Resend rejected the email (HTTP ${response.status}): ${errData?.message || errData?.name || 'unknown error'}. Check RESEND_API_KEY and that the sending domain of EMAIL_FROM is verified in Resend.`);
         } else {
           const resJson: any = await response.json().catch(() => ({}));
           if (resJson?.id) {
@@ -1510,8 +1513,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
           }
         }
       } catch (e: any) {
-        console.warn('[Resend network failure, falling back to sandbox]:', e.message);
-        mode = 'sandbox';
+        throw new Error(e?.message?.startsWith('Resend rejected') ? e.message : `Resend request failed: ${e?.message || e}`);
       }
     } else if (provider.type === 'sendgrid') {
       mode = 'sendgrid';
@@ -1534,15 +1536,14 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
           })
         });
         if (!response.ok) {
-          console.warn('[SendGrid API Error, falling back to sandbox]: HTTP', response.status);
-          mode = 'sandbox';
+          const sgBody = await response.text().catch(() => '');
+          throw new Error(`SendGrid rejected the email (HTTP ${response.status}): ${sgBody.slice(0, 300)}. Check SENDGRID_API_KEY and that EMAIL_FROM is a verified sender.`);
         } else {
           const sgMsgId = response.headers.get('x-message-id');
           if (sgMsgId) providerMessageId = sgMsgId;
         }
       } catch (e: any) {
-        console.warn('[SendGrid network failure, falling back to sandbox]:', e.message);
-        mode = 'sandbox';
+        throw new Error(e?.message?.startsWith('SendGrid rejected') ? e.message : `SendGrid request failed: ${e?.message || e}`);
       }
     } else if (provider.type === 'smtp') {
       mode = 'smtp';
@@ -1558,6 +1559,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
       if (info?.messageId) providerMessageId = info.messageId;
     } else {
       mode = 'sandbox';
+      if (process.env.NODE_ENV === 'production') {
+        // Never report success when nothing can actually be sent.
+        throw new Error('No email provider is configured. Set RESEND_API_KEY, SENDGRID_API_KEY, or SMTP_HOST/SMTP_USER/SMTP_PASS (and EMAIL_FROM) and redeploy.');
+      }
       const mailer = getTransporter();
       await mailer.sendMail({
         from: `"${emailSettings.senderName}" <${emailSettings.fromAddress}>`,
@@ -1632,6 +1637,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
     };
 
     emailLogs.unshift(logEntry);
+    console.error(`[email] Failed to send '${templateId}' to ${recipient} via ${provider.name}: ${err.message}`);
 
     return {
       success: false,
