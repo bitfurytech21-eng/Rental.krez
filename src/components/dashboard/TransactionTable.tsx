@@ -200,12 +200,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
         );
       case 'fee':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#FF65B3] bg-[#202020] border border-[#FF65B3]/25 px-2 py-0.5 rounded">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#E5A84B] bg-[#202020] border border-[#E5A84B]/25 px-2 py-0.5 rounded">
             <RefreshCw className="w-2.5 h-2.5" /> FX / Fee
           </span>
         );
       default:
-        return <span className="text-[9.5px] uppercase font-mono text-[#A0A0A0] bg-[#202020] px-2 py-0.5 rounded border border-[#303030]">{type}</span>;
+        return <span className="text-[9.5px] uppercase font-mono text-[#777979] bg-[#202020] px-2 py-0.5 rounded border border-[#303030]">{type}</span>;
     }
   };
 
@@ -213,14 +213,14 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (status) {
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#38C982]">
-            <CheckCircle2 className="w-3 h-3 text-[#38C982]" /> Completed
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#43C98B]">
+            <CheckCircle2 className="w-3 h-3 text-[#43C98B]" /> Completed
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#FFD93D]">
-            <Clock className="w-3 h-3" /> Pending Review
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#E5A84B]">
+            <Clock className="w-3 h-3 text-[#E5A84B]" /> Pending Review
           </span>
         );
       case 'rejected':
@@ -230,7 +230,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           </span>
         );
       default:
-        return <span className="text-[10px] text-[#A0A0A0]">{status}</span>;
+        return <span className="text-[10px] text-[#777979]">{status}</span>;
     }
   };
 
@@ -439,12 +439,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
 
                   <div className="text-right shrink-0">
                     <div
-                      className={`font-black text-xs tabular-nums ${
-                        isFxConversion
-                          ? 'text-[#FF65B3]'
+                      className={`financial-num text-xs sm:text-[13px] font-[600] ${
+                        tx.status === 'pending' || tx.status === 'processing'
+                          ? 'text-[#E5A84B]'
                           : isNegative
-                          ? 'text-white'
-                          : 'text-[#2ECC71]'
+                          ? 'text-[#F5F5F2]'
+                          : 'text-[#43C98B]'
                       }`}
                     >
                       {prefix}
@@ -515,21 +515,21 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                         {tx.paymentMethod}
                       </td>
                       <td className="py-3 px-3.5">{getStatusBadge(tx.status)}</td>
-                      <td className="py-3 px-3.5 text-right font-bold font-mono tabular-nums text-xs sm:text-[13px] whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-right font-[600] financial-num text-xs sm:text-[13px] whitespace-nowrap">
                         <span
                           className={
-                            isFxConversion
-                              ? 'text-[#FF65B3]'
+                            tx.status === 'pending' || tx.status === 'processing'
+                              ? 'text-[#E5A84B]'
                               : isNegative
-                              ? 'text-white'
-                              : 'text-[#2ECC71]'
+                              ? 'text-[#F5F5F2]'
+                              : 'text-[#43C98B]'
                           }
                         >
                           {prefix}
                           {formatCurrency(tx.amount, tx.currency)}
                         </span>
                       </td>
-                      <td className="py-3 px-3.5 text-right font-medium font-mono tabular-nums text-xs text-[#D0D0D0] whitespace-nowrap">
+                      <td className="py-3 px-3.5 text-right font-[500] financial-num text-xs text-[#777979] whitespace-nowrap">
                         {formatCurrency(tx.balanceAfter)}
                       </td>
                       <td className="py-3 px-3.5 text-center">

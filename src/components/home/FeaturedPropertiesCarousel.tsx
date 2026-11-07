@@ -265,7 +265,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               onClick={onExploreAll}
               className="py-2.5 px-5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-bold text-xs tracking-wide flex items-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              <span>Enter Marketplace</span>
+              <span>Enter as Tokenized fraction</span>
               <ArrowRight className="w-3.5 h-3.5 text-[#1A1A1A]" />
             </button>
           </div>

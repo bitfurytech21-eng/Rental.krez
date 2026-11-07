@@ -45,6 +45,7 @@ import { SchemaJsonLd } from './components/seo/schema';
 import { Breadcrumb } from './components/common/Breadcrumb';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
+import { InitialPlatformLoader } from './components/visuals/InitialPlatformLoader';
 
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
@@ -69,7 +70,10 @@ function MainApp() {
       setProperties(updatedList);
       setSelectedProperty((prev) => {
         if (!prev) return prev;
-        return updatedList.find((p) => p.id === prev.id || p.slug === prev.slug) || prev;
+        const matched = updatedList.find((p) => p.id === prev.id || p.slug === prev.slug);
+        if (!matched) return prev;
+        if (matched.id === prev.id && matched.tokenPrice === prev.tokenPrice) return prev;
+        return matched;
       });
     });
   }, []);
@@ -81,9 +85,15 @@ function MainApp() {
       const slug = clean.replace(/^\/propert(?:y|ies)\//, '');
       const currentList = ledger.getProperties();
       const found = currentList.find((prop) => prop.slug === slug || prop.id === slug);
-      if (found) setSelectedProperty(found);
+      if (found) {
+        setSelectedProperty((prev) => {
+          if (prev && (prev.id === found.id || prev.slug === found.slug)) return prev;
+          return found;
+        });
+      }
     }
   }, [currentPath]);
+
 
   // Update dynamic SEO metadata, canonical tags, localized descriptions, and OpenGraph/Twitter cards
   useEffect(() => {
@@ -640,12 +650,15 @@ function MainApp() {
         <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />
       )}
 
+      <InitialPlatformLoader />
+
       <ViewportDesktopMonitor />
 
       <SchemaJsonLd property={selectedProperty} />
     </div>
   );
 }
+
 
 export default function App() {
   return (

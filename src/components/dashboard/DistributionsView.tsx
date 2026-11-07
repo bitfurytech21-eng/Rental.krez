@@ -31,47 +31,47 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
       {/* Monthly Dividend Yield Trends Chart */}
       <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
       {/* Top summary banner - Charcoal & White with Rainbow KPI Highlights */}
-      <div className="bg-[#151515] text-white p-5 rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden border border-[#303030]">
+      <div className="cinematic-card text-white p-5 rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden border border-white/[0.08]">
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          <div className="p-3.5 bg-[#1D1D1D] rounded-2xl border border-[#303030]">
-            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#2ECC71] bg-[#2ECC71]/15 px-2.5 py-0.5 rounded-full border border-[#2ECC71]/30 uppercase tracking-wider mb-2">
+          <div className="p-3.5 bg-[#141515] rounded-2xl border border-white/[0.08]">
+            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#43C98B] bg-[#43C98B]/15 px-2.5 py-0.5 rounded-full border border-[#43C98B]/30 uppercase tracking-wider mb-2">
               <ShieldCheck className="w-2.5 h-2.5" /> Realized Performance
             </span>
-            <span className="text-[10px] text-[#999999] uppercase tracking-wider font-bold block">
+            <span className="text-[10px] text-[#777979] uppercase tracking-wider font-semibold block">
               Cumulative Dividends Paid
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#2ECC71] mt-1">
-              {formatCurrency(totalDividendsEarned)}
+            <div className="financial-val-card text-[#43C98B] font-[600] mt-1">
+              +{formatCurrency(totalDividendsEarned)}
             </div>
-            <p className="text-[10.5px] text-[#D0D0D0] mt-1 font-medium">Verified cash credited to investor wallet</p>
+            <p className="text-[10.5px] text-[#777979] mt-1 font-medium">Verified cash credited to investor wallet</p>
           </div>
 
-          <div className="p-3.5 bg-[#1D1D1D] rounded-2xl border border-[#303030]">
-            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#00D2FF] bg-[#00D2FF]/15 px-2.5 py-0.5 rounded-full border border-[#00D2FF]/30 uppercase tracking-wider mb-2">
+          <div className="p-3.5 bg-[#141515] rounded-2xl border border-white/[0.08]">
+            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#55BDE8] bg-[#55BDE8]/15 px-2.5 py-0.5 rounded-full border border-[#55BDE8]/30 uppercase tracking-wider mb-2">
               Monthly Accrual
             </span>
-            <span className="text-[10px] text-[#999999] uppercase tracking-wider font-bold block">
+            <span className="text-[10px] text-[#777979] uppercase tracking-wider font-semibold block">
               Est. Monthly Cashflow
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-white mt-1">
-              {formatCurrency(totalMonthlyProjected)}<span className="text-xs font-normal text-[#999999]">/mo</span>
+            <div className="financial-val-card text-[#F5F5F2] font-[600] mt-1">
+              {formatCurrency(totalMonthlyProjected)}<span className="text-xs font-normal text-[#777979]">/mo</span>
             </div>
-            <p className="text-[10.5px] text-[#D0D0D0] mt-1 font-medium">Across {investments.length} active property holdings</p>
+            <p className="text-[10.5px] text-[#777979] mt-1 font-medium">Across {investments.length} active property holdings</p>
           </div>
 
-          <div className="p-3.5 bg-[#1D1D1D] rounded-2xl border border-[#303030]">
-            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#FFD93D] bg-[#FFD93D]/15 px-2.5 py-0.5 rounded-full border border-[#FFD93D]/30 uppercase tracking-wider mb-2">
+          <div className="p-3.5 bg-[#141515] rounded-2xl border border-white/[0.08]">
+            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#55BDE8] bg-[#55BDE8]/15 px-2.5 py-0.5 rounded-full border border-[#55BDE8]/30 uppercase tracking-wider mb-2">
               <TrendingUp className="w-2.5 h-2.5" /> Projected Target
             </span>
-            <span className="text-[10px] text-[#999999] uppercase tracking-wider font-bold block">
+            <span className="text-[10px] text-[#777979] uppercase tracking-wider font-semibold block">
               Projected Annual Yield
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#FFD93D] mt-1">
+            <div className="financial-val-card text-[#55BDE8] font-[600] mt-1">
               {investments.length > 0 
                 ? formatPercent(investments.reduce((acc, i) => acc + i.estimatedAnnualYield, 0) / investments.length)
                 : '0.0%'}
             </div>
-            <p className="text-[10.5px] text-[#D0D0D0] mt-1 font-medium">Weighted contractual underwritten target</p>
+            <p className="text-[10.5px] text-[#777979] mt-1 font-medium">Weighted contractual underwritten target</p>
           </div>
         </div>
       </div>
@@ -103,21 +103,21 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#00D2FF] bg-[#00D2FF]/15 border border-[#00D2FF]/30 px-2 py-0.5 rounded-full">
                         <TrendingUp className="w-2.5 h-2.5" /> Projected: {formatPercent(inv.estimatedAnnualYield)} APY
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#2ECC71] bg-[#2ECC71]/15 border border-[#2ECC71]/30 px-2 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-[#43C98B] bg-[#43C98B]/15 border border-[#43C98B]/30 px-2 py-0.5 rounded-full">
                         <ShieldCheck className="w-2.5 h-2.5" /> Realized: +{formatCurrency(inv.totalDividendsReceived)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 py-2 border-y border-[#303030] text-xs">
+                <div className="grid grid-cols-2 gap-2 py-2 border-y border-white/[0.08] text-xs">
                   <div>
-                    <span className="text-[#999999] block text-[9.5px] font-bold uppercase tracking-wider">Total Invested</span>
-                    <span className="font-bold font-mono text-white text-xs sm:text-[13px]">{formatCurrency(inv.totalAmountInvested)}</span>
+                    <span className="text-[#777979] block text-[9.5px] font-semibold uppercase tracking-wider">Total Invested</span>
+                    <span className="financial-num text-[#F5F5F2] text-xs sm:text-[13px] block mt-0.5">{formatCurrency(inv.totalAmountInvested)}</span>
                   </div>
                   <div>
-                    <span className="text-[#999999] block text-[9.5px] font-bold uppercase tracking-wider">Realized Cashflow</span>
-                    <span className="font-bold font-mono text-[#2ECC71] text-xs sm:text-[13px]">+{formatCurrency(inv.totalDividendsReceived)}</span>
+                    <span className="text-[#777979] block text-[9.5px] font-semibold uppercase tracking-wider">Realized Cashflow</span>
+                    <span className="financial-num text-[#43C98B] text-xs sm:text-[13px] block mt-0.5">+{formatCurrency(inv.totalDividendsReceived)}</span>
                   </div>
                 </div>
 

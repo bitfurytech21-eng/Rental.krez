@@ -15,6 +15,8 @@ import { logger } from './logger';
 import crypto from 'crypto';
 import { verifyAdminSessionToken } from './adminAuth';
 
+import { getSession, touchSession, verifyCsrfToken, ServerSession } from './authService';
+
 export type UserRoleType = 
   | 'investor' 
   | 'admin' 
@@ -35,7 +37,10 @@ export interface AuthenticatedRequest extends Request {
     accountType?: string;
     country?: string;
     balance?: number;
+    status?: 'active' | 'suspended';
+    suspendedReason?: string;
   };
+  session?: ServerSession;
   startTime?: number;
 }
 
@@ -162,6 +167,9 @@ export function correlationAndTimingMiddleware(
 /**
  * Simulated or JWT Authentication Middleware
  */
+/**
+ * Production-Grade Session & Token Authentication Middleware
+ */
 export function authenticateToken(
   req: AuthenticatedRequest,
   res: Response,
@@ -170,11 +178,18 @@ export function authenticateToken(
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  // Support secure HTTP-only cookie session if Authorization header is omitted
+  // 1. Support secure HTTP-only cookie session if Authorization header is omitted
   if (!token && req.headers.cookie) {
-    const match = req.headers.cookie.match(/(?:^|;\s*)kretz_admin_session=([^;]+)/);
-    if (match) {
-      token = decodeURIComponent(match[1]);
+    // Check primary kretz_session cookie
+    const sessionMatch = req.headers.cookie.match(/(?:^|;\s*)kretz_session=([^;]+)/);
+    if (sessionMatch) {
+      token = decodeURIComponent(sessionMatch[1]);
+    } else {
+      // Check admin session cookie
+      const adminMatch = req.headers.cookie.match(/(?:^|;\s*)kretz_admin_session=([^;]+)/);
+      if (adminMatch) {
+        token = decodeURIComponent(adminMatch[1]);
+      }
     }
   }
 
@@ -183,7 +198,30 @@ export function authenticateToken(
   }
 
   try {
-    // 1. Handle Cryptographically Signed Admin Sessions (Environment Auth)
+    // 2. Handle Server-Authoritative Cryptographic Sessions (kz_sess_*)
+    if (token.startsWith('kz_sess_')) {
+      const activeSession = getSession(token);
+      if (activeSession) {
+        touchSession(token);
+        req.session = activeSession;
+        req.user = {
+          id: activeSession.userId,
+          email: activeSession.email,
+          role: activeSession.role,
+          fullName: activeSession.fullName,
+          status: 'active'
+        };
+
+        // Expose fresh CSRF token in response header
+        res.setHeader('X-CSRF-Token', activeSession.csrfToken);
+        return next();
+      } else {
+        // Session expired, revoked, or non-existent
+        return next();
+      }
+    }
+
+    // 3. Handle Cryptographically Signed Admin Sessions (Environment Auth)
     if (token.startsWith('kretz_adm_')) {
       const adminSession = verifyAdminSessionToken(token);
       if (adminSession) {
@@ -191,16 +229,16 @@ export function authenticateToken(
           id: adminSession.sub,
           email: adminSession.email,
           role: 'admin',
-          fullName: adminSession.fullName
+          fullName: adminSession.fullName,
+          status: 'active'
         };
         return next();
       } else {
-        // Invalid or expired token: do not elevate
         return next();
       }
     }
 
-    // 2. Handle Bearer token JWT format (e.g., Supabase Auth or standard JWTs)
+    // 4. Handle Bearer token JWT format (e.g., Supabase Auth or standard JWTs)
     if (token.includes('.')) {
       const parts = token.split('.');
       if (parts.length === 3) {
@@ -216,26 +254,28 @@ export function authenticateToken(
             id: userId,
             email: userEmail,
             role: role as UserRoleType,
-            fullName
+            fullName,
+            status: 'active'
           };
           return next();
         }
       }
     }
 
-    // 3. Handle verified Development Sessions (in non-production only)
+    // 5. Handle verified Development Sessions (in non-production only)
     if (token === 'admin_sess_usr-admin-01' || token.startsWith('admin_sess_')) {
       const userId = token.replace('admin_sess_', '');
       req.user = {
         id: userId || 'usr-admin-01',
         email: 'admin@kretz.com',
         role: 'admin',
-        fullName: 'Executive Administrator'
+        fullName: 'Executive Administrator',
+        status: 'active'
       };
       return next();
     }
 
-    // 4. Handle Standard Investor Sessions (Strictly 'investor' role - no privilege escalation)
+    // 6. Handle Standard Investor Sessions
     if (token.startsWith('sess_') || token.startsWith('local_sess_') || token.startsWith('local_preview_')) {
       const userId = token
         .replace('local_sess_', '')
@@ -248,7 +288,8 @@ export function authenticateToken(
         id: resolvedId,
         email: isSeedInvestor ? 'investor@kretz.com' : '',
         role: 'investor',
-        fullName: 'Verified Investor'
+        fullName: 'Verified Investor',
+        status: 'active'
       };
       return next();
     }
@@ -283,11 +324,88 @@ export function requireAuth(
 
     return res.status(401).json({
       success: false,
-      error: 'Authentication required. Please provide a valid Bearer token in the Authorization header.',
+      error: 'Authentication required. Please sign in to access this section.',
       code: 'UNAUTHORIZED',
       requestId: req.id
     });
   }
+
+  // Account Status Verification: Suspended accounts are immediately denied access
+  if (req.user.status === 'suspended') {
+    logger.log({
+      level: 'warn',
+      category: 'security',
+      requestId: req.id || 'req-suspended',
+      method: req.method,
+      route: req.path,
+      statusCode: 403,
+      userId: req.user.id,
+      eventType: 'SUSPENDED_ACCOUNT_ACCESS_BLOCKED',
+      outcome: 'failure',
+      message: `Suspended account access blocked for ${req.user.email} (${req.user.id})`,
+      errorCode: 'ACCOUNT_SUSPENDED'
+    });
+
+    return res.status(403).json({
+      success: false,
+      error: req.user.suspendedReason || 'Your account has been suspended by compliance. Please contact support.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
+  next();
+}
+
+/**
+ * Validates CSRF Token on mutating HTTP methods for authenticated sessions
+ */
+export function validateCsrf(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    // Exempt public auth routes and external webhooks
+    const isExempt =
+      req.path.startsWith('/auth/login') ||
+      req.path.startsWith('/auth/register') ||
+      req.path.startsWith('/auth/password/forgot') ||
+      req.path.startsWith('/auth/password/reset') ||
+      req.path.startsWith('/admin/login') ||
+      req.path.includes('/webhook') ||
+      req.path.includes('/webhooks');
+
+    if (!isExempt && req.session) {
+      const clientToken =
+        (req.headers['x-csrf-token'] as string) ||
+        (req.headers['x-xsrf-token'] as string);
+
+      if (!clientToken || !verifyCsrfToken(req.session, clientToken)) {
+        logger.log({
+          level: 'warn',
+          category: 'security',
+          requestId: req.id || 'req-csrf-fail',
+          method: req.method,
+          route: req.path,
+          statusCode: 403,
+          userId: req.user?.id,
+          eventType: 'CSRF_VALIDATION_FAILED',
+          outcome: 'failure',
+          message: `CSRF validation failed on ${req.method} ${req.path}`,
+          errorCode: 'INVALID_CSRF_TOKEN'
+        });
+
+        return res.status(403).json({
+          success: false,
+          error: 'Security validation failed: Invalid or missing CSRF token. Please refresh and try again.',
+          code: 'CSRF_VALIDATION_FAILED',
+          requestId: req.id
+        });
+      }
+    }
+  }
+
   next();
 }
 

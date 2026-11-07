@@ -410,7 +410,7 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
                 ? '100% Funded'
                 : property.status === 'upcoming'
                 ? 'Preview Dossier'
-                : 'Invest Now'}
+                : 'Enter as Tokenized fraction'}
             </span>
             <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
           </button>

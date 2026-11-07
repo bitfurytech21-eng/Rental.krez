@@ -13,10 +13,13 @@ import {
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
 
-const heroEstateImg = '/assets/aistudio/IMG_7661_12a629f0.jpeg';
-const madridImg = 'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg';
+import { AnimatedHomepageHeroBackground } from '../visuals/AnimatedHomepageHeroBackground';
+
+const heroEstateImg = '/assets/aistudio/IMG_7738_40d9e7af.jpeg';
+const madridImg = '/assets/aistudio/IMG_7738_40d9e7af.jpeg';
 const malagaImg = 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg';
 const miamiImg = 'https://files.kretzrealestate.com/7c7726988bc68ceecd799aeb4a7fa477.jpg';
+
 
 interface HeroProps {
   onExplore: () => void;
@@ -84,7 +87,7 @@ export const Hero: React.FC<HeroProps> = ({
         headlineHighlight: 'Institutional Governance',
         description:
           'Access curated European residential and commercial property offerings. Receive automated monthly rental distributions directly to your account, protected by independent SPV custody and transparent legal documentation.',
-        primaryCtaLabel: 'Enter Marketplace',
+        primaryCtaLabel: 'Enter as Tokenized fraction',
         secondaryCtaLabel: 'How It Works',
         backdropImage: p0?.bannerImage || p0?.images?.[0] || heroEstateImg,
         fallbackImage: heroEstateImg,
@@ -102,8 +105,8 @@ export const Hero: React.FC<HeroProps> = ({
         headlineHighlight: 'Prime Urban Residences',
         description:
           'Participate in residential apartments, executive coliving buildings, and historic city-center developments across Madrid, Paris, Valencia, and Malaga starting from €750.',
-        primaryCtaLabel: p1 ? 'Inspect Featured Residence' : 'Explore Urban Assets',
-        secondaryCtaLabel: 'Enter Marketplace',
+        primaryCtaLabel: 'Enter as Tokenized fraction',
+        secondaryCtaLabel: 'Explore Urban Assets',
         backdropImage: p1?.images?.[0] || madridImg,
         fallbackImage: madridImg,
         spotlightImage: p1?.images?.[0] || madridImg,
@@ -120,7 +123,7 @@ export const Hero: React.FC<HeroProps> = ({
         headlineHighlight: 'Commercial Developments',
         description:
           'Every property is isolated inside an unencumbered Special Purpose Vehicle with verifiable cadastral deeds, lease agreements, and conservative stress-tested valuations.',
-        primaryCtaLabel: p2 ? 'View Property Dossier' : 'Browse Active Offerings',
+        primaryCtaLabel: 'Enter as Tokenized fraction',
         secondaryCtaLabel: 'How It Works',
         backdropImage: p2?.images?.[0] || malagaImg,
         fallbackImage: malagaImg,
@@ -138,7 +141,7 @@ export const Hero: React.FC<HeroProps> = ({
         headlineHighlight: 'On-Chain Transparency',
         description:
           'Combine legal European SPV share registries with programmable Solana token records—enabling transparent ownership verification, automated dividend accounting, and peer-to-peer transfers.',
-        primaryCtaLabel: 'Explore Tokenized Offerings',
+        primaryCtaLabel: 'Enter as Tokenized fraction',
         secondaryCtaLabel: 'Review Token Mechanics',
         backdropImage: p3?.images?.[0] || miamiImg,
         fallbackImage: miamiImg,

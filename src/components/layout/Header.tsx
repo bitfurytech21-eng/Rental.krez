@@ -93,7 +93,9 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             <LagenceLogo className="h-7 w-7 text-[#c59b4c] shrink-0" />
             <div className="flex flex-col text-left leading-none">
               <span className="font-heading font-extrabold text-lg sm:text-xl tracking-tight">L&apos;Agence</span>
-              <span className="text-[9px] font-mono tracking-widest text-[#c59b4c] uppercase font-bold opacity-90">KREZ REAL ESTATE</span>
+              <span className="text-[9px] font-serif tracking-[0.22em] text-[#C59B4C] uppercase font-bold opacity-95 mt-0.5">
+                KREZ REAL ESTATE
+              </span>
             </div>
           </button>
 

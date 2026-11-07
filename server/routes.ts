@@ -39,6 +39,18 @@ import {
 } from './emailService';
 import crypto from 'crypto';
 import {
+  hashPassword,
+  verifyPassword,
+  validatePasswordStrength,
+  validateEmail,
+  createSession,
+  revokeSession,
+  revokeAllUserSessions,
+  checkBruteForceLimit,
+  recordFailedLogin,
+  resetFailedLogin
+} from './authService';
+import {
   getAdminConfig,
   validateAdminEnvironment,
   verifyAdminCredentials,
@@ -168,6 +180,7 @@ export interface MockUser {
   id: string;
   email: string;
   fullName: string;
+  passwordHash: string;
   role: string;
   kycStatus: string;
   balance: number;
@@ -176,17 +189,24 @@ export interface MockUser {
   country?: string;
   countryCode?: string;
   phoneNumber?: string;
+  isEmailVerified?: boolean;
   status?: 'active' | 'suspended';
   suspendedReason?: string;
 }
 
+export function sanitizeUser(user: MockUser): Omit<MockUser, 'passwordHash'> {
+  const { passwordHash, ...safe } = user;
+  return safe;
+}
+
 // In-memory data store for server-authoritative state
-// (Production Note: Easily backed by PostgreSQL / Cloud SQL via Drizzle / Supabase)
+// Seed accounts with industry-standard bcrypt hashes
 let mockUsers: MockUser[] = [
   {
     id: 'usr-admin-kretz-site',
     email: 'info@kretz.site',
     fullName: 'Kretz Executive Admin',
+    passwordHash: hashPassword('AdminSecret2026!'),
     role: 'admin',
     kycStatus: 'approved',
     balance: 500000,
@@ -194,6 +214,7 @@ let mockUsers: MockUser[] = [
     country: 'Spain',
     countryCode: 'ES',
     phoneNumber: '+34 912 345 678',
+    isEmailVerified: true,
     status: 'active',
     createdAt: '2025-01-01T09:00:00Z'
   },
@@ -201,6 +222,7 @@ let mockUsers: MockUser[] = [
     id: 'usr-admin-01',
     email: 'admin@kretz.com',
     fullName: 'Chief Compliance Officer',
+    passwordHash: hashPassword('AdminSecret2026!'),
     role: 'admin',
     kycStatus: 'approved',
     balance: 250000,
@@ -208,6 +230,7 @@ let mockUsers: MockUser[] = [
     country: 'Spain',
     countryCode: 'ES',
     phoneNumber: '+34 912 345 678',
+    isEmailVerified: true,
     status: 'active',
     createdAt: '2025-01-15T09:00:00Z'
   },
@@ -215,10 +238,12 @@ let mockUsers: MockUser[] = [
     id: 'usr-investor-01',
     email: 'investor@kretz.com',
     fullName: 'European Angel Partner',
+    passwordHash: hashPassword('InvestorPass123!'),
     role: 'investor',
     kycStatus: 'approved',
     balance: 45000,
     currency: 'EUR',
+    isEmailVerified: true,
     status: 'active',
     createdAt: '2025-02-10T11:30:00Z'
   },
@@ -226,10 +251,12 @@ let mockUsers: MockUser[] = [
     id: 'usr-investor-02',
     email: 'sophie.martin@luxcapital.fr',
     fullName: 'Sophie Martin',
+    passwordHash: hashPassword('InvestorPass123!'),
     role: 'investor',
     kycStatus: 'pending',
     balance: 15000,
     currency: 'EUR',
+    isEmailVerified: true,
     status: 'active',
     createdAt: '2025-03-01T14:20:00Z'
   }
@@ -458,12 +485,43 @@ const authLimiter = rateLimiter({
 
 /**
  * POST /api/v1/auth/login
+ * Production-grade customer authentication with bcrypt validation, brute-force lockout, and HttpOnly session cookie
  */
 router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
   const { email, password, pass } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
   const inputPass = password || pass;
 
+  const rawHeader = req.headers['x-forwarded-for'];
+  const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
+  const lockoutKey = `${ip}:${normalizedEmail}`;
+
+  // 1. Check Brute-Force Rate Limiting & Lockout
+  const lockoutStatus = checkBruteForceLimit(lockoutKey);
+  if (lockoutStatus.isLocked) {
+    logger.log({
+      level: 'warn',
+      category: 'security',
+      requestId: req.id || 'req-login-locked',
+      method: 'POST',
+      route: '/api/v1/auth/login',
+      statusCode: 429,
+      eventType: 'AUTH_LOCKOUT_TRIGGERED',
+      outcome: 'failure',
+      message: `Login temporarily locked for ${normalizedEmail} from ${ip} (${lockoutStatus.remainingSeconds}s remaining).`,
+      metadata: { ip, email: normalizedEmail, remainingSeconds: lockoutStatus.remainingSeconds }
+    });
+
+    return res.status(429).json({
+      success: false,
+      error: `Too many failed login attempts. Access is temporarily locked for ${lockoutStatus.remainingSeconds} seconds.`,
+      code: 'RATE_LIMIT_EXCEEDED',
+      remainingSeconds: lockoutStatus.remainingSeconds,
+      requestId: req.id
+    });
+  }
+
+  // 2. Validate input fields
   if (!normalizedEmail || !inputPass) {
     logger.log({
       level: 'warn',
@@ -486,26 +544,12 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
     });
   }
 
-  // Look up user or auto-provision on first login
-  let found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+  // 3. Authenticate credentials against verified database store
+  const found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+  const isPasswordValid = Boolean(found && found.passwordHash && verifyPassword(inputPass, found.passwordHash));
 
-  if (!found && inputPass && inputPass.length >= 4) {
-    found = {
-      id: `usr-${crypto.randomBytes(4).toString('hex')}`,
-      email: normalizedEmail,
-      fullName: normalizedEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-      // Public login must never grant elevated privileges: any email containing
-      // the substring "admin" previously auto-provisioned an administrator account.
-      role: 'investor',
-      kycStatus: 'pending',
-      balance: 0,
-      currency: 'EUR',
-      createdAt: new Date().toISOString()
-    };
-    mockUsers.push(found);
-  }
-
-  if (!found || inputPass.length < 4) {
+  if (!found || !isPasswordValid) {
+    const failureRecord = recordFailedLogin(lockoutKey);
     logger.log({
       level: 'warn',
       category: 'auth',
@@ -515,21 +559,69 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
       statusCode: 401,
       eventType: 'LOGIN_FAILED',
       outcome: 'failure',
-      message: `Failed login attempt for account ${normalizedEmail}`,
+      message: `Failed login attempt for ${normalizedEmail}. Failures: ${failureRecord.attempts}`,
       errorCode: 'INVALID_CREDENTIALS',
-      metadata: { attemptedEmail: normalizedEmail }
+      metadata: { attemptedEmail: normalizedEmail, isLocked: failureRecord.isLocked }
     });
 
     return res.status(401).json({
       success: false,
-      error: 'Invalid email address or password. Password must be at least 4 characters.',
+      error: 'Invalid email address or password.',
       code: 'INVALID_CREDENTIALS',
+      remainingAttempts: Math.max(0, 5 - failureRecord.attempts),
       requestId: req.id
     });
   }
 
-  // Issue session token
-  const token = `sess_${found.id}`;
+  // 4. Account Status Check (Suspended accounts denied immediately)
+  if (found.status === 'suspended') {
+    logger.log({
+      level: 'warn',
+      category: 'security',
+      requestId: req.id || 'req-login-suspended',
+      method: 'POST',
+      route: '/api/v1/auth/login',
+      statusCode: 403,
+      userId: found.id,
+      eventType: 'SUSPENDED_USER_LOGIN_DENIED',
+      outcome: 'failure',
+      message: `Login denied for suspended account: ${found.email}`,
+      errorCode: 'ACCOUNT_SUSPENDED'
+    });
+
+    return res.status(403).json({
+      success: false,
+      error: found.suspendedReason || 'Your account has been suspended by compliance. Please contact support.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
+  // 5. Successful authentication: reset failed attempts & regenerate session ID
+  resetFailedLogin(lockoutKey);
+
+  const session = createSession({
+    userId: found.id,
+    email: found.email,
+    role: found.role as any,
+    fullName: found.fullName,
+    ip,
+    userAgent: (req.headers['user-agent'] as string) || 'unknown'
+  });
+
+  // 6. Set Secure, HttpOnly, SameSite session cookie
+  res.cookie('kretz_session', session.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+
+  // Expose fresh CSRF token in response header
+  res.setHeader('X-CSRF-Token', session.csrfToken);
+
+  const safeUser = sanitizeUser(found);
 
   logger.log({
     level: 'info',
@@ -549,10 +641,14 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
   return res.json({
     success: true,
     data: {
-      user: found,
-      token,
-      expiresAt: new Date(Date.now() + 86400000 * 7).toISOString()
+      user: safeUser,
+      token: session.id,
+      csrfToken: session.csrfToken,
+      expiresAt: new Date(session.expiresAt).toISOString()
     },
+    token: session.id,
+    csrfToken: session.csrfToken,
+    user: safeUser,
     message: 'Authentication successful.',
     requestId: req.id
   });
@@ -1131,12 +1227,16 @@ router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest
 
 /**
  * POST /api/v1/auth/register
+ * Production-grade registration with email validation, password strength enforcement,
+ * duplicate prevention, bcrypt password hashing, and HttpOnly session establishment.
  */
 router.post('/auth/register', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
-  const { email, fullName, password, pass, role, country, phoneNumber, countryCode } = req.body || {};
+  const { email, fullName, password, pass, country, phoneNumber, countryCode } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
+  const inputPass = password || pass;
 
-  if (!normalizedEmail || !(password || pass) || !fullName || !country || !phoneNumber) {
+  // 1. Validate required fields presence
+  if (!normalizedEmail || !inputPass || !fullName || !country || !phoneNumber) {
     return res.status(400).json({
       success: false,
       error: 'Full legal name, valid email, password, country of residence, and phone number are required.',
@@ -1145,60 +1245,99 @@ router.post('/auth/register', authLimiter, requireTurnstile, (req: Authenticated
     });
   }
 
-  const existing = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-  if (existing) {
-    if (fullName) existing.fullName = fullName.trim();
-    if (country) existing.country = typeof country === 'string' ? country.trim() : existing.country;
-    if (phoneNumber) existing.phoneNumber = typeof phoneNumber === 'string' ? phoneNumber.trim() : existing.phoneNumber;
-    if (countryCode) (existing as any).countryCode = typeof countryCode === 'string' ? countryCode.trim() : (existing as any).countryCode;
-
-    const token = `sess_${existing.id}`;
-    logger.log({
-      level: 'info',
-      category: 'auth',
-      requestId: req.id || 'req-reg-existing',
-      method: 'POST',
-      route: '/api/v1/auth/register',
-      statusCode: 200,
-      userId: existing.id,
-      userRole: existing.role,
-      eventType: 'USER_REGISTERED_EXISTING_SYNC',
-      outcome: 'success',
-      message: `Existing investor account authenticated: ${existing.email}`,
-      metadata: { userId: existing.id }
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        user: existing,
-        token,
-        requiresVerification: false,
-        alreadyExisted: true
-      },
-      message: 'Welcome back! Signed in to your investor account.',
+  // 2. Validate email format
+  if (!validateEmail(normalizedEmail)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please provide a valid, well-formed email address.',
+      code: 'INVALID_EMAIL_FORMAT',
       requestId: req.id
     });
   }
 
-  const newUser = {
+  // 3. Enforce strong password policy
+  const passwordCheck = validatePasswordStrength(inputPass);
+  if (!passwordCheck.valid) {
+    return res.status(400).json({
+      success: false,
+      error: passwordCheck.error || 'Password does not meet institutional security requirements.',
+      code: 'WEAK_PASSWORD',
+      requestId: req.id
+    });
+  }
+
+  // 4. Prevent duplicate email registrations (Strict 409 Conflict)
+  const existing = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+  if (existing) {
+    logger.log({
+      level: 'warn',
+      category: 'auth',
+      requestId: req.id || 'req-reg-dup',
+      method: 'POST',
+      route: '/api/v1/auth/register',
+      statusCode: 409,
+      eventType: 'DUPLICATE_REGISTRATION_REJECTED',
+      outcome: 'failure',
+      message: `Registration rejected: email ${normalizedEmail} already exists.`,
+      errorCode: 'EMAIL_ALREADY_EXISTS'
+    });
+
+    return res.status(409).json({
+      success: false,
+      error: 'An account with this email address already exists. Please sign in.',
+      code: 'EMAIL_ALREADY_EXISTS',
+      requestId: req.id
+    });
+  }
+
+  // 5. Securely hash password with cost factor 12
+  const passwordHash = hashPassword(inputPass);
+
+  const rawHeader = req.headers['x-forwarded-for'];
+  const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
+
+  // 6. Persist user account with active status and unverified email flag
+  const newUser: MockUser = {
     id: `usr-${crypto.randomBytes(4).toString('hex')}`,
     email: normalizedEmail,
-    fullName: fullName.trim(),
-    role: role === 'admin' ? 'investor' : 'investor', // prevent privilege escalation on public register
+    fullName: String(fullName).trim(),
+    passwordHash,
+    role: 'investor', // Public registration is strictly restricted to investor accounts
     country: typeof country === 'string' ? country.trim() : 'France',
     phoneNumber: typeof phoneNumber === 'string' ? phoneNumber.trim() : '',
     countryCode: typeof countryCode === 'string' ? countryCode.trim() : '',
     kycStatus: 'pending',
     balance: 0,
     currency: 'EUR',
+    isEmailVerified: false,
+    status: 'active',
     createdAt: new Date().toISOString()
   };
 
   mockUsers.push(newUser);
-  const token = `sess_${newUser.id}`;
 
-  // Automatically dispatch branded welcome & email verification
+  // 7. Establish secure server session
+  const session = createSession({
+    userId: newUser.id,
+    email: newUser.email,
+    role: 'investor',
+    fullName: newUser.fullName,
+    ip,
+    userAgent: (req.headers['user-agent'] as string) || 'unknown'
+  });
+
+  // 8. Set HTTP-only secure session cookie
+  res.cookie('kretz_session', session.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+
+  res.setHeader('X-CSRF-Token', session.csrfToken);
+
+  // 9. Dispatch branded email verification token
   const verifToken = generateExpiringToken(newUser.email, 'verification', 24 * 60);
   const origin = req.headers.origin || 'https://kretzdespain.com';
   sendEmail({
@@ -1222,6 +1361,8 @@ router.post('/auth/register', authLimiter, requireTurnstile, (req: Authenticated
     });
   });
 
+  const safeUser = sanitizeUser(newUser);
+
   logger.log({
     level: 'info',
     category: 'auth',
@@ -1240,19 +1381,43 @@ router.post('/auth/register', authLimiter, requireTurnstile, (req: Authenticated
   return res.status(201).json({
     success: true,
     data: {
-      user: newUser,
-      token,
-      requiresVerification: false
+      user: safeUser,
+      token: session.id,
+      csrfToken: session.csrfToken,
+      requiresVerification: true
     },
-    message: 'Account created successfully.',
+    token: session.id,
+    csrfToken: session.csrfToken,
+    user: safeUser,
+    message: 'Account created successfully. A verification email has been dispatched.',
     requestId: req.id
   });
 });
 
 /**
  * POST /api/v1/auth/logout
+ * Terminates server-authoritative session and clears HttpOnly session cookie
  */
 router.post('/auth/logout', (req: AuthenticatedRequest, res: Response) => {
+  const authHeader = req.headers['authorization'];
+  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token && req.headers.cookie) {
+    const match = req.headers.cookie.match(/(?:^|;\s*)kretz_session=([^;]+)/);
+    if (match) token = decodeURIComponent(match[1]);
+  }
+
+  if (token) {
+    revokeSession(token);
+  }
+
+  res.clearCookie('kretz_session', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/'
+  });
+
   logger.log({
     level: 'info',
     category: 'auth',
@@ -1267,7 +1432,7 @@ router.post('/auth/logout', (req: AuthenticatedRequest, res: Response) => {
     message: req.user ? `User ${req.user.email} terminated session` : 'Anonymous session cleared'
   });
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Session closed successfully.',
     requestId: req.id
@@ -1761,6 +1926,8 @@ router.post('/security/verify-turnstile', securityLimiter, async (req: Authentic
 
 /**
  * POST /api/v1/auth/password/reset
+ * Verifies single-use reset token, validates password strength, updates bcrypt password hash,
+ * and invalidates all existing sessions for the target user.
  */
 router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) => {
   const { token, newPassword } = req.body || {};
@@ -1774,18 +1941,18 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
     });
   }
 
-  if (!newPassword || newPassword.length < 8) {
+  // 1. Password policy verification
+  const strengthCheck = validatePasswordStrength(newPassword);
+  if (!strengthCheck.valid) {
     return res.status(400).json({
       success: false,
-      error: 'New password must be at least 8 characters.',
+      error: strengthCheck.error || 'Password does not meet institutional complexity standards.',
       code: 'WEAK_PASSWORD',
       requestId: req.id
     });
   }
 
-  // Validate and single-use consume the recovery token BEFORE applying any change.
-  // Previously this endpoint reset the password without ever checking the token,
-  // allowing an unauthenticated attacker to reset any account's password.
+  // 2. Validate and single-use consume the recovery token
   const verification = verifyAndConsumeToken(token, 'password_reset');
   if (!verification.valid) {
     logger.log({
@@ -1809,6 +1976,15 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
     });
   }
 
+  // 3. Atomically update password hash in persistent store
+  const targetEmail = (verification.email || '').toLowerCase();
+  const targetUser = targetEmail ? mockUsers.find(u => u.email.toLowerCase() === targetEmail) : undefined;
+  if (targetUser) {
+    targetUser.passwordHash = hashPassword(newPassword);
+    // Invalidate all active sessions across all devices for this user
+    revokeAllUserSessions(targetUser.id);
+  }
+
   logger.log({
     level: 'info',
     category: 'auth',
@@ -1818,38 +1994,54 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
     statusCode: 200,
     eventType: 'PASSWORD_RESET_COMPLETED',
     outcome: 'success',
-    message: `Password successfully updated via recovery authorization for ${verification.email}.`
+    message: `Password successfully updated via recovery authorization for ${verification.email}. All prior sessions revoked.`
   });
 
-  res.json({
+  return res.json({
     success: true,
-    message: 'Password updated successfully. You may now log in.',
+    message: 'Password updated successfully. All previous sessions have been terminated. You may now log in.',
     requestId: req.id
   });
 });
 
 /**
  * GET /api/v1/auth/session
+ * Validates active session, verifies account non-suspended status, and returns sanitized profile
  */
 router.get('/auth/session', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const currentUser =
-    mockUsers.find(u => u.id === req.user?.id) ||
-    (req.user?.email ? mockUsers.find(u => u.email.toLowerCase() === req.user!.email.toLowerCase()) : undefined) || {
-      id: req.user!.id,
-      email: req.user!.email,
-      fullName: req.user!.fullName || 'Investor Member',
-      role: req.user!.role,
-      kycStatus: 'unverified',
-      balance: 0,
-      currency: 'EUR'
-    };
+  const currentUser = findUserRecordForRequest(req);
 
-  res.json({
+  if (!currentUser) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authenticated user profile not found.',
+      code: 'USER_NOT_FOUND',
+      requestId: req.id
+    });
+  }
+
+  // Check account status
+  if (currentUser.status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      error: currentUser.suspendedReason || 'Your account has been suspended by compliance. Please contact support.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
+  const safeUser = sanitizeUser(currentUser);
+  const csrfToken = req.session?.csrfToken || '';
+
+  return res.json({
     success: true,
     data: {
       authenticated: true,
-      user: currentUser
+      user: safeUser,
+      csrfToken
     },
+    user: safeUser,
+    csrfToken,
     requestId: req.id
   });
 });
@@ -1877,7 +2069,7 @@ router.get('/admin/users', requireAdmin, (req: AuthenticatedRequest, res: Respon
 
   res.json({
     success: true,
-    data: mockUsers,
+    data: mockUsers.map(sanitizeUser),
     total: mockUsers.length,
     requestId: req.id
   });
@@ -2441,19 +2633,19 @@ function findUserRecordForRequest(req: AuthenticatedRequest) {
  * GET /api/v1/user/profile
  */
 router.get('/user/profile', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const profile = findUserRecordForRequest(req) || {
-    id: req.user!.id,
-    email: req.user!.email,
-    fullName: req.user!.fullName || 'Investor Member',
-    role: req.user!.role,
-    kycStatus: 'unverified',
-    balance: 0,
-    currency: 'EUR'
-  };
+  const profile = findUserRecordForRequest(req);
+  if (!profile) {
+    return res.status(404).json({
+      success: false,
+      error: 'User profile not found.',
+      code: 'USER_NOT_FOUND',
+      requestId: req.id
+    });
+  }
 
   res.json({
     success: true,
-    data: profile,
+    data: sanitizeUser(profile),
     requestId: req.id
   });
 });
@@ -2727,6 +2919,7 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
       id: req.user!.id,
       email: req.user!.email,
       fullName: req.user!.fullName || 'Verified Investor',
+      passwordHash: '',
       role: req.user!.role,
       kycStatus: 'approved',
       balance: typeof clientEurBalance === 'number' && clientEurBalance >= 0 ? clientEurBalance : 0,
@@ -2739,7 +2932,8 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
     userRecord.balance = clientEurBalance;
   }
 
-  const balances = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
+  const activeUser = userRecord;
+  const balances = getOrInitUserSubBalances(activeUser.id, activeUser.balance);
   const availableSource = balances[from] || 0;
 
   if (availableSource < numericAmount) {
@@ -2758,13 +2952,13 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
 
   balances[from] = Number((availableSource - numericAmount).toFixed(from === 'SOL' ? 6 : 2));
   balances[to] = Number(((balances[to] || 0) + convertedAmount).toFixed(to === 'SOL' ? 6 : 2));
-  userRecord.balance = balances.EUR;
+  activeUser.balance = balances.EUR;
 
   const ref = `FX-${from}-${to}-${Math.floor(100000 + Math.random() * 900000)}`;
   const fxTx = {
     id: `tx-fx-${Date.now()}`,
-    userId: userRecord.id,
-    userEmail: userRecord.email,
+    userId: activeUser.id,
+    userEmail: activeUser.email,
     type: 'fee',
     amount: Number(valueInEur.toFixed(2)),
     currency: 'EUR',
@@ -2781,7 +2975,7 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
     }
   };
   mockTransactions.unshift(fxTx as any);
-  pushUserNotification(userRecord.id, {
+  pushUserNotification(activeUser.id, {
     title: 'Treasury FX Conversion Executed',
     message: `Converted ${numericAmount} ${from} into ${convertedAmount} ${to} (Fee: €${feeInEur.toFixed(2)}).`,
     type: 'financial'
@@ -3445,6 +3639,7 @@ router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response
       id: req.user!.id,
       email: req.user!.email,
       fullName: req.user!.fullName || 'Verified Investor',
+      passwordHash: '',
       role: req.user!.role,
       kycStatus: 'unverified',
       balance: req.user!.balance ?? 0,
@@ -3463,7 +3658,7 @@ router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response
 
   res.json({
     success: true,
-    data: target,
+    data: sanitizeUser(target),
     message: 'User profile updated successfully.',
     requestId: req.id
   });

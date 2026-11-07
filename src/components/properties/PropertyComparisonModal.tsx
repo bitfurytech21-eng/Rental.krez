@@ -315,7 +315,7 @@ export const PropertyComparisonModal: React.FC<PropertyComparisonModalProps> = (
                             disabled={p.status !== 'funding' || p.availableTokens <= 0}
                             className="w-full py-2 px-3 rounded-xl bg-[#087F5B] hover:bg-[#075B46] disabled:bg-slate-200 disabled:text-slate-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:cursor-not-allowed"
                           >
-                            <span>{p.status === 'funding' && p.availableTokens > 0 ? 'Invest Now' : 'Fully Funded'}</span>
+                            <span>{p.status === 'funding' && p.availableTokens > 0 ? 'Enter as Tokenized fraction' : 'Fully Funded'}</span>
                             {p.status === 'funding' && p.availableTokens > 0 && <ArrowRight className="w-3.5 h-3.5" />}
                           </button>
                           <button

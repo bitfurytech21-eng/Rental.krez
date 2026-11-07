@@ -4,6 +4,7 @@ import { ledger } from '../../lib/ledger';
 import { formatCurrency } from '../../lib/utils';
 import { ButtonLoader } from '../common/ButtonLoader';
 import { printTransactionReceipt } from '../../lib/printService';
+import { AnimatedBankingTransferGraphic } from '../visuals/AnimatedBankingTransferGraphic';
 import {
   ArrowDownLeft,
   CheckCircle2,
@@ -283,6 +284,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
           {step === 1 && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <h3 className="text-sm font-bold text-[#F5F5F2]">1. Select Payment Method</h3>
+              <AnimatedBankingTransferGraphic type="deposit" amount={amount} currency="EUR" className="my-3" />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* SEPA Card */}

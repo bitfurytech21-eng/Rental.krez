@@ -41,6 +41,8 @@ import { InvestorAnalyticsSuite } from '../dashboard/InvestorAnalyticsSuite';
 import { ProjectedYieldGrowthChart } from '../dashboard/ProjectedYieldGrowthChart';
 import { AtmosphericFintechBackground } from '../dashboard/AtmosphericFintechBackground';
 import { PropertyLedgerAnalytics } from '../dashboard/PropertyLedgerAnalytics';
+import { FirstTimeOnboardingModal } from '../dashboard/FirstTimeOnboardingModal';
+import { Sparkles } from 'lucide-react';
 
 interface DashboardPageProps {
   defaultTab?: string;
@@ -73,6 +75,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [buyModalProperty, setBuyModalProperty] = useState<Property | null>(null);
   const [buyModalMode, setBuyModalMode] = useState<'purchase' | 'reinvest'>('purchase');
   const [isBuyModalOpen, setIsBuyModalOpen] = useState<boolean>(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState<boolean>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('onboarding') === 'true') return true;
+      }
+    } catch {}
+    return false;
+  });
   const [copiedLink, setCopiedLink] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -496,19 +507,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-[11.5px] font-medium transition-all cursor-pointer ${
+                className={`relative w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11.5px] font-medium transition-all duration-200 cursor-pointer group ${
                   isActive
-                    ? 'bg-[var(--dash-sidebar-active-bg)] text-[var(--dash-sidebar-active-text)] font-bold shadow-2xs'
-                    : 'text-[var(--dash-text-secondary)] hover:bg-[var(--dash-sidebar-hover-bg)] hover:text-[var(--dash-text)]'
+                    ? 'bg-[var(--dash-sidebar-active-bg)] text-[var(--dash-sidebar-active-text)] font-bold shadow-2xs border-l-2 border-[#55BDE8]'
+                    : 'text-[var(--dash-text-secondary)] hover:bg-[var(--dash-sidebar-hover-bg)] hover:text-[var(--dash-text)] hover:translate-x-0.5'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[var(--dash-sidebar-active-text)]' : 'opacity-70'}`} />
+                  <Icon className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-[#55BDE8]' : 'opacity-70'}`} />
                   <span className="truncate">{item.label}</span>
                 </div>
                 {item.count !== undefined && item.count > 0 && (
-                  <span className={`px-1 py-0.2 rounded text-[8.5px] font-bold shrink-0 ml-1 ${
-                    isActive ? 'bg-black/20 text-white' : 'bg-[var(--dash-inner)] text-[var(--dash-text)]'
+                  <span className={`px-1.5 py-0.2 rounded-full text-[8.5px] font-bold shrink-0 ml-1 ${
+                    isActive ? 'bg-[#55BDE8]/20 text-[#55BDE8] border border-[#55BDE8]/30' : 'bg-[var(--dash-inner)] text-[var(--dash-text)]'
                   }`}>
                     {item.count}
                   </span>
@@ -522,19 +533,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="p-2 border-t border-[var(--dash-sidebar-border)] bg-[var(--dash-sidebar-card)] space-y-1.5">
           <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--dash-text-muted)] px-1 flex items-center justify-between">
             <span>Quick Actions</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#43C98B] animate-pulse"></span>
           </div>
           <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={() => setIsDepositOpen(true)}
-              className="flex items-center justify-center gap-1 bg-white hover:bg-neutral-200 text-black text-[10.5px] font-bold rounded-md py-1.5 px-2 shadow-xs transition-colors cursor-pointer"
+              className="cinematic-btn-primary flex items-center justify-center gap-1 text-[10.5px] font-bold rounded-lg py-1.5 px-2 shadow-xs cursor-pointer"
               title="Deposit Funds"
             >
               <ArrowDownLeft className="w-3 h-3 stroke-[2.5]" /> Deposit
             </button>
             <button
               onClick={() => setIsWithdrawOpen(true)}
-              className="flex items-center justify-center gap-1 bg-[#151515] hover:bg-[#1D1D1D] text-white border border-[#303030] text-[10.5px] font-semibold rounded-md py-1.5 px-2 transition-colors cursor-pointer"
+              className="cinematic-btn flex items-center justify-center gap-1 text-[10.5px] font-semibold rounded-lg py-1.5 px-2 cursor-pointer"
               title="Withdraw Funds"
             >
               <ArrowUpRight className="w-3 h-3" /> Withdraw
@@ -542,7 +553,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
           <button
             onClick={logout}
-            className="w-full flex items-center justify-center gap-1 bg-[#151515] hover:bg-[#FF4D4D]/20 text-[#FF4D4D] border border-[#FF4D4D]/30 text-[10.5px] font-semibold rounded-md py-1.5 px-2 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-1 bg-[#141515] hover:bg-[#FF4D4D]/15 text-[#FF6B6B] border border-white/[0.06] hover:border-[#FF4D4D]/30 text-[10.5px] font-semibold rounded-lg py-1.5 px-2 transition-all cursor-pointer"
             title="Log out of account"
           >
             <LogOut className="w-3 h-3" />
@@ -804,7 +815,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <span className="text-xs font-bold text-[var(--dash-text)] truncate max-w-[90px]">
                     {user.fullName.split(' ')[0]}
                   </span>
-                  <span className="text-[8.5px] text-[#1E3A34] dark:text-[#D6A15D] font-mono font-semibold">
+                  <span className="text-[10px] financial-num text-[#55BDE8] font-[600]">
                     {formatCurrency(user.walletBalance)}
                   </span>
                 </div>
@@ -817,7 +828,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="px-3 py-2 border-b border-[var(--dash-card-border)] mb-1">
                     <p className="text-[9px] uppercase font-bold text-[var(--dash-text-muted)]">Signed In As</p>
                     <p className="text-xs font-bold text-[var(--dash-text)] truncate mt-0.5">{user.email}</p>
-                    <p className="text-[9.5px] font-mono font-semibold text-[#1E3A34] dark:text-[#D6A15D] mt-0.5">Wallet: {formatCurrency(user.walletBalance)}</p>
+                    <p className="text-[11px] financial-num text-[#55BDE8] font-[600] mt-0.5">Wallet: {formatCurrency(user.walletBalance)}</p>
                   </div>
                   <button
                     onClick={() => { setActiveTab('profile'); setUserDropdownOpen(false); }}
@@ -1010,9 +1021,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               return (
                 <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
                   {/* Personal Account Welcome Section */}
-                  <div className="bg-[#141515] text-[#F5F5F2] px-4 py-3.5 sm:px-5 sm:py-4 rounded-[18px] border border-[#292B2B] shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
+                  <div className="cinematic-card text-[#F5F5F2] px-4 py-3.5 sm:px-5 sm:py-4 rounded-[18px] shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
                     <div className="flex items-center gap-3.5 z-10 min-w-0">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1D1E1E] border border-[#292B2B] text-[#F5F5F2] flex items-center justify-center font-bold text-sm shadow-inner shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1D1E1E] border border-white/[0.12] text-[#F5F5F2] flex items-center justify-center font-bold text-sm shadow-inner shrink-0 overflow-hidden">
                         {user.avatarUrl ? (
                           <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
                         ) : (
@@ -1025,7 +1036,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                             Personal Account
                           </span>
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#55BDE8] bg-[#55BDE8]/10 border border-[#55BDE8]/20 px-2 py-0.5 rounded-full">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#55BDE8]" /> Synced
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#55BDE8] animate-pulse" /> Synced
                           </span>
                         </div>
                         <h2 className="text-base sm:text-lg font-bold text-[#F5F5F2] tracking-tight truncate leading-tight">
@@ -1040,18 +1051,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div className="flex items-center gap-2.5 z-10 shrink-0">
                       <button
                         onClick={() => setActiveTab('properties')}
-                        className="bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer shadow-xs active:scale-[0.98] whitespace-nowrap"
+                        className="cinematic-btn-primary text-xs font-bold px-4 py-2 rounded-xl cursor-pointer shadow-xs whitespace-nowrap"
                       >
                         Explore Properties
                       </button>
                     </div>
+
                   </div>
 
                   {notifications.filter(n => !n.read).length > 0 && (() => {
                     const unreadList = notifications.filter(n => !n.read);
                     const firstUnread = unreadList[0];
                     return (
-                      <div className="bg-[#151515] border border-[#303030] px-4 py-2.5 rounded-xl flex items-center justify-between gap-3 shadow-sm text-xs">
+                      <div className="cinematic-card px-4 py-2.5 rounded-xl flex items-center justify-between gap-3 shadow-md text-xs">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-6 h-6 rounded-md bg-[#202020] text-[#35C9F5] border border-[#303030] flex items-center justify-center shrink-0">
                             <Bell className="w-3 h-3" />
@@ -2347,6 +2359,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         />
       )}
 
+      {/* First-Time Investor Onboarding Modal */}
+      <FirstTimeOnboardingModal
+        user={user}
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onExploreProperties={() => setActiveTab('properties')}
+        onOpenDeposit={() => {
+          setActiveTab('wallet');
+          setIsDepositOpen(true);
+        }}
+        onOpenVerification={() => setActiveTab('verification')}
+      />
+
     </div>
   );
 };
+

@@ -396,7 +396,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 className="btn btn-primary px-7 text-xs font-bold shadow-md shadow-[#182D2A]/10"
               >
                 <Coins className="w-4 h-4 mr-1.5" />
-                {user ? 'Invest in this Property' : 'Sign in to Invest Now'}
+                {user ? 'Enter as Tokenized fraction' : 'Sign in to Enter as Tokenized fraction'}
               </button>
             )}
           </div>
@@ -602,8 +602,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 {property.isFullyFunded || property.status === 'funded' || property.availableTokens <= 0
                   ? 'Offering 100% Fully Funded'
                   : user
-                  ? `Invest Now (From ${formatCurrency(property.minimumInvestment)})`
-                  : `Sign In to Invest (From ${formatCurrency(property.minimumInvestment)})`}
+                  ? `Enter as Tokenized fraction (From ${formatCurrency(property.minimumInvestment)})`
+                  : `Sign In to Enter as Tokenized fraction`}
               </button>
               <p className="text-[11px] text-[#828D89] text-center leading-tight">
                 *Pro-forma financial terms verified via independent RICS appraisal. Estimates, not guarantees.
@@ -887,8 +887,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 {property.status !== 'funding' || property.availableTokens <= 0
                   ? 'Offering 100% Fully Funded'
                   : user
-                  ? `Acquire ${simCalc.tokenCount} Units (${formatCurrency(simCalc.totalPayableEUR)})`
-                  : `Sign In to Acquire ${simCalc.tokenCount} Units (${formatCurrency(simCalc.totalPayableEUR)})`}
+                  ? `Enter as Tokenized fraction (${simCalc.tokenCount} Units · ${formatCurrency(simCalc.totalPayableEUR)})`
+                  : `Sign In to Enter as Tokenized fraction`}
               </button>
             </div>
           </div>

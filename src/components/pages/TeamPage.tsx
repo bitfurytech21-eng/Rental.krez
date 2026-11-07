@@ -8,8 +8,9 @@ import { ALL_KRETZ_MEMBERS, TeamMember } from '../../data/kretzTeam';
 import { useAuth } from '../../lib/auth';
 import { contactApi, teamApi } from '../../lib/api';
 import { TurnstileWidget } from '../security/TurnstileWidget';
+import { AnimatedArchitecturalSketch } from '../visuals/AnimatedArchitecturalSketch';
 
-const kretzHeadquartersImg = 'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg';
+const kretzHeadquartersImg = '/src/assets/images/private_wealth_advisory_1794021672991.jpg';
 import olivierImg from '../../assets/images/team/olivier_kretz.jpg';
 import sandrineImg from '../../assets/images/team/sandrine_kretz.jpg';
 import martinImg from '../../assets/images/team/martin_kretz.jpg';
@@ -277,13 +278,13 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
               </div>
             </div>
 
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-5 space-y-4">
               <div className="relative rounded-3xl overflow-hidden border border-[#1D3860] shadow-2xl bg-[#102442] group">
                 <img 
                   src={kretzHeadquartersImg} 
                   alt="Kretz Paris Agency Interior" 
                   referrerPolicy="no-referrer"
-                  className="w-full h-[460px] object-cover group-hover:scale-103 transition-transform duration-700"
+                  className="w-full h-[320px] object-cover group-hover:scale-103 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B30]/90 via-[#0B1B30]/40 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6 text-white space-y-1.5">
@@ -296,6 +297,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
                   </p>
                 </div>
               </div>
+              <AnimatedArchitecturalSketch variant="mansion" showDimensions={false} />
             </div>
           </div>
         </div>

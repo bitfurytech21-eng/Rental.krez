@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatCurrency, formatPercent } from '../../lib/utils';
 import { PieChart, Shield } from 'lucide-react';
+import { AnimatedNumericValue } from '../dashboard/AnimatedNumericValue';
 
 interface AssetCategory {
   id: string;
@@ -12,8 +13,8 @@ interface AssetCategory {
 }
 
 const DEFAULT_CATEGORIES: AssetCategory[] = [
-  { id: 'cat-1', category: 'Luxury Residential', value: 14500, tokens: 290, color: '#00D2FF', bgLight: 'bg-cyan-500' },
-  { id: 'cat-2', category: 'Urban Coliving', value: 8200, tokens: 164, color: '#2ECC71', bgLight: 'bg-emerald-500' },
+  { id: 'cat-1', category: 'Luxury Residential', value: 14500, tokens: 290, color: '#55BDE8', bgLight: 'bg-cyan-500' },
+  { id: 'cat-2', category: 'Urban Coliving', value: 8200, tokens: 164, color: '#43C98B', bgLight: 'bg-emerald-500' },
   { id: 'cat-3', category: 'Prime Commercial', value: 5750, tokens: 115, color: '#FF9F43', bgLight: 'bg-amber-500' },
 ];
 
@@ -40,17 +41,17 @@ export const AssetAllocationChart: React.FC<{
   let cumulativeAngle = 0;
 
   return (
-    <div className={`bg-[#151515] border border-[#303030] rounded-2xl p-4 sm:p-5 shadow-xl space-y-4 text-white ${className}`}>
+    <div className={`cinematic-card rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 text-white ${className}`}>
       {/* Header */}
-      <div className="flex items-center gap-2 pb-3 border-b border-[#303030]">
-        <span className="p-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-[#00D2FF]">
+      <div className="flex items-center gap-2 pb-3 border-b border-white/[0.08]">
+        <span className="p-1.5 rounded-lg bg-[#141515] border border-white/[0.08] text-[#55BDE8]">
           <PieChart className="w-4 h-4" />
         </span>
         <div>
-          <h3 className="text-sm sm:text-base font-bold text-white">
+          <h3 className="text-sm sm:text-base font-bold text-[#F5F5F2]">
             Property Sector Asset Allocation
           </h3>
-          <p className="text-xs text-[#999999]">
+          <p className="text-xs text-[#777979]">
             Portfolio diversification breakdown across real estate asset classes
           </p>
         </div>
@@ -89,11 +90,11 @@ export const AssetAllocationChart: React.FC<{
 
           {/* Donut Center Display */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#999999]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#777979]">
               Total Assets
             </span>
-            <span className="text-sm font-bold font-mono text-white">
-              {formatCurrency(grandTotal)}
+            <span className="text-sm sm:text-base font-[600] text-[#F5F5F2]">
+              <AnimatedNumericValue value={grandTotal} formatAsCurrency={true} variant="primary" />
             </span>
           </div>
         </div>
@@ -109,10 +110,10 @@ export const AssetAllocationChart: React.FC<{
                 key={cat.id}
                 onMouseEnter={() => setHoveredId(cat.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                className={`p-2.5 rounded-xl border transition-all duration-300 cursor-pointer ${
                   isHovered
-                    ? 'border-white bg-[#222222] shadow-sm'
-                    : 'border-[#303030] bg-[#1D1D1D]'
+                    ? 'border-white/20 bg-[#1D1E1E] shadow-md -translate-y-0.5'
+                    : 'border-white/[0.06] bg-[#141515]/80 hover:border-white/12'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 text-xs">
@@ -121,16 +122,14 @@ export const AssetAllocationChart: React.FC<{
                       className="w-3 h-3 rounded-full shrink-0 shadow-sm"
                       style={{ backgroundColor: cat.color }}
                     />
-                    <span className="font-bold text-white truncate">
+                    <span className="font-semibold text-[#F5F5F2] truncate">
                       {cat.category}
                     </span>
                   </div>
 
-                  <div className="text-right shrink-0 font-mono">
-                    <span className="font-bold text-white">
-                      {formatCurrency(cat.value)}
-                    </span>
-                    <span className="text-[10.5px] text-[#999999] ml-2 font-semibold">
+                  <div className="text-right shrink-0">
+                    <AnimatedNumericValue value={cat.value} formatAsCurrency={true} variant="primary" className="text-xs sm:text-[13px]" />
+                    <span className="text-[10.5px] text-[#777979] ml-2 font-medium">
                       ({percentage}%)
                     </span>
                   </div>

@@ -453,50 +453,50 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3.5">
-          <div className="p-3 rounded-lg bg-[#202020] border border-[#303030]">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0] block">
+          <div className="p-3.5 rounded-xl bg-[#141515] border border-white/[0.08]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#777979] block">
               Total Account Equity
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-white mt-1">
+            <div className="financial-val-card text-[#F5F5F2] font-[600] mt-1">
               {formatCurrency(metrics.totalEquity)}
             </div>
-            <span className="text-[11px] text-[#A0A0A0] mt-1 block font-mono tabular-nums">
+            <span className="text-[11px] text-[#777979] mt-1 block financial-num font-medium">
               Cash: {formatCurrency(walletBalance)} · SPVs: {formatCurrency(metrics.totalHoldingsValue)}
             </span>
           </div>
 
-          <div className="p-3 rounded-lg bg-[#202020] border border-[#303030]">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0] block">
+          <div className="p-3.5 rounded-xl bg-[#141515] border border-white/[0.08]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#777979] block">
               Subscribed Property Capital
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-white mt-1">
+            <div className="financial-val-card text-[#F5F5F2] font-[600] mt-1">
               {formatCurrency(metrics.totalInvested)}
             </div>
-            <span className="text-[11px] text-[#35C9F5] mt-1 block font-mono tabular-nums font-semibold">
+            <span className="text-[11px] text-[#55BDE8] mt-1 block financial-num font-semibold">
               {allocationByProperty.length} Active {allocationByProperty.length === 1 ? 'Property' : 'Properties'}
             </span>
           </div>
 
-          <div className="p-3 rounded-lg bg-[#202020] border border-[#303030]">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0] block">
+          <div className="p-3.5 rounded-xl bg-[#141515] border border-white/[0.08]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#777979] block">
               Realized Rental Distributions
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#38C982] mt-1">
+            <div className="financial-val-card text-[#43C98B] font-[600] mt-1">
               +{formatCurrency(metrics.totalRealizedDistributions)}
             </div>
-            <span className="text-[11px] text-[#A0A0A0] mt-1 block font-mono tabular-nums">
+            <span className="text-[11px] text-[#777979] mt-1 block financial-num font-medium">
               Run-Rate: {formatCurrency(metrics.projectedMonthlyIncome)}/mo
             </span>
           </div>
 
-          <div className="p-3 rounded-lg bg-[#202020] border border-[#303030]">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0] block">
+          <div className="p-3.5 rounded-xl bg-[#141515] border border-white/[0.08]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#777979] block">
               Weighted Target Net Yield
             </span>
-            <div className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[#FFD93D] mt-1">
+            <div className="financial-val-card text-[#55BDE8] font-[600] mt-1">
               {formatPercent(metrics.weightedApy)}
             </div>
-            <span className="text-[11px] text-[#A0A0A0] mt-1 block">
+            <span className="text-[11px] text-[#777979] mt-1 block font-medium">
               {diversification.concentrationLabel}
             </span>
           </div>
@@ -996,33 +996,33 @@ export const InvestorAnalyticsSuite: React.FC<InvestorAnalyticsSuiteProps> = ({
                   <th className="py-2.5 pl-3 text-right">Ledger Entries</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#262626] font-mono tabular-nums bg-[#151515]">
+              <tbody className="divide-y divide-white/[0.06] financial-num bg-[#141515]">
                 {financialSummaries.map((row) => (
-                  <tr key={row.periodKey} className="hover:bg-[#202020] transition-colors">
-                    <td className="py-2.5 px-3 font-sans font-bold text-white">
+                  <tr key={row.periodKey} className="hover:bg-[#1D1E1E] transition-colors">
+                    <td className="py-2.5 px-3 font-sans font-semibold text-[#F5F5F2]">
                       {row.periodLabel}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-white">
+                    <td className="py-2.5 px-3 text-right text-[#F5F5F2] font-[500]">
                       {formatCurrency(row.deposits)}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-[#35C9F5]">
+                    <td className="py-2.5 px-3 text-right text-[#55BDE8] font-[500]">
                       {formatCurrency(row.investments)}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-[#38C982] font-semibold">
+                    <td className="py-2.5 px-3 text-right text-[#43C98B] font-[600]">
                       +{formatCurrency(row.distributions)}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-[#A0A0A0]">
+                    <td className="py-2.5 px-3 text-right text-[#777979] font-[500]">
                       {formatCurrency(row.withdrawals + row.fees)}
                     </td>
                     <td
-                      className={`py-2.5 px-3 text-right font-bold ${
-                        row.netCashFlow >= 0 ? 'text-[#38C982]' : 'text-[#FF4D4D]'
+                      className={`py-2.5 px-3 text-right font-[600] ${
+                        row.netCashFlow >= 0 ? 'text-[#43C98B]' : 'text-[#FF4D4D]'
                       }`}
                     >
                       {row.netCashFlow >= 0 ? '+' : ''}
                       {formatCurrency(row.netCashFlow)}
                     </td>
-                    <td className="py-2.5 pl-3 text-right text-[#A0A0A0]">
+                    <td className="py-2.5 pl-3 text-right text-[#777979] font-[500]">
                       {row.txCount} txs
                     </td>
                   </tr>

@@ -4,7 +4,7 @@ import { PropertyCard } from '../properties/PropertyCard';
 import { PropertyComparisonModal } from '../properties/PropertyComparisonModal';
 import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
 import { useAuth } from '../../lib/auth';
-import { useNavigation } from '../../context/NavigationContext';
+import { useNavigation } from '../../lib/navigation';
 import { useToast } from '../../context/ToastContext';
 import { ledger } from '../../lib/ledger';
 import { userApi } from '../../lib/api';

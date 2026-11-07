@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
-import { useNavigation } from '../../context/NavigationContext';
+import { useNavigation } from '../../lib/navigation';
 
 export type KrezAuthMode = 'login' | 'register' | 'forgot';
 

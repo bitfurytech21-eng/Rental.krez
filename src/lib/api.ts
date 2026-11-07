@@ -40,10 +40,19 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
 // Token storage key
 export const AUTH_TOKEN_STORAGE_KEY = 'kretz_auth_token';
 
-// In-memory token fallback & listeners
+// In-memory token & CSRF state fallback & listeners
 let inMemoryToken: string | null = null;
+let inMemoryCsrfToken: string | null = null;
 type UnauthorizedHandler = () => void;
 const unauthorizedHandlers: Set<UnauthorizedHandler> = new Set();
+
+export const setCsrfToken = (csrfToken: string | null) => {
+  inMemoryCsrfToken = csrfToken;
+};
+
+export const getCsrfToken = (): string | null => {
+  return inMemoryCsrfToken;
+};
 
 /**
  * Configure or retrieve the active authentication token
@@ -55,6 +64,7 @@ export const setAuthToken = (token: string | null) => {
       localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
     } else {
       localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+      inMemoryCsrfToken = null;
     }
   }
 };
@@ -64,15 +74,6 @@ export const getAuthToken = (): string | null => {
   if (typeof window !== 'undefined') {
     const direct = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
     if (direct) return direct;
-
-    // Automatic fallback to active user ID in localStorage
-    const currentUserId = localStorage.getItem('rentallog_current_user_id');
-    if (currentUserId) {
-      if (currentUserId.includes('admin') || currentUserId === 'usr-admin-1' || currentUserId === 'usr-admin-01') {
-        return `admin_sess_${currentUserId}`;
-      }
-      return `sess_${currentUserId}`;
-    }
   }
   return null;
 };
@@ -144,6 +145,15 @@ export async function apiRequest<T = any>(
     }
   }
 
+  // Inject CSRF Token for mutating requests
+  const method = (fetchOptions.method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const csrfTok = getCsrfToken();
+    if (csrfTok && !headers.has('X-CSRF-Token')) {
+      headers.set('X-CSRF-Token', csrfTok);
+    }
+  }
+
   // Handle request body and Content-Type
   let requestBody: BodyInit | undefined = undefined;
   if (body !== undefined && body !== null) {
@@ -165,6 +175,7 @@ export async function apiRequest<T = any>(
 
   try {
     const response = await fetch(url, {
+      credentials: 'include',
       ...fetchOptions,
       headers,
       body: requestBody,
@@ -173,11 +184,20 @@ export async function apiRequest<T = any>(
 
     clearTimeout(timeoutId);
 
+    // Extract CSRF token header if provided by server
+    const serverCsrf = response.headers.get('x-csrf-token') || response.headers.get('X-CSRF-Token');
+    if (serverCsrf) {
+      setCsrfToken(serverCsrf);
+    }
+
     // Parse response body
     const contentType = response.headers.get('content-type') || '';
     let responseData: any;
     if (contentType.includes('application/json')) {
       responseData = await response.json();
+      if (responseData && typeof responseData === 'object' && responseData.csrfToken) {
+        setCsrfToken(responseData.csrfToken);
+      }
     } else {
       responseData = await response.text();
     }

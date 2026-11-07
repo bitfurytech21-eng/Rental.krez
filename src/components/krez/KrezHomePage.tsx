@@ -11,6 +11,8 @@ import { KRETZ_CORE_LEADERSHIP } from '../../data/kretzTeam';
 import { BLOG_POSTS } from '../../data/blogPosts';
 import { ledger } from '../../lib/ledger';
 import { KrezImage, KrezReveal } from './KrezReveal';
+import { AnimatedHomepageHeroBackground } from '../visuals/AnimatedHomepageHeroBackground';
+
 
 interface KrezHomePageProps {
   onNavigate: (path: string) => void;
@@ -178,6 +180,7 @@ const AnimatedStat: React.FC<AnimatedStatProps> = ({ target, suffix = '', label 
 };
 
 export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
+
   const [heroRevealed, setHeroRevealed] = useState<boolean>(true);
 
   const journalPosts = getJournalPosts().slice(0, 3);
@@ -187,17 +190,15 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
     <main className="bg-[#FAF8F5] text-[#18211F]">
       <IntroOverlay onRevealHero={() => setHeroRevealed(true)} />
 
-      {/* Section 1: Full-Viewport Architectural Hero */}
+      {/* Section 1: Full-Viewport Architectural Hero with Animated Background */}
       <section className="relative min-h-screen w-full overflow-hidden">
-        <KrezImage
-          src={KREZ_IMAGES.heroBackground}
-          alt="Landmark limestone building facade"
-          loading="eager"
-          className="absolute inset-0 h-full w-full object-cover object-center"
+        <AnimatedHomepageHeroBackground 
+          imageSrc="/assets/aistudio/IMG_7738_40d9e7af.jpeg"
+          className="absolute inset-0 w-full h-full"
         />
-        <div className="krez-hero-scrim pointer-events-none absolute inset-0" />
 
-        <div className="relative z-10 mx-auto flex min-h-screen max-w-container flex-col justify-between px-gutter pb-12 md:px-gutter-md lg:px-gutter-lg">
+        <div className="relative z-10 mx-auto flex min-h-screen max-w-container flex-col justify-between px-gutter pb-12 pt-24 md:px-gutter-md lg:px-gutter-lg">
+
           <div className={`hero-text-block ${heroRevealed ? 'is-revealed' : ''}`}>
             <div className="hero-heading-top">
               <p className="hero-own-the">Invest in</p>
@@ -219,7 +220,7 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
               onClick={() => onNavigate('/properties')}
               className="inline-flex items-center gap-2 rounded-pill bg-primary px-6 py-3 text-xs font-semibold tracking-widest uppercase text-white transition-transform duration-fast hover:scale-hover active:scale-active cursor-pointer"
             >
-              <span>Browse properties</span>
+              <span>Enter as Tokenized fraction</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
             <button

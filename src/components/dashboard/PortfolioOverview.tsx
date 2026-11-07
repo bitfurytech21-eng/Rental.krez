@@ -105,16 +105,16 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {investments.map((inv) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        {investments.map((inv, idx) => (
           <div
             key={inv.id}
-            className="bg-[#151515] p-3.5 sm:p-4 rounded-xl border border-[#303030] shadow-sm hover:border-neutral-500 transition-all flex flex-col justify-between"
+            className={`cinematic-card cinematic-card-interactive p-4 sm:p-5 rounded-[18px] flex flex-col justify-between animate-cinematic-reveal-${(idx % 4) + 1}`}
           >
             <div>
-              <div className="flex items-start justify-between gap-2.5 mb-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#202020] shrink-0 border border-[#303030]">
+              <div className="flex items-start justify-between gap-2.5 mb-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-[#1D1E1E] shrink-0 border border-white/[0.12] shadow-sm">
                     <img
                       src={inv.propertyImage}
                       alt={inv.propertyTitle}
@@ -123,57 +123,58 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-bold text-white truncate">{inv.propertyTitle}</h4>
-                    <span className="text-[11px] text-[#A0A0A0] truncate block mt-0.5">{inv.propertyLocation}</span>
+                    <h4 className="text-xs sm:text-sm font-bold text-[#F5F5F2] truncate">{inv.propertyTitle}</h4>
+                    <span className="text-[11px] text-[#A5A6A5] truncate block mt-0.5">{inv.propertyLocation}</span>
                   </div>
                 </div>
 
-                <span className="text-[9.5px] font-semibold text-[#38C982] bg-[#38C982]/10 px-2 py-0.5 rounded border border-[#38C982]/25 shrink-0">
-                  Active
+                <span className="text-[10px] font-semibold text-[#43C98B] bg-[#43C98B]/10 px-2.5 py-0.5 rounded-full border border-[#43C98B]/25 shrink-0 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#43C98B]" /> Active
                 </span>
               </div>
 
               {/* Stats Grid with Clean Tabular Numbers */}
-              <div className="grid grid-cols-3 gap-2 p-2.5 bg-[#202020] rounded-lg border border-[#303030] text-[11px] mb-3">
+              <div className="grid grid-cols-3 gap-2 p-3 bg-[#141515]/85 rounded-xl border border-white/[0.08] text-[11px] mb-3.5 shadow-inner">
                 <div>
-                  <span className="text-[#A0A0A0] block text-[9px] font-semibold uppercase tracking-wider">Holding</span>
-                  <span className="font-bold font-mono tabular-nums text-white text-xs sm:text-[13px] block mt-0.5">{inv.tokensPurchased} Units</span>
-                  <span className="text-[9.5px] text-[#A0A0A0] block font-mono font-medium">{formatCurrency(inv.totalAmountInvested)}</span>
+                  <span className="text-[#777979] block text-[9.5px] font-semibold uppercase tracking-wider">Holding</span>
+                  <span className="financial-num text-[#F5F5F2] text-xs sm:text-[13.5px] block mt-0.5">{inv.tokensPurchased} Units</span>
+                  <span className="financial-num text-[10.5px] text-[#777979] block font-medium">{formatCurrency(inv.totalAmountInvested)}</span>
                 </div>
 
-                <div className="border-x border-[#303030] px-2">
-                  <span className="text-[9px] font-semibold text-[#A0A0A0] uppercase block truncate">Annual Yield</span>
-                  <span className="font-bold font-mono tabular-nums text-[#35C9F5] text-xs sm:text-[13px] block mt-0.5">{formatPercent(inv.estimatedAnnualYield)}</span>
-                  <span className="text-[9px] text-[#A0A0A0] block">Projected</span>
+                <div className="border-x border-white/[0.08] px-2.5">
+                  <span className="text-[9.5px] font-semibold text-[#777979] uppercase block truncate">Annual Yield</span>
+                  <span className="financial-num text-[#55BDE8] text-xs sm:text-[13.5px] block mt-0.5">{formatPercent(inv.estimatedAnnualYield)}</span>
+                  <span className="text-[9.5px] text-[#777979] block font-medium">Projected</span>
                 </div>
 
                 <div>
-                  <span className="text-[9px] font-semibold text-[#A0A0A0] uppercase block truncate">Performance</span>
-                  <span className="font-bold font-mono tabular-nums text-[#38C982] text-xs sm:text-[13px] block mt-0.5">
+                  <span className="text-[9.5px] font-semibold text-[#777979] uppercase block truncate">Performance</span>
+                  <span className="financial-num text-[#43C98B] text-xs sm:text-[13.5px] block mt-0.5">
                     +{formatCurrency(inv.totalDividendsReceived)}
                   </span>
-                  <span className="text-[9px] text-[#38C982] block">Realized</span>
+                  <span className="text-[9.5px] text-[#43C98B] block font-medium">Realized</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-2 border-t border-[#303030]">
+            <div className="flex items-center justify-between text-xs pt-2.5 border-t border-white/[0.08]">
               <button
                 type="button"
                 onClick={() => setSelectedInvestmentForDocs(inv)}
-                className="font-semibold text-white flex items-center gap-1.5 bg-[#202020] hover:bg-[#282828] border border-[#303030] px-2.5 py-1 rounded-md text-[10.5px] cursor-pointer transition-colors active:scale-[0.98]"
+                className="font-semibold text-[#F5F5F2] flex items-center gap-1.5 bg-[#1D1E1E] hover:bg-[#252626] border border-white/[0.1] px-3 py-1.5 rounded-lg text-[11px] cursor-pointer transition-colors active:scale-[0.98]"
               >
-                <FileText className="w-3 h-3 text-[#35C9F5]" /> Legal Docs
+                <FileText className="w-3.5 h-3.5 text-[#55BDE8]" /> Legal Docs
               </button>
 
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[9px] text-[#A0A0A0] hidden sm:inline">{inv.certificateId}</span>
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-[9.5px] text-[#A5A6A5] hidden sm:inline">{inv.certificateId}</span>
                 {onSelectProperty && (
                   <button
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="flex items-center gap-1 text-xs cursor-pointer transition-colors bg-white hover:bg-[#E5E5E5] text-black px-2.5 py-1 rounded-md font-semibold active:scale-[0.98]"
+                    className="cinematic-btn cinematic-btn-primary flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-lg font-bold cursor-pointer"
                   >
-                    View Asset <ArrowRight className="w-3 h-3" />
+                    <span>View Asset</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#070A09]" />
                   </button>
                 )}
               </div>

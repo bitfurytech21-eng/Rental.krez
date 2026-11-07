@@ -95,6 +95,10 @@ export const getAuthRedirectUrl = (path: string = ''): string => {
 export const ALLOWED_REDIRECT_DOMAINS = [
   'http://localhost:3000',
   'http://localhost:3000/#reset-password',
+  'https://ais-dev-lndkozjm7twbqlsuxozowh-596498626522.europe-west2.run.app',
+  'https://ais-dev-lndkozjm7twbqlsuxozowh-596498626522.europe-west2.run.app/#reset-password',
+  'https://ais-pre-lndkozjm7twbqlsuxozowh-596498626522.europe-west2.run.app',
+  'https://ais-pre-lndkozjm7twbqlsuxozowh-596498626522.europe-west2.run.app/#reset-password',
   'https://ais-dev-32px4qvn5mho5cjnbja4mq-596498626522.europe-west2.run.app',
   'https://ais-dev-32px4qvn5mho5cjnbja4mq-596498626522.europe-west2.run.app/#reset-password',
   'https://ais-pre-32px4qvn5mho5cjnbja4mq-596498626522.europe-west2.run.app',

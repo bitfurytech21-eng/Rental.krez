@@ -3,6 +3,7 @@ import { formatCurrency, formatPercent } from '../../lib/utils';
 import { BarChart3, Calendar } from 'lucide-react';
 import { Transaction } from '../../types/transaction';
 import { Investment } from '../../types/investment';
+import { AnimatedNumericValue } from '../dashboard/AnimatedNumericValue';
 
 import { RAINBOW_COLORS } from '../../lib/chartTheme';
 
@@ -79,20 +80,20 @@ export const YieldPayoutTrendsChart: React.FC<{
 
   return (
     <div
-      className={`bg-[#151515] border border-[#303030] rounded-xl p-4 sm:p-5 shadow-lg space-y-4 text-white ${className}`}
+      className={`cinematic-card rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 text-white ${className}`}
     >
       {/* Chart Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#303030]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.08]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-md bg-[#202020] border border-[#303030] text-[#35C9F5]">
+            <span className="p-1.5 rounded-lg bg-[#141515] border border-white/[0.08] text-[#55BDE8]">
               <BarChart3 className="w-4 h-4" />
             </span>
-            <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+            <h3 className="text-sm sm:text-base font-bold text-[#F5F5F2] tracking-tight">
               Monthly Dividend Payout &amp; APY Yield Trends
             </h3>
           </div>
-          <p className="text-xs text-[#A0A0A0] mt-0.5">
+          <p className="text-xs text-[#777979] mt-0.5">
             Settled rental distribution payouts verified on your account ledger
           </p>
         </div>
@@ -197,18 +198,14 @@ export const YieldPayoutTrendsChart: React.FC<{
       )}
 
       {/* Footer Stats Summary */}
-      <div className="flex flex-wrap items-center justify-between text-xs font-mono tabular-nums pt-1 text-[#A0A0A0]">
+      <div className="flex flex-wrap items-center justify-between text-xs financial-num pt-1 text-[#777979]">
         <div>
           Settled Distributions Tracked:{' '}
-          <span className="font-bold text-[#38C982]">
-            {formatCurrency(totalEarned)}
-          </span>
+          <AnimatedNumericValue value={totalEarned} formatAsCurrency={true} variant="positive" className="font-[600]" />
         </div>
         <div>
           Weighted Portfolio Target APY:{' '}
-          <span className="font-bold text-[#FFD93D]">
-            {formatPercent(avgApy)}
-          </span>
+          <AnimatedNumericValue value={avgApy} formatAsCurrency={false} suffix="%" variant="primary" className="font-[600]" />
         </div>
       </div>
     </div>

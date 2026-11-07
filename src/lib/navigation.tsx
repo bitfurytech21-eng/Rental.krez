@@ -106,9 +106,6 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
       if (!options.fromPopstate) {
         try {
           window.history.pushState({}, '', targetPath);
-          if (window.location.hash || window.location.hash === '') {
-            window.location.hash = targetPath;
-          }
         } catch {
           // safe fallback
         }
@@ -143,13 +140,11 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
     if (!options?.fromPopstate) {
       try {
         window.history.pushState({}, '', targetPath);
-        if (window.location.hash || window.location.hash === '') {
-          window.location.hash = targetPath;
-        }
       } catch {
         // safe fallback
       }
     }
+
 
     // Switch the underlying route so destination page mounts and prepares under the overlay
     setCurrentPath(targetPath);

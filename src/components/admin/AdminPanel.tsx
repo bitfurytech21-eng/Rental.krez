@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
-import { useNavigation } from '../../context/NavigationContext';
+import { useNavigation } from '../../lib/navigation';
 import { ledger, CryptoNetworkConfig, VerificationDocument } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';

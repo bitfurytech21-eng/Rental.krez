@@ -10,7 +10,7 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import v1Routes from './server/routes';
-import { correlationAndTimingMiddleware, authenticateToken, errorHandler } from './server/middleware';
+import { correlationAndTimingMiddleware, authenticateToken, validateCsrf, errorHandler } from './server/middleware';
 import { logger } from './server/logger';
 import { validateAdminEnvironment } from './server/adminAuth';
 
@@ -45,12 +45,18 @@ async function startServer() {
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-  // CORS & Security Headers
+  // CORS & Security Headers with Cookie Credentials and CSRF Exposure
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+    } else {
+      res.header('Access-Control-Allow-Origin', '*');
+    }
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id');
-    res.header('Access-Control-Expose-Headers', 'X-Request-Id');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-CSRF-Token, X-XSRF-Token');
+    res.header('Access-Control-Expose-Headers', 'X-Request-Id, X-CSRF-Token');
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }
@@ -82,6 +88,9 @@ async function startServer() {
 
   // Authentication Context
   app.use(authenticateToken);
+
+  // CSRF Protection for state-changing operations
+  app.use(validateCsrf);
 
   // Health endpoint
   app.get(['/api/health', '/api/v1/health'], (req: Request, res: Response) => {
