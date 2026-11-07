@@ -102,81 +102,49 @@
    POLISHED DASHBOARD BACKGROUND SYSTEM (LIGHT & DARK MODES)
    ========================================================================== */
 
-/* 1. Default Light Mode: Finora-inspired soft aqua/mint canvas with clean white cards and emerald accents */
+/* 1. PREMIUM GRAPHITE & PLATINUM DESIGN SYSTEM PALETTE */
 :root,
-.dashboard-light {
-  --dash-bg: #EAF8F4;
-  --dash-bg-gradient: radial-gradient(1200px circle at 50% -80px, rgba(221, 245, 236, 0.75) 0%, rgba(234, 248, 244, 0.98) 60%, #EAF8F4 100%);
-  --dash-sidebar: #FFFFFF;
-  --dash-sidebar-border: #E4EEEA;
-  --dash-sidebar-card: #F6FAF8;
-  --dash-sidebar-active-bg: #087F5B;
-  --dash-sidebar-active-text: #FFFFFF;
-  --dash-sidebar-hover-bg: #EAF8F4;
-  --dash-header: rgba(255, 255, 255, 0.95);
-  --dash-header-border: #E4EEEA;
-  --dash-header-controls: #F6FAF8;
-  --dash-header-controls-border: #E4EEEA;
-  --dash-bg: #080808;
-  --dash-bg-gradient: none;
-  --dash-sidebar: #101010;
-  --dash-sidebar-border: #303030;
-  --dash-sidebar-card: #151515;
-  --dash-sidebar-active-bg: #FFFFFF;
-  --dash-sidebar-active-text: #080808;
-  --dash-sidebar-hover-bg: #1D1D1D;
-  --dash-header: rgba(16, 16, 16, 0.95);
-  --dash-header-border: #303030;
-  --dash-header-controls: #151515;
-  --dash-header-controls-border: #303030;
-  --dash-card: #151515;
-  --dash-card-border: #303030;
-  --dash-card-hover: #1D1D1D;
-  --dash-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.75);
-  --dash-inner: #1D1D1D;
-  --dash-inner-border: #303030;
-  --dash-text: #FFFFFF;
-  --dash-text-secondary: #D0D0D0;
-  --dash-text-muted: #999999;
-  --dash-hover: rgba(255, 255, 255, 0.08);
-  --dash-accent: #FFFFFF;
-  --dash-accent-gold: #FFD93D;
-  --dash-highlight: #1D1D1D;
-}
-
-/* 2. Unified Institutional Black & White Dashboard Theme */
-.dashboard-dark,
 .dashboard-light,
+.dashboard-dark,
 .dashboard-theme-slate,
 .dashboard-theme-sandstone,
 .dashboard-theme-titanium,
 .dashboard-theme-obsidian {
-  --dash-bg: #080808;
+  --dash-bg: #090A0A;
   --dash-bg-gradient: none;
-  --dash-sidebar: #101010;
-  --dash-sidebar-border: #303030;
-  --dash-sidebar-card: #151515;
-  --dash-sidebar-active-bg: #FFFFFF;
-  --dash-sidebar-active-text: #080808;
-  --dash-sidebar-hover-bg: #1D1D1D;
-  --dash-header: rgba(16, 16, 16, 0.95);
-  --dash-header-border: #303030;
-  --dash-header-controls: #151515;
-  --dash-header-controls-border: #303030;
-  --dash-card: #151515;
-  --dash-card-border: #303030;
-  --dash-card-hover: #1D1D1D;
-  --dash-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.75);
-  --dash-inner: #1D1D1D;
-  --dash-inner-border: #303030;
-  --dash-text: #FFFFFF;
-  --dash-text-secondary: #D0D0D0;
-  --dash-text-muted: #999999;
-  --dash-hover: rgba(255, 255, 255, 0.08);
-  --dash-accent: #FFFFFF;
-  --dash-accent-gold: #FFD93D;
-  --dash-highlight: #1D1D1D;
+  --dash-sidebar: #101111;
+  --dash-sidebar-border: #292B2B;
+  --dash-sidebar-card: #1D1E1E;
+  --dash-sidebar-active-bg: #F5F5F2;
+  --dash-sidebar-active-text: #090A0A;
+  --dash-sidebar-hover-bg: #1D1E1E;
+  --dash-header: rgba(16, 17, 17, 0.94);
+  --dash-header-border: #292B2B;
+  --dash-header-controls: #1D1E1E;
+  --dash-header-controls-border: #292B2B;
+  --dash-card: #141515;
+  --dash-card-border: #292B2B;
+  --dash-card-hover: #1D1E1E;
+  --dash-card-shadow: 0 4px 24px rgba(0, 0, 0, 0.85);
+  --dash-inner: #1D1E1E;
+  --dash-inner-border: #292B2B;
+  --dash-elevated: #232424;
+  --dash-text: #F5F5F2;
+  --dash-text-secondary: #A5A6A5;
+  --dash-text-muted: #777979;
+  --dash-hover: rgba(245, 245, 242, 0.06);
+  --dash-accent: #55BDE8;
+  --dash-cyan: #55BDE8;
+  --dash-verification: #43C98B;
+  --dash-positive: #43C98B;
+  --dash-info: #55BDE8;
+  --dash-chart-secondary: #B69AE8;
+  --dash-warm: #E7B96D;
+  --dash-negative: #E47E80;
+  --dash-accent-gold: #E7B96D;
+  --dash-highlight: #232424;
 }
+
 
 /* Base utility bindings */
 .dash-card {
@@ -276,8 +244,10 @@
   }
 
   button,
-  a {
+  a,
+  [role="button"] {
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   button {
@@ -1062,50 +1032,63 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 52px;
-  background-color: var(--dash-header);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid var(--dash-header-border);
+  height: calc(52px + env(safe-area-inset-bottom, 0px));
+  background-color: rgba(21, 21, 21, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid #303030;
   z-index: 45;
   display: none;
-  padding: 2px 6px;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  padding: 3px 6px calc(3px + env(safe-area-inset-bottom, 0px)) 6px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.6);
 }
 
-/* Consistent black & white card adaptations within the dashboard shell */
+/* Consistent institutional Graphite & Platinum adaptations within the dashboard shell */
 .app-shell {
-  background-color: #080808 !important;
-  color: #FFFFFF !important;
+  position: relative;
+  background-color: #090A0A !important;
+  color: #F5F5F2 !important;
 }
 
 .app-shell .app-sidebar {
-  background-color: #101010 !important;
-  border-right: 1px solid #303030 !important;
+  background-color: #101111 !important;
+  border-right: 1px solid #292B2B !important;
+  position: relative;
+  z-index: 20;
 }
 
 .app-shell .app-main-area {
-  background-color: #080808 !important;
+  background-color: transparent !important;
+  position: relative;
+  z-index: 10;
 }
 
 .app-shell header {
-  background-color: #101010 !important;
-  border-bottom: 1px solid #303030 !important;
+  background-color: rgba(16, 17, 17, 0.94) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid #292B2B !important;
 }
 
-/* Card surfaces */
+/* Primary Main Panel surfaces (Level 2: #141515) */
 .app-shell .bg-white,
+.app-shell .bg-\[\#151515\],
+.app-shell .bg-\[\#141515\],
 .app-shell .bg-\[\#FAF6EF\],
 .app-shell .bg-\[\#F8FAFC\],
 .app-shell .bg-\[\#FAFDFC\],
 .app-shell .bg-\[\#F6FAF8\],
 .app-shell .dash-card {
-  background-color: #151515 !important;
-  border-color: #303030 !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.75) !important;
+  background-color: #141515 !important;
+  border-color: #292B2B !important;
+  color: #F5F5F2 !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Secondary surfaces */
+/* Financial card background (#1D1E1E) */
+.app-shell .bg-\[\#202020\],
+.app-shell .bg-\[\#1D1E1E\],
+.app-shell .bg-\[\#1D1D1D\],
 .app-shell .bg-\[\#F6F7F4\],
 .app-shell .bg-\[\#EEF1EC\],
 .app-shell .bg-\[\#F4F7F5\],
@@ -1116,21 +1099,31 @@
 .app-shell .bg-slate-50,
 .app-shell .bg-slate-100,
 .app-shell .dash-inner {
-  background-color: #1D1D1D !important;
-  border-color: #303030 !important;
-  color: #D0D0D0 !important;
+  background-color: #1D1E1E !important;
+  border-color: #292B2B !important;
+  color: #A5A6A5 !important;
+}
+
+/* Elevated card background (#232424) */
+.app-shell .bg-\[\#252525\],
+.app-shell .bg-\[\#232424\],
+.app-shell .bg-\[\#282828\] {
+  background-color: #232424 !important;
+  border-color: #292B2B !important;
 }
 
 /* Border overrides */
 .app-shell .border,
 .app-shell [class*="border-slate-"],
+.app-shell [class*="border-\[\#303030\]"],
+.app-shell [class*="border-\[\#262626\]"],
 .app-shell .border-\[\#E4EEEA\],
 .app-shell .border-\[\#E3E8E3\],
 .app-shell .border-\[\#E5DFD5\],
 .app-shell .border-\[\#DCE5E2\],
 .app-shell .border-\[\#CBD5E1\],
 .app-shell .border-\[\#DCD4C6\] {
-  border-color: #303030 !important;
+  border-color: #292B2B !important;
 }
 
 /* Heading & text legibility in Dashboard */
@@ -1144,8 +1137,8 @@
 .app-shell .text-\[\#142421\],
 .app-shell .text-\[\#182D2A\],
 .app-shell .text-\[\#1C1917\],
-.app-shell .text-black {
-  color: #FFFFFF !important;
+.app-shell .text-white {
+  color: #F5F5F2 !important;
 }
 
 .app-shell p,
@@ -1155,8 +1148,10 @@
 .app-shell .text-\[\#69736F\],
 .app-shell .text-\[\#52605C\],
 .app-shell .text-\[\#4A5854\],
-.app-shell .text-\[\#57534E\] {
-  color: #D0D0D0 !important;
+.app-shell .text-\[\#57534E\],
+.app-shell .text-\[\#A0A0A0\],
+.app-shell .text-\[\#D0D0D0\] {
+  color: #A5A6A5 !important;
 }
 
 .app-shell .text-slate-400,
@@ -1165,66 +1160,70 @@
 .app-shell .text-\[\#8EA7C7\],
 .app-shell .text-\[\#838A85\],
 .app-shell .text-\[\#94A3B8\],
+.app-shell .text-\[\#999999\],
 .app-shell .dash-muted {
-  color: #999999 !important;
+  color: #777979 !important;
 }
 
 /* Form controls & inputs */
 .app-shell input,
 .app-shell select,
 .app-shell textarea {
-  background-color: #1D1D1D !important;
-  border-color: #303030 !important;
-  color: #FFFFFF !important;
+  background-color: #1D1E1E !important;
+  border-color: #292B2B !important;
+  color: #F5F5F2 !important;
 }
 .app-shell input::placeholder,
 .app-shell textarea::placeholder {
-  color: #777777 !important;
+  color: #777979 !important;
 }
 
-/* Primary and secondary buttons */
+/* Primary Platinum-White Buttons */
 .app-shell .btn-primary,
-.app-shell button.bg-primary {
-  background-color: #FFFFFF !important;
-  color: #000000 !important;
+.app-shell button.bg-white,
+.app-shell a.bg-white {
+  background-color: #F5F5F2 !important;
+  color: #090A0A !important;
   font-weight: 700 !important;
-  border-color: #FFFFFF !important;
+  border-color: #F5F5F2 !important;
 }
 .app-shell .btn-primary:hover,
-.app-shell button.bg-primary:hover {
-  background-color: #E5E5E5 !important;
+.app-shell button.bg-white:hover,
+.app-shell a.bg-white:hover {
+  background-color: #E2E2DF !important;
 }
 
-/* Secondary buttons */
+/* Secondary Charcoal Buttons */
 .app-shell .btn-secondary,
 .app-shell button.bg-secondary {
-  background-color: #151515 !important;
-  color: #FFFFFF !important;
-  border: 1px solid #303030 !important;
+  background-color: #1D1E1E !important;
+  color: #F5F5F2 !important;
+  border: 1px solid #292B2B !important;
 }
 .app-shell .btn-secondary:hover,
 .app-shell button.bg-secondary:hover {
-  background-color: #1D1D1D !important;
+  background-color: #232424 !important;
+  border-color: #353838 !important;
 }
 
 /* Tables inside dashboard */
 .app-shell table thead th {
-  background-color: #101010 !important;
-  color: #FFFFFF !important;
-  border-bottom: 1px solid #303030 !important;
+  background-color: #101111 !important;
+  color: #F5F5F2 !important;
+  border-bottom: 1px solid #292B2B !important;
   font-weight: 600 !important;
 }
 .app-shell table tbody tr {
-  border-bottom: 1px solid #262626 !important;
-  background-color: #151515 !important;
+  border-bottom: 1px solid #292B2B !important;
+  background-color: #141515 !important;
   transition: background-color 0.15s ease;
 }
 .app-shell table tbody tr:hover {
-  background-color: #1D1D1D !important;
+  background-color: #1D1E1E !important;
 }
 .app-shell table tbody td {
-  color: #D0D0D0 !important;
-  border-color: #262626 !important;
+  color: #A5A6A5 !important;
+  border-color: #292B2B !important;
 }
 
 @media (max-width: 1024px) {
@@ -1237,9 +1236,10 @@
     align-items: center;
   }
   .app-content-scroll {
-    padding: 8px 10px 72px 10px;
+    padding: 8px 10px calc(72px + env(safe-area-inset-bottom, 0px)) 10px;
   }
 }
+
 
 /* Print Stylesheet for Automatic Property Documents */
 @media print {
@@ -2112,6 +2112,121 @@ body.desktop-mode-active .max-w-\[1400px\] {
 
 .anim-dashboard-aura {
   animation: dashboardAuraPulse 14s ease-in-out infinite alternate;
+}
+
+/* Premium Atmospheric Fintech Background Keyframes */
+@keyframes fintechDriftCyan {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.11;
+  }
+  35% {
+    transform: translate3d(7vw, 5vh, 0) scale(1.12);
+    opacity: 0.16;
+  }
+  70% {
+    transform: translate3d(-5vw, 9vh, 0) scale(0.95);
+    opacity: 0.09;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.11;
+  }
+}
+
+@keyframes fintechDriftEmerald {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.10;
+  }
+  40% {
+    transform: translate3d(-6vw, -7vh, 0) scale(1.15);
+    opacity: 0.15;
+  }
+  75% {
+    transform: translate3d(-10vw, 4vh, 0) scale(0.92);
+    opacity: 0.08;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.10;
+  }
+}
+
+@keyframes fintechDriftTeal {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    opacity: 0.08;
+  }
+  50% {
+    transform: translate3d(5vw, -4vh, 0) scale(1.18) rotate(12deg);
+    opacity: 0.13;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    opacity: 0.08;
+  }
+}
+
+@keyframes fintechDriftShimmer {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.03;
+  }
+  50% {
+    transform: translate3d(-4vw, 4vh, 0) scale(1.2);
+    opacity: 0.07;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.03;
+  }
+}
+
+@keyframes fintechBeamDrift {
+  0% {
+    transform: translate3d(-4%, -4%, 0) rotate(-28deg);
+    opacity: 0.03;
+  }
+  50% {
+    transform: translate3d(4%, 4%, 0) rotate(-26deg);
+    opacity: 0.055;
+  }
+  100% {
+    transform: translate3d(-4%, -4%, 0) rotate(-28deg);
+    opacity: 0.03;
+  }
+}
+
+.animate-fintech-drift-cyan {
+  animation: fintechDriftCyan 34s ease-in-out infinite;
+}
+
+.animate-fintech-drift-emerald {
+  animation: fintechDriftEmerald 42s ease-in-out infinite;
+}
+
+.animate-fintech-drift-teal {
+  animation: fintechDriftTeal 48s ease-in-out infinite;
+}
+
+.animate-fintech-drift-shimmer {
+  animation: fintechDriftShimmer 30s ease-in-out infinite;
+}
+
+.animate-fintech-beam-drift {
+  animation: fintechBeamDrift 54s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fintech-drift-cyan,
+  .animate-fintech-drift-emerald,
+  .animate-fintech-drift-teal,
+  .animate-fintech-drift-shimmer,
+  .animate-fintech-beam-drift {
+    animation: none !important;
+    transform: none !important;
+  }
 }
 
 

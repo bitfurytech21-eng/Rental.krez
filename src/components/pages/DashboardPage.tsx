@@ -39,6 +39,8 @@ import { TaxReportGenerator } from '../documents/TaxReportGenerator';
 import { TreasuryConverterModal } from '../dashboard/TreasuryConverterModal';
 import { InvestorAnalyticsSuite } from '../dashboard/InvestorAnalyticsSuite';
 import { ProjectedYieldGrowthChart } from '../dashboard/ProjectedYieldGrowthChart';
+import { AtmosphericFintechBackground } from '../dashboard/AtmosphericFintechBackground';
+import { PropertyLedgerAnalytics } from '../dashboard/PropertyLedgerAnalytics';
 
 interface DashboardPageProps {
   defaultTab?: string;
@@ -446,6 +448,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   return (
     <div className={`app-shell dashboard-${dashboardMode} dashboard-theme-${dashboardTheme}`}>
+      {/* Premium Cinematic Atmospheric Background */}
+      <AtmosphericFintechBackground />
+
       {/* Desktop Fixed-Width Sidebar */}
       <aside className="app-sidebar hidden md:flex">
         {/* Brand / Logo */}
@@ -993,75 +998,222 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         )}
 
-        {/* Scrollable Content Area with max-w-[1400px] */}
+        {/* Scrollable Content Area with max-w-[1200px] */}
         <main className="app-content-scroll">
-          <div className="max-w-[1400px] w-full mx-auto space-y-3 sm:space-y-3.5 px-1 sm:px-2">
+          <div className="max-w-[1200px] w-full mx-auto space-y-6 sm:space-y-8 px-2 sm:px-4 relative z-10">
 
             {/* 1. OVERVIEW TAB */}
-            {activeTab === 'overview' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Welcome Back Widget - Charcoal Black & White Finish */}
-                <div className="bg-[#151515] text-white p-5 rounded-2xl sm:rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative overflow-hidden border border-[#303030]">
-                  <div className="flex items-center gap-3.5 z-10 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-[#1D1D1D] border border-[#303030] text-white flex items-center justify-center font-bold text-sm shadow-md shrink-0 overflow-hidden">
-                      {user.avatarUrl ? (
-                        <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
-                      ) : (
-                        user.fullName.split(' ').map(n => n[0]).join('')
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#999999]">
-                          Active Investor Portal
-                        </span>
-                        {user.kycStatus === 'verified' && (
-                          <span className="inline-flex items-center gap-1 text-[8.5px] font-semibold text-[#2ECC71] bg-[#2ECC71]/15 border border-[#2ECC71]/30 px-2 py-0.5 rounded-full shadow-xs">
-                            <ShieldCheck className="w-2.5 h-2.5" /> Verified
-                          </span>
+            {activeTab === 'overview' && (() => {
+              const hour = new Date().getHours();
+              const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+              return (
+                <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
+                  {/* Personal Account Welcome Section */}
+                  <div className="bg-[#141515] text-[#F5F5F2] px-4 py-3.5 sm:px-5 sm:py-4 rounded-[18px] border border-[#292B2B] shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
+                    <div className="flex items-center gap-3.5 z-10 min-w-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1D1E1E] border border-[#292B2B] text-[#F5F5F2] flex items-center justify-center font-bold text-sm shadow-inner shrink-0 overflow-hidden">
+                        {user.avatarUrl ? (
+                          <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
+                        ) : (
+                          user.fullName.split(' ').map(n => n[0]).join('')
                         )}
                       </div>
-                      <h2 className="text-base sm:text-lg font-bold text-white tracking-tight truncate leading-tight">
-                        Welcome back, {user.fullName}
-                      </h2>
-                      <p className="text-xs text-[#D0D0D0] mt-0.5 leading-normal truncate sm:whitespace-normal font-medium">
-                        Your real estate portfolio is generating monthly rental distributions across {investments.length} notarized properties.
-                      </p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#777979]">
+                            Personal Account
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#55BDE8] bg-[#55BDE8]/10 border border-[#55BDE8]/20 px-2 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#55BDE8]" /> Synced
+                          </span>
+                        </div>
+                        <h2 className="text-base sm:text-lg font-bold text-[#F5F5F2] tracking-tight truncate leading-tight">
+                          {greeting}, {user.fullName}
+                        </h2>
+                        <p className="text-[13px] text-[#A5A6A5] mt-0.5 leading-tight font-normal">
+                          Welcome back to your investor dashboard.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 z-10 shrink-0">
+                      <button
+                        onClick={() => setActiveTab('properties')}
+                        className="bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer shadow-xs active:scale-[0.98] whitespace-nowrap"
+                      >
+                        Explore Properties
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 z-10 shrink-0">
-                    <button
-                      onClick={() => setActiveTab('properties')}
-                      className="bg-white hover:bg-neutral-200 text-black text-xs font-bold px-4 py-2 rounded-xl transition-all cursor-pointer shadow-md"
-                    >
-                      Explore Properties
-                    </button>
+                  {notifications.filter(n => !n.read).length > 0 && (() => {
+                    const unreadList = notifications.filter(n => !n.read);
+                    const firstUnread = unreadList[0];
+                    return (
+                      <div className="bg-[#151515] border border-[#303030] px-4 py-2.5 rounded-xl flex items-center justify-between gap-3 shadow-sm text-xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-6 h-6 rounded-md bg-[#202020] text-[#35C9F5] border border-[#303030] flex items-center justify-center shrink-0">
+                            <Bell className="w-3 h-3" />
+                          </div>
+                          <div className="text-xs leading-tight truncate">
+                            <span className="font-semibold text-white mr-1.5">{firstUnread.title}:</span>
+                            <span className="text-[#A0A0A0]">{firstUnread.message}</span>
+                          </div>
+                        </div>
+                        <button onClick={() => setActiveTab('notifications')} className="text-xs font-semibold text-[#35C9F5] hover:underline whitespace-nowrap shrink-0 cursor-pointer">
+                          View Unread ({unreadList.length})
+                        </button>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Portfolio Valuation & 4 Financial Metric Cards */}
+                  <BalanceCard
+                    user={user}
+                    transactions={transactions}
+                    onDeposit={() => setIsDepositOpen(true)}
+                    onWithdraw={() => setIsWithdrawOpen(true)}
+                  />
+
+                  {/* Recent Human-Centered Transactions Feed */}
+                  <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold text-white">Recent Account Activity</h3>
+                        <p className="text-xs text-[#999999]">Verified SEPA deposits, SPV property investments, and dividend payouts</p>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('transactions')}
+                        className="text-xs font-bold text-white hover:text-[#00D2FF] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        All Transactions ({transactions.length}) <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <TransactionTable transactions={transactions} maxRows={5} />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 1.5 PORTFOLIO ANALYTICS TAB */}
+            {activeTab === 'analytics' && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <ProjectedYieldGrowthChart
+                  properties={frontendProperties.length > 0 ? frontendProperties : properties}
+                  investments={investments}
+                  onSelectProperty={onSelectProperty}
+                  onExploreProperties={() => setActiveTab('properties')}
+                />
+                <InvestorAnalyticsSuite
+                  properties={properties}
+                  investments={investments}
+                  transactions={transactions}
+                  walletBalance={user.walletBalance}
+                  onExploreProperties={() => setActiveTab('properties')}
+                  onSelectProperty={onSelectProperty}
+                  onOpenTransactions={() => setActiveTab('transactions')}
+                />
+                <RechartsPropertyDashboard
+                  properties={properties}
+                  investments={investments}
+                  transactions={transactions}
+                />
+              </div>
+            )}
+
+            {/* 2. MY PORTFOLIO TAB */}
+            {activeTab === 'portfolio' && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                {/* Property Performance Breakdown & Investment Diversification Matrix */}
+                <PropertyLedgerAnalytics
+                  properties={properties}
+                  investments={investments}
+                  onSelectProperty={onSelectProperty}
+                />
+
+                {/* Portfolio Value Over Time (Chronological Account Equity Curve) */}
+                <PortfolioPerformanceChart
+                  initialValuation={user.investedBalance > 0 ? Math.max(100, Math.round(user.investedBalance * 0.85)) : 0}
+                  currentValuation={user.walletBalance + user.investedBalance}
+                  totalDividends={user.totalEarned}
+                  onExploreProperties={() => setActiveTab('properties')}
+                  onDeposit={() => setIsDepositOpen(true)}
+                />
+
+                {/* Rental Distributions Over Time */}
+                <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
+
+                {/* My Property Investments */}
+                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#303030]">
+                    <div>
+                      <h2 className="text-base sm:text-lg font-bold text-white">My Property Investments</h2>
+                      <p className="text-xs text-[#999999]">Owned fractional property units, circular yield tracking, and notarized contracts.</p>
+                    </div>
+                  </div>
+
+                  <MyPropertyInvestments
+                    investments={investments}
+                    allProperties={properties}
+                    onOpenBuyModal={(prop, mode) => {
+                      const targetProp = prop || properties[0];
+                      if (targetProp) {
+                        setBuyModalProperty(targetProp);
+                        setBuyModalMode(mode || 'purchase');
+                        setIsBuyModalOpen(true);
+                      }
+                    }}
+                    onExploreProperties={() => setActiveTab('properties')}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 3. EXPLORE PROPERTIES TAB */}
+            {activeTab === 'properties' && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-white">Investment Marketplace</h2>
+                    <p className="text-xs text-[#999999]">Institutional-grade European real estate tokenized from €100/unit.</p>
+                  </div>
+                  <button onClick={onExploreProperties} className="bg-white hover:bg-neutral-200 text-black font-bold text-xs py-2 px-4 rounded-xl cursor-pointer shadow-xs transition-colors">
+                    Open Full Marketplace
+                  </button>
+                </div>
+
+                <div className="property-grid">
+                  {frontendProperties.map((property) => (
+                    <PropertyCard
+                      key={property.id}
+                      property={property}
+                      isFavorite={ledger.isFavorite(user.id, property.id)}
+                      onSelect={(prop) => onSelectProperty(prop.id)}
+                      onInvest={(prop) => {
+                        setBuyModalProperty(prop);
+                        setBuyModalMode('purchase');
+                        setIsBuyModalOpen(true);
+                      }}
+                      onOpenBrochure={(prop) => setBrochureProperty(prop)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. TRANSACTIONS TAB */}
+            {activeTab === 'transactions' && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl">
+                  <div className="pb-3 border-b border-[#303030]">
+                    <h2 className="text-base sm:text-lg font-bold text-white">Transactions &amp; Audit Ledger</h2>
+                    <p className="text-xs text-[#999999]">Immutable history of all deposits, withdrawals, property investments, and dividends.</p>
                   </div>
                 </div>
 
-                {notifications.filter(n => !n.read).length > 0 && (() => {
-                  const unreadList = notifications.filter(n => !n.read);
-                  const firstUnread = unreadList[0];
-                  return (
-                    <div className="bg-[#151515] border border-[#303030] px-4 py-2.5 rounded-xl sm:rounded-2xl flex items-center justify-between gap-3 shadow-md text-xs">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-6 h-6 rounded-lg bg-[#1D1D1D] text-[#00D2FF] border border-[#303030] flex items-center justify-center shrink-0 shadow-xs">
-                          <Bell className="w-3 h-3" />
-                        </div>
-                        <div className="text-xs leading-tight truncate">
-                          <span className="font-bold text-white mr-1.5">{firstUnread.title}:</span>
-                          <span className="text-[#D0D0D0]">{firstUnread.message}</span>
-                        </div>
-                      </div>
-                      <button onClick={() => setActiveTab('notifications')} className="text-xs font-bold text-[#00D2FF] hover:underline whitespace-nowrap shrink-0">
-                        View Unread ({unreadList.length})
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {/* Account Onboarding & Investment Pipeline */}
+                {/* Account Onboarding & Investment Pipeline (Moved to Ledger) */}
                 <ColoredPipeline
                   title="Investor Account & Investment Lifecycle"
                   subtitle="Regulated European participatory model progression"
@@ -1106,30 +1258,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   ]}
                 />
 
-                <BalanceCard
-                  user={user}
-                  onDeposit={() => setIsDepositOpen(true)}
-                  onWithdraw={() => setIsWithdrawOpen(true)}
-                />
-
-                {/* Recharts Live Property Analytics & Funding Progress */}
-                <RechartsPropertyDashboard
-                  properties={properties}
-                  investments={investments}
-                  transactions={transactions}
-                />
-
+                {/* Your Tokenized Assets (Moved to Ledger) */}
                 <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center pb-3 border-b border-[#303030]">
                     <div>
-                      <h3 className="text-sm sm:text-base font-bold text-white">Your Tokenized Assets</h3>
+                      <h2 className="text-base sm:text-lg font-bold text-white">Your Tokenized Assets</h2>
                       <p className="text-xs text-[#999999]">Active real estate properties generating monthly rental yield</p>
                     </div>
-                    <button
-                      onClick={() => setActiveTab('portfolio')}
-                      className="text-xs font-bold text-white hover:text-[#00D2FF] flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      View Full Portfolio <ArrowRight className="w-3 h-3" />
+                    <button onClick={() => setActiveTab('properties')} className="bg-white hover:bg-neutral-200 text-black font-bold text-xs py-2 px-4 rounded-xl cursor-pointer shadow-xs transition-colors">
+                      Browse Real Estate
                     </button>
                   </div>
 
@@ -1140,134 +1277,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
                 </div>
 
-                {/* Comprehensive Institutional Portfolio Analytics Suite (Real Ledger Data) */}
-                <InvestorAnalyticsSuite
-                  properties={properties}
-                  investments={investments}
-                  transactions={transactions}
-                  walletBalance={user.walletBalance}
-                  onExploreProperties={() => setActiveTab('properties')}
-                  onSelectProperty={onSelectProperty}
-                  onOpenTransactions={() => setActiveTab('transactions')}
-                />
-
-                {/* Monthly Dividend Yield Trends Chart */}
-                <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
-
-                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-sm sm:text-base font-bold text-white">Recent Transactions &amp; Distributions</h3>
-                      <p className="text-xs text-[#999999]">Verifiable double-entry ledger record</p>
-                    </div>
-                    <button
-                      onClick={() => setActiveTab('transactions')}
-                      className="text-xs font-bold text-white hover:text-[#00D2FF] flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      All Transactions ({transactions.length}) <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  <TransactionTable transactions={transactions} maxRows={5} />
-                </div>
-              </div>
-            )}
-
-            {/* 1.5 PORTFOLIO ANALYTICS TAB */}
-            {activeTab === 'analytics' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <ProjectedYieldGrowthChart
-                  properties={frontendProperties.length > 0 ? frontendProperties : properties}
-                  investments={investments}
-                  onSelectProperty={onSelectProperty}
-                  onExploreProperties={() => setActiveTab('properties')}
-                />
-                <InvestorAnalyticsSuite
-                  properties={properties}
-                  investments={investments}
-                  transactions={transactions}
-                  walletBalance={user.walletBalance}
-                  onExploreProperties={() => setActiveTab('properties')}
-                  onSelectProperty={onSelectProperty}
-                  onOpenTransactions={() => setActiveTab('transactions')}
-                />
+                {/* Property Funding & Portfolio Performance Visualiser (Moved to Ledger) */}
                 <RechartsPropertyDashboard
                   properties={properties}
                   investments={investments}
                   transactions={transactions}
                 />
-              </div>
-            )}
 
-            {/* 2. MY PORTFOLIO TAB */}
-            {activeTab === 'portfolio' && (
-              <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4 animate-in fade-in duration-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#303030]">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-white">My Property Investments</h2>
-                    <p className="text-xs text-[#999999]">Owned fractional property units, circular yield tracking, and notarized contracts.</p>
-                  </div>
-                  <button onClick={() => setActiveTab('properties')} className="bg-white hover:bg-neutral-200 text-black font-bold text-xs py-2 px-4 rounded-xl cursor-pointer shadow-xs transition-colors">
-                    Browse Real Estate
-                  </button>
-                </div>
-
-                <MyPropertyInvestments
+                {/* Institutional Portfolio Analytics Suite */}
+                <InvestorAnalyticsSuite
+                  properties={properties}
                   investments={investments}
-                  allProperties={properties}
-                  onOpenBuyModal={(prop, mode) => {
-                    const targetProp = prop || properties[0];
-                    if (targetProp) {
-                      setBuyModalProperty(targetProp);
-                      setBuyModalMode(mode || 'purchase');
-                      setIsBuyModalOpen(true);
-                    }
-                  }}
+                  transactions={transactions}
+                  walletBalance={user.walletBalance}
                   onExploreProperties={() => setActiveTab('properties')}
+                  onSelectProperty={onSelectProperty}
+                  onOpenTransactions={() => setActiveTab('transactions')}
                 />
-              </div>
-            )}
 
-            {/* 3. EXPLORE PROPERTIES TAB */}
-            {activeTab === 'properties' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-white">Investment Marketplace</h2>
-                    <p className="text-xs text-[#999999]">Institutional-grade European real estate tokenized from €100/unit.</p>
-                  </div>
-                  <button onClick={onExploreProperties} className="bg-white hover:bg-neutral-200 text-black font-bold text-xs py-2 px-4 rounded-xl cursor-pointer shadow-xs transition-colors">
-                    Open Full Marketplace
-                  </button>
+                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
+                  <TransactionTable transactions={transactions} />
                 </div>
-
-                <div className="property-grid">
-                  {frontendProperties.map((property) => (
-                    <PropertyCard
-                      key={property.id}
-                      property={property}
-                      isFavorite={ledger.isFavorite(user.id, property.id)}
-                      onSelect={(prop) => onSelectProperty(prop.id)}
-                      onInvest={(prop) => {
-                        setBuyModalProperty(prop);
-                        setBuyModalMode('purchase');
-                        setIsBuyModalOpen(true);
-                      }}
-                      onOpenBrochure={(prop) => setBrochureProperty(prop)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 4. TRANSACTIONS TAB */}
-            {activeTab === 'transactions' && (
-              <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4 animate-in fade-in duration-200">
-                <div className="pb-3 border-b border-[#303030]">
-                  <h2 className="text-base sm:text-lg font-bold text-white">Transactions &amp; Audit Ledger</h2>
-                  <p className="text-xs text-[#999999]">Immutable history of all deposits, withdrawals, property investments, and dividends.</p>
-                </div>
-                <TransactionTable transactions={transactions} />
               </div>
             )}
 
@@ -2115,7 +2145,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar - Compact and Clean */}
+      {/* Mobile Bottom Navigation Bar - Refined Institutional Layout */}
       <nav className="mobile-bottom-nav">
         {[
           { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -2136,16 +2166,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   setActiveTab(tab.id);
                 }
               }}
-              className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg text-[9.5px] font-medium transition-all ${
-                isActive ? 'text-white font-bold' : 'text-[#999999] hover:text-white'
+              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 min-h-[44px] transition-colors cursor-pointer select-none ${
+                isActive ? 'text-[#35C9F5] font-semibold' : 'text-[#A0A0A0] hover:text-white'
               }`}
             >
-              <Icon className="w-4 h-4 mb-0.5" />
-              <span>{tab.label}</span>
+              <Icon className={`w-4 h-4 mb-1 transition-transform duration-150 ${isActive ? 'scale-105 text-[#35C9F5]' : 'opacity-80'}`} />
+              <span className="text-[10px] tracking-tight truncate leading-none">{tab.label}</span>
+              {isActive && (
+                <span className="w-1 h-1 rounded-full bg-[#35C9F5] mt-1" />
+              )}
             </button>
           );
         })}
       </nav>
+
 
       {/* More Menu Modal / Bottom Sheet for Mobile */}
       {isMoreMenuOpen && (

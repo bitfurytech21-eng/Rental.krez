@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Clock, AlertCircle, Circle, ArrowRight, ShieldCheck, Info } from 'lucide-react';
+import {
+  UserCheck,
+  ShieldCheck,
+  Wallet,
+  Building2,
+  TrendingUp,
+  Check,
+  HelpCircle,
+} from 'lucide-react';
 
 export type PipelineStageStatus = 'completed' | 'active' | 'pending' | 'upcoming' | 'failed';
 
@@ -11,6 +19,7 @@ export interface PipelineStage {
   timestamp?: string;
   metrics?: { label: string; value: string };
   detailNote?: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 export interface ColoredPipelineProps {
@@ -24,273 +33,184 @@ export interface ColoredPipelineProps {
   showDetails?: boolean;
 }
 
+const DEFAULT_ICONS = [
+  UserCheck,    // 1. Account
+  ShieldCheck,  // 2. Verification
+  Wallet,       // 3. Funding
+  Building2,    // 4. Investment
+  TrendingUp,   // 5. Returns
+];
+
+const SHORT_LABELS = [
+  'Account',
+  'Verification',
+  'Funding',
+  'Investment',
+  'Returns',
+];
+
 export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
-  title,
-  subtitle,
   stages,
   activeStageId,
   onStageClick,
-  orientation = 'auto',
   className = '',
-  showDetails = true,
 }) => {
   const [hoveredStageId, setHoveredStageId] = useState<string | null>(null);
+  const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
 
-  const getStatusColor = (status: PipelineStageStatus) => {
+  const getStatusConfig = (status: PipelineStageStatus) => {
     switch (status) {
       case 'completed':
         return {
-          bg: 'bg-[#2ECC71] text-black',
-          bgLight: 'bg-[#1D1D1D]',
-          border: 'border-[#2ECC71]',
-          borderLight: 'border-[#2ECC71]/40',
-          text: 'text-[#2ECC71]',
-          pillBg: 'bg-[#2ECC71]/15',
-          track: 'bg-[#2ECC71]',
-          badge: 'Completed',
+          nodeBg: 'bg-[#43C98B]/15 border-[#43C98B] text-[#43C98B]',
+          glow: 'border-[#43C98B]/40',
+          line: 'bg-[#43C98B]',
+          badgeBg: 'bg-[#43C98B] text-black',
+          badgeText: 'Completed',
+          iconColor: 'text-[#43C98B]',
+          labelColor: 'text-[#F5F5F2]',
         };
       case 'active':
         return {
-          bg: 'bg-[#00D2FF] text-black shadow-[0_0_12px_rgba(0,210,255,0.4)]',
-          bgLight: 'bg-[#1D1D1D]',
-          border: 'border-[#00D2FF]',
-          borderLight: 'border-[#00D2FF]/40',
-          text: 'text-[#00D2FF]',
-          pillBg: 'bg-[#00D2FF]/15',
-          track: 'bg-[#00D2FF]',
-          badge: 'In Progress',
+          nodeBg: 'bg-[#55BDE8]/20 border-[#55BDE8] text-[#55BDE8]',
+          glow: 'border-[#55BDE8]',
+          line: 'bg-[#55BDE8]',
+          badgeBg: 'bg-[#55BDE8] text-black',
+          badgeText: 'In Progress',
+          iconColor: 'text-[#55BDE8]',
+          labelColor: 'text-[#55BDE8]',
         };
       case 'pending':
         return {
-          bg: 'bg-[#FF9F43] text-black',
-          bgLight: 'bg-[#1D1D1D]',
-          border: 'border-[#FF9F43]',
-          borderLight: 'border-[#FF9F43]/40',
-          text: 'text-[#FF9F43]',
-          pillBg: 'bg-[#FF9F43]/15',
-          track: 'bg-[#FF9F43]',
-          badge: 'Pending Review',
+          nodeBg: 'bg-[#E7B96D]/15 border-[#E7B96D] text-[#E7B96D]',
+          glow: 'border-[#E7B96D]/40',
+          line: 'bg-[#E7B96D]',
+          badgeBg: 'bg-[#E7B96D] text-black',
+          badgeText: 'Pending',
+          iconColor: 'text-[#E7B96D]',
+          labelColor: 'text-[#E7B96D]',
         };
       case 'failed':
         return {
-          bg: 'bg-[#FF4D4D] text-white',
-          bgLight: 'bg-[#1D1D1D]',
-          border: 'border-[#FF4D4D]',
-          borderLight: 'border-[#FF4D4D]/40',
-          text: 'text-[#FF4D4D]',
-          pillBg: 'bg-[#FF4D4D]/15',
-          track: 'bg-[#FF4D4D]',
-          badge: 'Attention Needed',
+          nodeBg: 'bg-[#E47E80]/15 border-[#E47E80] text-[#E47E80]',
+          glow: 'border-[#E47E80]/40',
+          line: 'bg-[#E47E80]',
+          badgeBg: 'bg-[#E47E80] text-white',
+          badgeText: 'Attention',
+          iconColor: 'text-[#E47E80]',
+          labelColor: 'text-[#E47E80]',
         };
       case 'upcoming':
       default:
         return {
-          bg: 'bg-[#1D1D1D] text-[#999999] border border-[#303030]',
-          bgLight: 'bg-[#151515]',
-          border: 'border-[#303030]',
-          borderLight: 'border-[#303030]',
-          text: 'text-[#999999]',
-          pillBg: 'bg-[#1D1D1D]',
-          track: 'bg-[#303030]',
-          badge: 'Upcoming',
+          nodeBg: 'bg-[#1D1E1E] border-[#292B2B] text-[#777979]',
+          glow: 'border-[#292B2B]',
+          line: 'bg-[#292B2B]',
+          badgeBg: 'bg-[#292B2B] text-[#777979]',
+          badgeText: 'Upcoming',
+          iconColor: 'text-[#777979]',
+          labelColor: 'text-[#777979]',
         };
     }
   };
 
-  const renderIcon = (status: PipelineStageStatus) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle2 className="w-4 h-4 text-white" />;
-      case 'active':
-        return <Clock className="w-4 h-4 text-white animate-spin-slow" />;
-      case 'pending':
-        return <Info className="w-4 h-4 text-white" />;
-      case 'failed':
-        return <AlertCircle className="w-4 h-4 text-white" />;
-      case 'upcoming':
-      default:
-        return <Circle className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />;
-    }
-  };
+  const completedIndices = stages
+    .map((s, idx) => (s.status === 'completed' || s.status === 'active' ? idx : -1))
+    .filter((idx) => idx !== -1);
 
-  const completedCount = stages.filter((s) => s.status === 'completed').length;
-  const progressPercent = Math.round((completedCount / stages.length) * 100);
+  const maxActiveIdx = completedIndices.length > 0 ? Math.max(...completedIndices) : 0;
+  const progressLinePercent = stages.length > 1
+    ? Math.min(100, Math.max(0, (maxActiveIdx / (stages.length - 1)) * 100))
+    : 0;
 
   return (
     <div
-      className={`rounded-2xl border border-[#303030] bg-[#151515] p-4 sm:p-5 shadow-xl transition-all ${className}`}
+      aria-label="Investor Account Progress Tracker"
+      className={`relative rounded-[20px] border border-[#292B2B] bg-[#141515] p-4 sm:p-5 shadow-xl ${className}`}
     >
-      {/* Header */}
-      {(title || subtitle) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#303030]">
-          <div>
-            {title && (
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#00D2FF]" />
-                <h4 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                  {title}
-                </h4>
-              </div>
-            )}
-            {subtitle && (
-              <p className="text-xs text-[#999999] mt-0.5">{subtitle}</p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-[11px] font-mono font-semibold text-[#D0D0D0]">
-              Progress: {progressPercent}%
-            </span>
-            <div className="w-20 h-2 bg-[#1D1D1D] rounded-full overflow-hidden border border-[#303030]">
-              <div
-                className="h-full bg-gradient-to-r from-[#2ECC71] to-[#00D2FF] transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Desktop Horizontal View */}
-      <div className="hidden md:block">
-        <div className="relative flex items-center justify-between my-2">
-          {/* Main Pipeline Track Line */}
-          <div className="absolute top-1/2 left-6 right-6 -translate-y-1/2 h-1 bg-[#1D1D1D] z-0 rounded-full border border-[#303030]/50">
+      <div className="overflow-x-auto no-scrollbar py-2 px-1">
+        <div className="min-w-[320px] sm:min-w-0 relative flex items-center justify-between">
+          {/* Thin Horizontal Connecting Line */}
+          <div className="absolute top-[20px] sm:top-[24px] left-6 right-6 h-[2px] bg-[#292B2B] z-0 rounded-full">
             <div
-              className="h-full bg-gradient-to-r from-[#2ECC71] via-[#00D2FF] to-[#FF9F43] transition-all duration-700 rounded-full"
-              style={{
-                width: `${Math.max(0, ((completedCount - 0.5) / (stages.length - 1)) * 100)}%`,
-              }}
+              className="h-full bg-gradient-to-r from-[#43C98B] via-[#55BDE8] to-[#E7B96D] transition-all duration-500 ease-out rounded-full"
+              style={{ width: `${progressLinePercent}%` }}
             />
           </div>
 
-          {/* Stage Nodes */}
+          {/* 5 Compact Symbolic Nodes */}
           {stages.map((stage, idx) => {
-            const styles = getStatusColor(stage.status);
+            const config = getStatusConfig(stage.status);
+            const IconComponent = stage.icon || DEFAULT_ICONS[idx % DEFAULT_ICONS.length] || HelpCircle;
             const isHovered = hoveredStageId === stage.id;
-            const isActive = activeStageId === stage.id || stage.status === 'active';
+            const isTooltipOpen = activeTooltipId === stage.id || isHovered;
+            const shortLabel = SHORT_LABELS[idx % SHORT_LABELS.length];
 
             return (
               <div
                 key={stage.id}
                 onMouseEnter={() => setHoveredStageId(stage.id)}
                 onMouseLeave={() => setHoveredStageId(null)}
-                onClick={() => onStageClick && onStageClick(stage)}
-                className={`relative z-10 flex flex-col items-center group ${
-                  onStageClick ? 'cursor-pointer' : ''
-                }`}
-                style={{ width: `${100 / stages.length}%` }}
+                onClick={() => {
+                  setActiveTooltipId(activeTooltipId === stage.id ? null : stage.id);
+                  if (onStageClick) onStageClick(stage);
+                }}
+                className="relative z-10 flex flex-col items-center group cursor-pointer"
+                role="button"
+                tabIndex={0}
+                aria-label={`${shortLabel}: ${config.badgeText}`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setActiveTooltipId(activeTooltipId === stage.id ? null : stage.id);
+                    if (onStageClick) onStageClick(stage);
+                  }
+                }}
               >
-                {/* Stage Node Circle */}
+                {/* Compact Circular Icon Container */}
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-md transition-all duration-300 ${
-                    styles.bg
-                  } ${isActive ? 'ring-4 ring-[#00D2FF]/40 scale-110' : ''} ${
-                    isHovered ? 'scale-115 shadow-xl' : ''
-                  }`}
+                  className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                    config.nodeBg
+                  } ${config.glow}`}
                 >
-                  {renderIcon(stage.status)}
+                  <IconComponent className={`w-4 h-4 sm:w-5 sm:h-5 stroke-[2] ${config.iconColor}`} />
+
+                  {/* Status Indicator Badge */}
+                  {stage.status === 'completed' && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#43C98B] text-[#090A0A] flex items-center justify-center font-bold text-[8px] shadow-sm border border-[#141515]"
+                    >
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </span>
+                  )}
                 </div>
 
-                {/* Stage Step Number & Title */}
-                <div className="mt-2 text-center px-1">
-                  <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#999999] block">
-                    Step 0{idx + 1}
-                  </span>
-                  <span
-                    className={`text-xs font-bold block line-clamp-1 transition-colors ${
-                      isActive
-                        ? 'text-white font-extrabold'
-                        : 'text-[#D0D0D0]'
-                    }`}
-                  >
-                    {stage.title}
-                  </span>
-                  <span className={`inline-block mt-0.5 text-[9.5px] font-semibold px-1.5 py-0.2 rounded-full ${styles.pillBg} ${styles.text}`}>
-                    {styles.badge}
-                  </span>
-                </div>
+                {/* Short Clean Label */}
+                <span className={`text-[11px] sm:text-[12px] font-semibold mt-2 tracking-tight ${config.labelColor}`}>
+                  {shortLabel}
+                </span>
 
-                {/* Hover Tooltip Card */}
-                {isHovered && showDetails && (
-                  <div className="absolute top-full mt-2 w-56 z-30 p-3 rounded-xl bg-[#1D1D1D] text-white text-xs shadow-2xl border border-[#303030] animate-fadeIn">
-                    <div className="flex items-center justify-between mb-1 pb-1 border-b border-[#303030]">
-                      <span className="font-bold text-[#00D2FF]">{stage.title}</span>
-                      {stage.timestamp && (
-                        <span className="text-[9px] font-mono text-[#999999]">{stage.timestamp}</span>
-                      )}
+                {/* Minimal Tooltip for Secondary Details */}
+                {isTooltipOpen && (
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-40 w-48 sm:w-56 p-2.5 rounded-xl bg-[#1D1E1E] text-[#F5F5F2] text-xs shadow-2xl border border-[#292B2B] animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+                    <div className="flex items-center justify-between pb-1 border-b border-[#292B2B]">
+                      <span className="font-bold text-[#F5F5F2] truncate">{stage.title}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${config.badgeBg}`}>
+                        {config.badgeText}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-[#D0D0D0] leading-relaxed mb-2">
-                      {stage.description}
-                    </p>
-                    {stage.metrics && (
-                      <div className="flex justify-between items-center bg-[#151515] p-1.5 rounded-lg text-[10px] font-mono border border-[#303030]">
-                        <span className="text-[#999999]">{stage.metrics.label}:</span>
-                        <span className="font-bold text-white">{stage.metrics.value}</span>
-                      </div>
+                    {stage.description && (
+                      <p className="text-[11px] text-[#A5A6A5] mt-1 leading-snug">
+                        {stage.description}
+                      </p>
                     )}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px w-0 h-0 border-x-5 border-x-transparent border-t-5 border-t-[#1D1E1E]" />
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-      </div>
-
-      {/* Mobile Vertical View */}
-      <div className="block md:hidden space-y-3 mt-2">
-        {stages.map((stage, idx) => {
-          const styles = getStatusColor(stage.status);
-          const isLast = idx === stages.length - 1;
-
-          return (
-            <div
-              key={stage.id}
-              onClick={() => onStageClick && onStageClick(stage)}
-              className={`flex items-start gap-3 p-3 rounded-xl border border-[#303030] bg-[#1D1D1D] transition-all ${
-                onStageClick ? 'cursor-pointer active:scale-98' : ''
-              }`}
-            >
-              {/* Vertical Connector Line + Node */}
-              <div className="flex flex-col items-center shrink-0">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${styles.bg}`}
-                >
-                  {renderIcon(stage.status)}
-                </div>
-                {!isLast && (
-                  <div className="w-0.5 h-8 bg-[#303030] my-1" />
-                )}
-              </div>
-
-              {/* Node Details */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h5 className="text-xs font-bold text-white truncate">
-                    0{idx + 1}. {stage.title}
-                  </h5>
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${styles.pillBg} ${styles.text}`}
-                  >
-                    {styles.badge}
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#D0D0D0] mt-0.5 leading-normal">
-                  {stage.description}
-                </p>
-
-                {stage.metrics && (
-                  <div className="mt-1.5 flex items-center gap-2 text-[10px] font-mono text-[#D0D0D0]">
-                    <span className="text-[#999999]">{stage.metrics.label}:</span>
-                    <span className="font-bold text-white">
-                      {stage.metrics.value}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

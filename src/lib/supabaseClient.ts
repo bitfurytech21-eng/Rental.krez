@@ -12,7 +12,7 @@ const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.met
 const rawUrl = cleanEnvVal(
   env.VITE_SUPABASE_URL ||
   env.NEXT_PUBLIC_SUPABASE_URL ||
-  'https://uuufesveaoaqmhxocgqn.supabase.co'
+  ''
 );
 
 const rawKey = cleanEnvVal(
@@ -20,7 +20,7 @@ const rawKey = cleanEnvVal(
   env.VITE_SUPABASE_ANON_KEY ||
   env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'sb_publishable__K86ojef-oJSrGmSrUvqpQ_jhxIcAZF'
+  ''
 );
 
 export const isSupabaseConfigured = (): boolean => {

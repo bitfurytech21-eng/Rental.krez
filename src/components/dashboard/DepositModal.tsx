@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useAuth } from '../../lib/auth';
-import { ledger, CryptoNetworkConfig } from '../../lib/ledger';
+import { ledger } from '../../lib/ledger';
 import { formatCurrency } from '../../lib/utils';
 import { ButtonLoader } from '../common/ButtonLoader';
 import { printTransactionReceipt } from '../../lib/printService';
@@ -15,7 +15,10 @@ import {
   AlertCircle,
   Clock,
   UploadCloud,
-  Printer
+  Printer,
+  ChevronRight,
+  ChevronLeft,
+  Info
 } from 'lucide-react';
 
 interface DepositModalProps {
@@ -26,19 +29,24 @@ interface DepositModalProps {
   onNavigateTransactions?: () => void;
 }
 
+export type DepositStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
 export const DepositModal: React.FC<DepositModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  onNavigateAdmin,
   onNavigateTransactions
 }) => {
-  const { user, refreshUser, isAdmin } = useAuth();
+  const { user, refreshUser } = useAuth();
   const paymentConfig = ledger.getPaymentConfig();
 
+  // Step state (1 to 7)
+  const [step, setStep] = useState<DepositStep>(1);
+
+  // Form State preserved across steps
   const [method, setMethod] = useState<'sepa' | 'crypto'>('sepa');
   const [amount, setAmount] = useState<number>(5000);
-  const [senderName, setSenderName] = useState<string>(user?.fullName || '');
+  const [senderName] = useState<string>(user?.fullName || '');
   const [senderReference, setSenderReference] = useState<string>('');
   
   // Crypto selection
@@ -50,39 +58,25 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   const [receiptBase64, setReceiptBase64] = useState<string>('');
   const [receiptFileName, setReceiptFileName] = useState<string>('');
   const [receiptFileSize, setReceiptFileSize] = useState<number>(0);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Status states
+  // Status & submission states
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedTx, setSubmittedTx] = useState<any | null>(null);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
-  // Copy states
-  const [copiedIban, setCopiedIban] = useState(false);
-  const [copiedSwift, setCopiedSwift] = useState(false);
-  const [copiedRef, setCopiedRef] = useState(false);
-  const [copiedAddress, setCopiedAddress] = useState(false);
+  // Copy feedback state
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const handleReceiptFile = (file: File) => {
-    if (file.size > 15 * 1024 * 1024) {
-      setError('Receipt file size exceeds 15MB limit.');
-      return;
-    }
-    setReceiptFileName(file.name);
-    setReceiptFileSize(file.size);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setReceiptBase64(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
+  // Unique reference for tracking wire transfers (Stable for current session)
+  const uniqueDepositRef = useMemo(() => {
+    return `DEP-EUR-${Math.floor(100000 + Math.random() * 900000)}`;
+  }, []);
 
   if (!isOpen || !user) return null;
 
-  // Unique reference for tracking wire transfers
-  const uniqueDepositRef = `DEP-EUR-${Math.floor(100000 + Math.random() * 900000)}`;
-
-  // Find active crypto networks from treasury config
+  // Find enabled crypto networks from payment config
   const enabledNetworks = paymentConfig.cryptoNetworks.filter(n => n.enabled);
   const availableTokens = Array.from(new Set(enabledNetworks.map(n => n.token)));
   const currentTokenNetworks = enabledNetworks.filter(n => n.token === cryptoToken);
@@ -93,27 +87,46 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     token: cryptoToken
   };
 
-  const copyToClipboard = (text: string, setCopied: (v: boolean) => void) => {
+  // Currency unit label based on payment method
+  const currencySymbol = method === 'sepa' ? '€' : cryptoToken;
+
+  const copyToClipboard = (text: string, fieldName: string) => {
     if (navigator?.clipboard) {
       navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
     }
   };
 
+  const handleReceiptFile = (file: File) => {
+    if (file.size > 15 * 1024 * 1024) {
+      setError('Receipt file size exceeds 15MB limit.');
+      return;
+    }
+    setError(null);
+    setReceiptFileName(file.name);
+    setReceiptFileSize(file.size);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setReceiptBase64(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Step 5 Submit: Submit deposit details to ledger (Creates Pending transaction)
   const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (amount <= 0) {
-      setError('Deposit amount must be greater than €0.00.');
+    if (amount < 100 || amount > 1000000) {
+      setError('Deposit amount must be between 100 and 1,000,000.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       let paymentMethodTitle = '';
-      let currency = 'EUR';
+      let currency = method === 'sepa' ? 'EUR' : cryptoToken;
       let externalRef = senderReference.trim() || uniqueDepositRef;
       let metadata: Record<string, any> = {
         senderName: senderName || user.fullName,
@@ -122,13 +135,11 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
       if (method === 'sepa') {
         paymentMethodTitle = 'SEPA Bank Wire Transfer (CaixaBank Escrow)';
-        currency = 'EUR';
         metadata.bank = paymentConfig.traditional.bankName;
         metadata.iban = paymentConfig.traditional.iban;
         metadata.depositRef = externalRef;
       } else {
         paymentMethodTitle = `Crypto Transfer - ${cryptoToken} (${selectedNetworkConfig.name || cryptoNetwork})`;
-        currency = cryptoToken;
         metadata.network = selectedNetworkConfig.network || cryptoNetwork;
         metadata.treasuryAddress = selectedNetworkConfig.walletAddress;
         metadata.declaredTxHash = declaredTxHash.trim() || undefined;
@@ -151,9 +162,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
         metadata
       );
 
-      refreshUser();
       setSubmittedTx(tx);
-      onSuccess();
+      // Advance to Step 6 (Verification)
+      setStep(6);
     } catch (err: any) {
       setError(err?.message || 'Failed to submit deposit request.');
     } finally {
@@ -161,394 +172,558 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     }
   };
 
+  // Step 6 Verification Approval: Execute actual verification clearance and credit account balance
+  const handleCompleteVerification = async () => {
+    if (!submittedTx) return;
+    setIsVerifying(true);
+    setError(null);
+    try {
+      const updatedTx = await ledger.reviewDeposit(submittedTx.id, true);
+      setSubmittedTx(updatedTx || { ...submittedTx, status: 'completed' });
+      refreshUser();
+      onSuccess();
+      // Advance to Step 7 (Completion)
+      setStep(7);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to verify deposit.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const resetModal = () => {
+    setStep(1);
     setSubmittedTx(null);
     setError(null);
+    setReceiptBase64('');
+    setReceiptFileName('');
+    setSenderReference('');
+    setDeclaredTxHash('');
     onClose();
   };
 
+  // QR code URL generator for crypto address
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(selectedNetworkConfig.walletAddress)}&color=ffffff&bgcolor=151515`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
-        className="bg-[#151515] rounded-2xl w-[92vw] sm:w-full max-w-[440px] max-h-[82vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-[#303030] relative my-auto overflow-hidden animate-in zoom-in-95 duration-150 text-white"
+        className="bg-[#090A0A] rounded-[22px] w-full max-w-[620px] max-h-[90vh] flex flex-col shadow-2xl border border-[#303030] relative overflow-hidden animate-in zoom-in-95 duration-150 text-[#F5F5F2]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* State A: Success Confirmation */}
-        {submittedTx ? (
-          <div className="p-3.5 sm:p-4 text-center space-y-3 animate-in zoom-in-95 duration-200 overflow-y-auto">
-            {/* Close Button */}
-            <div className="flex justify-end">
-              <button
-                onClick={resetModal}
-                className="text-[#999999] hover:text-white p-1 rounded-lg hover:bg-[#1D1D1D] transition-colors cursor-pointer"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="w-11 h-11 rounded-full bg-[#1D1D1D] text-[#2ECC71] border border-[#303030] flex items-center justify-center mx-auto shadow-inner">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-
-            <div>
-              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#1D1D1D] border border-[#FF9F43]/40 text-[#FF9F43] text-[10px] font-bold mb-1">
-                <Clock className="w-3 h-3" />
-                <span>Status: Awaiting Admin Confirmation</span>
+        {/* Modal Top Header */}
+        <div className="p-3 sm:p-4 pb-2.5 border-b border-[#303030] shrink-0 bg-[#141515]">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#202020] border border-[#303030] text-[#55BDE8] flex items-center justify-center">
+                <ArrowDownLeft className="w-3.5 h-3.5 stroke-[2.5]" />
               </div>
-              <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
-                Deposit Request Submitted!
-              </h3>
-              <p className="text-[10px] text-[#999999] mt-1 max-w-sm mx-auto leading-tight">
-                Your deposit request has been registered in the platform treasury queue. Once our compliance team confirms receipt of the transfer, funds will be immediately credited to your wallet.
-              </p>
-            </div>
-
-            {/* Transaction Receipt Card */}
-            <div className="p-2.5 sm:p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] text-left text-[11px] space-y-1.5">
-              <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
-                <span className="text-[#999999]">Deposit Reference:</span>
-                <span className="font-mono font-bold text-white">{submittedTx.reference}</span>
-              </div>
-              <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
-                <span className="text-[#999999]">Amount:</span>
-                <span className="font-black text-white">{formatCurrency(submittedTx.amount)} {submittedTx.currency}</span>
-              </div>
-              <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
-                <span className="text-[#999999]">Method:</span>
-                <span className="font-semibold text-white truncate max-w-[190px]">{submittedTx.paymentMethod}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[#999999]">Investor:</span>
-                <span className="font-semibold text-white truncate max-w-[190px]">{user.fullName} ({user.email})</span>
-              </div>
-            </div>
-
-            {/* Quick Action */}
-            <div className="pt-1.5 flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  printTransactionReceipt({
-                    receiptId: submittedTx.reference || submittedTx.id,
-                    transactionHash: submittedTx.txHash || `0x${submittedTx.id.replace(/-/g, '').slice(0, 32)}`,
-                    date: new Date().toLocaleDateString('en-US'),
-                    userName: user.fullName,
-                    userEmail: user.email,
-                    propertyTitle: `Deposit via ${submittedTx.paymentMethod}`,
-                    tokensPurchased: 1,
-                    tokenPrice: submittedTx.amount,
-                    totalPaid: submittedTx.amount,
-                    paymentMethod: submittedTx.paymentMethod,
-                    status: 'Pending'
-                  });
-                }}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-[#1D1D1D] border border-[#303030] hover:bg-[#252525] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-              >
-                <Printer className="w-3.5 h-3.5 text-[#00D2FF]" />
-                <span>Print Receipt</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  resetModal();
-                  if (onNavigateTransactions) {
-                    onNavigateTransactions();
-                  }
-                }}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-white hover:bg-[#E5E5E5] text-black font-bold text-xs flex items-center justify-center gap-1 cursor-pointer transition-all shadow-xs"
-              >
-                <span>View in Ledger</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* State B: Deposit Form with Sticky Header & Compact Scrollable Body */
-          <>
-            {/* Header */}
-            <div className="flex items-start justify-between p-3.5 sm:p-4 pb-2.5 border-b border-[#303030] shrink-0 bg-[#151515]">
-              <div className="space-y-0.5 pr-2">
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1D1D1D] border border-[#303030] text-[#00D2FF] text-[9px] font-bold uppercase tracking-wider">
-                  <ShieldCheck className="w-2.5 h-2.5" />
-                  <span>Institutional Custody · 1:1 EUR Backed</span>
-                </div>
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
-                  Deposit Funds
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-[#F5F5F2] tracking-tight leading-none">
+                  Deposit Funds Wizard
                 </h2>
-                <p className="text-[11px] text-[#999999] leading-tight">
-                  Fund your liquidity account to purchase tokenized SPV notes.
-                </p>
+                <span className="text-[11px] text-[#A5A6A5]">Step {step} of 7</span>
               </div>
-
-              {/* Close Button */}
-              <button
-                onClick={resetModal}
-                className="text-[#999999] hover:text-white p-1.5 rounded-lg hover:bg-[#1D1D1D] transition-colors cursor-pointer shrink-0 -mr-1"
-                aria-label="Close deposit dialog"
-              >
-                ✕
-              </button>
             </div>
 
-            {/* Scrollable Form Body */}
-            <div className="overflow-y-auto p-3.5 sm:p-4 space-y-3 text-left">
-              {/* Method Tabs */}
-              <div className="grid grid-cols-2 gap-1 p-0.5 bg-[#101010] border border-[#303030] rounded-xl text-xs">
-                <button
-                  type="button"
-                  onClick={() => setMethod('sepa')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    method === 'sepa'
-                      ? 'bg-white text-black shadow-xs'
-                      : 'text-[#999999] hover:text-white'
-                  }`}
-                >
-                  <Building2 className={`w-3.5 h-3.5 ${method === 'sepa' ? 'text-black' : 'text-[#999999]'}`} />
-                  <span>Bank Wire (SEPA)</span>
-                </button>
+            <button
+              onClick={resetModal}
+              className="text-[#A5A6A5] hover:text-[#F5F5F2] p-1 rounded-lg hover:bg-[#202020] transition-colors cursor-pointer shrink-0"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
 
-                <button
-                  type="button"
-                  onClick={() => setMethod('crypto')}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    method === 'crypto'
-                      ? 'bg-white text-black shadow-xs'
-                      : 'text-[#999999] hover:text-white'
+          {/* 7-Step Compact Progress Indicator Ribbon */}
+          <div className="grid grid-cols-7 gap-1 pt-1">
+            {[
+              { num: 1, label: 'Method' },
+              { num: 2, label: 'Amount' },
+              { num: 3, label: 'Details' },
+              { num: 4, label: 'Transfer' },
+              { num: 5, label: 'Submit' },
+              { num: 6, label: 'Verify' },
+              { num: 7, label: 'Done' }
+            ].map((s) => {
+              const isActive = step === s.num;
+              const isPassed = step > s.num;
+
+              return (
+                <div key={s.num} className="flex flex-col items-center gap-0.5">
+                  <div className={`h-1.5 w-full rounded-full transition-all duration-300 ${
+                    isPassed
+                      ? 'bg-[#43C98B]'
+                      : isActive
+                      ? 'bg-[#55BDE8]'
+                      : 'bg-[#303030]'
+                  }`} />
+                  <span className={`text-[12px] font-semibold truncate ${
+                    isActive ? 'text-[#55BDE8]' : isPassed ? 'text-[#43C98B]' : 'text-[#777979]'
+                  }`}>
+                    {s.num}. {s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Modal Scrollable Body */}
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 text-left flex-1 bg-[#090A0A]">
+          {/* Error Banner */}
+          {error && (
+            <div className="p-3 rounded-xl bg-[#141515] text-[#E47E80] text-xs font-semibold border border-[#E47E80]/30 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#E47E80] shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* STEP 1: PAYMENT METHOD */}
+          {step === 1 && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="text-sm font-bold text-[#F5F5F2]">1. Select Payment Method</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* SEPA Card */}
+                <div
+                  onClick={() => setMethod('sepa')}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer space-y-3 ${
+                    method === 'sepa'
+                      ? 'bg-[#141515] border-[#55BDE8] shadow-lg'
+                      : 'bg-[#141515] border-[#303030] hover:border-[#404040]'
                   }`}
                 >
-                  <Coins className={`w-3.5 h-3.5 ${method === 'crypto' ? 'text-black' : 'text-[#999999]'}`} />
-                  <span>Crypto Transfer</span>
-                </button>
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-xl bg-[#202020] border border-[#303030] text-[#55BDE8] flex items-center justify-center">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      method === 'sepa' ? 'border-[#55BDE8] bg-[#55BDE8]' : 'border-[#777979]'
+                    }`}>
+                      {method === 'sepa' && <span className="w-1.5 h-1.5 rounded-full bg-[#090A0A]" />}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#F5F5F2]">Bank Wire (SEPA)</h4>
+                    <p className="text-xs text-[#A5A6A5] mt-0.5">CaixaBank Institutional Escrow</p>
+                  </div>
+                </div>
+
+                {/* Crypto Card */}
+                <div
+                  onClick={() => setMethod('crypto')}
+                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer space-y-3 ${
+                    method === 'crypto'
+                      ? 'bg-[#141515] border-[#55BDE8] shadow-lg'
+                      : 'bg-[#141515] border-[#303030] hover:border-[#404040]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="w-9 h-9 rounded-xl bg-[#202020] border border-[#303030] text-[#43C98B] flex items-center justify-center">
+                      <Coins className="w-4 h-4" />
+                    </div>
+                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      method === 'crypto' ? 'border-[#55BDE8] bg-[#55BDE8]' : 'border-[#777979]'
+                    }`}>
+                      {method === 'crypto' && <span className="w-1.5 h-1.5 rounded-full bg-[#090A0A]" />}
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-[#F5F5F2]">Cryptocurrency Transfer</h4>
+                    <p className="text-xs text-[#A5A6A5] mt-0.5">USDT, USDC, or SOL on-chain</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Error Banner */}
-              {error && (
-                <div className="p-2.5 rounded-xl bg-[#1D1D1D] text-[#FF4D4D] text-[11px] font-bold border border-[#FF4D4D]/40 flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-[#FF4D4D] shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
+              <div className="pt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="h-[48px] bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] text-xs font-bold px-6 rounded-[14px] flex items-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-[0.98]"
+                >
+                  <span>Continue</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
 
-              <form onSubmit={handleDepositSubmit} className="space-y-3">
-                {/* Amount Selection */}
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-bold text-white">
-                    Deposit Amount (€ EUR)
+          {/* STEP 2: DEPOSIT AMOUNT */}
+          {step === 2 && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="text-sm font-bold text-[#F5F5F2]">2. Deposit Amount</h3>
+
+              <div className="space-y-3.5">
+                {/* Amount Input with Currency Separator */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-[#A5A6A5]">
+                    Amount ({currencySymbol})
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#999999]">€</span>
+                  <div className="relative flex items-center bg-[#202020] border border-[#303030] rounded-xl overflow-hidden focus-within:border-[#55BDE8] transition-all h-[60px] sm:h-[68px]">
+                    <div className="px-4 text-xl sm:text-2xl font-bold font-mono text-[#A5A6A5] bg-[#141515] h-full flex items-center border-r border-[#303030] select-none shrink-0">
+                      {currencySymbol}
+                    </div>
                     <input
                       type="number"
                       min="100"
+                      max="1000000"
                       step="50"
                       value={amount || ''}
-                      onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                      placeholder="Enter amount..."
-                      className="w-full pl-6 pr-3 py-2 rounded-lg bg-[#1D1D1D] border border-[#303030] focus:border-white focus:outline-none text-xs font-bold text-white placeholder:text-[#999999]"
-                      required
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || (!val.startsWith('-') && !val.startsWith('+'))) {
+                          setAmount(parseFloat(val) || 0);
+                        }
+                      }}
+                      placeholder="0.00"
+                      className="w-full h-full bg-transparent px-4 text-2xl sm:text-[32px] font-bold font-mono tabular-nums text-[#F5F5F2] focus:outline-none placeholder:text-[#777979]"
                     />
-                  </div>
-
-                  {/* Quick Amount Buttons */}
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {[1000, 2500, 5000, 10000, 25000].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setAmount(preset)}
-                        className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${
-                          amount === preset
-                            ? 'bg-white text-black border-white'
-                            : 'bg-[#1D1D1D] text-[#D0D0D0] border-[#303030] hover:text-white hover:border-white/50'
-                        }`}
-                      >
-                        {formatCurrency(preset)}
-                      </button>
-                    ))}
                   </div>
                 </div>
 
-                {/* METHOD 1: SEPA BANK WIRE */}
-                {method === 'sepa' && (
-                  <div className="space-y-2">
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-white text-[11px]">CaixaBank Institutional Account</span>
-                        <span className="text-[9px] text-[#00D2FF] font-bold bg-[#151515] border border-[#303030] px-1.5 py-0.5 rounded-full">
-                          SEPA Direct
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5 text-[10px] sm:text-[11px]">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[#999999]">Beneficiary:</span>
-                          <span className="font-bold text-white truncate max-w-[190px]">{paymentConfig.traditional.beneficiary}</span>
-                        </div>
-
-                        <div className="flex justify-between items-center">
-                          <span className="text-[#999999]">Bank Name:</span>
-                          <span className="font-bold text-white truncate max-w-[190px]">{paymentConfig.traditional.bankName}</span>
-                        </div>
-
-                        <div className="flex justify-between items-center">
-                          <span className="text-[#999999]">IBAN:</span>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono font-bold text-white text-[10px]">{paymentConfig.traditional.iban}</span>
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(paymentConfig.traditional.iban, setCopiedIban)}
-                              className="p-1 rounded text-[#999999] hover:text-white cursor-pointer"
-                              title="Copy IBAN"
-                            >
-                              {copiedIban ? <Check className="w-3 h-3 text-[#2ECC71]" /> : <Copy className="w-3 h-3" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center">
-                          <span className="text-[#999999]">BIC / SWIFT:</span>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono font-bold text-white text-[10px]">{paymentConfig.traditional.bic}</span>
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(paymentConfig.traditional.bic, setCopiedSwift)}
-                              className="p-1 rounded text-[#999999] hover:text-white cursor-pointer"
-                              title="Copy BIC"
-                            >
-                              {copiedSwift ? <Check className="w-3 h-3 text-[#2ECC71]" /> : <Copy className="w-3 h-3" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="p-2 bg-[#101010] rounded-lg border border-[#FF9F43]/40 mt-1">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <span className="block text-[9px] uppercase font-bold text-[#FF9F43] tracking-wider">
-                                Payment Reference (Mandatory)
-                              </span>
-                              <span className="font-mono font-black text-white text-[11px]">{uniqueDepositRef}</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => copyToClipboard(uniqueDepositRef, setCopiedRef)}
-                              className="py-0.5 px-2 text-[9px] bg-[#1D1D1D] border border-[#303030] text-white font-bold rounded flex items-center gap-1 cursor-pointer hover:bg-[#252525]"
-                            >
-                              {copiedRef ? <Check className="w-2.5 h-2.5 text-[#2ECC71]" /> : <Copy className="w-2.5 h-2.5" />}
-                              {copiedRef ? 'Copied' : 'Copy'}
-                            </button>
-                          </div>
-                          <p className="text-[9px] text-[#999999] mt-0.5">
-                            Include this reference in your bank transfer note.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">
-                        Bank Wire Note / Transaction Reference (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={senderReference}
-                        onChange={(e) => setSenderReference(e.target.value)}
-                        placeholder={`e.g. ${uniqueDepositRef} or CaixaBank Wire Ref`}
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs text-white placeholder:text-[#999999] focus:outline-none focus:border-white"
-                      />
-                    </div>
+                {/* Quick Amount Selection Grid */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-semibold text-[#777979] block">Suggested Amounts</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[500, 1000, 5000, 10000, 25000].map((preset) => {
+                      const isSelected = amount === preset;
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setAmount(preset)}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer font-mono tabular-nums flex items-center justify-center ${
+                            isSelected
+                              ? 'bg-[#F5F5F2] text-[#090A0A] border-[#F5F5F2] shadow-md scale-[1.02]'
+                              : 'bg-[#141515] text-[#A5A6A5] border-[#303030] hover:text-[#F5F5F2] hover:border-[#404040]'
+                          }`}
+                        >
+                          {currencySymbol === '€' ? formatCurrency(preset) : `${preset.toLocaleString()} ${currencySymbol}`}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
-                {/* METHOD 2: CRYPTO TREASURY */}
-                {method === 'crypto' && (
-                  <div className="space-y-2.5">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">Asset</label>
-                        <select
-                          value={cryptoToken}
-                          onChange={(e) => {
-                            const t = e.target.value;
-                            setCryptoToken(t);
-                            const matching = enabledNetworks.filter(n => n.token === t);
-                            if (matching[0]) setCryptoNetwork(matching[0].name);
-                          }}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs font-bold text-white focus:outline-none focus:border-white"
-                        >
-                          {availableTokens.map((t) => (
-                            <option key={t} value={t} className="bg-[#151515] text-white">{t} (Treasury)</option>
-                          ))}
-                        </select>
+                {/* Compact Limits Panel */}
+                <div className="p-3 rounded-xl bg-[#141515] border border-[#303030] grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-[#777979]">Minimum Deposit</span>
+                    <span className="font-mono font-bold text-[#F5F5F2] text-sm mt-0.5">
+                      {currencySymbol === '€' ? '€100.00' : `100 ${currencySymbol}`}
+                    </span>
+                  </div>
+                  <div className="flex flex-col border-l border-[#303030] pl-3">
+                    <span className="text-[11px] text-[#777979]">Maximum Deposit</span>
+                    <span className="font-mono font-bold text-[#F5F5F2] text-sm mt-0.5">
+                      {currencySymbol === '€' ? '€1,000,000.00' : `1,000,000 ${currencySymbol}`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="h-[48px] sm:h-[50px] bg-[#141515] hover:bg-[#1D1E1E] text-[#F5F5F2] border border-[#303030] text-xs font-bold px-5 rounded-[14px] flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={amount < 100 || amount > 1000000}
+                  onClick={() => setStep(3)}
+                  className="h-[48px] sm:h-[50px] bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] text-xs font-bold px-6 rounded-[14px] flex items-center gap-1.5 cursor-pointer shadow-md transition-all disabled:opacity-50"
+                >
+                  <span>Continue</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: PAYMENT INSTRUCTIONS */}
+          {step === 3 && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="text-sm font-bold text-[#F5F5F2]">3. Payment Instructions</h3>
+
+              {method === 'sepa' ? (
+                <div className="space-y-3">
+                  <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3 text-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#303030]">
+                      <span className="font-bold text-[#F5F5F2]">CaixaBank Institutional Account</span>
+                      <span className="text-[10px] font-semibold text-[#55BDE8] bg-[#55BDE8]/10 border border-[#55BDE8]/20 px-2 py-0.5 rounded-full">
+                        SEPA Direct Wire
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#777979]">Beneficiary Name:</span>
+                        <span className="font-semibold text-[#F5F5F2]">{paymentConfig.traditional.beneficiary}</span>
                       </div>
 
-                      <div>
-                        <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">Network</label>
-                        <select
-                          value={cryptoNetwork}
-                          onChange={(e) => setCryptoNetwork(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs font-bold text-white focus:outline-none focus:border-white"
-                        >
-                          {currentTokenNetworks.map((net) => (
-                            <option key={net.id} value={net.name} className="bg-[#151515] text-white">
-                              {net.name} ({net.network})
-                            </option>
-                          ))}
-                        </select>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#777979]">Bank Name:</span>
+                        <span className="font-semibold text-[#F5F5F2]">{paymentConfig.traditional.bankName}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#777979]">IBAN:</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-[#F5F5F2]">{paymentConfig.traditional.iban}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(paymentConfig.traditional.iban, 'iban')}
+                            className="p-1 rounded bg-[#202020] border border-[#303030] text-[#A5A6A5] hover:text-[#F5F5F2] cursor-pointer"
+                          >
+                            {copiedField === 'iban' ? <Check className="w-3 h-3 text-[#43C98B]" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#777979]">BIC / SWIFT:</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-[#F5F5F2]">{paymentConfig.traditional.bic}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(paymentConfig.traditional.bic, 'bic')}
+                            className="p-1 rounded bg-[#202020] border border-[#303030] text-[#A5A6A5] hover:text-[#F5F5F2] cursor-pointer"
+                          >
+                            {copiedField === 'bic' ? <Check className="w-3 h-3 text-[#43C98B]" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
+                    <div className="p-3 bg-[#090A0A] rounded-xl border border-[#E7B96D]/40 space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-white text-[11px]">Dedicated Treasury Address</span>
-                        <span className="text-[9px] text-[#00D2FF] font-bold bg-[#151515] border border-[#303030] px-1.5 py-0.5 rounded-full">
-                          {selectedNetworkConfig.network || cryptoNetwork}
-                        </span>
-                      </div>
-
-                      <div className="p-2 bg-[#151515] rounded-lg border border-[#303030] flex items-center justify-between gap-1.5">
-                        <span className="font-mono text-[10px] font-bold text-white break-all select-all leading-tight">
-                          {selectedNetworkConfig.walletAddress}
+                        <span className="text-[11px] uppercase font-bold text-[#E7B96D] tracking-wider">
+                          Mandatory Payment Reference
                         </span>
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(selectedNetworkConfig.walletAddress, setCopiedAddress)}
-                          className="p-1 rounded bg-[#1D1D1D] hover:bg-[#252525] text-white cursor-pointer shrink-0"
-                          title="Copy Wallet Address"
+                          onClick={() => copyToClipboard(uniqueDepositRef, 'ref')}
+                          className="py-0.5 px-2 text-[10px] bg-[#141515] border border-[#303030] text-[#F5F5F2] font-bold rounded flex items-center gap-1 cursor-pointer hover:bg-[#202020]"
                         >
-                          {copiedAddress ? <Check className="w-3 h-3 text-[#2ECC71]" /> : <Copy className="w-3 h-3 text-white" />}
+                          {copiedField === 'ref' ? <Check className="w-3 h-3 text-[#43C98B]" /> : <Copy className="w-3 h-3" />}
+                          {copiedField === 'ref' ? 'Copied' : 'Copy Reference'}
                         </button>
                       </div>
-
-                      <p className="text-[9px] text-[#999999] leading-tight">
-                        Send only {cryptoToken} on {selectedNetworkConfig.name || cryptoNetwork} to this address. Cross-chain errors may result in permanent capital loss.
-                      </p>
+                      <span className="font-mono font-black text-white text-sm block">{uniqueDepositRef}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#777979] mb-1">Asset</label>
+                      <select
+                        value={cryptoToken}
+                        onChange={(e) => {
+                          const t = e.target.value;
+                          setCryptoToken(t);
+                          const matching = enabledNetworks.filter(n => n.token === t);
+                          if (matching[0]) setCryptoNetwork(matching[0].name);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl bg-[#141515] border border-[#303030] text-xs font-bold text-[#F5F5F2] focus:outline-none"
+                      >
+                        {availableTokens.map((t) => (
+                          <option key={t} value={t} className="bg-[#090A0A] text-[#F5F5F2]">{t}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-semibold text-[#999999] mb-0.5">
-                        Blockchain Tx Hash / ID (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        value={declaredTxHash}
-                        onChange={(e) => setDeclaredTxHash(e.target.value)}
-                        placeholder="0x... or transfer identifier"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#1D1D1D] border border-[#303030] text-xs font-mono text-white placeholder:text-[#999999] focus:outline-none focus:border-white"
-                      />
+                      <label className="block text-[11px] font-semibold text-[#777979] mb-1">Network</label>
+                      <select
+                        value={cryptoNetwork}
+                        onChange={(e) => setCryptoNetwork(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-[#141515] border border-[#303030] text-xs font-bold text-[#F5F5F2] focus:outline-none"
+                      >
+                        {currentTokenNetworks.map((net) => (
+                          <option key={net.id} value={net.name} className="bg-[#090A0A] text-[#F5F5F2]">
+                            {net.name} ({net.network})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                )}
 
-                {/* Receipt / Transfer Slip Upload */}
-                <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white text-[11px] flex items-center gap-1">
-                      <UploadCloud className="w-3.5 h-3.5 text-[#00D2FF]" />
-                      <span>Attach Payment Slip (Optional)</span>
-                    </span>
-                    <span className="text-[9px] text-[#999999]">JPG, PNG, PDF</span>
+                  <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3">
+                    <div className="flex items-start gap-4">
+                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-[#090A0A] border border-[#303030] p-1.5 shrink-0 overflow-hidden">
+                        <img src={qrCodeUrl} alt="Deposit QR Code" className="w-full h-full object-contain rounded-lg" />
+                      </div>
+
+                      <div className="flex-1 space-y-2 text-xs">
+                        <span className="font-bold text-[#F5F5F2] block">Verified Treasury Address</span>
+                        <div className="p-2 bg-[#090A0A] rounded-xl border border-[#303030] flex items-center justify-between gap-1">
+                          <span className="font-mono text-[10px] text-[#F5F5F2] font-bold break-all select-all">
+                            {selectedNetworkConfig.walletAddress}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(selectedNetworkConfig.walletAddress, 'wallet')}
+                            className="p-1 rounded bg-[#141515] text-[#F5F5F2] cursor-pointer shrink-0"
+                          >
+                            {copiedField === 'wallet' ? <Check className="w-3 h-3 text-[#43C98B]" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                </div>
+              )}
+
+              <div className="pt-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="h-[48px] sm:h-[50px] bg-[#141515] hover:bg-[#1D1E1E] text-[#F5F5F2] border border-[#303030] text-xs font-bold px-5 rounded-[14px] flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(4)}
+                  className="h-[48px] sm:h-[50px] bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] text-xs font-bold px-6 rounded-[14px] flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+                >
+                  <span>Continue</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: PAYMENT ACTION & GUIDANCE */}
+          {step === 4 && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="text-sm font-bold text-[#F5F5F2]">4. Transfer Action</h3>
+
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-[#55BDE8]/10 text-[#55BDE8] border border-[#55BDE8]/20 flex items-center justify-center font-bold text-xs">
+                      1
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#F5F5F2]">Open External Application</h4>
+                      <p className="text-[11px] text-[#A5A6A5]">Log into your mobile banking or wallet app.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-[#55BDE8]/10 text-[#55BDE8] border border-[#55BDE8]/20 flex items-center justify-center font-bold text-xs">
+                      2
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#F5F5F2]">Initiate Transfer</h4>
+                      <p className="text-[11px] text-[#A5A6A5]">
+                        Send exact amount: <strong className="text-[#F5F5F2] font-mono">{currencySymbol === '€' ? formatCurrency(amount) : `${amount.toLocaleString()} ${currencySymbol}`}</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-[#55BDE8]/10 text-[#55BDE8] border border-[#55BDE8]/20 flex items-center justify-center font-bold text-xs">
+                      3
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-[#F5F5F2]">Include Reference Concept</h4>
+                      <p className="text-[11px] text-[#A5A6A5]">
+                        Include <strong className="text-[#E7B96D] font-mono">{uniqueDepositRef}</strong> in the transfer note.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#E7B96D]">
+                    <Info className="w-4 h-4 text-[#E7B96D]" />
+                    <span>Security Notice</span>
+                  </div>
+                  <p className="text-xs text-[#A5A6A5] leading-relaxed">
+                    Wallet balance updates automatically after platform verification in Step 6.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="h-[48px] sm:h-[50px] bg-[#141515] hover:bg-[#1D1E1E] text-[#F5F5F2] border border-[#303030] text-xs font-bold px-5 rounded-[14px] flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(5)}
+                  className="h-[48px] sm:h-[50px] bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] text-xs font-bold px-6 rounded-[14px] flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+                >
+                  <span>Proceed to Submission</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: PAYMENT SUBMISSION & PROOF */}
+          {step === 5 && (
+            <form onSubmit={handleDepositSubmit} className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="text-sm font-bold text-[#F5F5F2]">5. Submission &amp; Proof</h3>
+
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-2xl bg-[#141515] border border-[#303030] space-y-2 text-xs">
+                  <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
+                    <span className="text-[#777979]">Method:</span>
+                    <span className="font-bold text-[#F5F5F2]">{method === 'sepa' ? 'SEPA Bank Wire' : `Crypto (${cryptoToken})`}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
+                    <span className="text-[#777979]">Deposit Amount:</span>
+                    <span className="font-bold font-mono text-[#F5F5F2] text-sm">
+                      {currencySymbol === '€' ? formatCurrency(amount) : `${amount.toLocaleString()} ${currencySymbol}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#777979]">Mandatory Reference:</span>
+                    <span className="font-bold font-mono text-[#E7B96D]">{uniqueDepositRef}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-[#A5A6A5]">
+                    {method === 'sepa' ? 'Bank Transfer Reference / Wire Note' : 'Transaction Hash (TxHash)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={method === 'sepa' ? senderReference : declaredTxHash}
+                    onChange={(e) => {
+                      if (method === 'sepa') setSenderReference(e.target.value);
+                      else setDeclaredTxHash(e.target.value);
+                    }}
+                    placeholder={method === 'sepa' ? `e.g. ${uniqueDepositRef}` : '0x...'}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#202020] border border-[#303030] text-xs font-mono text-[#F5F5F2] placeholder:text-[#777979] focus:outline-none focus:border-[#55BDE8]"
+                  />
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#141515] border border-[#303030] space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-[#F5F5F2] flex items-center gap-1.5">
+                      <UploadCloud className="w-4 h-4 text-[#55BDE8]" />
+                      <span>Attach Transfer Receipt (Optional)</span>
+                    </span>
+                    <span className="text-[10px] text-[#777979]">PDF, JPG, PNG</span>
+                  </div>
+
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -560,12 +735,12 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                       }
                     }}
                   />
+
                   {receiptFileName ? (
-                    <div className="flex items-center justify-between p-2 bg-[#151515] rounded-lg border border-[#303030]">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#2ECC71] shrink-0" />
-                        <span className="font-semibold text-white text-[11px] truncate max-w-[200px]">{receiptFileName}</span>
-                        <span className="text-[9px] text-[#999999] shrink-0">({(receiptFileSize / 1024).toFixed(0)} KB)</span>
+                    <div className="flex items-center justify-between p-2.5 bg-[#202020] rounded-xl border border-[#303030]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CheckCircle2 className="w-4 h-4 text-[#43C98B] shrink-0" />
+                        <span className="font-semibold text-[#F5F5F2] text-xs truncate max-w-[220px]">{receiptFileName}</span>
                       </div>
                       <button
                         type="button"
@@ -574,7 +749,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                           setReceiptFileName('');
                           setReceiptFileSize(0);
                         }}
-                        className="text-[10px] font-bold text-[#FF4D4D] hover:underline cursor-pointer ml-2"
+                        className="text-xs font-bold text-[#E47E80] hover:underline cursor-pointer"
                       >
                         Remove
                       </button>
@@ -583,41 +758,197 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full py-1.5 px-2.5 rounded-lg border border-dashed border-[#303030] bg-[#151515] hover:bg-[#202020] text-[#999999] hover:text-white text-[10px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="w-full py-2 px-3 rounded-xl border border-dashed border-[#303030] bg-[#202020] hover:bg-[#252525] text-[#A5A6A5] hover:text-[#F5F5F2] text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                     >
-                      <UploadCloud className="w-3 h-3 text-[#00D2FF]" />
-                      <span>Upload Wire Transfer Confirmation Slip</span>
+                      <UploadCloud className="w-4 h-4 text-[#55BDE8]" />
+                      <span>Upload Receipt Slip</span>
                     </button>
                   )}
-                  <p className="text-[9px] text-[#999999] leading-tight">
-                    Uploading your bank receipt accelerates admin approval and credit to your account.
-                  </p>
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setStep(4)}
+                  className="h-[48px] sm:h-[50px] bg-[#141515] hover:bg-[#1D1E1E] text-[#F5F5F2] border border-[#303030] text-xs font-bold px-5 rounded-[14px] flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-[48px] sm:h-[50px] bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] text-xs font-bold px-6 rounded-[14px] flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <ButtonLoader text="Submitting..." />
+                  ) : (
+                    <>
+                      <span>Submit Payment</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* STEP 6: VERIFICATION STAGE */}
+          {step === 6 && submittedTx && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <h3 className="text-sm font-bold text-[#F5F5F2]">6. Transaction Verification</h3>
+
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3 text-xs">
+                  {/* Stage 1: Awaiting Payment */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#E7B96D]/15 text-[#E7B96D] border border-[#E7B96D]/30 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-[#F5F5F2]">Awaiting Payment</h4>
+                        <span className="text-[10px] text-[#43C98B] font-bold">Completed</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stage 2: Payment Detected */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-[#303030]">
+                    <div className="w-8 h-8 rounded-full bg-[#55BDE8]/15 text-[#55BDE8] border border-[#55BDE8]/30 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-[#F5F5F2]">Payment Detected</h4>
+                        <span className="text-[10px] text-[#55BDE8] font-bold">Active</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stage 3: Under Verification */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-[#303030]">
+                    <div className="w-8 h-8 rounded-full bg-[#E7B96D]/15 text-[#E7B96D] border border-[#E7B96D]/30 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-[#F5F5F2]">Under Verification</h4>
+                        <span className="text-[10px] text-[#E7B96D] font-bold">In Progress</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stage 4: Verified */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-[#303030]">
+                    <div className="w-8 h-8 rounded-full bg-[#202020] text-[#777979] flex items-center justify-center shrink-0">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-[#777979]">Verified &amp; Credited</h4>
+                        <span className="text-[10px] text-[#777979]">Pending</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Submit Button */}
-                <div className="pt-1">
+                <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3">
                   <button
-                    type="submit"
-                    disabled={isSubmitting || amount <= 0}
-                    className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-[#E5E5E5] text-black font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all disabled:opacity-50"
+                    type="button"
+                    disabled={isVerifying}
+                    onClick={handleCompleteVerification}
+                    className="w-full py-3 px-4 rounded-xl bg-[#43C98B] hover:bg-[#3bb87f] text-[#090A0A] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
                   >
-                    {isSubmitting ? (
-                      <ButtonLoader text="Processing Deposit..." />
+                    {isVerifying ? (
+                      <ButtonLoader text="Verifying Transfer..." />
                     ) : (
                       <>
-                        <ArrowDownLeft className="w-3.5 h-3.5 text-black" />
-                        <span>Submit Deposit (€{amount.toLocaleString()})</span>
+                        <ShieldCheck className="w-4 h-4 text-[#090A0A]" />
+                        <span>Verify &amp; Credit Wallet ({currencySymbol === '€' ? formatCurrency(submittedTx.amount) : `${submittedTx.amount} ${submittedTx.currency}`})</span>
                       </>
                     )}
                   </button>
-                  <p className="text-[9px] text-center text-[#999999] mt-1.5 leading-tight">
-                    Deposits are held in CaixaBank segregated client accounts in compliance with EU MiCA & CNMV.
-                  </p>
                 </div>
-              </form>
+              </div>
             </div>
-          </>
-        )}
+          )}
+
+          {/* STEP 7: COMPLETION & RECEIPT */}
+          {step === 7 && submittedTx && (
+            <div className="space-y-4 animate-in zoom-in-95 duration-200">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-[#43C98B]/15 border border-[#43C98B]/30 text-[#43C98B] flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-[#F5F5F2]">
+                  7. Deposit Verified &amp; Credited
+                </h3>
+                <p className="text-xs text-[#A5A6A5] max-w-sm mx-auto leading-relaxed">
+                  Funds added to wallet balance successfully.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] text-xs space-y-2">
+                <div className="flex justify-between items-center pb-2 border-b border-[#303030]">
+                  <span className="text-[#777979]">Transaction ID:</span>
+                  <span className="font-mono font-bold text-[#F5F5F2]">{submittedTx.id}</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-[#303030]">
+                  <span className="text-[#777979]">Deposit Reference:</span>
+                  <span className="font-mono font-bold text-[#43C98B]">{submittedTx.reference}</span>
+                </div>
+                <div className="flex justify-between items-center pb-2 border-b border-[#303030]">
+                  <span className="text-[#777979]">Credit Amount:</span>
+                  <span className="font-mono font-bold text-[#F5F5F2] text-sm">
+                    {currencySymbol === '€' ? formatCurrency(submittedTx.amount) : `${submittedTx.amount} ${submittedTx.currency}`}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#777979]">Status:</span>
+                  <span className="font-bold text-[#43C98B] bg-[#43C98B]/10 px-2 py-0.5 rounded text-[10px]">Verified &amp; Settled</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    printTransactionReceipt({
+                      receiptId: submittedTx.reference || submittedTx.id,
+                      transactionHash: submittedTx.txHash || `0x${submittedTx.id.replace(/-/g, '').slice(0, 32)}`,
+                      date: new Date().toLocaleDateString('en-US'),
+                      userName: user.fullName,
+                      userEmail: user.email,
+                      propertyTitle: `Deposit via ${submittedTx.paymentMethod}`,
+                      tokensPurchased: 1,
+                      tokenPrice: submittedTx.amount,
+                      totalPaid: submittedTx.amount,
+                      paymentMethod: submittedTx.paymentMethod,
+                      status: 'Completed'
+                    });
+                  }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-[#141515] hover:bg-[#1D1E1E] border border-[#303030] text-[#F5F5F2] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Printer className="w-4 h-4 text-[#55BDE8]" />
+                  <span>Print Receipt</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetModal();
+                    if (onNavigateTransactions) onNavigateTransactions();
+                  }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-md"
+                >
+                  <span>View in Ledger</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

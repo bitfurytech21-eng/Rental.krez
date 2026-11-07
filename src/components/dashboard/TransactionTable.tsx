@@ -176,36 +176,36 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (type) {
       case 'deposit':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#2ECC71] bg-[#1D1D1D] border border-[#2ECC71]/30 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#38C982] bg-[#202020] border border-[#38C982]/25 px-2 py-0.5 rounded">
             <ArrowDownLeft className="w-2.5 h-2.5 stroke-[2.5]" /> Deposit
           </span>
         );
       case 'withdrawal':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#FF9F43] bg-[#1D1D1D] border border-[#FF9F43]/30 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#FF9F43] bg-[#202020] border border-[#FF9F43]/25 px-2 py-0.5 rounded">
             <ArrowUpRight className="w-2.5 h-2.5" /> Withdrawal
           </span>
         );
       case 'investment':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#00D2FF] bg-[#1D1D1D] border border-[#00D2FF]/30 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#35C9F5] bg-[#202020] border border-[#35C9F5]/25 px-2 py-0.5 rounded">
             <Coins className="w-2.5 h-2.5" /> Investment
           </span>
         );
       case 'distribution':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#A66CFF] bg-[#1D1D1D] border border-[#A66CFF]/30 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#A66CFF] bg-[#202020] border border-[#A66CFF]/25 px-2 py-0.5 rounded">
             <RefreshCw className="w-2.5 h-2.5" /> Dividend
           </span>
         );
       case 'fee':
         return (
-          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#FF65B3] bg-[#1D1D1D] border border-[#FF65B3]/30 px-2 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-[#FF65B3] bg-[#202020] border border-[#FF65B3]/25 px-2 py-0.5 rounded">
             <RefreshCw className="w-2.5 h-2.5" /> FX / Fee
           </span>
         );
       default:
-        return <span className="text-[9.5px] uppercase font-mono text-[#D0D0D0] bg-[#1D1D1D] px-2 py-0.5 rounded-full border border-[#303030]">{type}</span>;
+        return <span className="text-[9.5px] uppercase font-mono text-[#A0A0A0] bg-[#202020] px-2 py-0.5 rounded border border-[#303030]">{type}</span>;
     }
   };
 
@@ -213,24 +213,24 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     switch (status) {
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#2ECC71]">
-            <CheckCircle2 className="w-3 h-3 text-[#2ECC71]" /> Completed
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#38C982]">
+            <CheckCircle2 className="w-3 h-3 text-[#38C982]" /> Completed
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#FFD93D]">
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#FFD93D]">
             <Clock className="w-3 h-3" /> Pending Review
           </span>
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-[#FF4D4D]">
+          <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[#FF4D4D]">
             <AlertCircle className="w-3 h-3" /> Declined
           </span>
         );
       default:
-        return <span className="text-[10px] text-[#999999]">{status}</span>;
+        return <span className="text-[10px] text-[#A0A0A0]">{status}</span>;
     }
   };
 
@@ -242,7 +242,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           href={getSolanaExplorerUrl(tx.txHash, 'tx', 'devnet')}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-[#087F5B] hover:underline inline-flex items-center gap-0.5"
+          className="font-mono text-[#35C9F5] hover:underline inline-flex items-center gap-0.5"
           title="Inspect on-chain signature on Solana Explorer"
         >
           <span>{formatShortHash(tx.txHash)}</span>
@@ -256,7 +256,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
       <button
         type="button"
         onClick={() => handleCopyHash(tx.id, tx.txHash!)}
-        className="font-mono text-[#087F5B] hover:text-[#075B46] inline-flex items-center gap-0.5 cursor-pointer"
+        className="font-mono text-[#35C9F5] hover:text-[#28AEDB] inline-flex items-center gap-0.5 cursor-pointer"
         title="Copy internal custody ledger hash"
         aria-label={`Copy ledger hash ${tx.txHash}`}
       >
@@ -266,10 +266,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     );
   };
 
+
   if (transactions.length === 0) {
     return (
-      <div className="bg-[#151515] p-6 rounded-2xl border border-[#303030] text-center text-xs text-[#999999]">
-        No ledger transactions recorded for this account yet.
+      <div className="bg-[#151515] p-6 sm:p-8 rounded-2xl border border-[#303030] text-center space-y-3">
+        <div className="w-10 h-10 rounded-xl bg-[#202020] border border-[#303030] text-[#35C9F5] flex items-center justify-center mx-auto shadow-inner">
+          <Clock className="w-5 h-5" />
+        </div>
+        <div className="max-w-md mx-auto space-y-1">
+          <h4 className="text-sm font-bold text-white">Your Financial Activity Ledger is Ready</h4>
+          <p className="text-xs text-[#A0A0A0] leading-relaxed">
+            When you complete a SEPA bank wire deposit, allocate capital into notarized European SPV properties, or receive monthly rental dividends, your verified transaction activity will record here with real-time double-entry audit hashes.
+          </p>
+        </div>
       </div>
     );
   }

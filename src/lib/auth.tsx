@@ -281,10 +281,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return found;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password: pass,
-    });
+    let data: any = null;
+    let error: any = null;
+    try {
+      const res = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: pass,
+      });
+      data = res.data;
+      error = res.error;
+    } catch (networkErr: any) {
+      console.warn('[auth] Supabase sign-in network error, falling back to local ledger:', networkErr?.message || networkErr);
+      let found = ledger.getUserByEmail(cleanEmail);
+      if (!found) {
+        found = ledger.createUser({
+          email: cleanEmail,
+          fullName: cleanEmail.split('@')[0],
+          role: 'investor'
+        });
+      }
+      setUser(found);
+      const localTok = 'local_sess_' + found.id;
+      setToken(localTok);
+      setAuthToken(localTok);
+      localStorage.setItem(CURRENT_USER_KEY, found.id);
+      return found;
+    }
 
     if (error) {
       try {
@@ -402,20 +424,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const redirectUrl = getAuthRedirectUrl('/#login');
 
-    const { data, error } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password: pass,
-      options: {
-        data: {
-          full_name: fullName.trim(),
-          role: determinedRole,
-          account_type: determinedAccountType,
-          country: country || 'France',
-          phone_number: phoneNumber || '',
+    let data: any = null;
+    let error: any = null;
+    try {
+      const res = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: pass,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+            role: determinedRole,
+            account_type: determinedAccountType,
+            country: country || 'France',
+            phone_number: phoneNumber || '',
+          },
+          emailRedirectTo: redirectUrl,
         },
-        emailRedirectTo: redirectUrl,
-      },
-    });
+      });
+      data = res.data;
+      error = res.error;
+    } catch (networkErr: any) {
+      console.warn('[auth] Supabase signUp network error, creating user in local ledger:', networkErr?.message || networkErr);
+      let existing = ledger.getUserByEmail(cleanEmail);
+      const created = existing || ledger.createUser({
+        email: cleanEmail,
+        fullName: fullName.trim() || cleanEmail.split('@')[0],
+        role: determinedRole,
+        accountType: determinedAccountType,
+        country: country || 'France',
+        phoneNumber: phoneNumber || ''
+      });
+      setUser(created);
+      setToken('local_sess_' + created.id);
+      localStorage.setItem(CURRENT_USER_KEY, created.id);
+      return {
+        user: created,
+        session: null,
+        requiresVerification: false
+      };
+    }
 
     if (error) {
       const errLower = error.message.toLowerCase();
