@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ToastProvider } from './context/ToastContext';
+import { ConfigProvider } from './context/ConfigContext';
 import { ledger } from './lib/ledger';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
@@ -669,7 +670,9 @@ export default function App() {
         <LanguageProvider>
           <NavigationProvider enableInitialLoader={false}>
             <ToastProvider>
-              <MainApp />
+              <ConfigProvider>
+                <MainApp />
+              </ConfigProvider>
             </ToastProvider>
           </NavigationProvider>
         </LanguageProvider>

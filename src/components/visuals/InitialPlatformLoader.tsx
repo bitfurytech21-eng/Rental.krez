@@ -17,9 +17,11 @@ export const InitialPlatformLoader: React.FC<InitialPlatformLoaderProps> = ({
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
+    console.log('[InitialPlatformLoader] Initializing...');
     // Check if website has already played initial loading screen in this session
     try {
       if (!forceShow && typeof window !== 'undefined' && sessionStorage.getItem('lagence_loader_seen') === 'true') {
+        console.log('[InitialPlatformLoader] Loader seen previously, skipping.');
         setIsVisible(false);
         if (onComplete) onComplete();
         return;
@@ -30,6 +32,7 @@ export const InitialPlatformLoader: React.FC<InitialPlatformLoaderProps> = ({
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
+          console.log('[InitialPlatformLoader] Progress reached 100%.');
           return 100;
         }
         const next = prev + Math.floor(Math.random() * 8) + 4;
@@ -52,6 +55,7 @@ export const InitialPlatformLoader: React.FC<InitialPlatformLoaderProps> = ({
     }
 
     if (progress >= 100) {
+      console.log('[InitialPlatformLoader] Starting fade-out sequence...');
       const timer = setTimeout(() => {
         setIsFadingOut(true);
         try {
@@ -61,6 +65,7 @@ export const InitialPlatformLoader: React.FC<InitialPlatformLoaderProps> = ({
         } catch {}
         const finishTimer = setTimeout(() => {
           setIsVisible(false);
+          console.log('[InitialPlatformLoader] Loader complete, calling onComplete().');
           if (onComplete) onComplete();
         }, 700);
         return () => clearTimeout(finishTimer);
