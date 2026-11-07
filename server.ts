@@ -45,20 +45,35 @@ async function startServer() {
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-  // CORS & Security Headers with Cookie Credentials and CSRF Exposure
+  // CORS: never wildcard with credentials. Production only allows same-origin requests and
+  // origins listed in ALLOWED_ORIGINS (comma-separated). Non-production reflects any origin
+  // so AI Studio / preview hosts keep working.
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-    } else {
-      res.header('Access-Control-Allow-Origin', '*');
+      let sameOrigin = false;
+      try {
+        sameOrigin = new URL(origin).host === req.headers.host;
+      } catch (_) {}
+      const allowed = !isProd || sameOrigin || allowedOrigins.includes(origin.replace(/\/$/, ''));
+      res.header('Vary', 'Origin');
+      if (allowed) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-CSRF-Token, X-XSRF-Token');
+        res.header('Access-Control-Expose-Headers', 'X-Request-Id, X-CSRF-Token');
+      } else if (req.method === 'OPTIONS') {
+        return res.sendStatus(403);
+      }
     }
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-CSRF-Token, X-XSRF-Token');
-    res.header('Access-Control-Expose-Headers', 'X-Request-Id, X-CSRF-Token');
     if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
+      return res.sendStatus(origin ? 200 : 204);
     }
     next();
   });
