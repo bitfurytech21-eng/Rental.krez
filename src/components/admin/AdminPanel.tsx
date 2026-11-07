@@ -41,7 +41,8 @@ import {
   Sparkles,
   Check,
   Mail,
-  LogOut
+  LogOut,
+  Crown
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
@@ -55,8 +56,9 @@ import { AdminReconciliationView } from './AdminReconciliationView';
 import { AdminAuditLogsView } from './AdminAuditLogsView';
 import { AdminEmailManager } from './AdminEmailManager';
 import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
+import { AdminMembershipTab } from './AdminMembershipTab';
 
-export type AdminTabType = 'dashboard' | 'users' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
+export type AdminTabType = 'dashboard' | 'users' | 'membership' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
@@ -90,7 +92,7 @@ export const AdminPanel: React.FC = () => {
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
@@ -125,7 +127,7 @@ export const AdminPanel: React.FC = () => {
   const [docFilterStatus, setDocFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   React.useEffect(() => {
-    const valid: AdminTabType[] = ['dashboard', 'users', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+    const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
     const syncTabFromLocation = () => {
       const hashFromPath = currentPath.includes('#') ? currentPath.split('#')[1].toLowerCase() : '';
       const hashFromWin = typeof window !== 'undefined' ? window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase() : '';
@@ -703,6 +705,16 @@ export const AdminPanel: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('membership')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'membership' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <Crown className="w-4 h-4 text-emerald-800" />
+            <span>Club Privé &amp; Memberships</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('deposits')}
             className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
               activeTab === 'deposits' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
@@ -910,6 +922,11 @@ export const AdminPanel: React.FC = () => {
               setActiveTab('manual-payment');
             }}
           />
+        )}
+
+        {/* Tab Membership: Club Privé & Membership Management */}
+        {activeTab === 'membership' && (
+          <AdminMembershipTab />
         )}
 
         {/* Tab 1: Deposit Approvals */}

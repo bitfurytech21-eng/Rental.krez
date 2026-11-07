@@ -200,16 +200,24 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
         <div className="relative z-10 mx-auto flex min-h-screen max-w-container flex-col justify-between px-gutter pb-12 pt-24 md:px-gutter-md lg:px-gutter-lg">
 
           <div className={`hero-text-block ${heroRevealed ? 'is-revealed' : ''}`}>
+            {/* Elegant KREZ REAL ESTATE Monogram Brand Header as in IMG_7739 */}
+            <div className="mb-4 inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-black/45 backdrop-blur-md border border-[#C59B4C]/50 shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-[#C59B4C] animate-pulse"></span>
+              <span className="text-[11px] font-serif font-bold tracking-[0.25em] uppercase text-[#E5C378]">
+                KREZ REAL ESTATE
+              </span>
+            </div>
+
             <div className="hero-heading-top">
-              <p className="hero-own-the">Invest in</p>
-              <p className="hero-subtitle-desktop">
+              <p className="hero-own-the text-[#E5C378] !text-[#E5C378]">Invest in</p>
+              <p className="hero-subtitle-desktop text-[#FFFFFF] !text-[#FFFFFF]">
                 Fractional ownership of prime buildings
                 <br />
                 Transparent from day one
               </p>
             </div>
-            <h1 className="hero-extraordinary">Landmarks</h1>
-            <p className="hero-subtitle-mobile">
+            <h1 className="hero-extraordinary text-[#FFFFFF] !text-[#FFFFFF]">Landmarks</h1>
+            <p className="hero-subtitle-mobile text-[#FFFFFF] !text-[#FFFFFF]">
               Fractional ownership of prime buildings. Transparent from day one.
             </p>
           </div>
@@ -218,15 +226,15 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('/properties')}
-              className="inline-flex items-center gap-2 rounded-pill bg-primary px-6 py-3 text-xs font-semibold tracking-widest uppercase text-white transition-transform duration-fast hover:scale-hover active:scale-active cursor-pointer"
+              className="inline-flex items-center gap-2.5 rounded-pill bg-[#C59B4C] hover:bg-[#b88f3f] px-7 py-3.5 text-xs font-black tracking-widest uppercase text-[#0B1B30] transition-all duration-fast shadow-xl hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-[#C59B4C]/40"
             >
               <span>Enter as Tokenized fraction</span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-4 w-4 stroke-[2.5]" />
             </button>
             <button
               type="button"
               onClick={() => onNavigate('/how-it-works')}
-              className="rounded-pill bg-background/85 px-5 py-3 text-xs font-semibold tracking-widest uppercase text-foreground backdrop-blur-xs transition-colors duration-fast hover:bg-background cursor-pointer"
+              className="rounded-pill bg-black/50 hover:bg-black/70 px-6 py-3.5 text-xs font-semibold tracking-widest uppercase text-white border border-white/30 backdrop-blur-md transition-all cursor-pointer shadow-md"
             >
               How It Works
             </button>

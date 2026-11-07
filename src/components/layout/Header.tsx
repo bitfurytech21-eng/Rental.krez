@@ -15,6 +15,7 @@ const PRIMARY_NAV_ITEMS = [
   { to: '/properties', label: 'Properties' },
   { to: '/how-it-works', label: 'How It Works' },
   { to: '/portfolio', label: 'Portfolio' },
+  { to: '/club', label: 'Club Privé' },
   { to: '/news', label: 'Company News' },
   { to: '/team', label: 'The Team' },
   { to: '/journal', label: 'Journal' },
@@ -237,6 +238,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                   Investor Dashboard
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => handleNav('/club')}
+                className="uppercase tracking-widest text-[#c59b4c] hover:text-foreground transition-colors duration-fast cursor-pointer font-bold"
+              >
+                Club Privé
+              </button>
               <button
                 type="button"
                 onClick={() => handleNav('/insights')}

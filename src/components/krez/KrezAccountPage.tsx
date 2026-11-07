@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, LogOut } from 'lucide-react';
+import { ArrowRight, CheckCircle2, LogOut, Crown } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 import { userApi } from '../../lib/api';
 import { openKrezAuthModal } from './KrezAuthModal';
 import { KrezReveal } from './KrezReveal';
+import { UserMembershipCard } from '../club/UserMembershipCard';
 
 interface KrezAccountPageProps {
   onNavigate: (path: string) => void;
@@ -21,6 +22,15 @@ export const KrezAccountPage: React.FC<KrezAccountPageProps> = ({ onNavigate }) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  const [userMembership, setUserMembership] = useState(() => user ? ledger.getUserMembership(user.id) : null);
+  const [tiers, setTiers] = useState(() => ledger.getMembershipTiers());
+
+  const refreshMembership = () => {
+    if (user) {
+      setUserMembership(ledger.getUserMembership(user.id));
+      setTiers(ledger.getMembershipTiers());
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -29,6 +39,8 @@ export const KrezAccountPage: React.FC<KrezAccountPageProps> = ({ onNavigate }) 
     setCountry(user.country || '');
     setAddress(user.address || '');
     setBankIban(user.bankIban || '');
+    setUserMembership(ledger.getUserMembership(user.id));
+    setTiers(ledger.getMembershipTiers());
   }, [user?.id]);
 
   if (!user) {
@@ -182,6 +194,58 @@ export const KrezAccountPage: React.FC<KrezAccountPageProps> = ({ onNavigate }) 
                 €{(user.investedBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
+          </div>
+
+          {/* Club Privé Membership Section */}
+          <div className="mt-10">
+            {userMembership ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-heading font-bold uppercase text-foreground flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-[#c59b4c]" />
+                    <span>Club Privé Membership</span>
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('/club')}
+                    className="text-xs font-semibold uppercase tracking-wider text-accent hover:underline cursor-pointer"
+                  >
+                    View Club Details &rarr;
+                  </button>
+                </div>
+                <div className="max-w-2xl">
+                  <UserMembershipCard
+                    membership={userMembership}
+                    tiers={tiers}
+                    onRefresh={refreshMembership}
+                    onUpgradeClick={() => onNavigate('/club')}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-card border border-[#C5A880]/30 bg-gradient-to-r from-[#182D2A] to-[#0D1815] p-card-pad text-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md">
+                <div className="space-y-2 max-w-xl">
+                  <div className="flex items-center gap-2 text-[#C5A880] text-xs font-bold uppercase tracking-widest">
+                    <Crown className="w-4 h-4 text-[#C5A880]" />
+                    <span>Exclusive Invitation · L&apos;Agence Club Privé</span>
+                  </div>
+                  <h3 className="text-xl font-heading font-bold text-white tracking-tight">
+                    Elevate to Priority Off-Market Access
+                  </h3>
+                  <p className="text-xs text-white/70 leading-relaxed">
+                    Join an international circle of discerning investors and homeowners. Enjoy priority allocations, private Madrid &amp; Parisian salons, and bespoke advisory.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('/club')}
+                  className="inline-flex items-center gap-2 rounded-pill bg-[#C5A880] px-6 py-3.5 text-xs font-bold tracking-widest uppercase text-[#0B1B30] hover:bg-[#B39369] transition-transform duration-fast hover:scale-hover active:scale-active cursor-pointer shrink-0 shadow-lg"
+                >
+                  <span>Explore Membership</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Contact & Payout Details Form */}

@@ -172,17 +172,17 @@ export const AnimatedHomepageHeroBackground: React.FC<AnimatedHomepageHeroBackgr
           </svg>
         </div>
 
-        {/* High-Legibility Scrim Gradients */}
+        {/* High-Legibility Subtle Scrim Gradients to keep the building vibrant and clearly visible */}
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `linear-gradient(to bottom, rgba(7, 10, 9, 0.45) 0%, rgba(7, 10, 9, 0.65) 50%, rgba(7, 10, 9, 0.85) 100%)`
+            background: `linear-gradient(to bottom, rgba(10, 15, 14, 0.15) 0%, rgba(10, 15, 14, 0.3) 45%, rgba(10, 15, 14, 0.65) 100%)`
           }}
         />
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse at center, rgba(0, 0, 0, 0.1) 0%, rgba(7, 10, 9, 0.55) 100%)`
+            background: `radial-gradient(ellipse at 50% 40%, transparent 20%, rgba(10, 15, 14, 0.35) 100%)`
           }}
         />
       </div>

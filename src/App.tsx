@@ -74,7 +74,15 @@ function MainApp() {
         if (!prev) return prev;
         const matched = updatedList.find((p) => p.id === prev.id || p.slug === prev.slug);
         if (!matched) return prev;
-        if (matched.id === prev.id && matched.tokenPrice === prev.tokenPrice) return prev;
+        if (
+          matched.id === prev.id &&
+          matched.fundedAmount === prev.fundedAmount &&
+          matched.status === prev.status &&
+          matched.tokenPrice === prev.tokenPrice &&
+          matched.availableTokens === prev.availableTokens
+        ) {
+          return prev;
+        }
         return matched;
       });
     });

@@ -8,6 +8,7 @@ const EXPLORE_LINKS = [
   { to: '/properties', label: 'Properties' },
   { to: '/how-it-works', label: 'How It Works' },
   { to: '/portfolio', label: 'Portfolio' },
+  { to: '/club', label: 'Club Privé & Memberships' },
   { to: '/team', label: 'Team' },
   { to: '/blog', label: 'Blog & Academy' },
   { to: '/journal', label: 'Journal' },

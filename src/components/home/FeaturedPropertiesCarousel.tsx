@@ -15,16 +15,11 @@ import { ledger } from '../../lib/ledger';
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
 
-import fallbackProperty1 from '../../assets/images/properties/paris_saint_germain.jpg';
-import fallbackProperty2 from '../../assets/images/properties/madrid_salamanca.jpg';
-import fallbackProperty3 from '../../assets/images/properties/barcelona_eixample.jpg';
-import fallbackProperty4 from '../../assets/images/properties/valencia_arts.jpg';
-
 const LOCAL_PROPERTY_FALLBACKS = [
-  fallbackProperty1,
-  fallbackProperty2,
-  fallbackProperty3,
-  fallbackProperty4,
+  'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
+  'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
+  'https://files.kretzrealestate.com/96668247fa0f35cb63943d99a6bc9.jpg',
+  'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
 ];
 
 interface FeaturedPropertiesCarouselProps {

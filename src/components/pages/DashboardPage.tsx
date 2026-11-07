@@ -24,8 +24,10 @@ import {
   PieChart, ArrowDownLeft, ArrowUpRight, HelpCircle, User, FileText, LayoutDashboard, Coins,
   Share2, Award, CheckCircle2, AlertCircle, ExternalLink, Copy, Check, Menu, X, UploadCloud, LayoutGrid, LogOut,
   Search, ChevronDown, Gift, Users, Send, Mail, QrCode, Globe, CheckCheck, MessageCircle, RefreshCw, Clock,
-  Sun, Moon, Tag, Table as TableIcon
+  Sun, Moon, Tag, Table as TableIcon, Crown
 } from 'lucide-react';
+import { UserMembershipCard } from '../club/UserMembershipCard';
+import { MembershipApplicationModal } from '../club/MembershipApplicationModal';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { ColoredPipeline, PipelineStage } from '../visuals/ColoredPipeline';
 import { PortfolioPerformanceChart } from '../visuals/PortfolioPerformanceChart';
@@ -100,6 +102,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
   const [supportFeedback, setSupportFeedback] = useState<string | null>(null);
   const [supportError, setSupportError] = useState<string | null>(null);
+
+  // Membership States
+  const [userMembership, setUserMembership] = useState(() => user ? ledger.getUserMembership(user.id) : null);
+  const [membershipTiers, setMembershipTiers] = useState(() => ledger.getMembershipTiers());
+  const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
 
   const [dashboardMode, setDashboardMode] = useState<'light' | 'dark'>(() => {
     try {
@@ -396,6 +403,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { id: 'distributions', label: 'Distributions', icon: Coins },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'verification', label: 'Compliance Vault', icon: ShieldCheck },
+    { id: 'membership', label: 'Club Privé Membership', icon: Crown },
     { id: 'profile', label: 'Profile Settings', icon: User },
     { id: 'documents', label: 'Documents', icon: FileText, count: investments.length },
     { id: 'tax_statements', label: 'Tax & Fiscal Reports', icon: Award },
@@ -1986,6 +1994,92 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 9.5 CLUB PRIVÉ MEMBERSHIP TAB */}
+            {activeTab === 'membership' && (
+              <div className="space-y-6 animate-in fade-in duration-200 max-w-4xl mx-auto text-white">
+                <div className="bg-[#151515] p-5 sm:p-7 rounded-2xl border border-[#303030]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#303030]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#1D1D1D] text-[#C5A880] border border-[#C5A880]/30 flex items-center justify-center shrink-0">
+                        <Crown className="w-5 h-5 text-[#C5A880]" />
+                      </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                          <span>L&apos;Agence Club Privé</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C5A880]/20 text-[#C5A880] uppercase">
+                            VIP Member Tier
+                          </span>
+                        </h2>
+                        <p className="text-xs text-[#999999]">
+                          Exclusive off-market dossiers, private investor salons in Madrid &amp; Paris, and personalized concierge.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigateTo('/club')}
+                      className="px-4 py-2 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#0B1B30] text-xs font-bold transition-all cursor-pointer shrink-0"
+                    >
+                      Explore All Privileges &rarr;
+                    </button>
+                  </div>
+
+                  <div className="pt-6">
+                    {userMembership ? (
+                      <UserMembershipCard
+                        membership={userMembership}
+                        tiers={membershipTiers}
+                        onRefresh={() => {
+                          setUserMembership(ledger.getUserMembership(user.id));
+                          setMembershipTiers(ledger.getMembershipTiers());
+                        }}
+                        onUpgradeClick={() => setIsMembershipModalOpen(true)}
+                      />
+                    ) : (
+                      <div className="text-center py-8 space-y-4">
+                        <div className="w-16 h-16 rounded-2xl bg-[#C5A880]/10 border border-[#C5A880]/30 text-[#C5A880] mx-auto flex items-center justify-center">
+                          <Crown className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-1 max-w-md mx-auto">
+                          <h3 className="text-lg font-bold text-white">No Active Club Membership</h3>
+                          <p className="text-xs text-[#999999] leading-relaxed">
+                            Upgrade your investor account with a Club Privé subscription to access off-market Spanish &amp; French property dossiers and invitations to private estate receptions.
+                          </p>
+                        </div>
+                        <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setIsMembershipModalOpen(true)}
+                            className="px-5 py-2.5 rounded-xl bg-[#C5A880] hover:bg-[#B39369] text-[#0B1B30] text-xs font-bold cursor-pointer transition-all shadow-md"
+                          >
+                            Apply for Club Membership
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigateTo('/club')}
+                            className="px-4 py-2.5 rounded-xl bg-[#202020] hover:bg-[#282828] text-white border border-[#303030] text-xs font-bold cursor-pointer"
+                          >
+                            View Tier Comparison
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <MembershipApplicationModal
+                  isOpen={isMembershipModalOpen}
+                  tiers={membershipTiers}
+                  onClose={() => setIsMembershipModalOpen(false)}
+                  onSuccess={(newMem) => {
+                    setUserMembership(newMem);
+                    setIsMembershipModalOpen(false);
+                    toast.success(`Welcome to Club Privé! Membership pass #${newMem.memberNumber} activated.`);
+                  }}
+                />
               </div>
             )}
 
