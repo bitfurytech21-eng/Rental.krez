@@ -201,12 +201,24 @@ export function sanitizeUser(user: MockUser): Omit<MockUser, 'passwordHash'> {
 
 // In-memory data store for server-authoritative state
 // Seed accounts with industry-standard bcrypt hashes
+/**
+ * Seed-account passwords are never hardcoded. They come from SEED_ADMIN_PASSWORD /
+ * SEED_INVESTOR_PASSWORD (min. 12 chars) or, if unset, a random per-boot value that
+ * nobody knows - which leaves the seed account unusable for public login.
+ * Real administrator access is handled by the environment-based admin gateway (adminAuth.ts).
+ */
+function seedPassword(envName: 'SEED_ADMIN_PASSWORD' | 'SEED_INVESTOR_PASSWORD'): string {
+  const configured = process.env[envName];
+  if (configured && configured.length >= 12) return configured;
+  return crypto.randomBytes(24).toString('hex');
+}
+
 let mockUsers: MockUser[] = [
   {
     id: 'usr-admin-kretz-site',
     email: 'info@kretz.site',
     fullName: 'Kretz Executive Admin',
-    passwordHash: hashPassword('AdminSecret2026!'),
+    passwordHash: hashPassword(seedPassword('SEED_ADMIN_PASSWORD')),
     role: 'admin',
     kycStatus: 'approved',
     balance: 500000,
@@ -222,7 +234,7 @@ let mockUsers: MockUser[] = [
     id: 'usr-admin-01',
     email: 'admin@kretz.com',
     fullName: 'Chief Compliance Officer',
-    passwordHash: hashPassword('AdminSecret2026!'),
+    passwordHash: hashPassword(seedPassword('SEED_ADMIN_PASSWORD')),
     role: 'admin',
     kycStatus: 'approved',
     balance: 250000,
@@ -238,7 +250,7 @@ let mockUsers: MockUser[] = [
     id: 'usr-investor-01',
     email: 'investor@kretz.com',
     fullName: 'European Angel Partner',
-    passwordHash: hashPassword('InvestorPass123!'),
+    passwordHash: hashPassword(seedPassword('SEED_INVESTOR_PASSWORD')),
     role: 'investor',
     kycStatus: 'approved',
     balance: 45000,
@@ -251,7 +263,7 @@ let mockUsers: MockUser[] = [
     id: 'usr-investor-02',
     email: 'sophie.martin@luxcapital.fr',
     fullName: 'Sophie Martin',
-    passwordHash: hashPassword('InvestorPass123!'),
+    passwordHash: hashPassword(seedPassword('SEED_INVESTOR_PASSWORD')),
     role: 'investor',
     kycStatus: 'pending',
     balance: 15000,
