@@ -262,33 +262,14 @@ export function authenticateToken(
       }
     }
 
-    // 5. Handle verified Development Sessions (in non-production only)
-    if (token === 'admin_sess_usr-admin-01' || token.startsWith('admin_sess_')) {
+    // 5. Handle automated test runner integration tokens (strictly test environment only)
+    if (process.env.NODE_ENV === 'test' && (token === 'admin_sess_usr-admin-01' || token.startsWith('admin_sess_'))) {
       const userId = token.replace('admin_sess_', '');
       req.user = {
         id: userId || 'usr-admin-01',
         email: 'admin@kretz.com',
         role: 'admin',
         fullName: 'Executive Administrator',
-        status: 'active'
-      };
-      return next();
-    }
-
-    // 6. Handle Standard Investor Sessions
-    if (token.startsWith('sess_') || token.startsWith('local_sess_') || token.startsWith('local_preview_')) {
-      const userId = token
-        .replace('local_sess_', '')
-        .replace('local_preview_', '')
-        .replace('sess_', '');
-      const resolvedId = userId || 'usr-investor-01';
-      const isSeedInvestor = resolvedId === 'usr-investor-01' || resolvedId === 'usr-investor-1';
-
-      req.user = {
-        id: resolvedId,
-        email: isSeedInvestor ? 'investor@kretz.com' : '',
-        role: 'investor',
-        fullName: 'Verified Investor',
         status: 'active'
       };
       return next();

@@ -29,7 +29,7 @@ interface AdminPassGateProps {
 }
 
 export const AdminPassGate: React.FC<AdminPassGateProps> = ({ children, onSuccess }) => {
-  const { user, quickDemoSession } = useAuth();
+  const { user } = useAuth();
   const [unlocked, setUnlocked] = useState<boolean>(() => isPassGateUnlocked());
   const [passcode, setPasscode] = useState('');
   const [showPasscode, setShowPasscode] = useState(false);
@@ -90,14 +90,6 @@ export const AdminPassGate: React.FC<AdminPassGateProps> = ({ children, onSucces
 
     if (result.success) {
       setSuccessAnimation(true);
-      // Ensure admin session is established in auth context
-      try {
-        if (!user || user.role !== 'admin') {
-          await quickDemoSession('admin');
-        }
-      } catch (err) {
-        // Session fallback
-      }
 
       setTimeout(() => {
         setUnlocked(true);

@@ -62,14 +62,30 @@ export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
   const { currentPath, navigateTo } = useNavigation();
 
-  const fallbackAdmin = ledger.getUserById('usr-admin-1') || {
-    id: 'usr-admin-1',
-    email: 'admin@kretz.com',
-    fullName: 'Executive Administrator',
-    role: 'admin',
-    accountType: 'admin'
-  };
-  const activeUser = (user && user.role === 'admin') ? user : (fallbackAdmin as any);
+  if (!user || user.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-[#080d11] text-white flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-[#0d161d] border border-red-500/30 rounded-2xl p-8 text-center shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mx-auto flex items-center justify-center mb-5">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-serif font-light text-white mb-2">Administrator Access Required</h2>
+          <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+            This administration console is strictly restricted to verified system operators. You must authenticate with valid administrator credentials.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigateTo('/admin/login')}
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs tracking-widest uppercase rounded-xl transition shadow-lg shadow-emerald-900/30 cursor-pointer"
+          >
+            Go to Admin Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const activeUser = user;
 
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {

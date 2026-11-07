@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 /**
  * Automated Backend API Integration & User Isolation Test Suite
  * Tests real Express /api/v1 endpoints across registration, session isolation,

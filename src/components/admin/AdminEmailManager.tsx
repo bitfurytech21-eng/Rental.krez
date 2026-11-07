@@ -36,7 +36,7 @@ import {
 import { getAuthToken } from '../../lib/api';
 
 const getAdminHeaders = (extraHeaders: Record<string, string> = {}) => {
-  const token = getAuthToken() || 'admin_sess_usr-admin-01';
+  const token = getAuthToken();
   return {
     ...extraHeaders,
     ...(token ? { Authorization: `Bearer ${token}` } : {})

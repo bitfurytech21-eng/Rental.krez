@@ -105,47 +105,110 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }, 2000);
 
-    // Immediately restore cached session for instant rendering while validating in background
-    const storedId = localStorage.getItem(CURRENT_USER_KEY);
     const storedToken = localStorage.getItem('kretz_auth_token');
-    const storedAdminProfileRaw = localStorage.getItem(ADMIN_PROFILE_STORAGE_KEY);
 
-    if (storedToken && storedToken.startsWith('kretz_adm_') && storedAdminProfileRaw) {
-      try {
-        const parsedAdmin = JSON.parse(storedAdminProfileRaw);
-        if (parsedAdmin?.email) {
-          const restoredAdmin: User = {
-            id: parsedAdmin.id || 'usr-admin-01',
-            email: parsedAdmin.email,
-            fullName: parsedAdmin.fullName || 'Executive Administrator',
-            role: 'admin',
-            accountType: 'admin',
-            kycStatus: 'verified',
-            walletBalance: 500000,
-            investedBalance: 0,
-            totalEarned: 0,
-            createdAt: parsedAdmin.createdAt || new Date().toISOString(),
-          };
-          setUser(restoredAdmin);
-          setToken(storedToken);
-          setAuthToken(storedToken);
-        }
-      } catch {
-        // Fallback below
-      }
-    } else if (storedId) {
-      const found = ledger.getUserById(storedId);
-      if (found) {
-        setUser(found);
-        const restoredToken = storedToken || (found.role === 'admin' ? 'admin_sess_' + found.id : 'sess_' + found.id);
-        setToken(restoredToken);
-        setAuthToken(restoredToken);
-      }
+    // If no active auth token exists, immediately enforce unauthenticated guest state
+    if (!storedToken) {
+      setUser(null);
+      setSession(null);
+      setToken(null);
+      setAuthToken(null);
+      localStorage.removeItem(CURRENT_USER_KEY);
+      localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+      clearTimeout(failsafeTimer);
+      setIsLoading(false);
+      return;
+    }
+
+    // Set token in memory so verification request includes Authorization bearer header
+    setToken(storedToken);
+    setAuthToken(storedToken);
+
+    // Validate token against backend authority
+    if (storedToken.startsWith('kretz_adm_')) {
+      authApi.getAdminSession()
+        .then((res: any) => {
+          if (res?.user && res.user.role === 'admin') {
+            const adm: User = {
+              id: res.user.id || 'usr-admin-01',
+              email: res.user.email,
+              fullName: res.user.fullName || 'Executive Administrator',
+              role: 'admin',
+              accountType: 'admin',
+              kycStatus: 'verified',
+              walletBalance: 500000,
+              investedBalance: 0,
+              totalEarned: 0,
+              createdAt: res.user.createdAt || new Date().toISOString(),
+            };
+            setUser(adm);
+            localStorage.setItem(CURRENT_USER_KEY, adm.id);
+          } else {
+            setUser(null);
+            setToken(null);
+            setAuthToken(null);
+            localStorage.removeItem('kretz_auth_token');
+            localStorage.removeItem(CURRENT_USER_KEY);
+            localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+          }
+        })
+        .catch(() => {
+          setUser(null);
+          setToken(null);
+          setAuthToken(null);
+          localStorage.removeItem('kretz_auth_token');
+          localStorage.removeItem(CURRENT_USER_KEY);
+          localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+        })
+        .finally(() => {
+          clearTimeout(failsafeTimer);
+          setIsLoading(false);
+        });
+      return;
     }
 
     if (!isConfigured) {
-      clearTimeout(failsafeTimer);
-      setIsLoading(false);
+      // Validate customer session against backend /api/v1/auth/session
+      authApi.getSession()
+        .then((res: any) => {
+          const authData = res?.data || res;
+          if (authData?.authenticated && authData?.user) {
+            const sUser = authData.user;
+            const synced = ledger.syncSupabaseUser(
+              sUser.id,
+              sUser.email || '',
+              sUser.fullName || sUser.email?.split('@')[0] || 'Investor',
+              (sUser.role as UserRole) || 'investor',
+              (sUser.accountType as AccountType) || undefined,
+              sUser.country,
+              sUser.phoneNumber
+            );
+            if (typeof sUser.balance === 'number') {
+              synced.walletBalance = sUser.balance;
+            }
+            setUser(synced);
+            localStorage.setItem(CURRENT_USER_KEY, synced.id);
+          } else {
+            setUser(null);
+            setToken(null);
+            setAuthToken(null);
+            localStorage.removeItem('kretz_auth_token');
+            localStorage.removeItem(CURRENT_USER_KEY);
+            localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+          }
+        })
+        .catch(() => {
+          setUser(null);
+          setToken(null);
+          setAuthToken(null);
+          localStorage.removeItem('kretz_auth_token');
+          localStorage.removeItem(CURRENT_USER_KEY);
+          localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+        })
+        .finally(() => {
+          clearTimeout(failsafeTimer);
+          setIsLoading(false);
+        });
       return;
     }
 
@@ -181,12 +244,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(initialSession.access_token);
           setAuthToken(initialSession.access_token);
           localStorage.setItem(CURRENT_USER_KEY, synced.id);
-        } else if (!storedId) {
+        } else {
           // No active Supabase session
           setUser(null);
           setSession(null);
           setToken(null);
           setAuthToken(null);
+          localStorage.removeItem('kretz_auth_token');
           localStorage.removeItem(CURRENT_USER_KEY);
         }
       })
@@ -235,6 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(null);
         setToken(null);
         localStorage.removeItem(CURRENT_USER_KEY);
+        localStorage.removeItem('kretz_auth_token');
       }
 
       setIsLoading(false);
@@ -250,35 +315,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     if (!isConfigured) {
-      let found = ledger.getUserByEmail(cleanEmail);
-      if (found && found.role === 'admin') {
-        throw new Error('Invalid email or password. Please verify your credentials and try again.');
+      // Production-grade backend bcrypt verification
+      const res = await authApi.login(cleanEmail, pass);
+      const serverUser = (res as any)?.user || (res as any)?.data?.user;
+      const serverToken = (res as any)?.token || (res as any)?.data?.token;
+
+      if (!serverToken || !serverUser) {
+        throw new Error('Authentication failed. Invalid email address or password.');
       }
-      if (!found) {
-        found = ledger.createUser({
-          email: cleanEmail,
-          fullName: cleanEmail.split('@')[0],
-          role: 'investor'
-        });
+
+      if (serverUser.role === 'admin') {
+        throw new Error('Administrator accounts must authenticate via the Administrator Gateway at /admin/login.');
       }
-      setUser(found);
-      const localTok = 'local_sess_' + found.id;
-      setToken(localTok);
-      setAuthToken(localTok);
+
+      const synced = ledger.syncSupabaseUser(
+        serverUser.id,
+        serverUser.email,
+        serverUser.fullName || cleanEmail.split('@')[0] || 'Investor',
+        'investor',
+        (serverUser.accountType as AccountType) || 'individual_investor',
+        serverUser.country,
+        serverUser.phoneNumber
+      );
+
+      if (typeof serverUser.balance === 'number') {
+        synced.walletBalance = serverUser.balance;
+      }
+
+      setUser(synced);
+      setToken(serverToken);
+      setAuthToken(serverToken);
       localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
-      localStorage.setItem(CURRENT_USER_KEY, found.id);
+      localStorage.setItem(CURRENT_USER_KEY, synced.id);
+
       try {
         ledger.recordAuditLog(
-          found.id,
-          found.email,
+          synced.id,
+          synced.email,
           'LOGIN_SUCCESS',
-          `User ${found.email} authenticated successfully (${found.role}).`,
+          `User ${synced.email} authenticated successfully (${synced.role}).`,
           'auth',
           'success',
-          { targetUserId: found.id, targetUserEmail: found.email }
+          { targetUserId: synced.id, targetUserEmail: synced.email }
         );
       } catch (e) {}
-      return found;
+      return synced;
     }
 
     let data: any = null;
@@ -388,37 +469,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     if (!isConfigured) {
-      let existing = ledger.getUserByEmail(cleanEmail);
-      if (existing) {
-        const updated = ledger.updateUserProfile(existing.id, {
-          fullName: fullName.trim() || existing.fullName,
-          country: country || existing.country,
-          phoneNumber: phoneNumber || existing.phoneNumber
-        });
-        setUser(updated);
-        setToken('local_sess_' + updated.id);
-        localStorage.setItem(CURRENT_USER_KEY, updated.id);
-        return {
-          user: updated,
-          session: null,
-          requiresVerification: false
-        };
-      }
-      const created = ledger.createUser({
+      const res = await authApi.register({
         email: cleanEmail,
-        fullName: fullName.trim() || cleanEmail.split('@')[0],
+        pass,
+        fullName: fullName.trim(),
         role: determinedRole,
-        accountType: determinedAccountType,
         country: country || 'France',
-        phoneNumber: phoneNumber || ''
+        phoneNumber: phoneNumber || '',
       });
-      setUser(created);
-      setToken('local_sess_' + created.id);
-      localStorage.setItem(CURRENT_USER_KEY, created.id);
+
+      const serverUser = (res as any)?.user || (res as any)?.data?.user;
+      const serverToken = (res as any)?.token || (res as any)?.data?.token;
+
+      if (!serverToken || !serverUser) {
+        throw new Error('Registration failed. Please check your information and try again.');
+      }
+
+      const synced = ledger.syncSupabaseUser(
+        serverUser.id,
+        serverUser.email,
+        serverUser.fullName || fullName.trim(),
+        determinedRole,
+        determinedAccountType,
+        country || 'France',
+        phoneNumber || ''
+      );
+
+      setUser(synced);
+      setToken(serverToken);
+      setAuthToken(serverToken);
+      localStorage.setItem(CURRENT_USER_KEY, synced.id);
+
       return {
-        user: created,
+        user: synced,
         session: null,
-        requiresVerification: false
+        requiresVerification: false,
       };
     }
 
@@ -644,6 +729,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await apiRequest('/auth/admin-logout', { method: 'POST', skipAuth: true });
     } catch (e) {}
 
+    try {
+      await authApi.logout();
+    } catch (e) {}
+
     if (isConfigured) {
       try {
         await supabase.auth.signOut();
@@ -656,6 +745,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setAuthToken(null);
     localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem('kretz_auth_token');
     localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
   };
 
@@ -979,23 +1069,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // Local demo session switcher (strictly investor preview - admin elevation disabled)
+  // Demo bypass has been decommissioned for strict platform security
   const quickDemoSession = async (role: 'investor' | 'admin', accountType?: AccountType): Promise<User> => {
-    if (role === 'admin') {
-      throw new Error('Administrator demo bypass is disabled. Please log in through the Administrator Portal.');
-    }
-    const demoEmail = 'investor@kretz.com';
-    let existing = ledger.getUserByEmail(demoEmail);
-    if (!existing) {
-      throw new Error('Investor account not found.');
-    }
-    setUser({ ...existing });
-    const demoToken = 'sess_' + existing.id;
-    setToken(demoToken);
-    setAuthToken(demoToken);
-    localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
-    localStorage.setItem(CURRENT_USER_KEY, existing.id);
-    return existing;
+    throw new Error('Authentication bypass has been decommissioned. Please log in with your verified credentials.');
   };
 
   return (

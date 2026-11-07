@@ -37,6 +37,7 @@ import {
   printAgreementDocument,
 } from '../../lib/investmentAgreementService';
 import { InvestmentAgreementModal } from '../agreements/InvestmentAgreementModal';
+import { openKrezAuthModal } from '../krez/KrezAuthModal';
 
 interface UnitPurchaseModalProps {
   property: Property;
@@ -170,7 +171,9 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
   const feeAmount = liveCalc.feeAmountEUR;
   const totalPayable = liveCalc.totalPayableEUR;
   const remainingBalance = Number((userBalance - totalPayable).toFixed(2));
-  const isInsufficient = totalPayable > 0 ? userBalance < totalPayable : userBalance < (selectedProperty.minimumInvestment || tokenPrice);
+  const isInsufficient = user
+    ? (totalPayable > 0 ? userBalance < totalPayable : userBalance < (selectedProperty.minimumInvestment || tokenPrice))
+    : false;
 
   const handleUnitChange = (val: number) => {
     setError(null);
@@ -221,6 +224,12 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
   const handleProceedToConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!user) {
+      onClose();
+      openKrezAuthModal('login', `/properties/${selectedProperty.slug}`);
+      return;
+    }
 
     if (maxAvailable <= 0 || selectedProperty.status !== 'funding') {
       setError('This offering has no remaining primary units available for subscription.');
@@ -662,62 +671,90 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                 </div>
               </div>
 
-              {/* Available Cash Balance Banner */}
-              <div className="p-3.5 rounded-xl bg-[#18211F] border border-[#262B28] flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    <Wallet className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider block">
-                      Available Cash Balance
-                    </span>
-                    <span className="text-base sm:text-lg font-bold font-mono text-white tabular-nums">
-                      {formatCurrency(userBalance)}
-                    </span>
-                  </div>
-                </div>
-
-                {mode === 'reinvest' && (
-                  <span className="text-[10px] bg-[#B7E36A]/20 text-[#B7E36A] font-semibold px-2 py-0.5 rounded border border-[#B7E36A]/30">
-                    Reinvestment
-                  </span>
-                )}
-              </div>
-
-              {/* Insufficient Account Funds Banner */}
-              {isInsufficient && (
-                <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 space-y-2.5 animate-fadeIn">
+              {/* Unauthenticated Investor Authentication Required Banner */}
+              {!user ? (
+                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-2.5">
                   <div className="flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                     <div className="text-xs space-y-0.5">
-                      <p className="font-bold text-red-300">Insufficient Account Funds</p>
-                      <p className="text-[11px] text-red-200/90 leading-relaxed">
-                        Your balance is{' '}
-                        <strong className="font-mono font-bold text-white">{formatCurrency(userBalance)}</strong>, but
-                        this order requires{' '}
-                        <strong className="font-mono font-bold text-white">
-                          {formatCurrency(totalPayable || selectedProperty.minimumInvestment)}
-                        </strong>
-                        .
+                      <p className="font-bold text-amber-300">Investor Authentication Required</p>
+                      <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                        Please sign in to your verified investor account to view your live wallet balance and acquire units in this property.
                       </p>
                     </div>
                   </div>
-
-                  {onOpenDeposit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        onOpenDeposit();
-                      }}
-                      className="w-full py-2 px-3 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Deposit Funds Now</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      openKrezAuthModal('login', `/properties/${selectedProperty.slug}`);
+                    }}
+                    className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Sign In to Invest</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
+              ) : (
+                <>
+                  {/* Available Cash Balance Banner */}
+                  <div className="p-3.5 rounded-xl bg-[#18211F] border border-[#262B28] flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        <Wallet className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider block">
+                          Available Cash Balance
+                        </span>
+                        <span className="text-base sm:text-lg font-bold font-mono text-white tabular-nums">
+                          {formatCurrency(userBalance)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {mode === 'reinvest' && (
+                      <span className="text-[10px] bg-[#B7E36A]/20 text-[#B7E36A] font-semibold px-2 py-0.5 rounded border border-[#B7E36A]/30">
+                        Reinvestment
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Insufficient Account Funds Banner */}
+                  {isInsufficient && (
+                    <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 space-y-2.5 animate-fadeIn">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                        <div className="text-xs space-y-0.5">
+                          <p className="font-bold text-red-300">Insufficient Account Funds</p>
+                          <p className="text-[11px] text-red-200/90 leading-relaxed">
+                            Your balance is{' '}
+                            <strong className="font-mono font-bold text-white">{formatCurrency(userBalance)}</strong>, but
+                            this order requires{' '}
+                            <strong className="font-mono font-bold text-white">
+                              {formatCurrency(totalPayable || selectedProperty.minimumInvestment)}
+                            </strong>
+                            .
+                          </p>
+                        </div>
+                      </div>
+
+                      {onOpenDeposit && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onOpenDeposit();
+                          }}
+                          className="w-full py-2 px-3 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-lg transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Deposit Funds Now</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Property Selector for Reinvest Mode */}
@@ -944,20 +981,34 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
               )}
 
               {/* Main Checkout Button at Bottom */}
-              <button
-                type="submit"
-                disabled={!liveCalc.isValid || isInsufficient}
-                className="w-full py-3.5 px-4 bg-white hover:bg-slate-200 disabled:bg-[#202D29] disabled:text-slate-500 text-[#111312] font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 disabled:cursor-not-allowed font-heading uppercase tracking-wide"
-              >
-                <span>
-                  {maxAvailable <= 0
-                    ? 'Offering 100% Subscribed'
-                    : isInsufficient
-                    ? 'Insufficient Wallet Balance'
-                    : `Review Order (${formatCurrency(totalPayable)})`}
-                </span>
-                {liveCalc.isValid && !isInsufficient && <ArrowRight className="w-4 h-4" />}
-              </button>
+              {!user ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    openKrezAuthModal('login', `/properties/${selectedProperty.slug}`);
+                  }}
+                  className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 font-heading uppercase tracking-wide"
+                >
+                  <span>Sign In to Invest</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!liveCalc.isValid || isInsufficient}
+                  className="w-full py-3.5 px-4 bg-white hover:bg-slate-200 disabled:bg-[#202D29] disabled:text-slate-500 text-[#111312] font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 disabled:cursor-not-allowed font-heading uppercase tracking-wide"
+                >
+                  <span>
+                    {maxAvailable <= 0
+                      ? 'Offering 100% Subscribed'
+                      : isInsufficient
+                      ? 'Insufficient Wallet Balance'
+                      : `Review Order (${formatCurrency(totalPayable)})`}
+                  </span>
+                  {liveCalc.isValid && !isInsufficient && <ArrowRight className="w-4 h-4" />}
+                </button>
+              )}
             </form>
           )}
         </div>

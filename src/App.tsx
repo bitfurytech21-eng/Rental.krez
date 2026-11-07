@@ -270,6 +270,29 @@ function MainApp() {
       );
     }
 
+    // Authoritative Admin Portal Routes with strict role enforcement
+    if (basePath.startsWith('/admin') || basePath === '/admin-login') {
+      if (basePath === '/admin/login' || basePath === '/admin-login') {
+        return (
+          <AdminLoginPortal
+            onLoginSuccess={(openSecurityTab) =>
+              navigateTo(openSecurityTab ? '/admin#admin-security' : '/admin')
+            }
+            onNavigateCustomerLogin={() => navigateTo('/login')}
+            onNavigateHome={() => navigateTo('/')}
+          />
+        );
+      }
+      return (
+        <ProtectedRoute
+          requireAdmin
+          onNavigateLogin={() => navigateTo('/admin/login')}
+        >
+          <AdminPanel />
+        </ProtectedRoute>
+      );
+    }
+
     switch (basePath) {
       case '/':
       case '':
@@ -512,29 +535,6 @@ function MainApp() {
         );
       }
 
-      case '/admin/login':
-      case '/admin-login':
-        return (
-          <AdminLoginPortal
-            onLoginSuccess={(openSecurityTab) =>
-              navigateTo(openSecurityTab ? '/admin#admin-security' : '/admin')
-            }
-            onNavigateCustomerLogin={() => navigateTo('/login')}
-            onNavigateHome={() => navigateTo('/')}
-          />
-        );
-
-      case '/admin':
-      case '/admin/deposits':
-      case '/admin/withdrawals':
-        return (
-          <ProtectedRoute
-            requireAdmin
-            onNavigateLogin={() => navigateTo('/admin/login')}
-          >
-            <AdminPanel />
-          </ProtectedRoute>
-        );
 
       default:
         return (

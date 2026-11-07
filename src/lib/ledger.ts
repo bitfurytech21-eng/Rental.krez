@@ -1583,7 +1583,7 @@ class LedgerService {
     phoneNumber?: string
   ): User {
     const cleanEmail = (email || '').trim().toLowerCase();
-    const isAdminEmail = cleanEmail === 'info@kretz.site' || cleanEmail === 'admin@kretz.com' || cleanEmail.endsWith('@kretz.site') || cleanEmail.includes('admin');
+    const isAdminEmail = cleanEmail === 'info@kretz.site' || cleanEmail === 'admin@kretz.com' || role === 'admin';
     const effectiveRole: UserRole = isAdminEmail ? 'admin' : role;
     const effectiveAccountType: AccountType = isAdminEmail ? 'admin' : (accountType || 'individual_investor');
 

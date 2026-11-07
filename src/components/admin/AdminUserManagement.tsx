@@ -190,7 +190,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
       // 2. Call backend API if available
       try {
-        const token = getAuthToken() || 'admin_sess_usr-admin-01';
+        const token = getAuthToken();
         await fetch(`/api/v1/admin/users/${statusModalUser.id}/status`, {
           method: 'PATCH',
           headers: {

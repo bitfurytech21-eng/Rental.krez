@@ -107,15 +107,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
     setLoading(true);
     try {
-      try {
-        await authApi.login(email, password, turnstileToken || 'verified');
-      } catch (backendErr) {
-        // Fallback to local auth if backend offline
-      }
       await login(email, password);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Login failed.');
+      setError(err.message || 'Login failed. Please verify your credentials.');
     } finally {
       setLoading(false);
     }
@@ -158,19 +153,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
     setLoading(true);
     try {
-      try {
-        await authApi.register({
-          email,
-          pass: password,
-          fullName,
-          role: determinedRole,
-          turnstileToken: turnstileToken || 'verified',
-          country: currentCountry.name,
-          countryCode: currentCountry.code,
-          phoneNumber: fullPhoneNumber,
-        });
-      } catch {}
-
       const result = await register(
         email,
         password,
