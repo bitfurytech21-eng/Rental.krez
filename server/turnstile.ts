@@ -28,6 +28,14 @@ interface ConsumedToken {
 
 const consumedTokens = new Map<string, ConsumedToken>();
 
+/**
+ * Production is always strict: no test tokens, no dummy secret, no SKIP_TURNSTILE,
+ * no "preview tolerance" and no fail-open on network errors.
+ */
+function isProduction(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
 // Periodically clean up consumed tokens older than 10 minutes
 const cleanupInterval = setInterval(() => {
   const now = Date.now();
@@ -56,6 +64,8 @@ export interface TurnstileVerificationResult {
  */
 export function isFallbackOrTestToken(token: string): boolean {
   if (!token) return false;
+  // Never honour test/mock tokens in production - they would bypass the challenge entirely.
+  if (isProduction()) return false;
   return (
     token.startsWith('test-') ||
     token.startsWith('mock-') ||
@@ -75,11 +85,24 @@ export async function verifyTurnstileToken(
   remoteIp?: string
 ): Promise<TurnstileVerificationResult> {
   const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || DEFAULT_TEST_SECRET_KEY;
-  const isDevOrPreview =
-    process.env.NODE_ENV !== 'production' ||
-    process.env.SKIP_TURNSTILE === 'true' ||
-    secretKey === DEFAULT_TEST_SECRET_KEY ||
-    !process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+  const isDevOrPreview = !isProduction();
+
+  // Fail closed: production must have a real Turnstile secret configured.
+  if (isProduction() && (!process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || secretKey === DEFAULT_TEST_SECRET_KEY)) {
+    logger.log({
+      level: 'error',
+      category: 'security',
+      requestId: 'req-turnstile-config',
+      eventType: 'BOT_CHALLENGE_MISCONFIGURED',
+      outcome: 'failure',
+      message: 'CLOUDFLARE_TURNSTILE_SECRET_KEY is missing or is the public test key in production; rejecting request.'
+    });
+    return {
+      success: false,
+      error: 'Human verification is temporarily unavailable. Please try again later.',
+      code: 'TURNSTILE_NOT_CONFIGURED',
+    };
+  }
 
   if (!token || typeof token !== 'string' || token.trim() === '') {
     if (isDevOrPreview) {
@@ -177,10 +200,7 @@ export async function verifyTurnstileToken(
       // In development, preview (e.g. *.run.app), or test mode:
       // Turnstile sitekeys restricted to production domains will return invalid-input-response or domain-mismatch.
       // Gracefully accept verification in non-production to prevent locking out testing users.
-      const isDevOrPreview =
-        process.env.NODE_ENV !== 'production' ||
-        process.env.SKIP_TURNSTILE === 'true' ||
-        secretKey === DEFAULT_TEST_SECRET_KEY;
+      const isDevOrPreview = !isProduction();
 
       if (isDevOrPreview && (errorCodes.includes('invalid-input-response') || errorCodes.includes('domain-mismatch'))) {
         consumedTokens.set(tokenHash, {
@@ -222,7 +242,7 @@ export async function verifyTurnstileToken(
     }
   } catch (err: any) {
     console.error('Turnstile verification exception:', err);
-    if (process.env.NODE_ENV !== 'production' || secretKey === DEFAULT_TEST_SECRET_KEY) {
+    if (!isProduction()) {
       return {
         success: true,
         challengeTs: new Date().toISOString(),
@@ -245,8 +265,8 @@ export function requireTurnstile(
   res: Response,
   next: NextFunction
 ) {
-  // Allow bypass in development or test environment
-  if (process.env.SKIP_TURNSTILE === 'true' || process.env.NODE_ENV === 'development') {
+  // Allow bypass in development or test environment only - never in production
+  if (!isProduction() && (process.env.SKIP_TURNSTILE === 'true' || process.env.NODE_ENV === 'development')) {
     return next();
   }
 
