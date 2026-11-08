@@ -17,7 +17,7 @@ export default defineConfig(() => {
       include: ['react', 'react-dom', 'react-is', 'recharts', 'lucide-react'],
     },
     build: {
-      chunkSizeWarningLimit: 4000,
+      chunkSizeWarningLimit: 8000,
     },
     server: {
       host: '0.0.0.0',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../lib/auth';
-import { MessageSquare, X, Send, Building2, ShieldCheck, Mail, Phone, ExternalLink, ChevronDown, CheckCircle2, Clock } from 'lucide-react';
+import { X, Send, Building2, Mail, ExternalLink, Clock } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -40,6 +40,9 @@ export const SmartsuppWidget: React.FC = () => {
     window._smartsupp.key = smartsuppKey;
 
     if (!window.smartsupp) {
+      window.smartsupp = function () {
+        (window.smartsupp._ = window.smartsupp._ || []).push(arguments);
+      };
       (function (d: Document) {
         const s = d.getElementsByTagName('script')[0];
         const c = d.createElement('script');
@@ -73,6 +76,24 @@ export const SmartsuppWidget: React.FC = () => {
         console.log('Smartsupp SDK sync note:', e);
       }
     }
+
+    // Listen for custom open-support event from anywhere in the app
+    const handleOpenSupportEvent = () => {
+      if (typeof window !== 'undefined' && window.smartsupp) {
+        try {
+          window.smartsupp('chat:open');
+          return;
+        } catch {
+          // Fall through to internal fallback
+        }
+      }
+      setIsOpen(true);
+    };
+
+    window.addEventListener('kretz:open-support', handleOpenSupportEvent);
+    return () => {
+      window.removeEventListener('kretz:open-support', handleOpenSupportEvent);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -90,11 +111,6 @@ export const SmartsuppWidget: React.FC = () => {
         console.log('Smartsupp native chat open fallback');
       }
     }
-  };
-
-  const handleOpenWidget = () => {
-    setIsOpen(true);
-    triggerOfficialSmartsupp();
   };
 
   const handleSendMessage = (customText?: string) => {
@@ -149,30 +165,14 @@ export const SmartsuppWidget: React.FC = () => {
     }, 1000);
   };
 
+  // If the fallback modal is not open, do not render any duplicate floating button.
+  // The official Smartsupp widget renders cleanly in the bottom-right corner without collision.
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <div className="fixed bottom-16 sm:bottom-5 right-3 sm:right-5 z-40 select-none">
-      {/* Smartsupp Floating Toggle Button - Compact & Non-Obstructive */}
-      {!isOpen && (
-        <button
-          onClick={handleOpenWidget}
-          className="group relative bg-[#182D2A] hover:bg-[#24423C] text-white p-2.5 sm:px-4 sm:py-2.5 rounded-full shadow-xl border border-emerald-500/30 transition-all duration-200 flex items-center gap-2.5 cursor-pointer hover:scale-105"
-          title="Smartsupp Customer Support (info@kretz.site)"
-        >
-          <div className="relative">
-            <MessageSquare className="w-4 h-4 text-[#B7E36A]" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full ring-2 ring-[#182D2A] animate-pulse" />
-          </div>
-          <div className="hidden sm:flex flex-col text-left">
-            <span className="text-[11px] font-bold tracking-tight leading-none text-white">
-              Support
-            </span>
-            <span className="text-[9px] text-emerald-400 font-medium leading-tight mt-0.5">
-              info@kretz.site
-            </span>
-          </div>
-        </button>
-      )}
-
       {/* Expanded Smartsupp Customer Support Widget */}
       {isOpen && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-[calc(100vw-32px)] sm:w-[380px] max-w-md h-[540px] max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 text-left">

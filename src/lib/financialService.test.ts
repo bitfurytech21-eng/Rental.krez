@@ -7,6 +7,13 @@ import {
   calculateFiveYearPortfolioYieldProjection,
   PAYMENT_FEE_TIERS,
 } from './financialService';
+import {
+  calculateDailyRatePercent,
+  calculateUserDailyEntitlement,
+  calculateUserOwnershipPercentage,
+  buildDailyPaymentIdempotencyKey,
+  generatePropertyPaymentsCsv,
+} from './distributionService';
 import { isValidSolanaAddress } from './solanaService';
 import { ledger } from './ledger';
 
@@ -330,6 +337,60 @@ async function runFinancialAndInteractionTests() {
     ),
     'Stress-tested downside curve stays conservatively below base cash yield across all 5 years'
   );
+
+  // --- Property Daily Payment Distribution Tests ---
+  console.log('--- Running Property Daily Payment Distribution Tests ---');
+
+  // Test: Daily rate calculation splits annual APY across 365 days
+  const dailyRate114 = calculateDailyRatePercent(11.4);
+  assertEqual(dailyRate114, 0.031233, '11.4% annual net yield splits to 0.031233% daily');
+
+  const dailyRate96 = calculateDailyRatePercent(9.6);
+  assertEqual(dailyRate96, 0.026301, '9.6% annual net yield splits to 0.026301% daily');
+
+  // Test: User entitlement on €18,200 allocation at 0.031233% daily rate
+  const dailyEntitlement = calculateUserDailyEntitlement(18200, dailyRate114);
+  assertEqual(dailyEntitlement, 5.68, '€18,200 allocation at 0.031233% daily yields €5.68/day');
+
+  // Test: User ownership percentage (50 tokens out of 6,730 total)
+  const ownership = calculateUserOwnershipPercentage(50, 6730);
+  assertEqual(ownership, 0.7429, '50 tokens out of 6,730 tokens = 0.7429% ownership');
+
+  // Test: Deterministic idempotency key format
+  const idempotencyKey = buildDailyPaymentIdempotencyKey('prop-villa-mirador', 'usr-investor-01', '2026-11-08');
+  assertEqual(idempotencyKey, 'PAY-prop-villa-mirador-usr-investor-01-2026-11-08', 'Idempotency key format is exact');
+
+  // Test: CSV statement generation
+  const sampleRecords = [
+    {
+      id: 'pay-test-1',
+      idempotencyKey: 'PAY-prop-test-usr1-2026-11-08',
+      propertyId: 'prop-test',
+      propertyTitle: 'Villa Test',
+      propertyImage: 'https://files.test.com/img.jpg',
+      tokenTicker: 'RENT-TST01',
+      userId: 'usr1',
+      userEmail: 'investor@test.com',
+      userName: 'Investor Test',
+      investmentId: 'inv-test',
+      date: '2026-11-08',
+      userAllocatedInvestmentEUR: 10000,
+      userTokensCount: 25,
+      userOwnershipPercent: 0.5,
+      approvedAnnualRatePercent: 10.0,
+      propertyDailyRatePercent: 0.027397,
+      calculatedDailyAmountEUR: 2.74,
+      status: 'paid' as const,
+      reference: 'DIST-TEST-001',
+      transactionId: 'tx-test-001',
+      createdAt: '2026-11-08T12:00:00Z',
+      paidAt: '2026-11-08T12:05:00Z'
+    }
+  ];
+  const csvOutput = generatePropertyPaymentsCsv(sampleRecords, 'Villa Test');
+  assertTrue(csvOutput.includes('Villa Test'), 'CSV includes property title');
+  assertTrue(csvOutput.includes('DIST-TEST-001'), 'CSV includes payment reference');
+  assertTrue(csvOutput.includes('2.74'), 'CSV includes daily amount');
 
   console.log('--- All Financial & Interactive Ledger Tests Completed ---');
 }

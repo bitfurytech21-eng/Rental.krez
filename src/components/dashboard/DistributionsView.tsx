@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Investment } from '../../types/investment';
 import { Transaction } from '../../types/transaction';
 import { formatCurrency, formatDate, formatPercent } from '../../lib/utils';
-import { RefreshCw, TrendingUp, Calendar, ArrowRight, ShieldCheck, Download } from 'lucide-react';
+import { RefreshCw, TrendingUp, Calendar, ArrowRight, ShieldCheck, Download, Coins, BarChart3, History } from 'lucide-react';
 import { YieldDistributionFlowDiagram } from '../visuals/YieldDistributionFlowDiagram';
 import { YieldPayoutTrendsChart } from '../visuals/YieldPayoutTrendsChart';
+import { PropertyDailyDistributionsView } from './PropertyDailyDistributionsView';
 
 interface DistributionsViewProps {
   investments: Investment[];
@@ -19,32 +20,95 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
   onSelectProperty,
   onExploreProperties,
 }) => {
+  const [subTab, setSubTab] = useState<'property_daily' | 'analytics_flows' | 'all_history'>('property_daily');
   const dividendTransactions = transactions.filter(t => t.type === 'distribution' && t.status === 'completed');
   const totalDividendsEarned = dividendTransactions.reduce((acc, t) => acc + t.amount, 0);
   const totalMonthlyProjected = investments.reduce((acc, inv) => acc + inv.projectedMonthlyIncome, 0);
 
   return (
-    <div className="space-y-4">
-      {/* Yield Cashflow Lifecycle Visual Diagram */}
-      <YieldDistributionFlowDiagram />
+    <div className="space-y-5">
+      {/* View Mode Navigation Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#151515] p-2 rounded-2xl border border-[#303030]">
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+          <button
+            type="button"
+            onClick={() => setSubTab('property_daily')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              subTab === 'property_daily'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Coins className="w-4 h-4" />
+            <span>Property Daily Allocations</span>
+          </button>
 
-      {/* Monthly Dividend Yield Trends Chart */}
-      <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
-      {/* Top summary banner - Charcoal & White with Rainbow KPI Highlights */}
-      <div className="cinematic-card text-white p-5 rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden border border-white/[0.08]">
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          <div className="p-3.5 bg-[#141515] rounded-2xl border border-white/[0.08]">
-            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#43C98B] bg-[#43C98B]/15 px-2.5 py-0.5 rounded-full border border-[#43C98B]/30 uppercase tracking-wider mb-2">
-              <ShieldCheck className="w-2.5 h-2.5" /> Realized Performance
-            </span>
-            <span className="text-[10px] text-[#777979] uppercase tracking-wider font-semibold block">
-              Cumulative Dividends Paid
-            </span>
-            <div className="financial-val-card text-[#43C98B] font-[600] mt-1">
-              +{formatCurrency(totalDividendsEarned)}
-            </div>
-            <p className="text-[10.5px] text-[#777979] mt-1 font-medium">Verified cash credited to investor wallet</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => setSubTab('analytics_flows')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              subTab === 'analytics_flows'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Visual Flows &amp; APY Trends</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSubTab('all_history')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              subTab === 'all_history'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Consolidated Ledger ({dividendTransactions.length})</span>
+          </button>
+        </div>
+
+        <div className="text-right px-2 hidden sm:block">
+          <span className="text-[10px] text-gray-400 block font-mono">Real-time Backend Synchronization</span>
+          <span className="text-xs font-bold text-emerald-400 font-mono">Active</span>
+        </div>
+      </div>
+
+      {/* Main Tab 1: Property-by-Property Daily Payouts */}
+      {subTab === 'property_daily' && (
+        <PropertyDailyDistributionsView 
+          onSelectProperty={onSelectProperty}
+          onExploreProperties={onExploreProperties}
+        />
+      )}
+
+      {/* Main Tab 2: Visual Flows & Macro Trends */}
+      {subTab === 'analytics_flows' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          <YieldDistributionFlowDiagram />
+          <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
+        </div>
+      )}
+
+      {/* Main Tab 3: Consolidated Dividend Audit Ledger */}
+      {subTab === 'all_history' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="cinematic-card text-white p-5 rounded-2xl sm:rounded-3xl shadow-xl relative overflow-hidden border border-white/[0.08]">
+            <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+              <div className="p-3.5 bg-[#141515] rounded-2xl border border-white/[0.08]">
+                <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#43C98B] bg-[#43C98B]/15 px-2.5 py-0.5 rounded-full border border-[#43C98B]/30 uppercase tracking-wider mb-2">
+                  <ShieldCheck className="w-2.5 h-2.5" /> Realized Performance
+                </span>
+                <span className="text-[10px] text-[#777979] uppercase tracking-wider font-semibold block">
+                  Cumulative Dividends Paid
+                </span>
+                <div className="financial-val-card text-[#43C98B] font-[600] mt-1">
+                  +{formatCurrency(totalDividendsEarned)}
+                </div>
+                <p className="text-[10.5px] text-[#777979] mt-1 font-medium">Verified cash credited to investor wallet</p>
+              </div>
 
           <div className="p-3.5 bg-[#141515] rounded-2xl border border-white/[0.08]">
             <span className="inline-flex items-center gap-1 text-[8.5px] font-bold text-[#55BDE8] bg-[#55BDE8]/15 px-2.5 py-0.5 rounded-full border border-[#55BDE8]/30 uppercase tracking-wider mb-2">
@@ -169,6 +233,8 @@ export const DistributionsView: React.FC<DistributionsViewProps> = ({
           </div>
         )}
       </div>
+      </div>
+      )}
     </div>
   );
 };

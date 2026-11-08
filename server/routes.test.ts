@@ -564,6 +564,59 @@ async function runApiTests() {
         trustRes.json.data?.legalDocumentsCount === 12,
       'GET /trust-center returns institutional verification summary and 12-document Legal Centre count'
     );
+
+    // 13. Property Payment Distribution & Daily Synchronization API Endpoints
+    const distSummariesRes = await api('GET', '/distributions/my-properties', undefined, userToken);
+    assert(
+      distSummariesRes.status === 200 &&
+        distSummariesRes.json.success === true &&
+        Array.isArray(distSummariesRes.json.data?.summaries),
+      'GET /distributions/my-properties returns separated property allocations for authenticated investor'
+    );
+
+    const adminConfigsRes = await api('GET', '/admin/distributions/configs', undefined, adminToken);
+    assert(
+      adminConfigsRes.status === 200 &&
+        adminConfigsRes.json.success === true &&
+        Array.isArray(adminConfigsRes.json.data) &&
+        adminConfigsRes.json.data.length > 0,
+      'GET /admin/distributions/configs returns property daily terms and available treasury funds'
+    );
+
+    const updateConfigRes = await api(
+      'PUT',
+      '/admin/distributions/configs/prop-villa-mirador',
+      {
+        approvedAnnualPercent: 12.0,
+        schedule: 'daily',
+        availableDistributableFundsEUR: 95000,
+        notes: 'Updated Q4 rental yield approved by board.'
+      },
+      adminToken
+    );
+    assert(
+      updateConfigRes.status === 200 &&
+        updateConfigRes.json.success === true &&
+        updateConfigRes.json.data?.approvedAnnualPercent === 12.0 &&
+        Boolean(updateConfigRes.json.data?.approvedDailyPercent),
+      'PUT /admin/distributions/configs/:id authorizes new property annual & daily payment percentages'
+    );
+
+    const processRunRes = await api(
+      'POST',
+      '/admin/distributions/process',
+      {
+        propertyId: 'prop-villa-mirador',
+        targetDate: new Date().toISOString().split('T')[0]
+      },
+      adminToken
+    );
+    assert(
+      processRunRes.status === 200 &&
+        processRunRes.json.success === true &&
+        typeof processRunRes.json.data?.totalDisbursedEUR === 'number',
+      'POST /admin/distributions/process executes idempotent daily payout run with audit trail'
+    );
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }

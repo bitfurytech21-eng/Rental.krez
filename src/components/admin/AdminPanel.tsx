@@ -41,8 +41,8 @@ import {
   Sparkles,
   Check,
   Mail,
-  LogOut,
-  Crown
+  Crown,
+  LogOut
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
@@ -56,9 +56,10 @@ import { AdminReconciliationView } from './AdminReconciliationView';
 import { AdminAuditLogsView } from './AdminAuditLogsView';
 import { AdminEmailManager } from './AdminEmailManager';
 import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
+import { AdminPaymentDistributionManager } from './AdminPaymentDistributionManager';
 import { AdminMembershipTab } from './AdminMembershipTab';
 
-export type AdminTabType = 'dashboard' | 'users' | 'membership' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
+export type AdminTabType = 'dashboard' | 'users' | 'membership' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'payment-distribution' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
@@ -92,7 +93,7 @@ export const AdminPanel: React.FC = () => {
   const getInitialAdminTab = (): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+      const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'payment-distribution', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
@@ -127,7 +128,7 @@ export const AdminPanel: React.FC = () => {
   const [docFilterStatus, setDocFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   React.useEffect(() => {
-    const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+    const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'payment-distribution', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
     const syncTabFromLocation = () => {
       const hashFromPath = currentPath.includes('#') ? currentPath.split('#')[1].toLowerCase() : '';
       const hashFromWin = typeof window !== 'undefined' ? window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase() : '';
@@ -710,8 +711,8 @@ export const AdminPanel: React.FC = () => {
               activeTab === 'membership' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
             }`}
           >
-            <Crown className="w-4 h-4 text-emerald-800" />
-            <span>Club Privé &amp; Memberships</span>
+            <Crown className="w-4 h-4 text-[#c59b4c]" />
+            <span>Club Privé Memberships</span>
           </button>
 
           <button
@@ -742,6 +743,16 @@ export const AdminPanel: React.FC = () => {
           >
             <CreditCard className="w-4 h-4 text-[#27845D]" />
             Manual Payment Integration
+          </button>
+
+          <button
+            onClick={() => setActiveTab('payment-distribution')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'payment-distribution' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+            }`}
+          >
+            <Coins className="w-4 h-4 text-emerald-600" />
+            Daily Payment Distribution
           </button>
 
           <button
@@ -922,11 +933,6 @@ export const AdminPanel: React.FC = () => {
               setActiveTab('manual-payment');
             }}
           />
-        )}
-
-        {/* Tab Membership: Club Privé & Membership Management */}
-        {activeTab === 'membership' && (
-          <AdminMembershipTab />
         )}
 
         {/* Tab 1: Deposit Approvals */}
@@ -2317,6 +2323,12 @@ export const AdminPanel: React.FC = () => {
 
         {/* Tab 10: Client-Side Frontend Error Buffer */}
         {activeTab === 'frontend-errors' && <AdminFrontendErrorLogView />}
+
+        {/* Tab 11: Property Payment Distribution & Daily Synchronization */}
+        {activeTab === 'payment-distribution' && <AdminPaymentDistributionManager />}
+
+        {/* Tab 12: Club Privé Membership Management */}
+        {activeTab === 'membership' && <AdminMembershipTab />}
       </div>
 
       {/* New Property Modal */}

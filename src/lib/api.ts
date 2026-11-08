@@ -9,6 +9,15 @@
  * - Modular API services for Customer, Wallet, Investment, and Admin operations
  */
 
+import {
+  PropertyDailyPaymentConfig,
+  DailyPaymentRecord,
+  DistributionPaymentStatus,
+  UserPropertyDistributionSummary,
+  DailyPaymentRunRequest,
+  DailyPaymentRunResult
+} from '../types/distribution';
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data: T;
@@ -630,3 +639,52 @@ export const adminApi = {
   getAuditLogs: (params?: { limit?: number }) =>
     api.get<any[]>('/admin/audit-logs', { params }),
 };
+
+/**
+ * Property Payment Distribution & Daily Synchronization API
+ */
+export const distributionApi = {
+  getMyPropertyDistributions: () =>
+    api.get<{
+      success: boolean;
+      data: {
+        summaries: UserPropertyDistributionSummary[];
+        totalPropertiesCount: number;
+        totalAllocatedCapitalEUR: number;
+        totalDailyEntitlementEUR: number;
+        totalPaymentsReceivedEUR: number;
+        totalPendingPaymentsEUR: number;
+        lastUpdated: string;
+      };
+    }>('/distributions/my-properties'),
+
+  getPropertyConfig: (propertyId: string) =>
+    api.get<{ success: boolean; data: PropertyDailyPaymentConfig }>(`/distributions/properties/${propertyId}`),
+
+  getAdminConfigs: () =>
+    api.get<{ success: boolean; data: PropertyDailyPaymentConfig[] }>('/admin/distributions/configs'),
+
+  updateAdminConfig: (propertyId: string, updates: Partial<PropertyDailyPaymentConfig>) =>
+    api.put<{ success: boolean; data: PropertyDailyPaymentConfig; message: string }>(`/admin/distributions/configs/${propertyId}`, updates),
+
+  togglePropertyStatus: (propertyId: string, status: 'active' | 'suspended' | 'paused', reason?: string) =>
+    api.post<{ success: boolean; data: PropertyDailyPaymentConfig; message: string }>(`/admin/distributions/properties/${propertyId}/toggle`, { status, reason }),
+
+  processDailyRun: (payload?: DailyPaymentRunRequest) =>
+    api.post<{ success: boolean; data: DailyPaymentRunResult; message: string }>('/admin/distributions/process', payload),
+
+  adjustRecord: (recordId: string, updates: { amountEUR?: number; status?: DistributionPaymentStatus; reason: string }) =>
+    api.post<{ success: boolean; data: DailyPaymentRecord; message: string }>(`/admin/distributions/records/${recordId}/adjust`, updates),
+
+  getAdminRecords: (params?: { propertyId?: string; userId?: string; status?: string; startDate?: string; endDate?: string }) =>
+    api.get<{ success: boolean; data: { records: DailyPaymentRecord[]; totalCount: number; totalAmountEUR: number } }>('/admin/distributions/records', { params }),
+
+  getExportUrl: (propertyId?: string, format: 'csv' | 'json' = 'csv') => {
+    const base = getBaseUrl();
+    const query = new URLSearchParams();
+    if (propertyId) query.set('propertyId', propertyId);
+    query.set('format', format);
+    return `${base}/distributions/export?${query.toString()}`;
+  }
+};
+
