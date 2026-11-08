@@ -121,6 +121,12 @@ async function startServer() {
     });
   });
 
+  // Zoho Domain Verification Endpoint
+  app.get(['/zoho-domain-verification.html', '/zoho-domain-verification_8faa2c8b.html'], (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send('38305949');
+  });
+
   // Versioned API Routes (/api/v1)
   app.use('/api/v1', v1Routes);
 
