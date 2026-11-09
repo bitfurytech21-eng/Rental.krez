@@ -119,7 +119,18 @@ export const KrezAuthModal: React.FC = () => {
         setNotice('If an account exists for that email, password reset instructions have been sent.');
       }
     } catch (err: any) {
-      setError(err?.message || 'Unable to complete request. Please check your details and try again.');
+      const rawMsg = String(err?.message || '');
+      if (
+        rawMsg.includes('405') ||
+        rawMsg.includes('Method Not Allowed') ||
+        rawMsg.includes('HTTP Error') ||
+        rawMsg.includes('Failed to fetch') ||
+        rawMsg.includes('NetworkError')
+      ) {
+        setError('Authentication service is currently unavailable. Please verify your credentials and try again.');
+      } else {
+        setError(rawMsg || 'Unable to complete request. Please check your details and try again.');
+      }
     } finally {
       setBusy(false);
     }

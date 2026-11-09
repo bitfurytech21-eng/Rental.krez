@@ -148,7 +148,7 @@ export const AdminPanel: React.FC = () => {
   const [manualCurrency, setManualCurrency] = useState<string>('EUR');
   const [manualMethod, setManualMethod] = useState<string>('Direct SEPA Wire Received');
   const [manualReference, setManualReference] = useState<string>('');
-  const [manualNotes, setManualNotes] = useState<string>('Funds confirmed in CaixaBank corporate treasury account.');
+  const [manualNotes, setManualNotes] = useState<string>('Funds confirmed in UNLIMIT corporate treasury account.');
   const [isSubmittingCredit, setIsSubmittingCredit] = useState<boolean>(false);
 
   // User Dedicated Payment Detail Assignment State
@@ -1266,7 +1266,7 @@ export const AdminPanel: React.FC = () => {
                       rows={2}
                       value={manualNotes}
                       onChange={(e) => setManualNotes(e.target.value)}
-                      placeholder="e.g. Funds verified by treasury officer via CaixaBank corporate statement."
+                      placeholder="e.g. Funds verified by treasury officer via UNLIMIT corporate statement."
                       className="text-xs"
                       required
                     />
@@ -1580,7 +1580,7 @@ export const AdminPanel: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-[#27845D]" />
                     <h4 className="text-sm font-bold text-[#182D2A] uppercase tracking-wider">
-                      Cryptocurrency Treasury Wallets & Multi-Chain Endpoints ({paymentConfig.cryptoNetworks.length})
+                      Cryptocurrency Treasury Wallet: USDC (BEP20)
                     </h4>
                   </div>
                 </div>
@@ -1783,11 +1783,11 @@ export const AdminPanel: React.FC = () => {
                       users.find(u => u.role !== 'admin')?.id || users[0].id,
                       7500,
                       'EUR',
-                      'SEPA Bank Wire Transfer (CaixaBank Escrow)',
+                      'SEPA Bank Wire Transfer (UNLIMIT Escrow)',
                       testRef,
                       {
                         receiptUrl: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
-                        receiptFileName: `caixabank_wire_slip_${testRef}.pdf`,
+                        receiptFileName: `unlimit_wire_slip_${testRef}.pdf`,
                         receiptFileSize: 260000,
                         notes: 'Simulated investor wire transfer slip upload'
                       }

@@ -9,30 +9,57 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import v1Routes from './server/routes';
-import { correlationAndTimingMiddleware, authenticateToken, validateCsrf, errorHandler } from './server/middleware';
-import { logger } from './server/logger';
-import { validateAdminEnvironment } from './server/adminAuth';
-
-dotenv.config();
-
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Global resilience listeners to prevent unexpected dev server process exits
-process.on('uncaughtException', (err: any) => {
-  console.error('[server] Uncaught Exception caught safely:', err?.message || err);
-});
+// Self-bootstrap tsx if running under plain node (e.g. npm start / node server.ts)
+const isTsxActive = process.execArgv.some(arg => arg.includes('tsx')) || 
+                    Boolean(process.env.NODE_OPTIONS?.includes('tsx')) ||
+                    process.env.__TSX_BOOTSTRAPPED__ === 'true';
 
-process.on('unhandledRejection', (reason: any) => {
-  console.error('[server] Unhandled Rejection caught safely:', reason?.message || reason);
-});
+if (!isTsxActive) {
+  const child = spawn(process.execPath, ['--import', 'tsx', ...process.argv.slice(1)], {
+    stdio: 'inherit',
+    env: { ...process.env, __TSX_BOOTSTRAPPED__: 'true' },
+  });
+  child.on('exit', (code, signal) => {
+    if (signal) process.kill(process.pid, signal);
+    else process.exit(code ?? 0);
+  });
+} else {
+  runServer();
+}
 
-async function startServer() {
-  const app = express();
+async function runServer() {
+  const [
+    { default: v1Routes },
+    { correlationAndTimingMiddleware, authenticateToken, validateCsrf, errorHandler },
+    { logger },
+    { validateAdminEnvironment }
+  ] = await Promise.all([
+    import('./server/routes'),
+    import('./server/middleware'),
+    import('./server/logger'),
+    import('./server/adminAuth')
+  ]);
+
+  // Global resilience listeners to prevent unexpected dev server process exits
+  process.on('uncaughtException', (err: any) => {
+    console.error('[server] Uncaught Exception caught safely:', err?.message || err);
+  });
+
+  process.on('unhandledRejection', (reason: any) => {
+    console.error('[server] Unhandled Rejection caught safely:', reason?.message || reason);
+  });
+
+  async function startServer() {
+    const app = express();
   const server = http.createServer(app);
 
   // Resolve port and environment for both AI Studio dev server and Cloud deployments (Cloud Run, etc.)
@@ -133,8 +160,14 @@ async function startServer() {
   // Legacy API fallback (/api)
   app.use('/api', v1Routes);
 
-  // Error handling for /api routes
-  app.use('/api', errorHandler);
+  // Direct auth route fallback (/auth/* -> v1Routes /auth/*)
+  app.use('/auth', (req, res, next) => {
+    req.url = '/auth' + req.url;
+    v1Routes(req, res, next);
+  });
+
+  // Error handling for /api and /auth routes
+  app.use(['/api', '/auth'], errorHandler);
 
   // In development, mount Vite dev server middlewares
   if (!isProd) {
@@ -155,7 +188,7 @@ async function startServer() {
     // Fallback for HTML navigation routes
     app.use('*', async (req, res, next) => {
       const url = req.originalUrl;
-      if (url.startsWith('/api')) {
+      if (url.startsWith('/api') || url.startsWith('/auth')) {
         return next();
       }
       try {
@@ -170,7 +203,7 @@ async function startServer() {
     // Production static file serving
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (req, res) => {
-      if (req.originalUrl.startsWith('/api')) {
+      if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/auth')) {
         return res.status(404).json({ success: false, error: 'Endpoint not found', code: 'NOT_FOUND' });
       }
       const distIndexPath = path.resolve(__dirname, 'dist', 'index.html');

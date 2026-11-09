@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
-    "start": "node --import tsx server.ts",
+    "start": "node server.ts",
     "prebuild": "test -x ./node_modules/.bin/vite || npm install --include=dev --legacy-peer-deps",
     "build": "./node_modules/.bin/vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",

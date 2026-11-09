@@ -1040,7 +1040,7 @@ ${data.action_url || `${settings.platformUrl}/dashboard/investments`}
       user_name: 'Robin van Persie',
       amount: '€13,245.00',
       status: 'credited',
-      payment_method: 'SEPA Direct Wire (CaixaBank Escrow)',
+      payment_method: 'SEPA Direct Wire (Institutional Escrow)',
       transaction_id: 'DEP-SEPA-94102',
       action_url: 'https://kretzdespain.com/dashboard'
     },
@@ -1057,7 +1057,7 @@ ${data.action_url || `${settings.platformUrl}/dashboard/investments`}
         `,
         metricCards: [
           { label: 'Amount Credited', value: data.amount || '€13,245.00', status: 'Settled to Balance', badgeColor: '#087F5B' },
-          { label: 'Transfer Method', value: 'SEPA Wire', status: 'CaixaBank Escrow', badgeColor: '#087F5B' }
+          { label: 'Transfer Method', value: data.payment_method || 'SEPA Wire', status: 'Institutional Escrow', badgeColor: '#087F5B' }
         ],
         ctaText: 'View Wallet Balance',
         ctaUrl: data.action_url || `${settings.platformUrl}/dashboard`,

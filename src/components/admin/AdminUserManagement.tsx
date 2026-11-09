@@ -911,7 +911,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="text-[#69736F] font-bold">Payment Methods:</span>
                   <span className="font-mono bg-white px-2 py-0.5 rounded border border-[#E3E8E3] text-[11px]">
-                    IBAN: {inspectedUser.bankIban || 'Standard SEPA CaixaBank'}
+                    IBAN: {inspectedUser.bankIban || 'Standard SEPA (UNLIMIT)'}
                   </span>
                   {inspectedUser.cryptoDepositAddress && (
                     <span className="font-mono bg-white px-2 py-0.5 rounded border border-[#E3E8E3] text-[11px]">

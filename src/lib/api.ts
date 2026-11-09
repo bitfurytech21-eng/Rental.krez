@@ -223,10 +223,25 @@ export async function apiRequest<T = any>(
         });
       }
 
-      const errorMessage =
-        (typeof responseData === 'object' && responseData !== null && (responseData.message || responseData.error)) ||
-        (response.status === 405 ? 'Authentication server endpoint not found (HTTP 405).' : response.statusText) ||
-        `HTTP Error ${response.status}`;
+      let errorMessage =
+        (typeof responseData === 'object' && responseData !== null && (responseData.error || responseData.message)) ||
+        '';
+
+      if (!errorMessage) {
+        if (response.status === 405 || response.status === 404) {
+          errorMessage = 'Authentication service is temporarily unavailable. Please try again.';
+        } else if (response.status === 401 || response.status === 403) {
+          errorMessage = 'Invalid email address or security credentials.';
+        } else if (response.status === 429) {
+          errorMessage = 'Too many attempts. Please wait a moment before trying again.';
+        } else if (response.status >= 500) {
+          errorMessage = 'Service is temporarily unavailable. Please try again shortly.';
+        } else if (response.statusText && !response.statusText.includes('405') && response.statusText !== 'Method Not Allowed') {
+          errorMessage = response.statusText;
+        } else {
+          errorMessage = 'Unable to complete request. Please try again.';
+        }
+      }
 
       const errorCode = (typeof responseData === 'object' && responseData?.code) || undefined;
       const errorDetails = (typeof responseData === 'object' && responseData?.details) || responseData;

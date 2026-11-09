@@ -23,8 +23,9 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
   const [method, setMethod] = useState<'sepa' | 'crypto'>('sepa');
   const [amount, setAmount] = useState<number>(100);
   const [iban, setIban] = useState<string>(user?.bankIban || 'ES9121000418450200051829');
-  const [cryptoToken, setCryptoToken] = useState<string>('USDT');
-  const [cryptoNetwork, setCryptoNetwork] = useState<string>('Ethereum (ERC20)');
+  // Crypto withdrawal is streamlined exclusively to USDC (BEP20) on BNB Smart Chain
+  const cryptoToken = 'USDC';
+  const cryptoNetwork = 'BNB Smart Chain (BEP20)';
   const [cryptoAddress, setCryptoAddress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
@@ -33,14 +34,6 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
   if (!isOpen || !user) return null;
 
   const isKYCVerified = user.kycStatus === 'verified';
-
-  const networkChoices: Record<string, string[]> = {
-    USDT: ['Ethereum (ERC20)', 'Tron (TRC20)', 'Polygon POS', 'BNB Smart Chain (BEP20)'],
-    USDC: ['Polygon POS', 'Ethereum (ERC20)', 'Solana SPL', 'Arbitrum One'],
-    ETH: ['Ethereum (ERC20)', 'Arbitrum One', 'Optimism', 'Base'],
-    BTC: ['Bitcoin Native SegWit', 'BNB Smart Chain (BEP20)'],
-    SOL: ['Solana SPL']
-  };
 
   const handleWithdrawalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,8 +60,9 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
         return;
       }
     } else {
-      if (!cryptoAddress || cryptoAddress.trim().length < 16) {
-        setError('Please provide a valid destination cryptocurrency wallet address.');
+      const cleanAddr = cryptoAddress.trim();
+      if (!cleanAddr || !cleanAddr.startsWith('0x') || cleanAddr.length !== 42) {
+        setError('Please provide a valid BNB Smart Chain BEP20 address (starts with 0x, 42 characters).');
         return;
       }
     }
@@ -80,10 +74,10 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
           bankIban: iban.trim().toUpperCase() 
         });
       } else {
-        await ledger.requestWithdrawal(user.id, amount, `Crypto ${cryptoToken} (${cryptoNetwork})`, {
+        await ledger.requestWithdrawal(user.id, amount, 'Crypto USDC (BEP20)', {
           cryptoAddress: cryptoAddress.trim(),
-          network: cryptoNetwork,
-          token: cryptoToken
+          network: 'BNB Smart Chain (BEP20)',
+          token: 'USDC'
         });
       }
 
@@ -185,7 +179,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                 }`}
               >
                 <Coins className={`w-3.5 h-3.5 ${method === 'crypto' ? 'text-black' : 'text-[#999999]'}`} />
-                Crypto Wallet
+                USDC (BEP20)
               </button>
             </div>
 
@@ -236,53 +230,30 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                 </span>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-bold text-white mb-0.5">Asset / Token</label>
-                    <select
-                      value={cryptoToken}
-                      onChange={(e) => {
-                        const token = e.target.value;
-                        setCryptoToken(token);
-                        const nets = networkChoices[token] || ['Ethereum (ERC20)'];
-                        setCryptoNetwork(nets[0]);
-                      }}
-                      className="w-full text-xs font-bold p-2 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white focus:outline-none focus:border-white"
-                    >
-                      <option value="USDT" className="bg-[#151515] text-white">USDT (Tether)</option>
-                      <option value="USDC" className="bg-[#151515] text-white">USDC (USD Coin)</option>
-                      <option value="ETH" className="bg-[#151515] text-white">ETH (Ethereum)</option>
-                      <option value="BTC" className="bg-[#151515] text-white">BTC (Bitcoin)</option>
-                      <option value="SOL" className="bg-[#151515] text-white">SOL (Solana)</option>
-                    </select>
+              <div className="space-y-2.5">
+                <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center pb-1 border-b border-[#303030]">
+                    <span className="text-[#999999] text-[11px]">Payout Asset:</span>
+                    <span className="font-bold text-white text-[11px]">USDC (BEP20)</span>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-white mb-0.5">Network</label>
-                    <select
-                      value={cryptoNetwork}
-                      onChange={(e) => setCryptoNetwork(e.target.value)}
-                      className="w-full text-xs font-bold p-2 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white focus:outline-none focus:border-white"
-                    >
-                      {(networkChoices[cryptoToken] || ['Ethereum (ERC20)']).map(net => (
-                        <option key={net} value={net} className="bg-[#151515] text-white">{net}</option>
-                      ))}
-                    </select>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#999999] text-[11px]">Settlement Network:</span>
+                    <span className="font-bold text-[#00D2FF] text-[11px]">BNB Smart Chain (BEP20)</span>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-white text-[11px] block">Destination {cryptoToken} Wallet Address ({cryptoNetwork})</label>
+                  <label className="text-white text-[11px] font-bold block">Destination USDC (BEP20) Wallet Address</label>
                   <input
                     type="text"
                     value={cryptoAddress}
                     onChange={(e) => setCryptoAddress(e.target.value)}
-                    placeholder="0x... or wallet address"
+                    placeholder="0x... (BNB Smart Chain BEP20 Address)"
                     required
                     className="font-mono text-xs py-2 px-3 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white w-full focus:outline-none focus:border-white"
                   />
-                  <span className="text-[9px] text-[#999999] mt-0.5 block leading-tight">
-                    Verify the network carefully. Transfers sent to incompatible networks cannot be reversed.
+                  <span className="text-[9px] text-[#FF9F43] mt-0.5 block leading-tight">
+                    Transfers are sent in USDC via BNB Smart Chain (BEP20). Ensure your recipient address supports BEP20 tokens.
                   </span>
                 </div>
               </div>
@@ -328,7 +299,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
             </div>
             <h4 className="text-xl font-bold text-white">Withdrawal Request Registered</h4>
             <p className="text-xs text-[#D0D0D0] max-w-xs mx-auto leading-relaxed">
-              Your withdrawal of <strong className="text-white">{formatCurrency(amount)}</strong> via {method === 'sepa' ? 'SEPA Bank Wire' : `${cryptoToken} (${cryptoNetwork})`} has been safely locked on the ledger and sent to compliance administration.
+              Your withdrawal of <strong className="text-white">{formatCurrency(amount)}</strong> via {method === 'sepa' ? 'SEPA Bank Wire' : 'USDC (BEP20)'} has been safely locked on the ledger and sent to compliance administration.
             </p>
             <div className="bg-[#1D1D1D] p-3.5 rounded-2xl border border-[#303030] text-left text-xs space-y-1 font-mono">
               <div className="flex justify-between">

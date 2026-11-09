@@ -399,7 +399,7 @@ let platformConfig = {
     type: 'info'
   },
   kycEnforcement: 'STRICT',
-  supportedChains: ['Ethereum (ERC20)', 'Tron (TRC20)', 'Polygon POS', 'BNB Chain', 'Base'],
+  supportedChains: ['BNB Smart Chain (BEP20)'],
   settlementTimeHours: 24,
   updatedAt: new Date().toISOString(),
   updatedBy: 'usr-admin-01'
@@ -3156,7 +3156,7 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
 
   mockTransactions.unshift(depositTx);
 
-  // Send branded deposit initiated email with CaixaBank escrow instructions
+  // Send branded deposit initiated email with escrow instructions
   const userRecipient = resolvedRecipient;
   
   sendEmail({
@@ -3169,10 +3169,12 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
       currency,
       reference: ref,
       method,
-      beneficiary: 'Kretz Escrow Services S.L.',
-      iban: 'ES91 2100 0418 4502 0005 1829',
-      bic: 'CAIXESBBXXX',
-      bankName: 'CaixaBank Institutional Private Banking'
+      beneficiary: paymentConfig.traditional.beneficiary,
+      iban: paymentConfig.traditional.iban,
+      bic: paymentConfig.traditional.bic,
+      bankName: paymentConfig.traditional.bankName,
+      address: paymentConfig.traditional.address,
+      country: paymentConfig.traditional.country
     }
   }).catch(err => {
     logger.log({
@@ -3709,28 +3711,23 @@ router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => 
 
 let paymentConfig = {
   traditional: {
-    beneficiary: 'Kretz Escrow Services S.L.',
-    iban: 'ES91 2100 0418 4502 0005 1829',
-    bic: 'CAIXESBBXXX',
-    bankName: 'CaixaBank Institutional Escrow',
+    beneficiary: 'PREDRAG MIRKOVIC',
+    iban: 'CY05 9020 0001 0000 0201 0908 5462',
+    bic: 'CARDCY2LXXX',
+    bankName: 'UNLIMIT',
+    address: 'LIMASSOL 125 GEORGIOU GRIVA DIGENI',
+    country: 'CYPRUS',
     instructions: 'Include your unique investor reference in the concept wire transfer.'
   },
   cryptoNetworks: [
     {
-      id: 'net-usdt-erc20',
-      name: 'Ethereum (ERC20)',
-      token: 'USDT',
-      network: 'Ethereum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: '831ec7',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-base',
-      name: 'Base Network',
+      id: 'net-usdc-bep20',
+      name: 'BNB Smart Chain (BEP20)',
       token: 'USDC',
-      network: 'Base',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
+      network: 'BNB Smart Chain',
+      walletAddress: '0x8336A3f49125bAD02101B405699ac87e40D473BB',
+      contractEnd: '8ac76a',
+      contractAddress: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
       enabled: true
     }
   ]

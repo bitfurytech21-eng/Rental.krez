@@ -34,13 +34,13 @@ export const FAQ_DATA: FAQItem[] = [
     id: 'faq-5',
     category: 'Deposits & Withdrawals',
     question: 'What payment and deposit methods are accepted?',
-    answer: 'We support standard SEPA bank transfers in Euros, debit/credit cards, as well as crypto deposits in stablecoins (USDT & USDC on the Polygon POS network). All deposits are credited directly to your investor wallet balance.',
+    answer: 'We support standard SEPA bank transfers in Euros, debit/credit cards, as well as cryptocurrency deposits exclusively in USDC (BEP20 on the BNB Smart Chain). All deposits are credited directly to your investor wallet balance.',
   },
   {
     id: 'faq-6',
     category: 'Deposits & Withdrawals',
     question: 'How do withdrawals work and what are the processing times?',
-    answer: 'Available wallet funds (uninvested cash or collected rental dividends) can be withdrawn at any time. SEPA bank transfers are processed within 1 to 2 business days. Crypto stablecoin withdrawals undergo automated compliance security screening and execute on-chain within 15–45 minutes.',
+    answer: 'Available wallet funds (uninvested cash or collected rental dividends) can be withdrawn at any time. SEPA bank transfers are processed within 1 to 2 business days. Crypto withdrawals are disbursed in USDC (BEP20) following compliance screening and settle on-chain within 15–45 minutes.',
   },
   {
     id: 'faq-7',
