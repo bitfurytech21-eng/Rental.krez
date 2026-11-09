@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "types": ["vite/client", "node"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../web/src/*"],
+      "@web/*": ["../web/src/*"],
+      "@admin/*": ["./src/*"],
+      "@rental-log/database": ["../../packages/database/src/index.ts"],
+      "@rental-log/validation": ["../../packages/validation/src/index.ts"],
+      "@rental-log/auth": ["../../packages/auth/src/index.ts"],
+      "@rental-log/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": ["src", "../web/src", "../../packages"]
+}
