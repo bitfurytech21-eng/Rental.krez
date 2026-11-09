@@ -17,6 +17,6 @@ jobs:
       - run: npm run lint
       - run: npm test -w @rental-log/web
       - run: npx tsx apps/api/src/routes.test.ts
-      - run: npx tsx apps/api/src/worker.test.ts
+      - run: npx tsx apps/api/src/worker.contract.ts
       - run: npm run build -w @rental-log/web
       - run: npm run build -w @rental-log/admin

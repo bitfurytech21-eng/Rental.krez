@@ -1,7 +1,6 @@
 /**
- * Core Hono routes migrated for Workers/fetch compatibility (step 1a/4).
- * Uses shared in-memory store and existing auth/admin primitives where Workers-safe.
- * CSRF: bearer-token auth accepted; cookie-session mutations should send X-CSRF-Token when session has csrfToken (client already does). Turnstile: enforce via binding in production (TODO: wire env.TURNSTILE_SECRET_KEY).
+ * Core Hono routes migrated for Workers/fetch compatibility.
+ * CSRF: cookie-session mutations should send X-CSRF-Token (client does). Turnstile enforced when TURNSTILE_SECRET_KEY is set.
  */
 import { Hono } from 'hono';
 import { ALL_KRETZ_MEMBERS } from '../../../packages/database/src/kretzTeam';
@@ -14,12 +13,12 @@ import { createAdminSession, verifyAdminSessionToken, revokeAdminSession, checkA
 import { createDeposit, createWithdrawal, createInvestment, convertTreasury } from './ledger-store';
 import { verifyTurnstile, requireCsrfForCookieAuth } from './security';
 
-export type Bindings = { API_VERSION?: string; ALLOWED_ORIGINS?: string; ADMIN_EMAIL?: string; ADMIN_PASSWORD_HASH?: string; TURNSTILE_SECRET_KEY?: string };
+export type Bindings = { API_VERSION?: string; ALLOWED_ORIGINS?: string; ADMIN_EMAIL?: string; ADMIN_PASSWORD_HASH?: string; TURNSTILE_SECRET_KEY?: string; DEMO_SEED?: string; DB?: D1Database; CACHE?: KVNamespace; SESSIONS?: KVNamespace; IDEMPOTENCY?: KVNamespace };
 type Vars = { user?: any; session?: any; requestId: string };
 
 export const core = new Hono<{ Bindings: Bindings; Variables: Vars }>();
 
-function rid() { const b = new Uint8Array(4); crypto.getRandomValues(b); return `req-${Array.from(b, x => x.toString(16).padStart(2, '0')).join('')}`; }
+function rid() { const b = new Uint8Array(4); crypto.getRandomValues(b); return `req-${Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')}`; }
 function ok(c: any, data: any, extra: any = {}, status = 200) { return c.json({ success: true, data, requestId: c.get('requestId'), apiVersion: c.env?.API_VERSION || 'v1', ...extra }, status); }
 function fail(c: any, error: string, status = 400, extra: any = {}) { return c.json({ success: false, error, requestId: c.get('requestId'), apiVersion: c.env?.API_VERSION || 'v1', ...extra }, status); }
 
@@ -58,7 +57,14 @@ async function authUser(c: any) {
   return null;
 }
 
-function csrfMw(){ return async (c:any,next:any)=>{ const sess=c.get('session'); const r=requireCsrfForCookieAuth(sess,c); if(!r.ok) return fail(c,r.message||'CSRF failed',403,{code:'CSRF_INVALID'}); await next(); }; }
+function csrfMw() {
+  return async (c: any, next: any) => {
+    const sess = c.get('session');
+    const r = requireCsrfForCookieAuth(sess, c);
+    if (!r.ok) return fail(c, r.message || 'CSRF failed', 403, { code: 'CSRF_INVALID' });
+    await next();
+  };
+}
 function requireAuthMw() {
   return async (c: any, next: any) => {
     const a = await authUser(c);
@@ -118,8 +124,8 @@ for (const p of ['/api/v1/marketplace/listings/:id', '/api/v1/properties/:id', '
 }
 
 core.post('/api/v1/auth/register', async (c) => {
-  const body0 = await c.req.json().catch(() => ({})) as any; const tv = await verifyTurnstile(c, body0?.turnstileToken); if(!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message||'Turnstile failed', 403, {code:'TURNSTILE_FAILED'});
-  const body = body0 as any;
+  const body = await c.req.json().catch(() => ({})) as any;
+  const tv = await verifyTurnstile(c, body?.turnstileToken); if (!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message || 'Turnstile failed', 403, { code: 'TURNSTILE_FAILED' });
   const email = (body.email || '').toLowerCase().trim(); const pass = body.password || body.pass; const fullName = body.fullName;
   if (!email || !pass || !fullName) return fail(c, 'Full legal name, valid email, and password are required.', 400, { code: 'VALIDATION_ERROR' });
   if (!validateEmail(email)) return fail(c, 'Please provide a valid email address.', 400, { code: 'INVALID_EMAIL_FORMAT' });
@@ -135,8 +141,8 @@ core.post('/api/v1/auth/register', async (c) => {
 });
 
 core.post('/api/v1/auth/login', async (c) => {
-  const body0 = await c.req.json().catch(() => ({})) as any; const tv = await verifyTurnstile(c, body0?.turnstileToken); if(!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message||'Turnstile failed', 403, {code:'TURNSTILE_FAILED'});
-  const body = body0 as any;
+  const body = await c.req.json().catch(() => ({})) as any;
+  const tv = await verifyTurnstile(c, body?.turnstileToken); if (!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message || 'Turnstile failed', 403, { code: 'TURNSTILE_FAILED' });
   const email = (body.email || '').toLowerCase().trim(); const pass = body.password || body.pass;
   if (!email || !pass) return fail(c, 'Please provide both email address and password.', 400, { code: 'MISSING_FIELDS' });
   const lockKey = `${c.req.header('cf-connecting-ip') || 'ip'}:${email}`;
@@ -165,6 +171,7 @@ core.get('/api/v1/auth/me', requireAuthMw(), (c) => ok(c, c.get('user')));
 
 for (const p of ['/api/v1/admin/login', '/api/v1/auth/admin/login', '/api/v1/auth/admin-login']) core.post(p, async (c) => {
   const body = await c.req.json().catch(() => ({})) as any;
+  const tv = await verifyTurnstile(c, body?.turnstileToken); if (!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message || 'Turnstile failed', 403, { code: 'TURNSTILE_FAILED' });
   const email = (body.email || '').toLowerCase().trim(); const pass = body.password || body.pass;
   const ip = c.req.header('cf-connecting-ip') || 'ip'; const rl = checkAdminRateLimit(ip);
   if (rl.isLocked) return fail(c, `Admin login locked for ${rl.remainingSeconds}s.`, 429, { code: 'RATE_LIMIT_EXCEEDED' });
@@ -192,6 +199,7 @@ for (const p of ['/api/v1/portfolio', '/api/v1/portfolio/summary']) core.get(p, 
   const holdings = [...holdingsMap.values()]; const totalInvested = holdings.reduce((s, h) => s + h.totalAmountInvested, 0); const totalEarned = holdings.reduce((s, h) => s + h.totalEarned, 0);
   return ok(c, { summary: { totalInvested, currentValue: totalInvested, totalEarned, availableBalance: rec?.balance || 0, currency: 'EUR' }, holdings, recentTransactions: mockTransactions.filter((t) => t.userId === u.id).slice(0, 10) });
 });
+core.get('/api/v1/dashboard/summary', requireAuthMw(), (c) => ok(c, { summary: { availableBalance: mockUsers.find((x) => x.id === c.get('user').id)?.balance || 0, currency: 'EUR' } }));
 
 core.get('/api/v1/admin/distributions/records', (c) => {
   const records = dailyPaymentService.getRecords({ propertyId: c.req.query('propertyId') || undefined, userId: c.req.query('userId') || undefined });
@@ -203,6 +211,8 @@ core.get('/api/v1/distributions/export', (c) => {
   if ((c.req.query('format') || 'csv') === 'json') return c.json(records);
   return new Response(generatePropertyPaymentsCsv(records, c.req.query('propertyId') || 'All Properties'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="distributions-${c.req.query('propertyId') || 'all'}.csv"` } });
 });
+core.get('/api/v1/admin/system-health', (c) => c.json({ status: 'healthy', apiVersion: c.env?.API_VERSION || 'v1', requestId: c.get('requestId') }));
+core.get('/api/v1/admin/settings', (c) => ok(c, platformConfig));
 
 core.get('/api/v1/wallet/balance', requireAuthMw(), (c) => { const rec = mockUsers.find((x) => x.id === c.get('user').id); return ok(c, { balance: rec?.balance || 0, currency: 'EUR' }); });
 core.get('/api/v1/user/wallet/balance', requireAuthMw(), (c) => core.fetch(new Request(new URL('/api/v1/wallet/balance', c.req.url), c.req.raw), c.env, c.executionCtx));
@@ -220,26 +230,28 @@ core.get('/api/v1/treasury/rates', (c) => ok(c, { base: 'EUR', ratesToEur: { EUR
 core.get('/api/v1/treasury/balances', requireAuthMw(), (c) => ok(c, { balances: { EUR: mockUsers.find((x) => x.id === c.get('user').id)?.balance || 0 } }));
 core.get('/api/v1/payments/config', (c) => ok(c, { traditional: { enabled: true, beneficiary: 'Kretz Group', iban: '', bic: '', bankName: '', country: 'FR', instructions: '' }, cryptoNetworks: [] }));
 
-async function fin(c:any, fn:any){ const csrf=requireCsrfForCookieAuth(c.get('session'),c); if(!csrf.ok) return fail(c, csrf.message||'CSRF failed',403,{code:'CSRF_INVALID'}); const body:any=await c.req.json().catch(()=>({})); const t=await verifyTurnstile(c, body?.turnstileToken); if(!t.ok) return fail(c,t.message||'Turnstile failed',403,{code:'TURNSTILE_FAILED'}); const r=await fn(c.env,c.get('user'),body); return c.json({...r.body, requestId:c.get('requestId')}, r.status as any); }
-core.post('/api/v1/deposits', requireAuthMw(), (c)=>fin(c,createDeposit));
-core.post('/api/v1/withdrawals', requireAuthMw(), (c)=>fin(c,createWithdrawal));
-core.post('/api/v1/investments', requireAuthMw(), (c)=>fin(c,createInvestment));
-core.post('/api/v1/treasury/convert', requireAuthMw(), (c)=>fin(c,convertTreasury));
+async function fin(c: any, fn: any) {
+  const csrf = requireCsrfForCookieAuth(c.get('session'), c);
+  if (!csrf.ok) return fail(c, csrf.message || 'CSRF failed', 403, { code: 'CSRF_INVALID' });
+  const body: any = await c.req.json().catch(() => ({}));
+  const t = await verifyTurnstile(c, body?.turnstileToken);
+  if (!t.ok) return fail(c, t.message || 'Turnstile failed', 403, { code: 'TURNSTILE_FAILED' });
+  const r = await fn(c.env, c.get('user'), body);
+  return c.json({ ...r.body, requestId: c.get('requestId') }, r.status as any);
+}
+core.post('/api/v1/deposits', requireAuthMw(), (c) => fin(c, createDeposit));
+core.post('/api/v1/withdrawals', requireAuthMw(), (c) => fin(c, createWithdrawal));
+core.post('/api/v1/investments', requireAuthMw(), (c) => fin(c, createInvestment));
+core.post('/api/v1/treasury/convert', requireAuthMw(), (c) => fin(c, convertTreasury));
 
-core.post('/api/v1/contact', async (c) => { const b: any = await c.req.json().catch(() => ({})); if (!b?.email || !b?.fullName || !b?.message) return fail(c, 'fullName, email and message required', 400); return c.json({ success: true, data: { ticketId: newId('tkt'), createdAt: new Date().toISOString() }, message: 'Request received.', requestId: c.get('requestId') }, 201); });
+core.post('/api/v1/contact', async (c) => { const b: any = await c.req.json().catch(() => ({})); const tv = await verifyTurnstile(c, b?.turnstileToken); if (!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message || 'Turnstile failed', 403, { code: 'TURNSTILE_FAILED' }); if (!b?.email || !b?.fullName || !b?.message) return fail(c, 'fullName, email and message required', 400); return c.json({ success: true, data: { ticketId: newId('tkt'), createdAt: new Date().toISOString() }, message: 'Request received.', requestId: c.get('requestId') }, 201); });
 core.post('/api/v1/memberships/apply', async (c) => { await c.req.json().catch(() => ({})); return c.json({ success: true, data: { id: newId('mem') }, message: 'Application received.', requestId: c.get('requestId') }, 201); });
 core.post('/api/v1/newsletter/subscribe', async (c) => c.json({ success: true, message: 'Subscribed.', requestId: c.get('requestId') }));
-core.post('/api/v1/security/verify-turnstile', async (c) => c.json({ success: true, message: 'Turnstile verification delegated in Workers demo mode.', requestId: c.get('requestId') }));
+core.post('/api/v1/security/verify-turnstile', async (c) => { const b: any = await c.req.json().catch(() => ({})); const t = await verifyTurnstile(c, b?.turnstileToken || b?.token); return c.json({ success: t.ok, message: t.ok ? 'Verified.' : (t.message || 'Verification failed.'), requestId: c.get('requestId') }, t.ok ? 200 : 400); });
 core.post('/api/v1/auth/password/forgot', async (c) => c.json({ success: true, message: 'If the account exists, a reset email has been sent.', requestId: c.get('requestId') }));
 core.post('/api/v1/auth/password/reset', async (c) => fail(c, 'Password reset token processing not yet migrated to Workers runtime.', 501, { code: 'NOT_MIGRATED' }));
 core.post('/api/v1/admin/customize', requireAdminMw(), async (c) => fail(c, 'Admin credential customization uses Node fs; migrate to D1/KV binding.', 501, { code: 'NOT_MIGRATED' }));
 core.get('/api/v1/user/referrals', requireAuthMw(), (c) => ok(c, { referralCode: 'REF-' + c.get('user').id.slice(-6).toUpperCase(), referralLink: 'https://rental.log/register?ref=REF', totalInvited: 0, totalRegistered: 0, totalFunded: 0, pendingReward: 0, earnedReward: 0, referrals: [] }));
 core.post('/api/v1/user/referrals/invite', requireAuthMw(), async (c) => { const b: any = await c.req.json().catch(() => ({})); return c.json({ success: true, message: 'Invite queued.', data: { referral: { id: newId('ref'), email: b.email || '', date: new Date().toISOString(), status: 'invited', reward: 0 }, referrals: [] }, requestId: c.get('requestId') }); });
-
-
-core.get('/api/v1/dashboard/summary', requireAuthMw(), (c)=> ok(c, { summary: { availableBalance: mockUsers.find((x)=>x.id===c.get('user').id)?.balance||0, currency:'EUR' } }));
-core.get('/api/v1/admin/system-health', (c)=> c.json({ status:'healthy', apiVersion:'v1', requestId:c.get('requestId') }));
-core.get('/api/v1/admin/settings', (c)=> ok(c, platformConfig));
-core.get('/api/v1/team', (c)=> ok(c, ALL_KRETZ_MEMBERS));
 
 export default core;

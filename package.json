@@ -24,7 +24,8 @@
     "test": "npm run test -w @rental-log/web && npm run test -w @rental-log/api",
     "clean": "rm -rf apps/web/dist apps/api/dist-worker",
     "lint:eslint": "npx eslint \"apps/api/src/hono*\" \"apps/api/src/shared-store.ts\" \"apps/api/src/worker*\" \"packages/*/src/**/*.ts\" \"apps/admin/src/*.ts*\" \"apps/admin/vite.config.ts\" 2>&1 || echo \"(eslint TS7/typescript-eslint compat pending; tsc + contract tests are the enforced gate)\"",
-    "format:check": "echo \"format check: prettier not installed (add if desired); eslint covers migrated surfaces\""
+    "format:check": "echo \"format check: prettier not installed (add if desired); eslint covers migrated surfaces\"",
+    "test:api": "npx tsx apps/api/src/routes.test.ts && npx tsx apps/api/src/worker.contract.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

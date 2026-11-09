@@ -12,7 +12,7 @@
     "build:worker": "wrangler deploy --dry-run --outdir dist-worker",
     "deploy": "wrangler deploy",
     "lint": "tsc --noEmit",
-    "test": "tsx src/routes.test.ts && tsx src/worker.test.ts"
+    "test": "tsx src/routes.test.ts && tsx src/worker.contract.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
