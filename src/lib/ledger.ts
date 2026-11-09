@@ -1800,19 +1800,34 @@ class LedgerService {
    * Admin Review Withdrawal:
    * Approve or reject withdrawal. If rejected, funds are safely refunded back to user balance.
    */
-  public async reviewWithdrawal(txId: string, approved: boolean, reason?: string): Promise<Transaction> {
+  /**
+   * Only an administrator may approve or reject money movements. The caller must be
+   * identified and must be an admin in the ledger's own user records, so a user cannot
+   * approve their own (or anyone's) deposit or withdrawal.
+   */
+  private assertAdminActor(actor: { id: string; role?: string } | undefined): { id: string; email: string } {
+    const record = actor ? this.getUserById(actor.id) : undefined;
+    if (!actor || !record || record.role !== 'admin' || actor.role !== 'admin') {
+      throw new Error('Forbidden: only administrators can review deposits and withdrawals.');
+    }
+    return { id: record.id, email: record.email };
+  }
+
+  public async reviewWithdrawal(actor: { id: string; role?: string }, txId: string, approved: boolean, reason?: string): Promise<Transaction> {
+    const admin = this.assertAdminActor(actor);
     const tx = this.transactions.find(t => t.id === txId && t.type === 'withdrawal');
     if (!tx) throw new Error('Withdrawal transaction not found.');
     if (tx.status !== 'pending') throw new Error(`Withdrawal cannot be reviewed in status '${tx.status}'.`);
 
     const user = this.getUserById(tx.userId);
     if (!user) throw new Error('Investor not found.');
+    if (user.id === admin.id) throw new Error('Forbidden: you cannot review your own transaction.');
 
     if (approved) {
       tx.status = 'completed';
       tx.txHash = (tx.metadata?.destinationAddress ? 'CRYPTO-EXEC-' : 'SEPA-EXEC-') + Math.random().toString(36).substring(2, 10).toUpperCase();
       this.createNotification(user.id, 'Withdrawal Executed', `Your withdrawal of €${tx.amount.toFixed(2)} has been successfully approved and transferred.`, 'success');
-      this.logAudit('usr-admin-1', 'admin@kretz.com', 'WITHDRAWAL_APPROVED', `Approved withdrawal of €${tx.amount.toFixed(2)} for ${user.email} (${tx.paymentMethod})`);
+      this.logAudit(admin.id, admin.email, 'WITHDRAWAL_APPROVED', `Approved withdrawal of €${tx.amount.toFixed(2)} for ${user.email} (${tx.paymentMethod})`);
     } else {
       // Refund balance
       user.walletBalance = Number((user.walletBalance + tx.amount).toFixed(2));
@@ -1821,27 +1836,29 @@ class LedgerService {
       if (!tx.metadata) tx.metadata = {};
       tx.metadata.rejectionReason = reason || 'Compliance or bank details verification check failed.';
       this.createNotification(user.id, 'Withdrawal Declined', `Your withdrawal of €${tx.amount.toFixed(2)} was declined: ${tx.metadata.rejectionReason}. Funds were returned to your balance.`, 'warning');
-      this.logAudit('usr-admin-1', 'admin@kretz.com', 'WITHDRAWAL_REJECTED', `Rejected withdrawal of €${tx.amount.toFixed(2)} for ${user.email}`);
+      this.logAudit(admin.id, admin.email, 'WITHDRAWAL_REJECTED', `Rejected withdrawal of €${tx.amount.toFixed(2)} for ${user.email}`);
     }
 
     this.saveState();
     return tx;
   }
 
-  public async reviewDeposit(txId: string, approved: boolean, reason?: string): Promise<Transaction> {
+  public async reviewDeposit(actor: { id: string; role?: string }, txId: string, approved: boolean, reason?: string): Promise<Transaction> {
+    const admin = this.assertAdminActor(actor);
     const tx = this.transactions.find(t => t.id === txId && t.type === 'deposit');
     if (!tx) throw new Error('Deposit transaction not found.');
     if (tx.status !== 'pending') throw new Error(`Deposit cannot be reviewed in status '${tx.status}'.`);
 
     const user = this.getUserById(tx.userId);
     if (!user) throw new Error('Investor not found.');
+    if (user.id === admin.id) throw new Error('Forbidden: you cannot review your own transaction.');
 
     if (approved) {
       tx.status = 'completed';
       user.walletBalance = Number((user.walletBalance + tx.amount).toFixed(2));
       tx.balanceAfter = user.walletBalance;
       this.createNotification(user.id, 'Deposit Approved & Credited', `Your deposit of €${tx.amount.toFixed(2)} has been approved by admin and credited to your wallet balance.`, 'success');
-      this.logAudit('usr-admin-1', 'admin@kretz.com', 'DEPOSIT_APPROVED', `Approved deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
+      this.logAudit(admin.id, admin.email, 'DEPOSIT_APPROVED', `Approved deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
 
       // Also mark any attached verification document as approved
       const linkedDoc = this.verificationDocuments.find(d => d.transactionReference === tx.reference);
@@ -1855,7 +1872,7 @@ class LedgerService {
       if (!tx.metadata) tx.metadata = {};
       tx.metadata.rejectionReason = reason || 'Deposit bank wire transfer reference or receipt could not be verified.';
       this.createNotification(user.id, 'Deposit Rejected', `Your deposit request for €${tx.amount.toFixed(2)} was declined: ${tx.metadata.rejectionReason}.`, 'warning');
-      this.logAudit('usr-admin-1', 'admin@kretz.com', 'DEPOSIT_REJECTED', `Rejected deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
+      this.logAudit(admin.id, admin.email, 'DEPOSIT_REJECTED', `Rejected deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
 
       const linkedDoc = this.verificationDocuments.find(d => d.transactionReference === tx.reference);
       if (linkedDoc) {
