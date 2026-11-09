@@ -9,7 +9,9 @@
  * - Downloadable audit statements (CSV / JSON)
  */
 
-import crypto from 'crypto';
+function __req(name:string):any{try{return (0,eval)('require')(name)}catch{return null}}
+const crypto:any = globalThis.crypto ?? __req('node:crypto');
+function hex(n:number){ if(crypto?.getRandomValues){const b=new Uint8Array(n);crypto.getRandomValues(b);return [...b].map(x=>x.toString(16).padStart(2,'0')).join('')} return __req('node:crypto').randomBytes(n).toString('hex') }
 import { roundDecimal } from '../../../packages/validation/src/financialService';
 import { 
   PropertyDailyPaymentConfig, 
@@ -426,7 +428,7 @@ class DailyPaymentService {
   ): DailyPaymentRunResult {
     const targetDate = (request.targetDate || new Date().toISOString().split('T')[0]).split('T')[0];
     const runId = `RUN-${Date.now()}`;
-    const auditTrailId = `AUDIT-DIST-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+    const auditTrailId = `AUDIT-DIST-${hex(4).toUpperCase()}`;
 
     const targetProps = request.propertyId 
       ? [this.configs.get(request.propertyId)].filter(Boolean) as PropertyDailyPaymentConfig[]
@@ -533,7 +535,7 @@ class DailyPaymentService {
 
       // Deduct from available funds and process payments
       for (const plan of plannedPayments) {
-        const ref = `DIST-${config.tokenTicker}-${targetDate.replace(/-/g, '')}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+        const ref = `DIST-${config.tokenTicker}-${targetDate.replace(/-/g, '')}-${hex(3).toUpperCase()}`;
         const creditResult = creditUserCallback(
           plan.investor.userId,
           plan.amountEUR,

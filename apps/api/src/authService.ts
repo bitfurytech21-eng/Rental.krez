@@ -16,7 +16,10 @@
  * - Account status enforcement (active vs. suspended)
  */
 
-import crypto from 'crypto';
+const __isNode = typeof process !== 'undefined' && !!(process as any).versions?.node;
+function __req(name:string):any{try{return __isNode ? (0,eval)('require')(name):null}catch{return null}}
+const crypto:any = globalThis.crypto ?? __req('node:crypto');
+function hex(n:number){ if(crypto?.getRandomValues){const b=new Uint8Array(n);crypto.getRandomValues(b);return [...b].map((x:number)=>x.toString(16).padStart(2,'0')).join('')} return __req('node:crypto').randomBytes(n).toString('hex') }
 import bcrypt from 'bcryptjs';
 import { logger } from './logger';
 import { UserRoleType } from './middleware';
@@ -148,9 +151,9 @@ export function createSession(params: {
 }): ServerSession {
   const now = Date.now();
   // Generate high-entropy 256-bit cryptographically secure session token
-  const sessionId = `kz_sess_${crypto.randomBytes(32).toString('hex')}`;
+  const sessionId = `kz_sess_${hex(32)}`;
   // Generate high-entropy CSRF token tied to this session
-  const csrfToken = crypto.randomBytes(24).toString('hex');
+  const csrfToken = hex(24);
 
   const session: ServerSession = {
     id: sessionId,
@@ -308,7 +311,7 @@ export function verifyCsrfToken(session: ServerSession, clientToken: string | un
     const sessionBuf = Buffer.from(session.csrfToken, 'utf-8');
     const clientBuf = Buffer.from(clientToken, 'utf-8');
     if (sessionBuf.length !== clientBuf.length) return false;
-    return crypto.timingSafeEqual(sessionBuf, clientBuf);
+    const nc=__req('node:crypto'); if(nc?.timingSafeEqual) return nc.timingSafeEqual(Buffer.from(sessionBuf),Buffer.from(clientBuf)); if(sessionBuf.length!==clientBuf.length) return false; let d=0; for(let i=0;i<sessionBuf.length;i++) d|=sessionBuf[i]^clientBuf[i]; return d===0; //;
   } catch {
     return false;
   }

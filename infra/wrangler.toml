@@ -2,27 +2,26 @@ name = "rental-log-api"
 main = "src/worker.ts"
 compatibility_date = "2026-11-09"
 compatibility_flags = ["nodejs_compat"]
+find_additional_modules = true
 
 [vars]
 API_VERSION = "v1"
 RUNTIME_MODE = "workers-hono"
 
-# Set via `wrangler secret put` / dashboard (do not commit):
-# DATABASE_URL, SESSION_SECRET, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD_HASH,
-# TURNSTILE_SECRET_KEY, RESEND_API_KEY/SENDGRID_API_KEY/SMTP_*, SENTRY_DSN
-
+# Production bindings (configure IDs before deploy):
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "rental-log"
 # database_id = "<id>"
-
 # [[kv_namespaces]]
 # binding = "CACHE"
 # id = "<id>"
 # [[kv_namespaces]]
 # binding = "SESSIONS"
 # id = "<id>"
-
+# [[kv_namespaces]]
+# binding = "IDEMPOTENCY"
+# id = "<id>"
 # [[r2_buckets]]
 # binding = "ASSETS"
 # bucket_name = "rental-log-assets"
