@@ -330,6 +330,7 @@ export const AdminPanel: React.FC = () => {
   const handleReviewDeposit = async (txId: string, approved: boolean) => {
     try {
       await ledger.reviewDeposit(
+        { id: activeUser.id, role: activeUser.role },
         txId,
         approved,
         approved ? undefined : 'Bank transfer wire reference or blockchain transaction could not be verified in treasury feed.'
@@ -346,6 +347,7 @@ export const AdminPanel: React.FC = () => {
   const handleReviewWithdrawal = async (txId: string, approved: boolean) => {
     try {
       await ledger.reviewWithdrawal(
+        { id: activeUser.id, role: activeUser.role },
         txId,
         approved,
         approved ? undefined : 'Compliance review flagged incomplete banking or wallet verification documentation.'

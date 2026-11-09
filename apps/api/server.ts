@@ -11,12 +11,11 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
-dotenv.config({ path: path.resolve(dirname(fileURLToPath(import.meta.url)), '../../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-dotenv.config();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
 const repoRoot = path.resolve(__dirname, '../..');
 const webRoot = path.resolve(repoRoot, 'apps/web');
 

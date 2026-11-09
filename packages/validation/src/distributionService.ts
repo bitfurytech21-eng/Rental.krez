@@ -58,9 +58,10 @@ export function buildProjectedDistribution(
     const d = new Date(start);
     d.setUTCDate(start.getUTCDate() + i);
     const date = d.toISOString().split('T')[0];
+    const id = buildDailyPaymentIdempotencyKey(config.propertyId, userId, date);
     records.push({
-      id: buildDailyPaymentIdempotencyKey(config.propertyId, userId, date),
-      idempotencyKey: buildDailyPaymentIdempotencyKey(config.propertyId, userId, date),
+      id,
+      idempotencyKey: id,
       propertyId: config.propertyId,
       propertyTitle: config.propertyTitle,
       propertyImage: '',
@@ -77,14 +78,15 @@ export function buildProjectedDistribution(
       propertyDailyRatePercent: config.approvedDailyPercent,
       calculatedDailyAmountEUR: dailyAmount,
       status: 'projected',
+      reference: id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    } as DailyPaymentRecord);
+    });
   }
   return records;
 }
 
-export function getDistributionStatusBadge(status: DistributionPaymentStatus): { label: string; className: string } {
+export function getDistributionStatusBadge(status: DistributionPaymentStatus): { label: string; className: string; badgeClass: string } {
   const map: Record<DistributionPaymentStatus, { label: string; className: string }> = {
     projected: { label: 'Projected', className: 'bg-slate-100 text-slate-700' },
     accrued: { label: 'Accrued', className: 'bg-amber-100 text-amber-700' },
@@ -94,7 +96,8 @@ export function getDistributionStatusBadge(status: DistributionPaymentStatus): {
     failed: { label: 'Failed', className: 'bg-red-100 text-red-700' },
     suspended: { label: 'Suspended', className: 'bg-gray-200 text-gray-700' },
   };
-  return map[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
+  const base = map[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
+  return { ...base, badgeClass: base.className };
 }
 
 export function summarizeUserPropertyDistributions(
@@ -109,34 +112,43 @@ export function summarizeUserPropertyDistributions(
   return Array.from(byProperty.entries()).map(([propertyId, items]) => {
     const first = items[0];
     const paid = items.filter(i => i.status === 'paid');
+    const pending = items.filter(i => i.status !== 'paid' && i.status !== 'failed');
     const latest = [...items].sort((a, b) => b.date.localeCompare(a.date))[0];
+    const next = [...items].filter(i => i.status !== 'paid' && i.status !== 'failed').sort((a, b) => a.date.localeCompare(b.date))[0];
     return {
       propertyId,
       propertyTitle: first.propertyTitle,
       propertyImage: first.propertyImage,
+      location: '',
       tokenTicker: first.tokenTicker,
-      status: first.status,
-      userTokens: first.userTokensCount,
-      userAllocatedInvestmentEUR: first.userAllocatedInvestmentEUR,
-      dailyRatePercent: first.propertyDailyRatePercent,
-      expectedDailyAmountEUR: first.calculatedDailyAmountEUR,
-      totalPaidEUR: roundDecimal(paid.reduce((s, i) => s + i.calculatedDailyAmountEUR, 0), 2),
-      latestPaymentDate: latest?.date,
-      latestPaymentStatus: latest?.status,
-      records: items,
-    } as UserPropertyDistributionSummary;
+      tokenPriceEUR: first.userAllocatedInvestmentEUR && first.userTokensCount ? roundDecimal(first.userAllocatedInvestmentEUR / first.userTokensCount, 2) : 0,
+      tokensOwned: first.userTokensCount,
+      totalPropertyTokens: first.userOwnershipPercent > 0 ? Math.round((first.userTokensCount / first.userOwnershipPercent) * 100) : 0,
+      totalAllocatedInvestmentEUR: first.userAllocatedInvestmentEUR,
+      userOwnershipPercent: first.userOwnershipPercent,
+      approvedAnnualPercent: first.approvedAnnualRatePercent,
+      approvedDailyPercent: first.propertyDailyRatePercent,
+      dailyPaymentAmountEUR: first.calculatedDailyAmountEUR,
+      totalPaymentsReceivedEUR: roundDecimal(paid.reduce((s, i) => s + i.calculatedDailyAmountEUR, 0), 2),
+      pendingPaymentsEUR: roundDecimal(pending.reduce((s, i) => s + i.calculatedDailyAmountEUR, 0), 2),
+      nextScheduledPaymentDate: next?.date || latest?.date || '',
+      paymentStatus: (first.status === 'paid' || first.status === 'processing' || first.status === 'approved' || first.status === 'accrued' || first.status === 'projected') ? 'active' : 'suspended',
+      availablePropertyFundsEUR: 0,
+      paymentSchedule: 'daily',
+      paymentHistory: items,
+    };
   });
 }
 
-export function generatePropertyPaymentsCsv(records: DailyPaymentRecord[]): string {
+export function generatePropertyPaymentsCsv(records: DailyPaymentRecord[], _propertyLabel?: string): string {
   const headers = [
     'id','propertyId','propertyTitle','userId','userEmail','date','userTokensCount',
-    'userAllocatedInvestmentEUR','propertyDailyRatePercent','calculatedDailyAmountEUR','status','transactionId'
+    'userAllocatedInvestmentEUR','propertyDailyRatePercent','calculatedDailyAmountEUR','status','transactionId','reference'
   ];
   const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const rows = records.map(r => [
     r.id,r.propertyId,r.propertyTitle,r.userId,r.userEmail,r.date,r.userTokensCount,
-    r.userAllocatedInvestmentEUR,r.propertyDailyRatePercent,r.calculatedDailyAmountEUR,r.status,r.transactionId
+    r.userAllocatedInvestmentEUR,r.propertyDailyRatePercent,r.calculatedDailyAmountEUR,r.status,r.transactionId,r.reference
   ].map(escape).join(','));
   return [headers.join(','), ...rows].join('\n');
 }

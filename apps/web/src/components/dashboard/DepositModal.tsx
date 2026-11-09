@@ -181,7 +181,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     setIsVerifying(true);
     setError(null);
     try {
-      const updatedTx = await ledger.reviewDeposit(submittedTx.id, true);
+      const updatedTx = await ledger.reviewDeposit({ id: user.id, role: (user as any).role }, submittedTx.id, true);
       setSubmittedTx(updatedTx || { ...submittedTx, status: 'completed' });
       refreshUser();
       onSuccess();
