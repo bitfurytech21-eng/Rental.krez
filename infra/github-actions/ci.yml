@@ -13,6 +13,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm install
+      - run: npm audit --omit=dev || true
       - run: npm run lint
       - run: npm test -w @rental-log/web
       - run: npx tsx apps/api/src/routes.test.ts

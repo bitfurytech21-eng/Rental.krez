@@ -58,6 +58,7 @@ async function authUser(c: any) {
   return null;
 }
 
+function csrfMw(){ return async (c:any,next:any)=>{ const sess=c.get('session'); const r=requireCsrfForCookieAuth(sess,c); if(!r.ok) return fail(c,r.message||'CSRF failed',403,{code:'CSRF_INVALID'}); await next(); }; }
 function requireAuthMw() {
   return async (c: any, next: any) => {
     const a = await authUser(c);
@@ -117,7 +118,8 @@ for (const p of ['/api/v1/marketplace/listings/:id', '/api/v1/properties/:id', '
 }
 
 core.post('/api/v1/auth/register', async (c) => {
-  const body = await c.req.json().catch(() => ({})) as any;
+  const body0 = await c.req.json().catch(() => ({})) as any; const tv = await verifyTurnstile(c, body0?.turnstileToken); if(!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message||'Turnstile failed', 403, {code:'TURNSTILE_FAILED'});
+  const body = body0 as any;
   const email = (body.email || '').toLowerCase().trim(); const pass = body.password || body.pass; const fullName = body.fullName;
   if (!email || !pass || !fullName) return fail(c, 'Full legal name, valid email, and password are required.', 400, { code: 'VALIDATION_ERROR' });
   if (!validateEmail(email)) return fail(c, 'Please provide a valid email address.', 400, { code: 'INVALID_EMAIL_FORMAT' });
@@ -133,7 +135,8 @@ core.post('/api/v1/auth/register', async (c) => {
 });
 
 core.post('/api/v1/auth/login', async (c) => {
-  const body = await c.req.json().catch(() => ({})) as any;
+  const body0 = await c.req.json().catch(() => ({})) as any; const tv = await verifyTurnstile(c, body0?.turnstileToken); if(!tv.ok && c.env?.TURNSTILE_SECRET_KEY) return fail(c, tv.message||'Turnstile failed', 403, {code:'TURNSTILE_FAILED'});
+  const body = body0 as any;
   const email = (body.email || '').toLowerCase().trim(); const pass = body.password || body.pass;
   if (!email || !pass) return fail(c, 'Please provide both email address and password.', 400, { code: 'MISSING_FIELDS' });
   const lockKey = `${c.req.header('cf-connecting-ip') || 'ip'}:${email}`;
@@ -232,5 +235,11 @@ core.post('/api/v1/auth/password/reset', async (c) => fail(c, 'Password reset to
 core.post('/api/v1/admin/customize', requireAdminMw(), async (c) => fail(c, 'Admin credential customization uses Node fs; migrate to D1/KV binding.', 501, { code: 'NOT_MIGRATED' }));
 core.get('/api/v1/user/referrals', requireAuthMw(), (c) => ok(c, { referralCode: 'REF-' + c.get('user').id.slice(-6).toUpperCase(), referralLink: 'https://rental.log/register?ref=REF', totalInvited: 0, totalRegistered: 0, totalFunded: 0, pendingReward: 0, earnedReward: 0, referrals: [] }));
 core.post('/api/v1/user/referrals/invite', requireAuthMw(), async (c) => { const b: any = await c.req.json().catch(() => ({})); return c.json({ success: true, message: 'Invite queued.', data: { referral: { id: newId('ref'), email: b.email || '', date: new Date().toISOString(), status: 'invited', reward: 0 }, referrals: [] }, requestId: c.get('requestId') }); });
+
+
+core.get('/api/v1/dashboard/summary', requireAuthMw(), (c)=> ok(c, { summary: { availableBalance: mockUsers.find((x)=>x.id===c.get('user').id)?.balance||0, currency:'EUR' } }));
+core.get('/api/v1/admin/system-health', (c)=> c.json({ status:'healthy', apiVersion:'v1', requestId:c.get('requestId') }));
+core.get('/api/v1/admin/settings', (c)=> ok(c, platformConfig));
+core.get('/api/v1/team', (c)=> ok(c, ALL_KRETZ_MEMBERS));
 
 export default core;
