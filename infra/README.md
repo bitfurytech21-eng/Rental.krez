@@ -1,9 +1,8 @@
 # Infra
 
-- `wrangler.toml` — Cloudflare Workers config for the API (Workers adapter placeholder at `apps/api/src/worker.ts`; current API runs as Express via tsx).
-- `migrations/` — SQL migrations (moved from `supabase/migrations`).
-- `schema.sql` — base schema (moved from `supabase/schema.sql`).
-- `supabase-legacy/functions/` — legacy Supabase Edge Functions preserved for reference/migration.
-- `github-actions/` — workflow definitions (moved from `.github/workflows`).
+- `wrangler.toml` / `apps/api/wrangler.toml` — Cloudflare Workers config for the Hono fetch API (`apps/api/src/worker.ts` + `apps/api/src/hono-app.ts`).
+- `apps/api/server.ts` + `apps/api/src/index.ts` — Express/Node entries preserved for the full legacy route surface and local Node hosting.
+- `migrations/`, `schema.sql`, `supabase-legacy/` — database assets.
+- `github-actions/` — workflows.
 
-Target deployment (from brief): GitHub Actions → Cloudflare Pages (web) + Workers API → Postgres (Neon) → R2. D1/KV/R2 bindings are stubbed in `wrangler.toml`.
+Workers migration status (step 1): health, blog, team, distributions export/list subset, and a 501 JSON fallback for unmigrated legacy routes are implemented in Hono. The full 5k+ Express route surface in `apps/api/src/routes.ts` remains available via Node/Express and should be migrated incrementally to fetch/Hono handlers.

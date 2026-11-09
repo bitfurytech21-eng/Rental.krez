@@ -1,13 +1,8 @@
 /**
- * Cloudflare Workers entry placeholder.
- * The production Express API lives in apps/api/server.ts and apps/api/src/*.
- * To deploy on Workers, adapt routes to a fetch-based framework (Hono) here.
+ * Cloudflare Workers fetch entry (Hono).
  */
+import app from './hono-app';
+
 export default {
-  async fetch(_request: Request): Promise<Response> {
-    return Response.json(
-      { ok: false, error: 'Workers adapter not implemented; use Express API (apps/api) or migrate routes to Hono here.' },
-      { status: 501 }
-    );
-  },
+  fetch: app.fetch,
 };

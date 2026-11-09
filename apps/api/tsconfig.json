@@ -3,8 +3,8 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
-    "lib": ["ES2022"],
+    "types": ["node", "@cloudflare/workers-types"],
+    "lib": ["ES2022", "WebWorker"],
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
@@ -15,5 +15,5 @@
       "@rental-log/validation": ["../../packages/validation/src/index.ts"]
     }
   },
-  "include": ["src", "server.ts", "../../packages/database/src", "../../packages/validation/src"]
+  "include": ["src", "server.ts", "worker-configuration.d.ts", "../../packages/database/src", "../../packages/validation/src"]
 }

@@ -12,12 +12,16 @@
   },
   "scripts": {
     "dev": "npm run dev -w @rental-log/web",
+    "dev:web": "npm run dev -w @rental-log/web",
     "dev:api": "npm run dev -w @rental-log/api",
+    "dev:api:node": "npm run dev:node -w @rental-log/api",
     "build": "npm run build -w @rental-log/web",
     "build:web": "npm run build -w @rental-log/web",
+    "build:api": "npm run build -w @rental-log/api",
+    "deploy:api": "npm run deploy -w @rental-log/api",
     "start": "npm run start -w @rental-log/api",
     "lint": "npm run lint -w @rental-log/web && npm run lint -w @rental-log/api",
     "test": "npm run test -w @rental-log/web && npm run test -w @rental-log/api",
-    "clean": "rm -rf apps/web/dist"
+    "clean": "rm -rf apps/web/dist apps/api/dist-worker"
   }
 }
