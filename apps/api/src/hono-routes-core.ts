@@ -215,7 +215,11 @@ core.get('/api/v1/treasury/rates', (c) => ok(c, { base: 'EUR', ratesToEur: { EUR
 core.get('/api/v1/treasury/balances', requireAuthMw(), (c) => ok(c, { balances: { EUR: mockUsers.find((x) => x.id === c.get('user').id)?.balance || 0 } }));
 core.get('/api/v1/payments/config', (c) => ok(c, { traditional: { enabled: true, beneficiary: 'Kretz Group', iban: '', bic: '', bankName: '', country: 'FR', instructions: '' }, cryptoNetworks: [] }));
 
-for (const ep of ['/api/v1/deposits', '/api/v1/withdrawals', '/api/v1/investments', '/api/v1/treasury/convert']) core.post(ep, requireAuthMw(), async (c) => fail(c, 'Financial mutation not yet migrated to Workers runtime. Use Node/Express API (apps/api/server.ts) for durable ledger/email processing.', 501, { code: 'NOT_MIGRATED', endpoint: ep }));
+async function fin(c:any, fn:any){ const csrf=requireCsrfForCookieAuth(c.get('session'),c); if(!csrf.ok) return fail(c, csrf.message||'CSRF failed',403,{code:'CSRF_INVALID'}); const body:any=await c.req.json().catch(()=>({})); const t=await verifyTurnstile(c, body?.turnstileToken); if(!t.ok) return fail(c,t.message||'Turnstile failed',403,{code:'TURNSTILE_FAILED'}); const r=await fn(c.env,c.get('user'),body); return c.json({...r.body, requestId:c.get('requestId')}, r.status as any); }
+core.post('/api/v1/deposits', requireAuthMw(), (c)=>fin(c,createDeposit));
+core.post('/api/v1/withdrawals', requireAuthMw(), (c)=>fin(c,createWithdrawal));
+core.post('/api/v1/investments', requireAuthMw(), (c)=>fin(c,createInvestment));
+core.post('/api/v1/treasury/convert', requireAuthMw(), (c)=>fin(c,convertTreasury));
 
 core.post('/api/v1/contact', async (c) => { const b: any = await c.req.json().catch(() => ({})); if (!b?.email || !b?.fullName || !b?.message) return fail(c, 'fullName, email and message required', 400); return c.json({ success: true, data: { ticketId: newId('tkt'), createdAt: new Date().toISOString() }, message: 'Request received.', requestId: c.get('requestId') }, 201); });
 core.post('/api/v1/memberships/apply', async (c) => { await c.req.json().catch(() => ({})); return c.json({ success: true, data: { id: newId('mem') }, message: 'Application received.', requestId: c.get('requestId') }, 201); });
