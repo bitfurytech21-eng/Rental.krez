@@ -12,7 +12,7 @@ import {
   EyeOff,
   User,
 } from 'lucide-react';
-import { TurnstileWidget } from '../security/TurnstileWidget';
+import { TurnstileWidget } from '@web/components/security/TurnstileWidget';
 
 interface AdminLoginPortalProps {
   onLoginSuccess: (openSecurityTab?: boolean) => void;

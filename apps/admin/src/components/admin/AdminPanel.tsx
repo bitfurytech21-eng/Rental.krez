@@ -45,7 +45,7 @@ import {
   LogOut
 } from 'lucide-react';
 
-import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
+import { PropertyDocumentsHub } from '@web/components/documents/PropertyDocumentsHub';
 import { AdminMonitoringView } from './AdminMonitoringView';
 import { AdminDashboardOverview } from './AdminDashboardOverview';
 import { AdminNewsManager } from './AdminNewsManager';
