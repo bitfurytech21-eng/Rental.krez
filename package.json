@@ -17,6 +17,7 @@
     "test": "tsx src/lib/financialService.test.ts && tsx server/routes.test.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.4.0",
     "@supabase/supabase-js": "^2.117.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/leaflet": "^1.9.22",
