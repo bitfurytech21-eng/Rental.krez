@@ -6,8 +6,8 @@ import React, { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from '@web/lib/auth';
 import { ToastProvider } from '@web/context/ToastContext';
 import { ConfigProvider } from '@web/context/ConfigContext';
-import { AdminLoginPortal } from '@web/components/admin/AdminLoginPortal';
-import { AdminPanel } from '@web/components/admin/AdminPanel';
+import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
+import { AdminPanel } from './components/admin/AdminPanel';
 
 function AdminShell() {
   const { user, isLoading } = useAuth() as any;

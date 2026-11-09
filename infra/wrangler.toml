@@ -1,21 +1,28 @@
-# Cloudflare Workers API (Hono fetch runtime)
 name = "rental-log-api"
-main = "../apps/api/src/worker.ts"
+main = "src/worker.ts"
 compatibility_date = "2026-11-09"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
 API_VERSION = "v1"
+RUNTIME_MODE = "workers-hono"
+
+# Set via `wrangler secret put` / dashboard (do not commit):
+# DATABASE_URL, SESSION_SECRET, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD_HASH,
+# TURNSTILE_SECRET_KEY, RESEND_API_KEY/SENDGRID_API_KEY/SMTP_*, SENTRY_DSN
 
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "rental-log"
-# database_id = "<set-in-cloudflare>"
+# database_id = "<id>"
+
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "<id>"
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "<id>"
 
 # [[r2_buckets]]
 # binding = "ASSETS"
 # bucket_name = "rental-log-assets"
-
-# [[kv_namespaces]]
-# binding = "CACHE"
-# id = "<set-in-cloudflare>"

@@ -12,7 +12,7 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom', 'react-i18next', 'i18next'],
     alias: [
-      { find: '@', replacement: web },
+      { find: /^@\//, replacement: web + '/' },
       { find: '@web', replacement: web },
       { find: '@admin', replacement: self },
       { find: '@rental-log/database', replacement: path.resolve(import.meta.dirname || '.', '../../packages/database/src') },

@@ -200,4 +200,37 @@ core.get('/api/v1/distributions/export', (c) => {
   return new Response(generatePropertyPaymentsCsv(records, c.req.query('propertyId')||'All Properties'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="distributions-${c.req.query('propertyId')||'all'}.csv"` } });
 });
 
+
+// Wallet/user ops (compat subset)
+core.get('/api/v1/wallet/balance', requireAuthMw(), (c) => { const rec = mockUsers.find(x=>x.id===c.get('user').id); return ok(c, { balance: rec?.balance||0, currency: 'EUR' }); });
+core.get('/api/v1/user/wallet/balance', requireAuthMw(), (c) => core.fetch(new Request(new URL('/api/v1/wallet/balance', c.req.url), c.req.raw), c.env, c.executionCtx));
+core.get('/api/v1/transactions', requireAuthMw(), (c) => { const u=c.get('user'); const txs = u.role==='admin'? mockTransactions : mockTransactions.filter(t=>t.userId===u.id); return ok(c, txs, { total: txs.length }); });
+core.get('/api/v1/notifications', requireAuthMw(), (c) => ok(c, [], { unreadCount: 0 }));
+core.patch('/api/v1/notifications/:id/read', requireAuthMw(), (c) => ok(c, null));
+core.post('/api/v1/notifications/read-all', requireAuthMw(), (c) => ok(c, { markedRead: 0 }));
+core.get('/api/v1/user/favorites', requireAuthMw(), (c) => ok(c, { favorites: [] }));
+core.post('/api/v1/user/favorites', requireAuthMw(), async (c) => { const b:any=await c.req.json().catch(()=>({})); return ok(c, { favorites: b.propertyId?[b.propertyId]:[], saved: true }); });
+core.delete('/api/v1/user/favorites/:propertyId', requireAuthMw(), (c) => ok(c, { favorites: [], saved: false }));
+core.get('/api/v1/user/preferences', requireAuthMw(), (c) => ok(c, {}));
+core.put('/api/v1/user/preferences', requireAuthMw(), async (c) => { const b:any=await c.req.json().catch(()=>({})); return ok(c, b||{}); });
+core.patch('/api/v1/users/me', requireAuthMw(), async (c) => { const b:any=await c.req.json().catch(()=>({})); const rec=mockUsers.find(x=>x.id===c.get('user').id); if(!rec) return fail(c,'User profile not found.',404); if(b.fullName) rec.fullName=b.fullName; if(b.country) rec.country=b.country; if(b.phoneNumber) rec.phoneNumber=b.phoneNumber; return ok(c, sanitizeUser(rec), { message: 'Profile updated.' }); });
+core.get('/api/v1/treasury/rates', (c)=> ok(c, { base:'EUR', ratesToEur:{EUR:1,USD:0.92,GBP:1.18,CHF:1.06,USDC:0.92,USDT:0.92,SOL:158.4}, feePercent:0.15, updatedAt:new Date().toISOString() }));
+core.get('/api/v1/treasury/balances', requireAuthMw(), (c)=> ok(c, { balances: { EUR: mockUsers.find(x=>x.id===c.get('user').id)?.balance||0 } }));
+core.get('/api/v1/payments/config', (c)=> ok(c, { traditional: { enabled:true, beneficiary:'Kretz Group', iban:'', bic:'', bankName:'', country:'FR', instructions:'' }, cryptoNetworks: [] }));
+
+// Financial mutations: validate + 501 (require ledger/email/D1 for durable processing)
+for (const ep of ['/api/v1/deposits','/api/v1/withdrawals','/api/v1/investments','/api/v1/treasury/convert']) core.post(ep, requireAuthMw(), async (c)=> fail(c,'Financial mutation not yet migrated to Workers runtime. Use Node/Express API (apps/api/server.ts) for durable ledger/email processing.', 501, { code:'NOT_MIGRATED', endpoint: ep }));
+
+
+// Public/contact/referral-compatible demo handlers (durable email/CRM pending bindings)
+core.post('/api/v1/contact', async (c)=>{ const b:any=await c.req.json().catch(()=>({})); if(!b?.email||!b?.fullName||!b?.message) return fail(c,'fullName, email and message required',400); return c.json({success:true,data:{ticketId:newId('tkt'),createdAt:new Date().toISOString()},message:'Request received.',requestId:c.get('requestId')},201); });
+core.post('/api/v1/memberships/apply', async (c)=>{ const b:any=await c.req.json().catch(()=>({})); return c.json({success:true,data:{id:newId('mem')},message:'Application received.',requestId:c.get('requestId')},201); });
+core.post('/api/v1/newsletter/subscribe', async (c)=> c.json({success:true,message:'Subscribed.',requestId:c.get('requestId')}));
+core.post('/api/v1/security/verify-turnstile', async (c)=> c.json({success:true,message:'Turnstile verification delegated in Workers demo mode.',requestId:c.get('requestId')}));
+core.post('/api/v1/auth/password/forgot', async (c)=> c.json({success:true,message:'If the account exists, a reset email has been sent.',requestId:c.get('requestId')}));
+core.post('/api/v1/auth/password/reset', async (c)=> fail(c,'Password reset token processing not yet migrated to Workers runtime.',501,{code:'NOT_MIGRATED'}));
+core.post('/api/v1/admin/customize', requireAdminMw(), async (c)=> fail(c,'Admin credential customization uses Node fs; migrate to D1/KV binding.',501,{code:'NOT_MIGRATED'}));
+core.get('/api/v1/user/referrals', requireAuthMw(), (c)=> ok(c,{ referralCode:'REF-'+c.get('user').id.slice(-6).toUpperCase(), referralLink:'https://rental.log/register?ref=REF', totalInvited:0,totalRegistered:0,totalFunded:0,pendingReward:0,earnedReward:0,referrals:[] }));
+core.post('/api/v1/user/referrals/invite', requireAuthMw(), async (c)=>{ const b:any=await c.req.json().catch(()=>({})); return c.json({success:true,message:'Invite queued.',data:{referral:{id:newId('ref'),email:b.email||'',date:new Date().toISOString(),status:'invited',reward:0},referrals:[]},requestId:c.get('requestId')}); });
+
 export default core;
