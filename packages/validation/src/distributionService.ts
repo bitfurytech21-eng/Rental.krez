@@ -80,7 +80,6 @@ export function buildProjectedDistribution(
       status: 'projected',
       reference: id,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     });
   }
   return records;

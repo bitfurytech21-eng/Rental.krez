@@ -453,7 +453,7 @@ async function translateWithGoogleGTX(text: string, _sourceLang: string, targetL
       throw new Error(`Google GTX HTTP error: ${res.status}`);
     }
 
-    const data = await res.json();
+    const data: any = await res.json();
     if (data && data[0] && Array.isArray(data[0])) {
       const translated = data[0].map((item: any) => item[0]).join('');
       if (translated) {
@@ -488,7 +488,7 @@ async function translateWithMyMemory(text: string, sourceLang: string, targetLan
         throw new Error(`MyMemory HTTP error: ${res.status}`);
       }
 
-      const data = await res.json();
+      const data: any = await res.json();
       if (data && data.responseData && data.responseData.translatedText) {
         const decoded = decodeHtmlEntities(data.responseData.translatedText);
         if (decoded.startsWith('MYMEMORY WARNING:') || decoded.startsWith('QUERY LENGTH LIMIT EXCEEDED')) {
@@ -535,7 +535,7 @@ async function translateWithLibreTranslate(text: string, sourceLang: string, tar
       throw new Error(`LibreTranslate HTTP error: ${res.status}`);
     }
 
-    const data = await res.json();
+    const data: any = await res.json();
     if (data && data.translatedText) {
       return decodeHtmlEntities(data.translatedText);
     }
@@ -581,7 +581,7 @@ async function translateWithDeepL(texts: string[], sourceLang: string, targetLan
       throw new Error(`DeepL HTTP error: ${res.status}`);
     }
 
-    const data = await res.json();
+    const data: any = await res.json();
     if (data && Array.isArray(data.translations)) {
       return data.translations.map((item: any) => decodeHtmlEntities(item.text));
     }
