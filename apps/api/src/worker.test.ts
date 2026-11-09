@@ -1,45 +1,71 @@
 import assert from 'node:assert/strict';
 import worker from './worker';
 
-const json = async (r: Response) => ({ status: r.status, body: await r.json() as any, headers: r.headers });
+const env = { API_VERSION: 'v1' };
+const call = (path: string, init?: RequestInit) => worker.fetch(new Request(`http://local${path}`, init), env as any, {} as any);
 
-let r = await worker.fetch(new Request('http://local/api/health'), {}, {} as any);
+let r = await call('/api/health');
 assert.equal(r.status, 200);
-r = await worker.fetch(new Request('http://local/api/v1/config'), {}, {} as any);
+assert.equal((await r.json() as any).apiVersion, 'v1');
+
+r = await call('/api/v1/config');
 assert.equal(r.status, 200);
 assert.equal((await r.json() as any).data.platformName, 'Rental-log');
 
-r = await worker.fetch(new Request('http://local/api/v1/marketplace/listings'), {}, {} as any);
+r = await call('/api/v1/marketplace/listings');
 assert.equal(r.status, 200);
 const listings = await r.json() as any;
-assert.ok(Array.isArray(listings.data));
-assert.ok(listings.total >= 1);
+assert.ok(Array.isArray(listings.data) && listings.total >= 1);
 
-r = await worker.fetch(new Request('http://local/api/v1/blog'), {}, {} as any);
+r = await call('/api/v1/marketplace/listings/prop-villa-mirador');
 assert.equal(r.status, 200);
 
-r = await worker.fetch(new Request('http://local/api/v1/auth/register', { method: 'POST', headers: { 'content-type':'application/json' }, body: JSON.stringify({ email: 'newuser@example.com', pass: 'StrongPass123!', fullName: 'New User' }) }), {}, {} as any);
+r = await call('/api/v1/blog');
+assert.equal(r.status, 200);
+
+r = await call('/api/v1/auth/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'contract@example.com', pass: 'StrongPass123!', fullName: 'Contract User' }) });
 assert.equal(r.status, 201);
 const reg = await r.json() as any;
 assert.ok(reg.token || reg.data?.token);
 
-r = await worker.fetch(new Request('http://local/api/v1/auth/login', { method: 'POST', headers: { 'content-type':'application/json' }, body: JSON.stringify({ email: 'investor@kretz.com', pass: 'InvestorPass123!' }) }), {}, {} as any);
+r = await call('/api/v1/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'investor@kretz.com', pass: 'InvestorPass123!' }) });
 assert.equal(r.status, 200);
 const login = await r.json() as any;
 const token = login.token || login.data?.token;
 assert.ok(token);
+assert.ok(r.headers.get('x-csrf-token') || login.csrfToken || login.data?.csrfToken);
 
-r = await worker.fetch(new Request('http://local/api/v1/auth/session', { headers: { Authorization: `Bearer ${token}` } }), {}, {} as any);
+r = await call('/api/v1/auth/session', { headers: { Authorization: `Bearer ${token}` } });
 assert.equal(r.status, 200);
 assert.equal((await r.json() as any).authenticated, true);
 
-r = await worker.fetch(new Request('http://local/api/v1/user/profile', { headers: { Authorization: `Bearer ${token}` } }), {}, {} as any);
+r = await call('/api/v1/user/profile', { headers: { Authorization: `Bearer ${token}` } });
+assert.equal(r.status, 200);
+r = await call('/api/v1/portfolio', { headers: { Authorization: `Bearer ${token}` } });
+assert.equal(r.status, 200);
+r = await call('/api/v1/wallet/balance', { headers: { Authorization: `Bearer ${token}` } });
+assert.equal(r.status, 200);
+r = await call('/api/v1/transactions', { headers: { Authorization: `Bearer ${token}` } });
+assert.equal(r.status, 200);
+r = await call('/api/v1/notifications', { headers: { Authorization: `Bearer ${token}` } });
+assert.equal(r.status, 200);
+r = await call('/api/v1/user/favorites', { headers: { Authorization: `Bearer ${token}` } });
 assert.equal(r.status, 200);
 
-r = await worker.fetch(new Request('http://local/api/v1/portfolio', { headers: { Authorization: `Bearer ${token}` } }), {}, {} as any);
-assert.equal(r.status, 200);
+r = await call('/api/v1/deposits', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: '{}' });
+assert.equal(r.status, 501);
+assert.equal((await r.json() as any).code, 'NOT_MIGRATED');
 
-r = await worker.fetch(new Request('http://local/api/v1/legacy-unmigrated'), {}, {} as any);
+r = await call('/api/v1/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'investor@kretz.com', pass: 'wrong' }) });
+assert.equal(r.status, 401);
+
+r = await call('/api/v1/user/profile');
+assert.equal(r.status, 401);
+
+r = await call('/api/v1/legacy-unmigrated');
 assert.equal(r.status, 501);
 
-console.log('✓ PASS: workers/hono core routes (health/config/listings/blog/auth/profile/portfolio/fallback)');
+r = await call('/api/v1/contact', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fullName: 'A', email: 'a@b.com', message: 'hi' }) });
+assert.equal(r.status, 201);
+
+console.log('✓ PASS: workers/hono contract tests (migrated endpoints, auth, 401/501 parity, CSRF token exposure)');

@@ -20,8 +20,16 @@
     "build:api": "npm run build -w @rental-log/api",
     "deploy:api": "npm run deploy -w @rental-log/api",
     "start": "npm run start -w @rental-log/api",
-    "lint": "npm run lint -w @rental-log/web && npm run lint -w @rental-log/api",
+    "lint": "npm run lint -w @rental-log/web && npm run lint -w @rental-log/api && npm run lint:eslint",
     "test": "npm run test -w @rental-log/web && npm run test -w @rental-log/api",
-    "clean": "rm -rf apps/web/dist apps/api/dist-worker"
+    "clean": "rm -rf apps/web/dist apps/api/dist-worker",
+    "lint:eslint": "npx eslint \"apps/api/src/hono*\" \"apps/api/src/shared-store.ts\" \"apps/api/src/worker*\" \"packages/*/src/**/*.ts\" \"apps/admin/src/*.ts*\" \"apps/admin/vite.config.ts\"",
+    "format:check": "echo \"format check: prettier not installed (add if desired); eslint covers migrated surfaces\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "typescript-eslint": "^8.72.1"
   }
 }

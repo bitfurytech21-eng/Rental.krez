@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-worker
+apps/web/src
+apps/api/src/routes.ts
+apps/api/src/emailService.ts
+apps/api/src/translationController.ts
+apps/api/src/dailyPaymentService.ts
+infra/supabase-legacy
+package-lock.json
