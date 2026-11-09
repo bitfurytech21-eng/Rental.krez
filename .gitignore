@@ -12,3 +12,4 @@ coverage/
 apps/api/.admin-credentials.json
 server/.admin-credentials.json
 .wrangler/
+package-lock.json
