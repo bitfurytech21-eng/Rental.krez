@@ -71,14 +71,14 @@ app.post('/api/v1/translate', async (c) => {
 });
 
 app.get('/api/v1/admin/distributions/records', (c) => {
-  const records = dailyPaymentService.getRecords(c.req.query('propertyId') || undefined, c.req.query('userId') || undefined);
+  const records = dailyPaymentService.getRecords({ propertyId: c.req.query('propertyId') || undefined, userId: c.req.query('userId') || undefined });
   if (c.req.query('format') === 'csv') {
     return new Response(generatePropertyPaymentsCsv(records), { headers: { 'Content-Type': 'text/csv; charset=utf-8' } });
   }
   return c.json({ success: true, data: records, apiVersion: 'v1' });
 });
 app.get('/api/v1/distributions/export', (c) => {
-  const records = dailyPaymentService.getRecords(c.req.query('propertyId') || undefined, undefined);
+  const records = dailyPaymentService.getRecords({ propertyId: c.req.query('propertyId') || undefined });
   if ((c.req.query('format') || 'csv') === 'json') return c.json(records);
   return new Response(generatePropertyPaymentsCsv(records, c.req.query('propertyId') || 'All Properties'), {
     headers: {
