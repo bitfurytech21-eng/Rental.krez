@@ -1,0 +1,22 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm audit --omit=dev || true
+      - run: npm run lint
+      - run: npm test -w @rental-log/web
+      - run: npx tsx apps/api/src/routes.test.ts
+      - run: npx tsx apps/api/src/worker.contract.ts
+      - run: npm run build -w @rental-log/web
+      - run: npm run build -w @rental-log/admin

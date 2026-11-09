@@ -1,0 +1,94 @@
+/**
+ * PrintStyles.css
+ * Dedicated print stylesheet for Kretz Real Estate Platform
+ * Ensures robust pagination, page-break avoidance, and professional print output.
+ */
+
+@media print {
+  * {
+    box-sizing: border-box !important;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #111A18 !important;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  }
+
+  /* Hide non-printable UI chrome */
+  header,
+  nav,
+  aside,
+  footer,
+  button,
+  .print\:hidden,
+  [role="navigation"],
+  .screen-actions {
+    display: none !important;
+  }
+
+  /* Property Cards and Container Layout */
+  .property-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin-bottom: 24px !important;
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+
+  /* Property Images & Gallery */
+  .property-image,
+  img {
+    max-width: 100% !important;
+    object-fit: contain !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+
+  /* Typography pagination support */
+  p, h1, h2, h3, h4, h5, h6 {
+    orphans: 3 !important;
+    widows: 3 !important;
+  }
+
+  /* Tables & Metrics */
+  table, tr, td, th {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Document Pages and Breaks */
+  .brochure-page,
+  .print\:page-break-after {
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #property-printable-document,
+  .investment-agreement-printable {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .agreement-signature-block,
+  .agreement-party-card,
+  .agreement-notary-banner {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

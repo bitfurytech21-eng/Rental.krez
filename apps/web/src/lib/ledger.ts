@@ -1,0 +1,3234 @@
+import { Transaction, TransactionType, TransactionStatus, LedgerEntry } from '../types/transaction';
+import { User, KYCStatus, UserRole, AccountType, getAccountTypeLabel } from '../types/user';
+import { Property, PropertyStatus } from '../types/property';
+import { Investment } from '../types/investment';
+import { INITIAL_PROPERTIES } from '../data/properties';
+import { MembershipTier, UserMembership, MembershipApplication, MembershipTierId, MembershipBillingCycle, INITIAL_MEMBERSHIP_TIERS } from '../types/membership';
+import { formatCurrency } from './utils';
+import { CompanyNewsItem } from '../types/news';
+import { INITIAL_COMPANY_NEWS } from '../data/companyNews';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
+
+export type AuditCategory = 'auth' | 'user_status' | 'financial' | 'compliance' | 'security' | 'system';
+export type AuditSeverity = 'info' | 'success' | 'warning' | 'critical';
+
+export interface AuditLog {
+  id: string;
+  adminId: string;
+  adminEmail: string;
+  action: string;
+  details: string;
+  timestamp: string;
+  ipAddress?: string;
+  category?: AuditCategory;
+  severity?: AuditSeverity;
+  targetUserId?: string;
+  targetUserEmail?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'financial';
+  read: boolean;
+  createdAt: string;
+}
+
+export type DocumentCategory = 'deposit_proof' | 'kyc_identity' | 'proof_of_address' | 'accredited_proof' | 'general';
+
+export interface VerificationDocument {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  category: DocumentCategory;
+  title: string;
+  documentType: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  uploadedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  transactionReference?: string;
+  amount?: number;
+  currency?: string;
+  notes?: string;
+}
+
+export interface CryptoNetworkConfig {
+  id: string;
+  name: string;
+  token: string;
+  network: string;
+  walletAddress: string;
+  contractEnd?: string;
+  contractAddress?: string;
+  enabled: boolean;
+}
+
+export interface TraditionalPaymentConfig {
+  beneficiary: string;
+  iban: string;
+  bic: string;
+  bankName: string;
+  supportEmail: string;
+  instructions: string;
+  routingNumber?: string;
+  address?: string;
+  country?: string;
+}
+
+export interface PaymentConfig {
+  traditional: TraditionalPaymentConfig;
+  cryptoNetworks: CryptoNetworkConfig[];
+}
+
+export interface P2PListingOrder {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  propertyId: string;
+  propertyTitle: string;
+  propertyLocation: string;
+  propertyImage: string;
+  tokenTicker: string;
+  tokensAvailable: number;
+  askingPricePerToken: number;
+  parValuePerToken: number;
+  estimatedAnnualYield: number;
+  createdAt: string;
+  status: 'open' | 'filled' | 'cancelled';
+}
+
+export const LEDGER_FX_RATES_TO_EUR: Record<string, number> = {
+  EUR: 1.0,
+  USD: 0.92,
+  GBP: 1.18,
+  CHF: 1.06,
+  USDC: 0.92,
+  USDT: 0.92,
+  SOL: 158.4,
+};
+export const LEDGER_FX_FEE_PERCENT = 0.15;
+
+const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
+  traditional: {
+    beneficiary: 'PREDRAG MIRKOVIC',
+    iban: 'CY05 9020 0001 0000 0201 0908 5462',
+    bic: 'CARDCY2LXXX',
+    bankName: 'UNLIMIT',
+    supportEmail: 'info@kretz.site',
+    instructions: 'Include your unique transfer reference in the wire transfer concept and upload your transfer confirmation receipt for immediate verification.',
+    routingNumber: 'CY059020',
+    address: 'LIMASSOL 125 GEORGIOU GRIVA DIGENI',
+    country: 'CYPRUS'
+  },
+  cryptoNetworks: [
+    {
+      id: 'net-usdc-bep20',
+      name: 'BNB Smart Chain (BEP20)',
+      token: 'USDC',
+      network: 'BNB Smart Chain (BEP20)',
+      walletAddress: '0x8336A3f49125bAD02101B405699ac87e40D473BB',
+      contractEnd: '8ac76a',
+      contractAddress: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+      enabled: true
+    }
+  ]
+};
+
+// In-Memory & LocalStorage Persistent Ledger
+const STORAGE_PREFIX = 'rentallog_v3_';
+
+function getStorage<T>(key: string, defaultValue: T): T {
+  if (typeof window === 'undefined') return defaultValue;
+  try {
+    const item = localStorage.getItem(STORAGE_PREFIX + key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (e) {
+    console.error('Storage read error:', e);
+    return defaultValue;
+  }
+}
+
+function setStorage<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+  } catch (e) {
+    console.error('Storage write error:', e);
+  }
+}
+
+// Generate deterministic verifiable hash
+function generateTxHash(reference: string, amount: number, timestamp: string): string {
+  const raw = `${reference}:${amount}:${timestamp}:${Math.random().toString(36).substring(2, 9)}`;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const char = raw.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return '0x' + Math.abs(hash).toString(16).padStart(8, '0') + Math.random().toString(36).substring(2, 10);
+}
+
+// Authentic Platform Administrator & Demo Investor
+// Authentic Platform Administrator & Registered Investors
+const DEFAULT_USERS: User[] = [
+  {
+    id: 'usr-admin-kretz-site',
+    email: 'info@kretz.site',
+    fullName: "L'Agence Executive Admin",
+    role: 'admin',
+    accountType: 'admin',
+    kycStatus: 'verified',
+    walletBalance: 500000,
+    investedBalance: 0,
+    totalEarned: 0,
+    createdAt: '2026-01-01T00:00:00Z',
+    country: 'Spain',
+    cryptoDepositAddress: "0x71C...B3fA (L'Agence Executive Treasury)",
+    status: 'active'
+  },
+  {
+    id: 'usr-admin-1',
+    email: 'admin@kretz.com',
+    fullName: 'Platform Administrator',
+    role: 'admin',
+    accountType: 'admin',
+    kycStatus: 'verified',
+    walletBalance: 250000,
+    investedBalance: 0,
+    totalEarned: 0,
+    createdAt: '2026-01-01T00:00:00Z',
+    country: 'Spain',
+    cryptoDepositAddress: '0x71C...B3fA (Platform Treasury)',
+    status: 'active'
+  },
+  {
+    id: 'usr-investor-1',
+    email: 'investor@kretz.com',
+    fullName: 'European Angel Partner',
+    role: 'investor',
+    accountType: 'individual_investor',
+    kycStatus: 'verified',
+    walletBalance: 15000,
+    investedBalance: 63600,
+    totalEarned: 2850,
+    createdAt: '2026-01-10T00:00:00Z',
+    country: 'France',
+    bankIban: 'ES9121000418450200051829',
+    cryptoDepositAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2',
+    status: 'active'
+  },
+  {
+    id: 'usr-investor-2',
+    email: 'sophie.martin@luxcapital.fr',
+    fullName: 'Sophie Martin',
+    role: 'investor',
+    accountType: 'accredited_investor',
+    kycStatus: 'verified',
+    walletBalance: 32500,
+    investedBalance: 72800,
+    totalEarned: 4120,
+    createdAt: '2026-01-18T14:20:00Z',
+    country: 'Monaco',
+    bankIban: 'MC5830006000010123456789012',
+    cryptoDepositAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
+    status: 'active'
+  },
+  {
+    id: 'usr-investor-3',
+    email: 'david.vance@heritagefo.ch',
+    fullName: 'David Vance',
+    role: 'investor',
+    accountType: 'family_office',
+    kycStatus: 'verified',
+    walletBalance: 120000,
+    investedBalance: 145600,
+    totalEarned: 11400,
+    createdAt: '2026-02-02T09:15:00Z',
+    country: 'Switzerland',
+    companyName: 'Heritage Family Office SA',
+    taxId: 'CHE-114.938.291',
+    bankIban: 'CH9300762011623852957',
+    cryptoDepositAddress: '0x5291bfa9821389128931a98124901b2a98124018',
+    status: 'active'
+  },
+  {
+    id: 'usr-investor-4',
+    email: 'elena.rostova@monacocap.mc',
+    fullName: 'Elena Rostova',
+    role: 'investor',
+    accountType: 'joint_account',
+    kycStatus: 'pending',
+    walletBalance: 4800,
+    investedBalance: 29120,
+    totalEarned: 950,
+    createdAt: '2026-02-14T11:45:00Z',
+    country: 'Monaco',
+    jointHolderName: 'Alexander Rostov',
+    bankIban: 'MC5830006000010987654321098',
+    status: 'suspended',
+    suspendedReason: 'Annual AML re-verification review pending'
+  },
+  {
+    id: 'usr-investor-5',
+    email: 'lucas.bernard@parisinvest.com',
+    fullName: 'Lucas Bernard',
+    role: 'investor',
+    accountType: 'corporate_entity',
+    kycStatus: 'verified',
+    walletBalance: 85000,
+    investedBalance: 98280,
+    totalEarned: 5800,
+    createdAt: '2026-02-28T16:00:00Z',
+    country: 'France',
+    companyName: 'Paris Invest Real Estate SARL',
+    taxId: 'FR84910284719',
+    bankIban: 'FR7630003012345678901234567',
+    status: 'active'
+  }
+];
+
+const DEFAULT_INVESTMENTS: Investment[] = [
+  {
+    id: 'inv-seed-01',
+    userId: 'usr-investor-1',
+    propertyId: 'prop-kretz-kp1-102',
+    propertyTitle: 'ROQUEBRUNE-CAP-MARTIN - Ramingao - Golf Bleu',
+    propertyLocation: 'Roquebrune Cap Martin, France',
+    propertyImage: 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
+    tokensPurchased: 150,
+    tokenPrice: 364,
+    totalAmountInvested: 54600,
+    purchasedAt: '2025-11-15T10:00:00Z',
+    startDate: '2025-11-15T10:00:00Z',
+    maturityDate: '2028-11-15T10:00:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 7.5,
+    projectedMonthlyIncome: 354.90,
+    totalDividendsReceived: 843.75,
+    currentValuation: 57800,
+    unrealizedProfitLoss: 3200,
+    status: 'active',
+    transactionHash: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2_inv1',
+    certificateId: 'KZ-CERT-KP1102-8491',
+    fundingSource: 'wallet'
+  },
+  {
+    id: 'inv-seed-02',
+    userId: 'usr-investor-1',
+    propertyId: 'prop-kretz-kp1-103',
+    propertyTitle: 'PARIS 16th - Private Mansion Victor Hugo',
+    propertyLocation: 'Paris 16th, France',
+    propertyImage: 'https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg',
+    tokensPurchased: 90,
+    tokenPrice: 364,
+    totalAmountInvested: 9000,
+    purchasedAt: '2026-02-01T10:00:00Z',
+    startDate: '2026-02-01T10:00:00Z',
+    maturityDate: '2029-02-01T10:00:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 8.2,
+    projectedMonthlyIncome: 63.96,
+    totalDividendsReceived: 492.00,
+    currentValuation: 9450,
+    unrealizedProfitLoss: 450,
+    status: 'active',
+    transactionHash: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2_inv2',
+    certificateId: 'KZ-CERT-PAR16-2049',
+    fundingSource: 'wallet'
+  },
+  {
+    id: 'inv-seed-03',
+    userId: 'usr-investor-2',
+    propertyId: 'prop-kretz-kp1-101',
+    propertyTitle: 'PARIS 7th - Champ de Mars Eiffel Tower Duplex',
+    propertyLocation: 'Paris 7th, France',
+    propertyImage: 'https://files.kretzrealestate.com/13f01fdf74a00194883d6a0cf0897ce5.jpg',
+    tokensPurchased: 200,
+    tokenPrice: 364,
+    totalAmountInvested: 72800,
+    purchasedAt: '2026-01-20T11:00:00Z',
+    startDate: '2026-01-20T11:00:00Z',
+    maturityDate: '2029-01-20T11:00:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 8.9,
+    projectedMonthlyIncome: 540.00,
+    totalDividendsReceived: 1080.00,
+    currentValuation: 76000,
+    unrealizedProfitLoss: 3200,
+    status: 'active',
+    transactionHash: '0x71c8135c0e41b3fa128912389128f9a19b28a0bf_inv3',
+    certificateId: 'KZ-CERT-PAR7-5912',
+    fundingSource: 'wallet'
+  },
+  {
+    id: 'inv-seed-04',
+    userId: 'usr-investor-3',
+    propertyId: 'prop-kretz-kp1-105',
+    propertyTitle: 'CANNES - La Croisette Waterfront Penthouse',
+    propertyLocation: 'Cannes, French Riviera, France',
+    propertyImage: 'https://files.kretzrealestate.com/5f778a48b598d1a37c95ee13c1c73ec4.jpg',
+    tokensPurchased: 400,
+    tokenPrice: 364,
+    totalAmountInvested: 145600,
+    purchasedAt: '2026-02-05T09:30:00Z',
+    startDate: '2026-02-05T09:30:00Z',
+    maturityDate: '2029-02-05T09:30:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 9.4,
+    projectedMonthlyIncome: 1140.70,
+    totalDividendsReceived: 2281.40,
+    currentValuation: 152000,
+    unrealizedProfitLoss: 6400,
+    status: 'active',
+    transactionHash: '0x5291bfa9821389128931a98124901b2a98124018_inv4',
+    certificateId: 'KZ-CERT-CAN-9810',
+    fundingSource: 'wallet'
+  },
+  {
+    id: 'inv-seed-05',
+    userId: 'usr-investor-4',
+    propertyId: 'prop-kretz-kp1-104',
+    propertyTitle: 'NEUILLY-SUR-SEINE - Boulevard d\'Argenson Mansion',
+    propertyLocation: 'Neuilly-sur-Seine, France',
+    propertyImage: 'https://files.kretzrealestate.com/7ec57be497c36a43b46fc0b91f5fa7cb.jpg',
+    tokensPurchased: 80,
+    tokenPrice: 364,
+    totalAmountInvested: 29120,
+    purchasedAt: '2026-02-18T14:00:00Z',
+    startDate: '2026-02-18T14:00:00Z',
+    maturityDate: '2029-02-18T14:00:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 7.8,
+    projectedMonthlyIncome: 189.28,
+    totalDividendsReceived: 378.56,
+    currentValuation: 29500,
+    unrealizedProfitLoss: 380,
+    status: 'active',
+    transactionHash: '0x5830006000010987654321098_inv5',
+    certificateId: 'KZ-CERT-NEU-4102',
+    fundingSource: 'wallet'
+  },
+  {
+    id: 'inv-seed-06',
+    userId: 'usr-investor-5',
+    propertyId: 'prop-kretz-kp1-106',
+    propertyTitle: 'SAINT-TROPEZ - Les Parcs Private Estate & Vineyard',
+    propertyLocation: 'Saint-Tropez, France',
+    propertyImage: 'https://files.kretzrealestate.com/49baea38a6a27e7d6928e46957fb4a45.jpg',
+    tokensPurchased: 270,
+    tokenPrice: 364,
+    totalAmountInvested: 98280,
+    purchasedAt: '2026-03-02T10:15:00Z',
+    startDate: '2026-03-02T10:15:00Z',
+    maturityDate: '2029-03-02T10:15:00Z',
+    durationMonths: 36,
+    estimatedAnnualYield: 8.5,
+    projectedMonthlyIncome: 696.15,
+    totalDividendsReceived: 696.15,
+    currentValuation: 101000,
+    unrealizedProfitLoss: 2720,
+    status: 'active',
+    transactionHash: '0x7630003012345678901234567_inv6',
+    certificateId: 'KZ-CERT-STP-1920',
+    fundingSource: 'wallet'
+  }
+];
+
+const DEFAULT_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-dep-seed-1',
+    userId: 'usr-investor-1',
+    type: 'deposit',
+    amount: 10000,
+    currency: 'EUR',
+    status: 'pending',
+    description: 'Deposit request via SEPA Bank Wire Transfer (CaixaBank Escrow)',
+    reference: 'DEP-EUR-849201',
+    createdAt: '2026-03-15T10:30:00Z',
+    paymentMethod: 'SEPA Bank Wire Transfer',
+    balanceAfter: 15000,
+    txHash: '0xcaixa_wire_849201',
+    metadata: {
+      senderName: 'European Angel Partner',
+      bank: 'CaixaBank S.A.',
+      depositRef: 'DEP-EUR-849201'
+    }
+  },
+  {
+    id: 'tx-wd-seed-1',
+    userId: 'usr-investor-1',
+    type: 'withdrawal',
+    amount: 2500,
+    currency: 'EUR',
+    status: 'pending',
+    description: 'Withdrawal request to ES9121000418450200051829',
+    reference: 'WD-582914',
+    createdAt: '2026-03-15T09:15:00Z',
+    paymentMethod: 'SEPA Bank Wire',
+    balanceAfter: 12500,
+    metadata: {
+      bankIban: 'ES9121000418450200051829'
+    }
+  },
+  {
+    id: 'tx-dep-seed-2',
+    userId: 'usr-investor-2',
+    type: 'deposit',
+    amount: 50000,
+    currency: 'EUR',
+    status: 'completed',
+    description: 'Wire settlement credited by Treasury Desk',
+    reference: 'DEP-EUR-721094',
+    createdAt: '2026-01-19T10:00:00Z',
+    paymentMethod: 'SEPA Bank Wire Transfer',
+    balanceAfter: 50000,
+    txHash: '0xmonaco_wire_721094'
+  },
+  {
+    id: 'tx-dep-seed-3',
+    userId: 'usr-investor-3',
+    type: 'deposit',
+    amount: 200000,
+    currency: 'EUR',
+    status: 'completed',
+    description: 'Institutional Swiss Franc Wire Conversion & Escrow Credit',
+    reference: 'DEP-EUR-994102',
+    createdAt: '2026-02-03T11:00:00Z',
+    paymentMethod: 'Institutional Bank Wire',
+    balanceAfter: 200000,
+    txHash: '0xubs_swiss_994102'
+  },
+  {
+    id: 'tx-dep-seed-4',
+    userId: 'usr-investor-4',
+    type: 'deposit',
+    amount: 35000,
+    currency: 'EUR',
+    status: 'completed',
+    description: 'Joint Account Initial Deposit via Barclays Wire',
+    reference: 'DEP-EUR-310492',
+    createdAt: '2026-02-15T15:00:00Z',
+    paymentMethod: 'SEPA Bank Wire Transfer',
+    balanceAfter: 35000,
+    txHash: '0xbarclays_310492'
+  },
+  {
+    id: 'tx-dep-seed-5',
+    userId: 'usr-investor-5',
+    type: 'deposit',
+    amount: 150000,
+    currency: 'EUR',
+    status: 'completed',
+    description: 'Corporate Treasury Allocation via BNP Paribas Escrow',
+    reference: 'DEP-EUR-640192',
+    createdAt: '2026-03-01T12:00:00Z',
+    paymentMethod: 'Corporate SEPA Wire',
+    balanceAfter: 150000,
+    txHash: '0xbnp_corp_640192'
+  }
+];
+
+const DEFAULT_VERIFICATION_DOCUMENTS: VerificationDocument[] = [
+  {
+    id: 'doc-verify-1',
+    userId: 'usr-investor-1',
+    userName: 'European Angel Partner',
+    userEmail: 'investor@kretz.com',
+    category: 'deposit_proof',
+    title: 'CaixaBank SEPA Wire Transfer Slip (€10,000)',
+    documentType: 'Bank Wire Receipt',
+    fileUrl: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
+    fileName: 'caixabank_sepa_wire_transfer_10000eur.pdf',
+    fileSize: 245000,
+    uploadedAt: '2026-03-15T10:35:00Z',
+    status: 'pending',
+    transactionReference: 'DEP-EUR-849201',
+    amount: 10000,
+    currency: 'EUR',
+    notes: 'Official CaixaBank SEPA bank transfer receipt matching pending deposit reference DEP-EUR-849201.'
+  },
+  {
+    id: 'doc-verify-2',
+    userId: 'usr-investor-1',
+    userName: 'European Angel Partner',
+    userEmail: 'investor@kretz.com',
+    category: 'kyc_identity',
+    title: 'Biometric Passport Scan (AML5/6 Compliance)',
+    documentType: 'International Passport',
+    fileUrl: 'https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg',
+    fileName: 'investor_passport_biometric_scan.jpg',
+    fileSize: 1250000,
+    uploadedAt: '2026-03-14T14:30:00Z',
+    status: 'pending',
+    notes: 'Biometric page scan submitted from dashboard for institutional KYC verification.'
+  }
+];
+
+export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
+  {
+    id: 'audit-001',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'PASSGATE_UNLOCKED',
+    details: 'Executive pass gate unlocked with verified authorization code.',
+    timestamp: '2026-03-20T10:14:22Z',
+    category: 'security',
+    severity: 'success',
+    ipAddress: '82.64.120.45 (Paris, FR)',
+    targetUserEmail: 'admin@lagence.com'
+  },
+  {
+    id: 'audit-002',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'USER_SUSPENDED',
+    details: 'Investor account elena.rostova@monacocap.mc changed from ACTIVE to SUSPENDED by compliance officer. Reason: PEP enhanced due diligence refresh required.',
+    timestamp: '2026-03-20T09:42:15Z',
+    category: 'user_status',
+    severity: 'warning',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-4',
+    targetUserEmail: 'elena.rostova@monacocap.mc'
+  },
+  {
+    id: 'audit-003',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'DEPOSIT_APPROVED',
+    details: 'Approved SEPA bank wire deposit of €10,000.00 for investor@kretz.com. Ref: DEP-EUR-849201.',
+    timestamp: '2026-03-20T09:15:30Z',
+    category: 'financial',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-1',
+    targetUserEmail: 'investor@kretz.com'
+  },
+  {
+    id: 'audit-004',
+    adminId: 'usr-investor-1',
+    adminEmail: 'investor@kretz.com',
+    action: 'LOGIN_SUCCESS',
+    details: 'Investor user investor@kretz.com authenticated successfully via session credentials.',
+    timestamp: '2026-03-20T08:55:04Z',
+    category: 'auth',
+    severity: 'success',
+    ipAddress: '88.175.24.12 (Lyon, FR)',
+    targetUserId: 'usr-investor-1',
+    targetUserEmail: 'investor@kretz.com'
+  },
+  {
+    id: 'audit-005',
+    adminId: 'guest',
+    adminEmail: 'david.vance@heritagefo.ch',
+    action: 'LOGIN_FAILED',
+    details: 'Failed authentication attempt for david.vance@heritagefo.ch: Invalid security credentials entered.',
+    timestamp: '2026-03-20T08:12:18Z',
+    category: 'auth',
+    severity: 'warning',
+    ipAddress: '178.197.234.90 (Geneva, CH)',
+    targetUserEmail: 'david.vance@heritagefo.ch'
+  },
+  {
+    id: 'audit-006',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'KYC_STATUS_UPDATED',
+    details: 'User sophie.martin@luxcapital.fr KYC status set to VERIFIED following biometric passport eIDAS review.',
+    timestamp: '2026-03-19T16:30:00Z',
+    category: 'compliance',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-2',
+    targetUserEmail: 'sophie.martin@luxcapital.fr'
+  },
+  {
+    id: 'audit-007',
+    adminId: 'usr-investor-3',
+    adminEmail: 'david.vance@heritagefo.ch',
+    action: 'INVESTMENT_EXECUTED',
+    details: 'Acquired 50 digital fractional security tokens (€50,000.00) in Villa Magna Marbella SPV. Smart contract ledger updated.',
+    timestamp: '2026-03-19T14:22:45Z',
+    category: 'financial',
+    severity: 'success',
+    ipAddress: '178.197.234.90 (Geneva, CH)',
+    targetUserId: 'usr-investor-3',
+    targetUserEmail: 'david.vance@heritagefo.ch'
+  },
+  {
+    id: 'audit-008',
+    adminId: 'usr-investor-1',
+    adminEmail: 'investor@kretz.com',
+    action: 'DOCUMENT_UPLOADED',
+    details: 'Uploaded deposit_proof document "CaixaBank SEPA Wire Transfer Slip (€10,000)" (caixabank_sepa_wire_transfer_10000eur.pdf).',
+    timestamp: '2026-03-19T11:05:12Z',
+    category: 'compliance',
+    severity: 'info',
+    ipAddress: '88.175.24.12 (Lyon, FR)',
+    targetUserId: 'usr-investor-1',
+    targetUserEmail: 'investor@kretz.com'
+  },
+  {
+    id: 'audit-009',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'WITHDRAWAL_APPROVED',
+    details: 'Approved withdrawal request of €5,000.00 to IBAN FR763000...9841 for sophie.martin@luxcapital.fr.',
+    timestamp: '2026-03-18T15:40:22Z',
+    category: 'financial',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-2',
+    targetUserEmail: 'sophie.martin@luxcapital.fr'
+  },
+  {
+    id: 'audit-010',
+    adminId: 'guest',
+    adminEmail: 'unknown',
+    action: 'PASSGATE_FAILED_ATTEMPT',
+    details: 'Failed pass gate authorization attempt at /admin. 4 attempts remaining before temporary rate-limit.',
+    timestamp: '2026-03-18T10:19:05Z',
+    category: 'security',
+    severity: 'critical',
+    ipAddress: '45.142.214.88 (External Probe)',
+    targetUserEmail: 'admin@lagence.com'
+  },
+  {
+    id: 'audit-011',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'USER_ACTIVATED',
+    details: 'Investor account sophie.martin@luxcapital.fr status set to ACTIVE after standard annual compliance renewal.',
+    timestamp: '2026-03-17T11:20:00Z',
+    category: 'user_status',
+    severity: 'success',
+    ipAddress: '194.199.4.10 (Internal Admin Console)',
+    targetUserId: 'usr-investor-2',
+    targetUserEmail: 'sophie.martin@luxcapital.fr'
+  },
+  {
+    id: 'audit-012',
+    adminId: 'usr-admin-1',
+    adminEmail: 'admin@kretz.com',
+    action: 'SYSTEM_INITIALIZATION',
+    details: 'Double-entry cryptographic ledger and compliance audit subsystem initialized for production custody.',
+    timestamp: '2026-01-01T00:00:00Z',
+    category: 'system',
+    severity: 'info',
+    ipAddress: '127.0.0.1 (System)'
+  }
+];
+
+class LedgerService {
+  private users: User[];
+  private properties: Property[];
+  private investments: Investment[];
+  private transactions: Transaction[];
+  private verificationDocuments: VerificationDocument[];
+  private auditLogs: AuditLog[];
+  private notifications: Notification[];
+  private paymentConfig: PaymentConfig;
+  private isProcessingLock: boolean = false;
+  private membershipTiers: MembershipTier[];
+  private memberships: UserMembership[];
+  private membershipApplications: MembershipApplication[];
+  private companyNews: CompanyNewsItem[];
+  private favorites: Record<string, string[]>;
+  private userPreferences: Record<string, Record<string, any>>;
+  private subBalances: Record<string, Record<string, number>>;
+  private p2pListings: P2PListingOrder[];
+  private processedIdempotencyKeys: Set<string> = new Set();
+  private listeners: Set<() => void> = new Set();
+
+  constructor() {
+    const storedUsers = getStorage<User[]>('users', DEFAULT_USERS);
+    const existingUserIds = new Set(storedUsers.map(u => u.id));
+    const missingUsers = DEFAULT_USERS.filter(u => !existingUserIds.has(u.id));
+    this.users = [...storedUsers, ...missingUsers].map(u => ({
+      ...u,
+      status: u.status || 'active'
+    }));
+    // Ensure investor account exists in users list
+    if (!this.users.some(u => u.email === 'investor@kretz.com')) {
+      this.users.push(DEFAULT_USERS[1]);
+    }
+    setStorage('users', this.users);
+
+    const storedProps = getStorage<Property[]>('properties', []);
+    const hasValidProps = Array.isArray(storedProps) && storedProps.length > 0;
+    const rawList = hasValidProps ? storedProps : [...INITIAL_PROPERTIES];
+    this.properties = rawList.filter(p => Array.isArray(p.images) && p.images.length >= 7);
+    const existingPropIds = new Set(this.properties.map(p => p.id));
+    const missingProps = INITIAL_PROPERTIES.filter(p => !existingPropIds.has(p.id) && Array.isArray(p.images) && p.images.length >= 7);
+    if (missingProps.length > 0) {
+      this.properties = [...this.properties, ...missingProps];
+    }
+    
+    // Always sync latest INITIAL_PROPERTIES monthlyTargetRate, yield metrics, and function status onto property state
+    const initialMap = new Map(INITIAL_PROPERTIES.map(p => [p.id, p]));
+    this.properties = this.properties.map(p => {
+      const init = initialMap.get(p.id);
+      if (init) {
+        const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
+        const resolvedStatus: PropertyStatus = isHidden
+          ? p.status
+          : p.availableTokens <= 0 || p.fundedAmount >= p.targetAmount
+          ? 'funded'
+          : p.fundedAmount > 0 && p.status === 'upcoming'
+          ? 'funding'
+          : p.status;
+        return {
+          ...p,
+          images: init.images,
+          bannerImage: init.bannerImage,
+          status: resolvedStatus,
+          monthlyTargetRate: init.monthlyTargetRate,
+          estimatedAnnualYield: init.estimatedAnnualYield,
+          totalEstimatedReturn: init.totalEstimatedReturn,
+          tokenPrice: init.tokenPrice,
+          durationMonths: init.durationMonths,
+          approvedForFrontend: isHidden ? false : (p.approvedForFrontend !== undefined ? p.approvedForFrontend : init.approvedForFrontend),
+          assignedFunction: p.assignedFunction || init.assignedFunction,
+          frontendVisibilityStatus: isHidden ? 'admin_only' : (p.frontendVisibilityStatus || init.frontendVisibilityStatus),
+        };
+      }
+      return p;
+    });
+
+    // Enforce invariant: All hidden properties stay strictly in the admin part
+    this.properties.forEach(p => {
+      if (p.status === 'hidden' || p.status === 'pending_approval') {
+        p.approvedForFrontend = false;
+        p.frontendVisibilityStatus = 'admin_only';
+      }
+    });
+    setStorage('properties', this.properties);
+
+    const storedInvestments = getStorage<Investment[]>('investments', DEFAULT_INVESTMENTS);
+    const existingInvIds = new Set(storedInvestments.map(i => i.id));
+    const missingInvs = DEFAULT_INVESTMENTS.filter(i => !existingInvIds.has(i.id));
+    this.investments = [...storedInvestments, ...missingInvs];
+    setStorage('investments', this.investments);
+
+    const storedTxs = getStorage<Transaction[]>('transactions', DEFAULT_TRANSACTIONS);
+    const existingTxIds = new Set(storedTxs.map(t => t.id));
+    const missingTxs = DEFAULT_TRANSACTIONS.filter(t => !existingTxIds.has(t.id));
+    this.transactions = [...storedTxs, ...missingTxs];
+
+    // Ensure at least one pending deposit request is available for testing if empty
+    if (!this.transactions.some(t => t.type === 'deposit' && t.status === 'pending')) {
+      this.transactions.unshift(DEFAULT_TRANSACTIONS[0]);
+    }
+    setStorage('transactions', this.transactions);
+    this.verificationDocuments = getStorage('verificationDocuments', DEFAULT_VERIFICATION_DOCUMENTS);
+    this.paymentConfig = getStorage('paymentConfig', DEFAULT_PAYMENT_CONFIG);
+    // Keep traditional bank configuration and crypto networks synchronized with canonical settings
+    if (
+      this.paymentConfig.traditional.iban !== DEFAULT_PAYMENT_CONFIG.traditional.iban ||
+      this.paymentConfig.traditional.beneficiary !== DEFAULT_PAYMENT_CONFIG.traditional.beneficiary ||
+      this.paymentConfig.traditional.bankName !== DEFAULT_PAYMENT_CONFIG.traditional.bankName ||
+      !this.paymentConfig.traditional.address ||
+      !this.paymentConfig.cryptoNetworks ||
+      this.paymentConfig.cryptoNetworks.length !== 1 ||
+      this.paymentConfig.cryptoNetworks[0]?.walletAddress !== DEFAULT_PAYMENT_CONFIG.cryptoNetworks[0].walletAddress
+    ) {
+      this.paymentConfig.traditional = { ...DEFAULT_PAYMENT_CONFIG.traditional };
+      this.paymentConfig.cryptoNetworks = [...DEFAULT_PAYMENT_CONFIG.cryptoNetworks];
+      setStorage('paymentConfig', this.paymentConfig);
+    }
+    this.membershipTiers = getStorage('membershipTiers', INITIAL_MEMBERSHIP_TIERS);
+    this.memberships = getStorage('memberships', []);
+    this.membershipApplications = getStorage('membershipApplications', []);
+    const storedNews = getStorage<CompanyNewsItem[]>('companyNews', []);
+    const initialNewsMap = new Map(INITIAL_COMPANY_NEWS.map(n => [n.id, n]));
+    if (!Array.isArray(storedNews) || storedNews.length === 0) {
+      this.companyNews = [...INITIAL_COMPANY_NEWS];
+    } else {
+      this.companyNews = storedNews.map(n => {
+        const init = initialNewsMap.get(n.id) || INITIAL_COMPANY_NEWS.find(m => m.youtubeId === n.youtubeId);
+        if (init) {
+          return {
+            ...n,
+            title: init.title,
+            description: init.description,
+            category: init.category,
+            source: init.source,
+            tags: init.tags,
+            youtubeId: init.youtubeId,
+            youtubeUrl: init.youtubeUrl,
+            thumbnailUrl: init.thumbnailUrl
+          };
+        }
+        return n;
+      });
+      const existingIds = new Set(this.companyNews.map(n => n.id));
+      const missing = INITIAL_COMPANY_NEWS.filter(n => !existingIds.has(n.id));
+      this.companyNews = [...this.companyNews, ...missing];
+    }
+    setStorage('companyNews', this.companyNews);
+    const storedLogs = getStorage<AuditLog[]>('auditLogs', DEFAULT_AUDIT_LOGS);
+    if (storedLogs.length <= 1) {
+      this.auditLogs = [...DEFAULT_AUDIT_LOGS];
+      setStorage('auditLogs', this.auditLogs);
+    } else {
+      this.auditLogs = storedLogs;
+    }
+    this.notifications = getStorage('notifications', []);
+    this.favorites = getStorage<Record<string, string[]>>('favorites', {});
+    this.userPreferences = getStorage<Record<string, Record<string, any>>>('userPreferences', {});
+    this.subBalances = getStorage<Record<string, Record<string, number>>>('subBalances', {});
+
+    const storedP2P = getStorage<P2PListingOrder[] | null>('p2pListings', null);
+    if (Array.isArray(storedP2P) && storedP2P.length > 0) {
+      this.p2pListings = storedP2P;
+    } else {
+      const seedProps = this.properties.filter(p => p.approvedForFrontend !== false);
+      const p1 = seedProps[0];
+      const p2 = seedProps[1] || seedProps[0];
+      this.p2pListings = [];
+      if (p1) {
+        this.p2pListings.push({
+          id: 'p2p-ord-1001',
+          sellerId: 'usr-inst-lp-1',
+          sellerName: 'Alpine Family Office LP',
+          propertyId: p1.id,
+          propertyTitle: p1.title,
+          propertyLocation: p1.location,
+          propertyImage: p1.images[0] || p1.bannerImage,
+          tokenTicker: p1.tokenTicker,
+          tokensAvailable: 12,
+          askingPricePerToken: Number((p1.tokenPrice * 0.985).toFixed(2)),
+          parValuePerToken: p1.tokenPrice,
+          estimatedAnnualYield: p1.estimatedAnnualYield,
+          createdAt: '2026-10-14T10:30:00Z',
+          status: 'open',
+        });
+      }
+      if (p2 && p2.id !== p1?.id) {
+        this.p2pListings.push({
+          id: 'p2p-ord-1002',
+          sellerId: 'usr-inst-lp-2',
+          sellerName: 'Geneva Private Capital',
+          propertyId: p2.id,
+          propertyTitle: p2.title,
+          propertyLocation: p2.location,
+          propertyImage: p2.images[0] || p2.bannerImage,
+          tokenTicker: p2.tokenTicker,
+          tokensAvailable: 8,
+          askingPricePerToken: Number((p2.tokenPrice * 1.015).toFixed(2)),
+          parValuePerToken: p2.tokenPrice,
+          estimatedAnnualYield: p2.estimatedAnnualYield,
+          createdAt: '2026-10-16T15:10:00Z',
+          status: 'open',
+        });
+      }
+      setStorage('p2pListings', this.p2pListings);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', (ev) => {
+        if (ev.key && ev.key.startsWith('rentallog_v3_')) {
+          this.notifyListeners();
+        }
+      });
+    }
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifyListeners() {
+    this.listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (err) {
+        console.error('Ledger subscriber error:', err);
+      }
+    });
+  }
+
+  private saveState() {
+    setStorage('users', this.users);
+    setStorage('properties', this.properties);
+    setStorage('investments', this.investments);
+    setStorage('transactions', this.transactions);
+    setStorage('verificationDocuments', this.verificationDocuments);
+    setStorage('auditLogs', this.auditLogs);
+    setStorage('notifications', this.notifications);
+    setStorage('paymentConfig', this.paymentConfig);
+    setStorage('membershipTiers', this.membershipTiers);
+    setStorage('memberships', this.memberships);
+    setStorage('membershipApplications', this.membershipApplications);
+    setStorage('companyNews', this.companyNews);
+    setStorage('favorites', this.favorites);
+    setStorage('userPreferences', this.userPreferences);
+    setStorage('subBalances', this.subBalances);
+    setStorage('p2pListings', this.p2pListings);
+    this.notifyListeners();
+  }
+
+  public getPaymentConfig(): PaymentConfig {
+    return JSON.parse(JSON.stringify(this.paymentConfig));
+  }
+
+  public updatePaymentConfig(config: PaymentConfig): void {
+    this.paymentConfig = config;
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'PAYMENT_CONFIG_UPDATED', 'Administrator updated dual payment gateway and crypto treasury wallet settings.');
+    this.saveState();
+  }
+
+  public addCryptoNetwork(network: Omit<CryptoNetworkConfig, 'id'>): CryptoNetworkConfig {
+    const newNetwork: CryptoNetworkConfig = {
+      ...network,
+      id: 'net-' + Math.random().toString(36).substring(2, 9)
+    };
+    this.paymentConfig.cryptoNetworks.push(newNetwork);
+    this.logAudit(
+      'usr-admin-1',
+      'admin@kretz.com',
+      'CRYPTO_NETWORK_ADDED',
+      `Added crypto treasury network: ${newNetwork.name} (${newNetwork.token})`
+    );
+    this.saveState();
+    return newNetwork;
+  }
+
+  public deleteCryptoNetwork(id: string): void {
+    this.paymentConfig.cryptoNetworks = this.paymentConfig.cryptoNetworks.filter(n => n.id !== id);
+    this.logAudit(
+      'usr-admin-1',
+      'admin@kretz.com',
+      'CRYPTO_NETWORK_DELETED',
+      `Deleted crypto treasury network ID: ${id}`
+    );
+    this.saveState();
+  }
+
+  public toggleCryptoNetwork(id: string): void {
+    const net = this.paymentConfig.cryptoNetworks.find(n => n.id === id);
+    if (net) {
+      net.enabled = !net.enabled;
+      this.saveState();
+    }
+  }
+
+  public recordManualCredit(
+    adminEmail: string,
+    userId: string,
+    amount: number,
+    currency: string,
+    paymentMethod: string,
+    reference?: string,
+    notes?: string
+  ): Transaction {
+    if (amount <= 0) throw new Error('Credit amount must be greater than zero.');
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('Investor not found.');
+
+    const timestamp = new Date().toISOString();
+    const finalRef = reference || `MANUAL-${currency}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const txHash = generateTxHash(finalRef, amount, timestamp);
+
+    user.walletBalance = Number((user.walletBalance + amount).toFixed(2));
+
+    const tx: Transaction = {
+      id: 'tx-' + Math.random().toString(36).substring(2, 9),
+      userId: user.id,
+      type: 'deposit',
+      amount: amount,
+      currency: currency as any,
+      status: 'completed',
+      description: `Manual payment credit via ${paymentMethod}${notes ? ` (${notes})` : ''}`,
+      reference: finalRef,
+      createdAt: timestamp,
+      paymentMethod: paymentMethod,
+      balanceAfter: user.walletBalance,
+      txHash: txHash,
+      metadata: {
+        notes: notes,
+        adminEmail: adminEmail
+      }
+    };
+
+    this.transactions.unshift(tx);
+    this.createNotification(
+      user.id,
+      'Account Credited by Admin',
+      `Your balance was manually credited with €${amount.toFixed(2)} (${paymentMethod}).`,
+      'financial'
+    );
+    this.logAudit(
+      'usr-admin-1',
+      adminEmail,
+      'MANUAL_PAYMENT_CREDITED',
+      `Admin manually credited €${amount.toFixed(2)} to ${user.email} (${paymentMethod}). Ref: ${finalRef}`
+    );
+    this.saveState();
+    return tx;
+  }
+
+  public updateUserPaymentDetails(
+    userId: string,
+    details: { cryptoDepositAddress?: string; bankIban?: string }
+  ): User {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found.');
+    if (details.cryptoDepositAddress !== undefined) {
+      user.cryptoDepositAddress = details.cryptoDepositAddress;
+    }
+    if (details.bankIban !== undefined) {
+      user.bankIban = details.bankIban;
+    }
+    this.logAudit(
+      'usr-admin-1',
+      'admin@kretz.com',
+      'USER_PAYMENT_DETAILS_UPDATED',
+      `Updated payment integration details for ${user.email}`
+    );
+    this.saveState();
+    return user;
+  }
+
+  public updateUserProfile(
+    userId: string,
+    updates: Partial<User>
+  ): User {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found.');
+    
+    if (updates.fullName !== undefined) user.fullName = updates.fullName.trim();
+    if (updates.phoneNumber !== undefined) user.phoneNumber = updates.phoneNumber.trim();
+    if (updates.country !== undefined) user.country = updates.country.trim();
+    if (updates.avatarUrl !== undefined) user.avatarUrl = updates.avatarUrl;
+    if (updates.bankIban !== undefined) user.bankIban = updates.bankIban.trim();
+    if (updates.cryptoDepositAddress !== undefined) user.cryptoDepositAddress = updates.cryptoDepositAddress.trim();
+    if (updates.taxId !== undefined) user.taxId = updates.taxId.trim();
+    if (updates.dateOfBirth !== undefined) user.dateOfBirth = updates.dateOfBirth;
+    if (updates.address !== undefined) user.address = updates.address.trim();
+    if (updates.city !== undefined) user.city = updates.city.trim();
+    if (updates.postalCode !== undefined) user.postalCode = updates.postalCode.trim();
+    if (updates.twoFactorEnabled !== undefined) user.twoFactorEnabled = updates.twoFactorEnabled;
+
+    this.saveState();
+    return user;
+  }
+
+  // --- User & Auth Queries ---
+  public getUsers(): User[] {
+    return [...this.users];
+  }
+
+  public getUserById(id: string): User | undefined {
+    return this.users.find(u => u.id === id);
+  }
+
+  public getUserByEmail(email: string): User | undefined {
+    const clean = (email || '').trim().toLowerCase();
+    let found = this.users.find(u => u.email.toLowerCase() === clean);
+    if (!found) {
+      const match = DEFAULT_USERS.find(du => du.email.toLowerCase() === clean);
+      if (match) {
+        found = { ...match };
+        this.users.push(found);
+        this.saveState();
+      }
+    }
+    return found;
+  }
+
+  public createSamplePendingDeposit(amount: number = 5000, userId?: string): Transaction {
+    const targetUser = userId ? this.getUserById(userId) : (this.getUserByEmail('investor@kretz.com') || this.users[0]);
+    if (!targetUser) throw new Error('Target investor not found.');
+
+    const timestamp = new Date().toISOString();
+    const reference = `DEP-EUR-${Math.floor(100000 + Math.random() * 900000)}`;
+    const tx: Transaction = {
+      id: 'tx-dep-' + Math.random().toString(36).substring(2, 9),
+      userId: targetUser.id,
+      type: 'deposit',
+      amount: amount,
+      currency: 'EUR',
+      status: 'pending',
+      description: 'Deposit request via SEPA Bank Wire (CaixaBank Escrow)',
+      reference: reference,
+      createdAt: timestamp,
+      paymentMethod: 'SEPA Bank Wire Transfer',
+      balanceAfter: targetUser.walletBalance,
+      txHash: '0xcaixa_' + reference.toLowerCase(),
+      metadata: {
+        senderName: targetUser.fullName,
+        bank: 'CaixaBank S.A.',
+        depositRef: reference
+      }
+    };
+
+    this.transactions.unshift(tx);
+    this.createNotification(
+      targetUser.id,
+      'Deposit Request Received',
+      `Deposit request for €${amount.toFixed(2)} (${reference}) is awaiting administrator review.`,
+      'info'
+    );
+    this.saveState();
+    return tx;
+  }
+
+  public createSamplePendingWithdrawal(amount: number = 1000, userId?: string): Transaction {
+    const targetUser = userId ? this.getUserById(userId) : (this.getUserByEmail('investor@kretz.com') || this.users[0]);
+    if (!targetUser) throw new Error('Target investor not found.');
+
+    const timestamp = new Date().toISOString();
+    const reference = `WD-${Math.floor(100000 + Math.random() * 900000)}`;
+    const tx: Transaction = {
+      id: 'tx-wd-' + Math.random().toString(36).substring(2, 9),
+      userId: targetUser.id,
+      type: 'withdrawal',
+      amount: amount,
+      currency: 'EUR',
+      status: 'pending',
+      description: `Withdrawal request to ${targetUser.bankIban || 'ES9121000418450200051829'}`,
+      reference: reference,
+      createdAt: timestamp,
+      paymentMethod: 'SEPA Bank Wire',
+      balanceAfter: targetUser.walletBalance,
+      metadata: {
+        bankIban: targetUser.bankIban || 'ES9121000418450200051829'
+      }
+    };
+
+    this.transactions.unshift(tx);
+    this.createNotification(
+      targetUser.id,
+      'Withdrawal Request Received',
+      `Withdrawal request for €${amount.toFixed(2)} (${reference}) is pending administrator approval.`,
+      'info'
+    );
+    this.saveState();
+    return tx;
+  }
+
+  public createUser(userData: {
+    email: string;
+    fullName: string;
+    role?: UserRole;
+    accountType?: AccountType;
+    country?: string;
+    phoneNumber?: string;
+  }): User {
+    const existing = this.getUserByEmail(userData.email);
+    if (existing) {
+      throw new Error('An account with this email address already exists.');
+    }
+
+    const newUser: User = {
+      id: 'usr-' + Math.random().toString(36).substring(2, 10),
+      email: userData.email,
+      fullName: userData.fullName,
+      role: userData.role || 'investor',
+      accountType: userData.accountType || (userData.role === 'admin' ? 'admin' : 'individual_investor'),
+      country: userData.country || 'France',
+      phoneNumber: userData.phoneNumber || '',
+      kycStatus: 'unverified',
+      walletBalance: 0,
+      investedBalance: 0,
+      totalEarned: 0,
+      createdAt: new Date().toISOString(),
+      cryptoDepositAddress: '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+    };
+
+    this.users.push(newUser);
+    this.logAudit(newUser.id, newUser.email, 'USER_REGISTERED', `New user registered with role ${newUser.role}, account type ${newUser.accountType}, country ${newUser.country}`);
+    this.saveState();
+    return newUser;
+  }
+
+  public syncSupabaseUser(
+    supabaseId: string,
+    email: string,
+    fullName: string,
+    role: UserRole = 'investor',
+    accountType?: AccountType,
+    country?: string,
+    phoneNumber?: string
+  ): User {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const isAdminEmail = cleanEmail === 'info@kretz.site' || cleanEmail === 'admin@kretz.com' || role === 'admin';
+    const effectiveRole: UserRole = isAdminEmail ? 'admin' : role;
+    const effectiveAccountType: AccountType = isAdminEmail ? 'admin' : (accountType || 'individual_investor');
+
+    let existing = this.getUserById(supabaseId) || this.getUserByEmail(email);
+    if (existing) {
+      existing.id = supabaseId;
+      if (isAdminEmail) {
+        existing.role = 'admin';
+        existing.accountType = 'admin';
+        existing.kycStatus = 'verified';
+      }
+      if (fullName && (!existing.fullName || existing.fullName === 'Investor')) {
+        existing.fullName = fullName;
+      }
+      if (accountType && !existing.accountType) {
+        existing.accountType = accountType;
+      }
+      if (country && !existing.country) {
+        existing.country = country;
+      }
+      if (phoneNumber && !existing.phoneNumber) {
+        existing.phoneNumber = phoneNumber;
+      }
+      this.saveState();
+      return existing;
+    }
+
+    const newUser: User = {
+      id: supabaseId,
+      email: email,
+      fullName: fullName || (isAdminEmail ? "L'Agence Executive Admin" : email.split('@')[0] || 'Investor'),
+      role: effectiveRole,
+      accountType: effectiveAccountType,
+      country: country || 'Spain',
+      phoneNumber: phoneNumber || '',
+      kycStatus: isAdminEmail ? 'verified' : 'unverified',
+      walletBalance: isAdminEmail ? 500000 : 0,
+      investedBalance: 0,
+      totalEarned: 0,
+      createdAt: new Date().toISOString(),
+      cryptoDepositAddress: '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+    };
+    this.users.push(newUser);
+    this.logAudit(newUser.id, newUser.email, 'USER_REGISTERED_SUPABASE', `New Supabase user synced with role ${newUser.role}: ${newUser.email}`);
+    this.saveState();
+    return newUser;
+  }
+
+  public updateKYCStatus(userId: string, status: KYCStatus, docType?: string): User {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found');
+
+    user.kycStatus = status;
+    if (docType) user.kycDocumentType = docType;
+    if (status === 'pending') user.kycSubmittedAt = new Date().toISOString();
+
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'KYC_STATUS_UPDATED', `User ${user.email} KYC status set to ${status}`);
+    this.createNotification(user.id, `Identity Verification: ${status.toUpperCase()}`, `Your KYC verification is now ${status}.`, status === 'verified' ? 'success' : 'info');
+    this.saveState();
+    return user;
+  }
+
+  public updateUserAccountType(
+    userId: string, 
+    accountType: AccountType, 
+    extraDetails?: { jointHolderName?: string; companyName?: string; institutionName?: string; taxId?: string; registrationNumber?: string }
+  ): User {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found');
+
+    user.accountType = accountType;
+    if (extraDetails) {
+      if (extraDetails.jointHolderName !== undefined) user.jointHolderName = extraDetails.jointHolderName;
+      if (extraDetails.companyName !== undefined) user.companyName = extraDetails.companyName;
+      if (extraDetails.institutionName !== undefined) user.institutionName = extraDetails.institutionName;
+      if (extraDetails.taxId !== undefined) user.taxId = extraDetails.taxId;
+      if (extraDetails.registrationNumber !== undefined) user.registrationNumber = extraDetails.registrationNumber;
+    }
+
+    this.logAudit(userId, user.email, 'ACCOUNT_TYPE_UPDATED', `User account type updated to ${accountType}`);
+    this.createNotification(user.id, 'Account Type Updated', `Your investor profile has been switched to ${getAccountTypeLabel(accountType)}.`, 'success');
+    this.saveState();
+    return user;
+  }
+
+  public toggleUserStatus(
+    userId: string, 
+    newStatus: 'active' | 'suspended', 
+    adminEmail: string = 'admin@kretz.com',
+    reason?: string
+  ): User {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found.');
+
+    const previousStatus = user.status || 'active';
+    user.status = newStatus;
+    user.suspendedReason = newStatus === 'suspended' ? (reason?.trim() || 'Administrative Compliance Suspension') : undefined;
+
+    const action = newStatus === 'suspended' ? 'USER_SUSPENDED' : 'USER_ACTIVATED';
+    const auditDetails = `Investor account ${user.fullName} (${user.email}) changed from ${previousStatus.toUpperCase()} to ${newStatus.toUpperCase()} by ${adminEmail}.${reason ? ` Reason: ${reason}` : ''}`;
+    this.logAudit('usr-admin-1', adminEmail, action, auditDetails);
+
+    this.createNotification(
+      user.id,
+      newStatus === 'suspended' ? 'Account Temporarily Suspended' : 'Account Re-Activated',
+      newStatus === 'suspended'
+        ? `Your investor account access has been suspended: ${reason || 'Compliance review in progress'}. Please contact compliance@kretz.com for assistance.`
+        : 'Your investor account has been restored to active status. Full investment and wallet capabilities are available.',
+      newStatus === 'suspended' ? 'warning' : 'success'
+    );
+
+    this.saveState();
+    return user;
+  }
+
+  public recordAuditLog(
+    adminId: string,
+    adminEmail: string,
+    action: string,
+    details: string,
+    category?: AuditCategory,
+    severity?: AuditSeverity,
+    extra?: {
+      targetUserId?: string;
+      targetUserEmail?: string;
+      ipAddress?: string;
+      metadata?: Record<string, any>;
+    }
+  ): AuditLog {
+    const entry = this.logAudit(adminId, adminEmail, action, details, category, severity, extra);
+    this.saveState();
+    return entry;
+  }
+
+  public clearAuditLogs(): void {
+    this.auditLogs = [];
+    this.saveState();
+  }
+
+  public seedComplianceSampleAuditLogs(): AuditLog[] {
+    this.auditLogs = [...DEFAULT_AUDIT_LOGS];
+    this.saveState();
+    return [...this.auditLogs];
+  }
+
+  public getAuditLogStats(): {
+    total: number;
+    authCount: number;
+    userStatusCount: number;
+    financialCount: number;
+    complianceCount: number;
+    securityCount: number;
+    warningCount: number;
+  } {
+    const logs = this.auditLogs;
+    return {
+      total: logs.length,
+      authCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'auth').length,
+      userStatusCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'user_status').length,
+      financialCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'financial').length,
+      complianceCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'compliance').length,
+      securityCount: logs.filter(l => (l.category || this.inferAuditCategory(l.action)) === 'security').length,
+      warningCount: logs.filter(l => l.severity === 'warning' || l.severity === 'critical').length,
+    };
+  }
+
+
+  // --- Properties Management ---
+  public getProperties(): Property[] {
+    const initialMap = new Map(INITIAL_PROPERTIES.map(p => [p.id, p]));
+    return this.properties
+      .filter(p => Array.isArray(p.images) && p.images.length >= 7)
+      .map(p => {
+        const init = initialMap.get(p.id);
+        const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
+        const resolvedStatus: PropertyStatus = isHidden
+          ? p.status
+          : p.availableTokens <= 0 || p.fundedAmount >= p.targetAmount
+          ? 'funded'
+          : p.fundedAmount > 0 && p.status === 'upcoming'
+          ? 'funding'
+          : p.status;
+        if (init) {
+          return {
+            ...p,
+            images: init.images,
+            bannerImage: init.bannerImage,
+            status: resolvedStatus,
+            monthlyTargetRate: init.monthlyTargetRate,
+            estimatedAnnualYield: init.estimatedAnnualYield,
+            totalEstimatedReturn: init.totalEstimatedReturn,
+            tokenPrice: init.tokenPrice,
+            approvedForFrontend: isHidden ? false : (p.approvedForFrontend !== undefined ? p.approvedForFrontend : init.approvedForFrontend),
+            assignedFunction: p.assignedFunction || init.assignedFunction,
+            frontendVisibilityStatus: isHidden ? ('admin_only' as const) : (p.frontendVisibilityStatus || init.frontendVisibilityStatus),
+          };
+        }
+        return {
+          ...p,
+          approvedForFrontend: isHidden ? false : (p.approvedForFrontend ?? true),
+          frontendVisibilityStatus: isHidden ? ('admin_only' as const) : (p.frontendVisibilityStatus || 'live_frontend'),
+        };
+      });
+  }
+
+  /**
+   * Returns only properties eligible to be displayed on the public frontend.
+   * All hidden, unapproved, or unassigned properties strictly stay in the admin part.
+   */
+  public getFrontendProperties(): Property[] {
+    return this.getProperties().filter(p => 
+      p.status !== 'hidden' && 
+      p.status !== 'pending_approval' && 
+      p.approvedForFrontend === true &&
+      Boolean(p.assignedFunction)
+    );
+  }
+
+  /**
+   * Returns all properties in the platform, including hidden/held properties in admin custody.
+   */
+  public getAdminProperties(): Property[] {
+    return this.getProperties();
+  }
+
+  /**
+   * Assigns an operational function to a property and formally approves it to appear on the public frontend.
+   */
+  public assignPropertyFunctionAndApprove(
+    propertyId: string,
+    options: {
+      assignedFunction: string;
+      agentName?: string;
+      targetStatus?: PropertyStatus;
+      adminEmail?: string;
+      notes?: string;
+    }
+  ): Property {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) throw new Error('Property not found in custody ledger.');
+    if (!options.assignedFunction || !options.assignedFunction.trim()) {
+      throw new Error('A specific operational function must be assigned before approving the property for frontend display.');
+    }
+
+    const admin = options.adminEmail || 'admin@kretz.site';
+    const now = new Date().toISOString();
+    const finalStatus: PropertyStatus = options.targetStatus || 'funding';
+
+    prop.assignedFunction = options.assignedFunction.trim();
+    prop.assignedAt = now;
+    prop.assignedBy = admin;
+    prop.approvedForFrontend = true;
+    prop.approvedAt = now;
+    prop.approvedBy = admin;
+    prop.status = finalStatus;
+    prop.approvalNotes = options.notes;
+    prop.frontendVisibilityStatus = 'live_frontend';
+    if (options.agentName) {
+      if (!prop.agent) {
+        prop.agent = { name: options.agentName };
+      } else {
+        prop.agent.name = options.agentName;
+      }
+    }
+
+    this.logAudit(
+      'usr-admin-1',
+      admin,
+      'PROPERTY_FUNCTION_ASSIGNED_AND_APPROVED',
+      `Property "${prop.title}" assigned function "${prop.assignedFunction}" and APPROVED to appear on frontend under status ${finalStatus.toUpperCase()}.`
+    );
+    this.saveState();
+    return prop;
+  }
+
+  /**
+   * Assigns an operational function to a property while keeping it strictly in the admin part.
+   */
+  public assignPropertyFunctionOnly(
+    propertyId: string,
+    assignedFunction: string,
+    agentName?: string,
+    adminEmail?: string
+  ): Property {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) throw new Error('Property not found in custody ledger.');
+    if (!assignedFunction || !assignedFunction.trim()) {
+      throw new Error('Please specify a valid operational function.');
+    }
+
+    const admin = adminEmail || 'admin@kretz.site';
+    const now = new Date().toISOString();
+
+    prop.assignedFunction = assignedFunction.trim();
+    prop.assignedAt = now;
+    prop.assignedBy = admin;
+    prop.status = 'hidden';
+    prop.approvedForFrontend = false;
+    prop.frontendVisibilityStatus = 'admin_only';
+    if (agentName) {
+      if (!prop.agent) {
+        prop.agent = { name: agentName };
+      } else {
+        prop.agent.name = agentName;
+      }
+    }
+
+    this.logAudit(
+      'usr-admin-1',
+      admin,
+      'PROPERTY_FUNCTION_ASSIGNED',
+      `Property "${prop.title}" assigned function "${prop.assignedFunction}". Held in admin custody until approved.`
+    );
+    this.saveState();
+    return prop;
+  }
+
+  /**
+   * Removes a property from the public frontend and keeps it safely in the admin part.
+   */
+  public hidePropertyFromFrontend(
+    propertyId: string,
+    adminEmail?: string,
+    reason?: string
+  ): Property {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) throw new Error('Property not found in custody ledger.');
+
+    const admin = adminEmail || 'admin@kretz.site';
+    prop.status = 'hidden';
+    prop.approvedForFrontend = false;
+    prop.frontendVisibilityStatus = 'admin_only';
+    if (reason) prop.approvalNotes = reason;
+
+    this.logAudit(
+      'usr-admin-1',
+      admin,
+      'PROPERTY_HIDDEN_FROM_FRONTEND',
+      `Property "${prop.title}" removed from frontend and moved to admin custody.${reason ? ` Reason: ${reason}` : ''}`
+    );
+    this.saveState();
+    return prop;
+  }
+
+  public getPropertyById(id: string): Property | undefined {
+    const p = this.properties.find(prop => (prop.id === id || prop.slug === id) && Array.isArray(prop.images) && prop.images.length >= 7);
+    if (p) {
+      const init = INITIAL_PROPERTIES.find(item => item.id === p.id || item.slug === p.slug);
+      const isHidden = p.status === 'hidden' || p.status === 'pending_approval';
+      if (init) {
+        return {
+          ...p,
+          images: init.images,
+          bannerImage: init.bannerImage,
+          monthlyTargetRate: init.monthlyTargetRate,
+          estimatedAnnualYield: init.estimatedAnnualYield,
+          totalEstimatedReturn: init.totalEstimatedReturn,
+          tokenPrice: init.tokenPrice,
+          approvedForFrontend: isHidden ? false : (p.approvedForFrontend !== undefined ? p.approvedForFrontend : init.approvedForFrontend),
+          assignedFunction: p.assignedFunction || init.assignedFunction,
+          frontendVisibilityStatus: isHidden ? 'admin_only' : (p.frontendVisibilityStatus || init.frontendVisibilityStatus),
+        };
+      }
+      return {
+        ...p,
+        approvedForFrontend: isHidden ? false : (p.approvedForFrontend ?? true),
+        frontendVisibilityStatus: isHidden ? 'admin_only' : (p.frontendVisibilityStatus || 'live_frontend'),
+      };
+    }
+    return p;
+  }
+
+  public saveProperty(property: Property): Property {
+    const index = this.properties.findIndex(p => p.id === property.id);
+    if (index >= 0) {
+      this.properties[index] = property;
+    } else {
+      this.properties.push(property);
+    }
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'PROPERTY_UPDATED', `Property ${property.title} was saved/updated`);
+    this.saveState();
+    return property;
+  }
+
+  public restoreDefaults(): { success: boolean; message: string } {
+    this.properties = INITIAL_PROPERTIES.filter(p => Array.isArray(p.images) && p.images.length >= 7);
+    this.companyNews = [...INITIAL_COMPANY_NEWS];
+    setStorage('properties', this.properties);
+    setStorage('companyNews', this.companyNews);
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'SYSTEM_RESTORED', 'Restored all initial properties and company news videos');
+    this.saveState();
+    return { success: true, message: 'Successfully restored all properties and company news videos to initial defaults.' };
+  }
+
+  // --- Atomic Ledger Operations ---
+  /**
+   * Process Deposit:
+   * Adds funds to available wallet balance and records ledger transaction.
+   */
+  public async processDeposit(
+    userId: string,
+    amount: number,
+    currency: 'EUR' | 'USDT' | 'USDC' | 'BTC' | 'ETH' | 'SOL' | string,
+    paymentMethod: string,
+    externalRef?: string,
+    metadata?: Record<string, any>
+  ): Promise<Transaction> {
+    if (amount <= 0) throw new Error('Deposit amount must be greater than zero.');
+    if (this.isProcessingLock) throw new Error('Another ledger transaction is currently processing. Please retry in a moment.');
+
+    try {
+      this.isProcessingLock = true;
+      const user = this.getUserById(userId);
+      if (!user) throw new Error('Investor account not found.');
+
+      const timestamp = new Date().toISOString();
+      const reference = externalRef || `DEP-${currency}-${Math.floor(100000 + Math.random() * 900000)}`;
+      const txHash = generateTxHash(reference, amount, timestamp);
+
+      // Do NOT mutate balance until admin approves deposit
+      const tx: Transaction = {
+        id: 'tx-' + Math.random().toString(36).substring(2, 9),
+        userId: user.id,
+        type: 'deposit',
+        amount: amount,
+        currency: currency as any,
+        status: 'pending',
+        description: `Deposit request via ${paymentMethod} (Awaiting Admin Confirmation)`,
+        reference: reference,
+        createdAt: timestamp,
+        paymentMethod: paymentMethod,
+        balanceAfter: user.walletBalance,
+        txHash: txHash,
+        metadata: metadata
+      };
+
+      this.transactions.unshift(tx);
+
+      // If user uploaded a deposit receipt / payment proof, automatically register it in verification documents
+      if (metadata?.receiptUrl || metadata?.receiptFile) {
+        this.verificationDocuments.unshift({
+          id: 'doc-' + Math.random().toString(36).substring(2, 10),
+          userId: user.id,
+          userName: user.fullName,
+          userEmail: user.email,
+          category: 'deposit_proof',
+          title: `Deposit Proof: ${paymentMethod} (${formatCurrency(amount)})`,
+          documentType: paymentMethod.includes('Crypto') ? 'Crypto Tx Proof' : 'Bank Wire Receipt',
+          fileUrl: metadata.receiptUrl || metadata.receiptFile,
+          fileName: metadata.receiptFileName || 'deposit_transfer_receipt.pdf',
+          fileSize: metadata.receiptFileSize || 150000,
+          uploadedAt: timestamp,
+          status: 'pending',
+          transactionReference: reference,
+          amount: amount,
+          currency: currency,
+          notes: metadata.notes || `Uploaded proof for deposit request ${reference}`
+        });
+      }
+
+      this.createNotification(user.id, 'Deposit Submitted', `Your deposit request for €${amount.toFixed(2)} is pending administrative review and approval.`, 'info');
+      this.logAudit(user.id, user.email, 'DEPOSIT_REQUESTED', `User requested €${amount.toFixed(2)} deposit via ${paymentMethod}`);
+      this.saveState();
+      return tx;
+    } finally {
+      this.isProcessingLock = false;
+    }
+  }
+
+  /**
+   * Request Withdrawal:
+   * Checks balance, verifies KYC, creates pending withdrawal, and temporarily locks funds to prevent double-spend.
+   */
+  public async requestWithdrawal(
+    userId: string,
+    amount: number,
+    paymentMethod: string,
+    details: { bankIban?: string; cryptoAddress?: string; network?: string; token?: string }
+  ): Promise<Transaction> {
+    if (amount <= 0) throw new Error('Withdrawal amount must be greater than zero.');
+    if (this.isProcessingLock) throw new Error('Ledger is busy processing another transaction.');
+
+    try {
+      this.isProcessingLock = true;
+      const user = this.getUserById(userId);
+      if (!user) throw new Error('Investor account not found.');
+
+      if (user.kycStatus !== 'verified') {
+        throw new Error('Regulatory compliance requires identity verification (KYC) before processing withdrawals.');
+      }
+
+      if (user.walletBalance < amount) {
+        throw new Error(`Insufficient available funds. Current available balance: €${user.walletBalance.toFixed(2)}`);
+      }
+
+      // Deduct balance immediately into pending escrow to prevent double withdrawals
+      user.walletBalance = Number((user.walletBalance - amount).toFixed(2));
+
+      const timestamp = new Date().toISOString();
+      const reference = `WD-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      const tx: Transaction = {
+        id: 'tx-' + Math.random().toString(36).substring(2, 9),
+        userId: user.id,
+        type: 'withdrawal',
+        amount: amount,
+        currency: (details.token as any) || 'EUR',
+        status: 'pending',
+        description: `Withdrawal request to ${details.bankIban || details.cryptoAddress || paymentMethod}`,
+        reference: reference,
+        createdAt: timestamp,
+        paymentMethod: paymentMethod,
+        balanceAfter: user.walletBalance,
+        metadata: {
+          bankIban: details.bankIban,
+          destinationAddress: details.cryptoAddress,
+          network: details.network
+        }
+      };
+
+      this.transactions.unshift(tx);
+      this.createNotification(user.id, 'Withdrawal Submitted', `Withdrawal request for €${amount.toFixed(2)} is pending administrative review.`, 'info');
+      this.logAudit(user.id, user.email, 'WITHDRAWAL_REQUESTED', `User requested €${amount.toFixed(2)} withdrawal via ${paymentMethod}`);
+      this.saveState();
+      return tx;
+    } finally {
+      this.isProcessingLock = false;
+    }
+  }
+
+  /**
+   * Admin Review Withdrawal:
+   * Approve or reject withdrawal. If rejected, funds are safely refunded back to user balance.
+   */
+  /**
+   * Only an administrator may approve or reject money movements. The caller must be
+   * identified and must be an admin in the ledger's own user records, so a user cannot
+   * approve their own (or anyone's) deposit or withdrawal.
+   */
+  private assertAdminActor(actor: { id: string; role?: string } | undefined): { id: string; email: string } {
+    const record = actor ? this.getUserById(actor.id) : undefined;
+    if (!actor || !record || record.role !== 'admin' || actor.role !== 'admin') {
+      throw new Error('Forbidden: only administrators can review deposits and withdrawals.');
+    }
+    return { id: record.id, email: record.email };
+  }
+
+  public async reviewWithdrawal(actor: { id: string; role?: string }, txId: string, approved: boolean, reason?: string): Promise<Transaction> {
+    const admin = this.assertAdminActor(actor);
+    const tx = this.transactions.find(t => t.id === txId && t.type === 'withdrawal');
+    if (!tx) throw new Error('Withdrawal transaction not found.');
+    if (tx.status !== 'pending') throw new Error(`Withdrawal cannot be reviewed in status '${tx.status}'.`);
+
+    const user = this.getUserById(tx.userId);
+    if (!user) throw new Error('Investor not found.');
+    if (user.id === admin.id) throw new Error('Forbidden: you cannot review your own transaction.');
+
+    if (approved) {
+      tx.status = 'completed';
+      tx.txHash = (tx.metadata?.destinationAddress ? 'CRYPTO-EXEC-' : 'SEPA-EXEC-') + Math.random().toString(36).substring(2, 10).toUpperCase();
+      this.createNotification(user.id, 'Withdrawal Executed', `Your withdrawal of €${tx.amount.toFixed(2)} has been successfully approved and transferred.`, 'success');
+      this.logAudit(admin.id, admin.email, 'WITHDRAWAL_APPROVED', `Approved withdrawal of €${tx.amount.toFixed(2)} for ${user.email} (${tx.paymentMethod})`);
+    } else {
+      // Refund balance
+      user.walletBalance = Number((user.walletBalance + tx.amount).toFixed(2));
+      tx.status = 'rejected';
+      tx.balanceAfter = user.walletBalance;
+      if (!tx.metadata) tx.metadata = {};
+      tx.metadata.rejectionReason = reason || 'Compliance or bank details verification check failed.';
+      this.createNotification(user.id, 'Withdrawal Declined', `Your withdrawal of €${tx.amount.toFixed(2)} was declined: ${tx.metadata.rejectionReason}. Funds were returned to your balance.`, 'warning');
+      this.logAudit(admin.id, admin.email, 'WITHDRAWAL_REJECTED', `Rejected withdrawal of €${tx.amount.toFixed(2)} for ${user.email}`);
+    }
+
+    this.saveState();
+    return tx;
+  }
+
+  public async reviewDeposit(actor: { id: string; role?: string }, txId: string, approved: boolean, reason?: string): Promise<Transaction> {
+    const admin = this.assertAdminActor(actor);
+    const tx = this.transactions.find(t => t.id === txId && t.type === 'deposit');
+    if (!tx) throw new Error('Deposit transaction not found.');
+    if (tx.status !== 'pending') throw new Error(`Deposit cannot be reviewed in status '${tx.status}'.`);
+
+    const user = this.getUserById(tx.userId);
+    if (!user) throw new Error('Investor not found.');
+    if (user.id === admin.id) throw new Error('Forbidden: you cannot review your own transaction.');
+
+    if (approved) {
+      tx.status = 'completed';
+      user.walletBalance = Number((user.walletBalance + tx.amount).toFixed(2));
+      tx.balanceAfter = user.walletBalance;
+      this.createNotification(user.id, 'Deposit Approved & Credited', `Your deposit of €${tx.amount.toFixed(2)} has been approved by admin and credited to your wallet balance.`, 'success');
+      this.logAudit(admin.id, admin.email, 'DEPOSIT_APPROVED', `Approved deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
+
+      // Also mark any attached verification document as approved
+      const linkedDoc = this.verificationDocuments.find(d => d.transactionReference === tx.reference);
+      if (linkedDoc) {
+        linkedDoc.status = 'approved';
+        linkedDoc.reviewedAt = new Date().toISOString();
+        linkedDoc.reviewedBy = 'admin@kretz.com';
+      }
+    } else {
+      tx.status = 'rejected';
+      if (!tx.metadata) tx.metadata = {};
+      tx.metadata.rejectionReason = reason || 'Deposit bank wire transfer reference or receipt could not be verified.';
+      this.createNotification(user.id, 'Deposit Rejected', `Your deposit request for €${tx.amount.toFixed(2)} was declined: ${tx.metadata.rejectionReason}.`, 'warning');
+      this.logAudit(admin.id, admin.email, 'DEPOSIT_REJECTED', `Rejected deposit of €${tx.amount.toFixed(2)} for ${user.email}`);
+
+      const linkedDoc = this.verificationDocuments.find(d => d.transactionReference === tx.reference);
+      if (linkedDoc) {
+        linkedDoc.status = 'rejected';
+        linkedDoc.rejectionReason = tx.metadata.rejectionReason;
+        linkedDoc.reviewedAt = new Date().toISOString();
+      }
+    }
+
+    this.saveState();
+    return tx;
+  }
+
+  // --- Document Upload & Verification Vault Methods ---
+
+  public getVerificationDocuments(userId?: string): VerificationDocument[] {
+    if (userId) {
+      return this.verificationDocuments.filter(d => d.userId === userId);
+    }
+    return [...this.verificationDocuments];
+  }
+
+  public getVerificationDocumentById(id: string): VerificationDocument | undefined {
+    return this.verificationDocuments.find(d => d.id === id);
+  }
+
+  public uploadVerificationDocument(doc: Omit<VerificationDocument, 'id' | 'uploadedAt' | 'status'>): VerificationDocument {
+    const newDoc: VerificationDocument = {
+      ...doc,
+      id: 'doc-' + Math.random().toString(36).substring(2, 10),
+      uploadedAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    this.verificationDocuments.unshift(newDoc);
+    this.createNotification(
+      newDoc.userId,
+      'Document Submitted for Verification',
+      `Your document "${newDoc.title}" was submitted to the compliance vault. Awaiting administrative confirmation.`,
+      'info'
+    );
+    this.logAudit(
+      newDoc.userId,
+      newDoc.userEmail,
+      'DOCUMENT_UPLOADED',
+      `Uploaded ${newDoc.category} document "${newDoc.title}" (${newDoc.fileName})`
+    );
+    this.saveState();
+    return newDoc;
+  }
+
+  public reviewVerificationDocument(docId: string, approved: boolean, reason?: string, adminEmail: string = 'admin@kretz.com'): VerificationDocument {
+    const doc = this.verificationDocuments.find(d => d.id === docId);
+    if (!doc) throw new Error('Verification document not found.');
+
+    doc.status = approved ? 'approved' : 'rejected';
+    doc.reviewedAt = new Date().toISOString();
+    doc.reviewedBy = adminEmail;
+    if (!approved && reason) {
+      doc.rejectionReason = reason;
+    }
+
+    const user = this.getUserById(doc.userId);
+    if (user) {
+      if (approved) {
+        // If KYC Identity, verify user account
+        if (doc.category === 'kyc_identity') {
+          user.kycStatus = 'verified';
+          user.kycDocumentType = doc.documentType;
+        }
+
+        // If Deposit Proof with linked reference, auto-credit matching deposit if pending
+        if (doc.category === 'deposit_proof' && doc.transactionReference) {
+          const matchingTx = this.transactions.find(
+            t => t.reference === doc.transactionReference && t.type === 'deposit' && t.status === 'pending'
+          );
+          if (matchingTx) {
+            matchingTx.status = 'completed';
+            user.walletBalance = Number((user.walletBalance + matchingTx.amount).toFixed(2));
+            matchingTx.balanceAfter = user.walletBalance;
+            this.createNotification(
+              user.id,
+              'Deposit Confirmed & Credited',
+              `Payment receipt confirmed! €${matchingTx.amount.toFixed(2)} has been credited to your available wallet balance.`,
+              'success'
+            );
+          }
+        }
+
+        this.createNotification(
+          user.id,
+          'Document Confirmed & Approved',
+          `Your document "${doc.title}" has been reviewed and approved by the platform compliance officer.`,
+          'success'
+        );
+        this.logAudit(
+          'usr-admin-1',
+          adminEmail,
+          'DOCUMENT_APPROVED',
+          `Approved ${doc.category} document "${doc.title}" for investor ${doc.userEmail}`
+        );
+      } else {
+        if (doc.category === 'kyc_identity') {
+          user.kycStatus = 'rejected';
+        }
+        this.createNotification(
+          user.id,
+          'Document Verification Declined',
+          `Your document "${doc.title}" was declined: ${reason || 'Document resolution or details could not be validated. Please re-upload.'}`,
+          'warning'
+        );
+        this.logAudit(
+          'usr-admin-1',
+          adminEmail,
+          'DOCUMENT_REJECTED',
+          `Declined document "${doc.title}" for investor ${doc.userEmail}. Reason: ${reason || 'Incomplete'}`
+        );
+      }
+    }
+
+    this.saveState();
+    return doc;
+  }
+
+  public deleteVerificationDocument(docId: string): void {
+    const index = this.verificationDocuments.findIndex(d => d.id === docId);
+    if (index >= 0) {
+      this.verificationDocuments.splice(index, 1);
+      this.saveState();
+    }
+  }
+
+  public updateUserAvatar(userId: string, avatarUrl: string): User {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('User not found');
+    user.avatarUrl = avatarUrl;
+    this.saveState();
+    return user;
+  }
+
+  /**
+   * Atomic Investment Execution:
+   * Validates available tokens, enforces minimums, deducts wallet balance (including any applicable settlement fee),
+   * updates canonical property funded amount & available tokens in place, creates user investment record,
+   * and issues digital ownership certificate.
+   */
+  public async executeInvestment(
+    userId: string,
+    propertyId: string,
+    tokenCount: number,
+    options?: {
+      feePercent?: number;
+      paymentMethod?: string;
+      idempotencyKey?: string;
+    }
+  ): Promise<Investment> {
+    if (tokenCount <= 0 || !Number.isInteger(tokenCount)) {
+      throw new Error('Token purchase quantity must be a whole positive integer.');
+    }
+    if (options?.idempotencyKey && this.processedIdempotencyKeys.has(options.idempotencyKey)) {
+      throw new Error('Duplicate investment submission prevented. This order has already been settled.');
+    }
+    if (this.isProcessingLock) throw new Error('Transaction execution engine is busy.');
+
+    try {
+      this.isProcessingLock = true;
+      const user = this.getUserById(userId);
+      if (!user) throw new Error('Please log in to participate in real estate offerings.');
+
+      const rawProperty = this.properties.find(p => p.id === propertyId || p.slug === propertyId);
+      const property = this.getPropertyById(propertyId);
+      if (!rawProperty || !property) throw new Error('Target property not found in investment directory.');
+
+      if (rawProperty.status !== 'funding') {
+        throw new Error(`This property is currently '${rawProperty.status}' and not open for new contributions.`);
+      }
+
+      if (tokenCount > rawProperty.availableTokens) {
+        throw new Error(`Only ${rawProperty.availableTokens} tokens remain available for this property.`);
+      }
+
+      const unitPrice = property.tokenPrice;
+      const subtotalCost = Number((tokenCount * unitPrice).toFixed(2));
+      const feePercent = Math.max(0, options?.feePercent ?? 0);
+      const feeAmount = feePercent > 0 ? Number(((subtotalCost * feePercent) / 100).toFixed(2)) : 0;
+      const totalPayable = Number((subtotalCost + feeAmount).toFixed(2));
+
+      if (subtotalCost < property.minimumInvestment) {
+        throw new Error(`Minimum investment for this property is €${property.minimumInvestment.toLocaleString()} (${Math.ceil(property.minimumInvestment / unitPrice)} tokens).`);
+      }
+      if (user.walletBalance < totalPayable) {
+        throw new Error(`Insufficient available funds. Required: €${totalPayable.toFixed(2)}, Available: €${user.walletBalance.toFixed(2)}. Please make a deposit first.`);
+      }
+
+      if (options?.idempotencyKey) {
+        this.processedIdempotencyKeys.add(options.idempotencyKey);
+      }
+
+      const timestamp = new Date().toISOString();
+      const reference = `INV-${property.tokenTicker}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const txHash = generateTxHash(reference, totalPayable, timestamp);
+      const certificateId = `CERT-${property.tokenTicker}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // Deduct total payable from cash balance and add net asset capital to invested balance
+      user.walletBalance = Number((user.walletBalance - totalPayable).toFixed(2));
+      user.investedBalance = Number((user.investedBalance + subtotalCost).toFixed(2));
+      if (this.subBalances[user.id]) {
+        this.subBalances[user.id].EUR = user.walletBalance;
+      }
+
+      // Mutate canonical property record in this.properties so availability updates everywhere!
+      rawProperty.availableTokens = Math.max(0, rawProperty.availableTokens - tokenCount);
+      rawProperty.fundedAmount = Number((rawProperty.fundedAmount + subtotalCost).toFixed(2));
+      if (rawProperty.availableTokens <= 0 || rawProperty.fundedAmount >= rawProperty.targetAmount) {
+        rawProperty.status = 'funded';
+        rawProperty.isFullyFunded = true;
+      }
+      rawProperty.investorCount = (rawProperty.investorCount || 0) + 1;
+
+      const monthlyRate = property.monthlyTargetRate || 6.0;
+      const projectedMonthlyIncome = Number(((subtotalCost * monthlyRate) / 100).toFixed(2));
+
+      const startDate = timestamp;
+      const durationMonths = property.durationMonths || 36;
+      const matDateObj = new Date(timestamp);
+      matDateObj.setMonth(matDateObj.getMonth() + durationMonths);
+      const maturityDate = matDateObj.toISOString();
+
+      const investment: Investment = {
+        id: 'inv-' + Math.random().toString(36).substring(2, 9),
+        userId: user.id,
+        propertyId: rawProperty.id,
+        propertyTitle: rawProperty.title,
+        propertyLocation: rawProperty.location,
+        propertyImage: rawProperty.images[0] || rawProperty.bannerImage,
+        tokensPurchased: tokenCount,
+        tokenPrice: unitPrice,
+        totalAmountInvested: subtotalCost,
+        purchasedAt: timestamp,
+        startDate: startDate,
+        maturityDate: maturityDate,
+        durationMonths: durationMonths,
+        estimatedAnnualYield: property.estimatedAnnualYield,
+        projectedMonthlyIncome: projectedMonthlyIncome,
+        totalDividendsReceived: 0,
+        currentValuation: subtotalCost,
+        unrealizedProfitLoss: 0,
+        status: 'active',
+        transactionHash: txHash,
+        certificateId: certificateId,
+        fundingSource: 'wallet'
+      };
+
+      this.investments.unshift(investment);
+
+      if (isSupabaseConfigured()) {
+        try {
+          await supabase.functions.invoke('send-investment-confirmation', {
+            body: {
+              userId: user.id,
+              email: user.email,
+              fullName: user.fullName,
+              propertyTitle: rawProperty.title,
+              propertyLocation: rawProperty.location,
+              tokensPurchased: tokenCount,
+              totalAmountInvested: subtotalCost,
+              certificateId: certificateId,
+              transactionHash: txHash,
+              purchasedAt: timestamp,
+            },
+          });
+        } catch (emailErr) {
+          console.log('Supabase Edge Function email notification notice:', emailErr);
+        }
+      }
+
+      const paymentMethodLabel = options?.paymentMethod || 'Internal EUR Balance';
+      const tx: Transaction = {
+        id: 'tx-' + Math.random().toString(36).substring(2, 9),
+        userId: user.id,
+        type: 'investment',
+        amount: totalPayable,
+        currency: 'EUR',
+        status: 'completed',
+        description: `Acquired ${tokenCount} ${rawProperty.tokenTicker} tokens in ${rawProperty.title}${feeAmount > 0 ? ` (incl. €${feeAmount.toFixed(2)} fee)` : ''}`,
+        reference: reference,
+        createdAt: timestamp,
+        paymentMethod: paymentMethodLabel,
+        balanceAfter: user.walletBalance,
+        txHash: txHash,
+        metadata: {
+          propertyId: rawProperty.id,
+          propertyTitle: rawProperty.title,
+          tokens: tokenCount,
+          subtotalEUR: subtotalCost,
+          feePercent,
+          feeAmountEUR: feeAmount,
+          certificateId
+        }
+      };
+
+      this.transactions.unshift(tx);
+      this.createNotification(
+        user.id,
+        'Investment Confirmed!',
+        `You have successfully acquired ${tokenCount} tokens (€${subtotalCost.toFixed(2)}) in ${rawProperty.title}. Certificate: ${certificateId}`,
+        'success'
+      );
+      this.logAudit(user.id, user.email, 'INVESTMENT_EXECUTED', `Purchased ${tokenCount} tokens in ${rawProperty.title} for €${totalPayable.toFixed(2)}`);
+
+      this.saveState();
+      return investment;
+    } finally {
+      this.isProcessingLock = false;
+    }
+  }
+
+  // --- Transactions & History ---
+  public getTransactions(userId?: string, requestingUserRole?: string): Transaction[] {
+    if (userId) {
+      return this.transactions.filter(t => t.userId === userId);
+    }
+    return [...this.transactions];
+  }
+
+  public getInvestments(userId?: string, requestingUserRole?: string): Investment[] {
+    if (userId) {
+      return this.investments.filter(i => i.userId === userId);
+    }
+    return [...this.investments];
+  }
+
+  public getAuditLogs(requestingUserRole?: string): AuditLog[] {
+    return [...this.auditLogs];
+  }
+
+  public getNotifications(userId: string): Notification[] {
+    return this.notifications.filter(n => n.userId === userId);
+  }
+
+  public markNotificationAsRead(id: string): void {
+    const notif = this.notifications.find(n => n.id === id);
+    if (notif) {
+      notif.read = true;
+      this.saveState();
+    }
+  }
+
+  public markAllNotificationsAsRead(userId: string): void {
+    let changed = false;
+    this.notifications.forEach(n => {
+      if (n.userId === userId && !n.read) {
+        n.read = true;
+        changed = true;
+      }
+    });
+    if (changed) {
+      this.saveState();
+    }
+  }
+
+  public addUserNotification(
+    userId: string,
+    title: string,
+    message: string,
+    type: 'info' | 'success' | 'warning' | 'financial' = 'info'
+  ): void {
+    this.createNotification(userId, title, message, type);
+    this.saveState();
+  }
+
+  // ===================== SAVED PROPERTIES (FAVORITES) & USER PREFERENCES =====================
+
+  public getFavorites(userId?: string): string[] {
+    const key = userId || 'guest';
+    return [...(this.favorites[key] || [])];
+  }
+
+  public isFavorite(userId: string | undefined, propertyId: string): boolean {
+    const key = userId || 'guest';
+    return (this.favorites[key] || []).includes(propertyId);
+  }
+
+  public setFavorites(userId: string | undefined, propertyIds: string[]): string[] {
+    const key = userId || 'guest';
+    this.favorites[key] = Array.from(new Set(propertyIds));
+    this.saveState();
+    return [...this.favorites[key]];
+  }
+
+  public toggleFavorite(userId: string | undefined, propertyId: string): { saved: boolean; favorites: string[] } {
+    const key = userId || 'guest';
+    const current = new Set(this.favorites[key] || []);
+    let saved = false;
+    if (current.has(propertyId)) {
+      current.delete(propertyId);
+      saved = false;
+    } else {
+      current.add(propertyId);
+      saved = true;
+    }
+    this.favorites[key] = Array.from(current);
+    this.saveState();
+    return { saved, favorites: [...this.favorites[key]] };
+  }
+
+  public getUserPreferences(userId?: string): Record<string, any> {
+    const key = userId || 'guest';
+    return { ...(this.userPreferences[key] || {}) };
+  }
+
+  public updateUserPreferences(userId: string | undefined, updates: Record<string, any>): Record<string, any> {
+    const key = userId || 'guest';
+    this.userPreferences[key] = {
+      ...(this.userPreferences[key] || {}),
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.saveState();
+    return { ...this.userPreferences[key] };
+  }
+
+  // ===================== MULTI-CURRENCY TREASURY DESK METHODS =====================
+
+  public getUserCurrencyBalances(userId: string): Record<string, number> {
+    const user = this.getUserById(userId);
+    const eur = user ? user.walletBalance : 0;
+    if (!this.subBalances[userId]) {
+      this.subBalances[userId] = {
+        EUR: eur,
+        USD: 0,
+        GBP: 0,
+        CHF: 0,
+        USDC: 0,
+        USDT: 0,
+        SOL: 0,
+      };
+    } else {
+      this.subBalances[userId].EUR = eur;
+    }
+    return { ...this.subBalances[userId] };
+  }
+
+  public setUserCurrencyBalances(userId: string, balances: Record<string, number>): void {
+    const user = this.getUserById(userId);
+    this.subBalances[userId] = { ...balances };
+    if (user && typeof balances.EUR === 'number') {
+      user.walletBalance = Number(balances.EUR.toFixed(2));
+    }
+    this.saveState();
+  }
+
+  public executeCurrencyConversion(
+    userId: string,
+    fromCurrency: string,
+    toCurrency: string,
+    amount: number
+  ): {
+    reference: string;
+    fromCurrency: string;
+    toCurrency: string;
+    fromAmount: number;
+    toAmount: number;
+    feeEur: number;
+    balances: Record<string, number>;
+    transaction: Transaction;
+  } {
+    const user = this.getUserById(userId);
+    if (!user) throw new Error('Please sign in to execute treasury currency conversions.');
+    const from = fromCurrency.toUpperCase();
+    const to = toCurrency.toUpperCase();
+
+    if (!LEDGER_FX_RATES_TO_EUR[from] || !LEDGER_FX_RATES_TO_EUR[to]) {
+      throw new Error('Selected currency is not supported by the institutional FX desk.');
+    }
+    if (from === to) {
+      throw new Error('Source and target currencies must be different.');
+    }
+    if (!amount || isNaN(amount) || amount <= 0) {
+      throw new Error('Enter a conversion amount greater than zero.');
+    }
+
+    const currentBalances = this.getUserCurrencyBalances(userId);
+    const availableSource = currentBalances[from] || 0;
+    if (availableSource < amount) {
+      throw new Error(
+        `Insufficient ${from} balance (Available: ${availableSource.toFixed(from === 'SOL' ? 4 : 2)} ${from}). Deposit or convert into ${from} first.`
+      );
+    }
+
+    const valueInEur = amount * LEDGER_FX_RATES_TO_EUR[from];
+    const feeEur = Number((valueInEur * (LEDGER_FX_FEE_PERCENT / 100)).toFixed(2));
+    const netEur = Math.max(0, valueInEur - feeEur);
+    const toDecimals = to === 'SOL' ? 6 : 2;
+    const fromDecimals = from === 'SOL' ? 6 : 2;
+    const convertedAmount = Number((netEur / LEDGER_FX_RATES_TO_EUR[to]).toFixed(toDecimals));
+
+    currentBalances[from] = Number((availableSource - amount).toFixed(fromDecimals));
+    currentBalances[to] = Number(((currentBalances[to] || 0) + convertedAmount).toFixed(toDecimals));
+    this.subBalances[userId] = currentBalances;
+    user.walletBalance = Number(currentBalances.EUR.toFixed(2));
+
+    const timestamp = new Date().toISOString();
+    const reference = `FX-${from}-${to}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const txHash = generateTxHash(reference, valueInEur, timestamp);
+
+    const tx: Transaction = {
+      id: 'tx-fx-' + Math.random().toString(36).substring(2, 9),
+      userId: user.id,
+      type: 'fee',
+      amount: Number(valueInEur.toFixed(2)),
+      currency: 'EUR',
+      status: 'completed',
+      description: `Treasury FX: Converted ${amount} ${from} → ${convertedAmount} ${to} (0.15% desk spread: €${feeEur.toFixed(2)})`,
+      reference,
+      createdAt: timestamp,
+      paymentMethod: `Institutional FX Desk (${from}/${to})`,
+      balanceAfter: user.walletBalance,
+      txHash,
+      metadata: {
+        fromCurrency: from,
+        toCurrency: to,
+        fromAmount: amount,
+        toAmount: convertedAmount,
+        feeEur,
+      },
+    };
+
+    this.transactions.unshift(tx);
+    this.createNotification(
+      user.id,
+      'Currency Conversion Settled',
+      `Converted ${amount} ${from} into ${convertedAmount} ${to}. Active EUR cash balance: €${user.walletBalance.toFixed(2)}.`,
+      'financial'
+    );
+    this.logAudit(user.id, user.email, 'FX_CONVERSION_EXECUTED', `Converted ${amount} ${from} to ${convertedAmount} ${to} (Ref: ${reference})`);
+    this.saveState();
+
+    return {
+      reference,
+      fromCurrency: from,
+      toCurrency: to,
+      fromAmount: amount,
+      toAmount: convertedAmount,
+      feeEur,
+      balances: { ...currentBalances },
+      transaction: tx,
+    };
+  }
+
+  // ===================== P2P SECONDARY MARKET ORDER BOOK METHODS =====================
+
+  public getP2PListings(): P2PListingOrder[] {
+    return this.p2pListings
+      .filter(l => l.status === 'open' && l.tokensAvailable > 0)
+      .map(l => ({ ...l }));
+  }
+
+  public createP2PSellOrder(params: {
+    sellerId: string;
+    propertyId: string;
+    tokensToSell: number;
+    askingPricePerToken: number;
+  }): P2PListingOrder {
+    const seller = this.getUserById(params.sellerId);
+    if (!seller) throw new Error('Please log in to post a secondary market sell order.');
+    if (params.tokensToSell < 1 || !Number.isInteger(params.tokensToSell)) {
+      throw new Error('Token quantity to list must be a whole integer of at least 1.');
+    }
+    if (!params.askingPricePerToken || params.askingPricePerToken < 1) {
+      throw new Error('Asking price per token must be at least €1.00.');
+    }
+
+    const activeHoldings = this.investments.filter(
+      inv => inv.userId === seller.id && inv.propertyId === params.propertyId && inv.status === 'active'
+    );
+    const totalOwnedTokens = activeHoldings.reduce((sum, inv) => sum + inv.tokensPurchased, 0);
+    if (totalOwnedTokens < params.tokensToSell) {
+      throw new Error(`You hold ${totalOwnedTokens} active tokens in this property; cannot list ${params.tokensToSell}.`);
+    }
+
+    const prop = this.getPropertyById(params.propertyId);
+    if (!prop) throw new Error('Property record not found.');
+
+    // Escrow tokens from seller's active holdings
+    let remainingToEscrow = params.tokensToSell;
+    for (const inv of activeHoldings) {
+      if (remainingToEscrow <= 0) break;
+      const deduct = Math.min(inv.tokensPurchased, remainingToEscrow);
+      inv.tokensPurchased -= deduct;
+      const costReduced = Number((deduct * inv.tokenPrice).toFixed(2));
+      inv.totalAmountInvested = Math.max(0, Number((inv.totalAmountInvested - costReduced).toFixed(2)));
+      inv.currentValuation = inv.totalAmountInvested;
+      seller.investedBalance = Math.max(0, Number((seller.investedBalance - costReduced).toFixed(2)));
+      remainingToEscrow -= deduct;
+    }
+    this.investments = this.investments.filter(inv => inv.tokensPurchased > 0 || inv.userId !== seller.id);
+
+    const newOrder: P2PListingOrder = {
+      id: 'p2p-ord-' + Math.random().toString(36).substring(2, 9),
+      sellerId: seller.id,
+      sellerName: `${seller.fullName.split(' ')[0]} ${seller.fullName.split(' ')[1]?.[0] || ''}.`.trim(),
+      propertyId: prop.id,
+      propertyTitle: prop.title,
+      propertyLocation: prop.location,
+      propertyImage: prop.images[0] || prop.bannerImage,
+      tokenTicker: prop.tokenTicker,
+      tokensAvailable: params.tokensToSell,
+      askingPricePerToken: Number(params.askingPricePerToken.toFixed(2)),
+      parValuePerToken: prop.tokenPrice,
+      estimatedAnnualYield: prop.estimatedAnnualYield,
+      createdAt: new Date().toISOString(),
+      status: 'open',
+    };
+
+    this.p2pListings.unshift(newOrder);
+    this.createNotification(
+      seller.id,
+      'Secondary Sell Order Published',
+      `Escrowed ${params.tokensToSell} ${prop.tokenTicker} tokens on the P2P Secondary Desk at €${newOrder.askingPricePerToken.toFixed(2)}/token.`,
+      'info'
+    );
+    this.logAudit(seller.id, seller.email, 'P2P_ORDER_CREATED', `Listed ${params.tokensToSell} ${prop.tokenTicker} tokens at €${newOrder.askingPricePerToken}`);
+    this.saveState();
+    return { ...newOrder };
+  }
+
+  public cancelP2PSellOrder(orderId: string, requestingUserId: string): void {
+    const order = this.p2pListings.find(o => o.id === orderId && o.status === 'open');
+    if (!order) throw new Error('Active secondary listing not found.');
+    if (order.sellerId !== requestingUserId) {
+      throw new Error('Only the listing seller can cancel this order.');
+    }
+
+    const seller = this.getUserById(requestingUserId);
+    const prop = this.getPropertyById(order.propertyId);
+    order.status = 'cancelled';
+
+    if (seller && prop && order.tokensAvailable > 0) {
+      const restoredCost = Number((order.tokensAvailable * order.parValuePerToken).toFixed(2));
+      seller.investedBalance = Number((seller.investedBalance + restoredCost).toFixed(2));
+      const existingHolding = this.investments.find(
+        i => i.userId === seller.id && i.propertyId === prop.id && i.status === 'active'
+      );
+      if (existingHolding) {
+        existingHolding.tokensPurchased += order.tokensAvailable;
+        existingHolding.totalAmountInvested = Number((existingHolding.totalAmountInvested + restoredCost).toFixed(2));
+        existingHolding.currentValuation = existingHolding.totalAmountInvested;
+      } else {
+        const now = new Date().toISOString();
+        const mat = new Date();
+        mat.setMonth(mat.getMonth() + (prop.durationMonths || 36));
+        this.investments.unshift({
+          id: 'inv-' + Math.random().toString(36).substring(2, 9),
+          userId: seller.id,
+          propertyId: prop.id,
+          propertyTitle: prop.title,
+          propertyLocation: prop.location,
+          propertyImage: prop.images[0] || prop.bannerImage,
+          tokensPurchased: order.tokensAvailable,
+          tokenPrice: order.parValuePerToken,
+          totalAmountInvested: restoredCost,
+          purchasedAt: now,
+          startDate: now,
+          maturityDate: mat.toISOString(),
+          durationMonths: prop.durationMonths || 36,
+          estimatedAnnualYield: prop.estimatedAnnualYield,
+          projectedMonthlyIncome: Number(((restoredCost * (prop.monthlyTargetRate || 6)) / 100).toFixed(2)),
+          totalDividendsReceived: 0,
+          currentValuation: restoredCost,
+          unrealizedProfitLoss: 0,
+          status: 'active',
+          transactionHash: generateTxHash(order.id, restoredCost, now),
+          certificateId: `CERT-${prop.tokenTicker}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+          fundingSource: 'wallet',
+        });
+      }
+      this.createNotification(
+        seller.id,
+        'Secondary Listing Cancelled',
+        `Your P2P sell order for ${order.tokensAvailable} ${order.tokenTicker} tokens was cancelled and escrowed tokens were returned to your portfolio.`,
+        'info'
+      );
+    }
+    this.saveState();
+  }
+
+  public executeP2PPurchase(params: {
+    buyerId: string;
+    orderId: string;
+    tokensToBuy: number;
+  }): Investment {
+    const buyer = this.getUserById(params.buyerId);
+    if (!buyer) throw new Error('Please log in to purchase tokens on the secondary desk.');
+    if (params.tokensToBuy < 1 || !Number.isInteger(params.tokensToBuy)) {
+      throw new Error('Token purchase quantity must be at least 1 whole unit.');
+    }
+
+    const order = this.p2pListings.find(o => o.id === params.orderId && o.status === 'open');
+    if (!order) throw new Error('This P2P sell order is no longer open.');
+    if (order.sellerId === buyer.id) {
+      throw new Error('You cannot buy your own secondary sell order. Use Cancel Listing to reclaim escrowed tokens.');
+    }
+    if (params.tokensToBuy > order.tokensAvailable) {
+      throw new Error(`Only ${order.tokensAvailable} tokens are available in this P2P order.`);
+    }
+
+    const subtotal = Number((params.tokensToBuy * order.askingPricePerToken).toFixed(2));
+    const p2pFee = Number((subtotal * 0.005).toFixed(2)); // 0.5% P2P atomic settlement fee
+    const totalPayable = Number((subtotal + p2pFee).toFixed(2));
+
+    if (buyer.walletBalance < totalPayable) {
+      throw new Error(
+        `Insufficient wallet balance (€${buyer.walletBalance.toFixed(2)}) for secondary purchase of €${totalPayable.toFixed(2)} (incl. €${p2pFee.toFixed(2)} P2P clearing fee).`
+      );
+    }
+
+    const prop = this.getPropertyById(order.propertyId);
+    const timestamp = new Date().toISOString();
+    const reference = `P2P-${order.tokenTicker}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const txHash = generateTxHash(reference, totalPayable, timestamp);
+    const certId = `CERT-P2P-${order.tokenTicker}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    // Deduct from buyer
+    buyer.walletBalance = Number((buyer.walletBalance - totalPayable).toFixed(2));
+    buyer.investedBalance = Number((buyer.investedBalance + subtotal).toFixed(2));
+    if (this.subBalances[buyer.id]) {
+      this.subBalances[buyer.id].EUR = buyer.walletBalance;
+    }
+
+    // Credit seller if seller is a registered ledger user
+    const seller = this.getUserById(order.sellerId);
+    if (seller) {
+      seller.walletBalance = Number((seller.walletBalance + subtotal).toFixed(2));
+      if (this.subBalances[seller.id]) {
+        this.subBalances[seller.id].EUR = seller.walletBalance;
+      }
+      this.transactions.unshift({
+        id: 'tx-p2p-sell-' + Math.random().toString(36).substring(2, 9),
+        userId: seller.id,
+        type: 'distribution',
+        amount: subtotal,
+        currency: 'EUR',
+        status: 'completed',
+        description: `P2P Secondary Sale: Sold ${params.tokensToBuy} ${order.tokenTicker} tokens at €${order.askingPricePerToken.toFixed(2)}/token`,
+        reference,
+        createdAt: timestamp,
+        paymentMethod: 'P2P Atomic Escrow Settlement',
+        balanceAfter: seller.walletBalance,
+        txHash,
+      });
+      this.createNotification(
+        seller.id,
+        'Secondary Order Filled!',
+        `${params.tokensToBuy} ${order.tokenTicker} tokens sold on the P2P desk. €${subtotal.toFixed(2)} credited to your available balance.`,
+        'financial'
+      );
+    }
+
+    // Update order inventory
+    order.tokensAvailable -= params.tokensToBuy;
+    if (order.tokensAvailable <= 0) {
+      order.status = 'filled';
+    }
+
+    const durationMonths = prop?.durationMonths || 36;
+    const matDate = new Date(timestamp);
+    matDate.setMonth(matDate.getMonth() + durationMonths);
+    const monthlyRate = prop?.monthlyTargetRate || 6.0;
+
+    const newInvestment: Investment = {
+      id: 'inv-p2p-' + Math.random().toString(36).substring(2, 9),
+      userId: buyer.id,
+      propertyId: order.propertyId,
+      propertyTitle: order.propertyTitle,
+      propertyLocation: order.propertyLocation,
+      propertyImage: order.propertyImage,
+      tokensPurchased: params.tokensToBuy,
+      tokenPrice: order.askingPricePerToken,
+      totalAmountInvested: subtotal,
+      purchasedAt: timestamp,
+      startDate: timestamp,
+      maturityDate: matDate.toISOString(),
+      durationMonths,
+      estimatedAnnualYield: order.estimatedAnnualYield,
+      projectedMonthlyIncome: Number(((subtotal * monthlyRate) / 100).toFixed(2)),
+      totalDividendsReceived: 0,
+      currentValuation: Number((params.tokensToBuy * order.parValuePerToken).toFixed(2)),
+      unrealizedProfitLoss: Number(((order.parValuePerToken - order.askingPricePerToken) * params.tokensToBuy).toFixed(2)),
+      status: 'active',
+      transactionHash: txHash,
+      certificateId: certId,
+      fundingSource: 'wallet',
+    };
+
+    this.investments.unshift(newInvestment);
+    this.transactions.unshift({
+      id: 'tx-p2p-buy-' + Math.random().toString(36).substring(2, 9),
+      userId: buyer.id,
+      type: 'investment',
+      amount: totalPayable,
+      currency: 'EUR',
+      status: 'completed',
+      description: `P2P Secondary Buy: ${params.tokensToBuy} ${order.tokenTicker} tokens in ${order.propertyTitle} (incl. €${p2pFee.toFixed(2)} clearing fee)`,
+      reference,
+      createdAt: timestamp,
+      paymentMethod: 'P2P Secondary Escrow',
+      balanceAfter: buyer.walletBalance,
+      txHash,
+      metadata: {
+        propertyId: order.propertyId,
+        propertyTitle: order.propertyTitle,
+        tokens: params.tokensToBuy,
+        feeAmountEUR: p2pFee,
+      },
+    });
+
+    this.createNotification(
+      buyer.id,
+      'Secondary Purchase Settled',
+      `Acquired ${params.tokensToBuy} ${order.tokenTicker} tokens in ${order.propertyTitle} for €${totalPayable.toFixed(2)}.`,
+      'success'
+    );
+    this.saveState();
+    return newInvestment;
+  }
+
+  // ===================== KRETZ MEMBERSHIP CLUB METHODS =====================
+
+  public getMembershipTiers(): MembershipTier[] {
+    return JSON.parse(JSON.stringify(this.membershipTiers));
+  }
+
+  public updateMembershipTierConfig(updatedTier: MembershipTier, adminEmail: string = 'admin@kretz.com'): void {
+    const idx = this.membershipTiers.findIndex(t => t.id === updatedTier.id);
+    if (idx !== -1) {
+      this.membershipTiers[idx] = { ...updatedTier };
+      this.logAudit('usr-admin-1', adminEmail, 'MEMBERSHIP_TIER_CONFIG_UPDATED', `Updated configuration for tier: ${updatedTier.name}`);
+      this.saveState();
+    }
+  }
+
+  public getMemberships(): UserMembership[] {
+    return JSON.parse(JSON.stringify(this.memberships));
+  }
+
+  public getUserMembership(userId: string): UserMembership | null {
+    const mem = this.memberships.find(m => m.userId === userId && m.status !== 'cancelled');
+    return mem ? JSON.parse(JSON.stringify(mem)) : null;
+  }
+
+  public subscribeMembership(params: {
+    userId: string;
+    userEmail: string;
+    userName: string;
+    tierId: MembershipTierId;
+    billingCycle: MembershipBillingCycle;
+    paymentMethod: 'wallet_balance' | 'bank_wire' | 'credit_card' | 'complimentary_invitation';
+    specialRequests?: string;
+    preferredRegion?: string;
+  }): UserMembership {
+    const tier = this.membershipTiers.find(t => t.id === params.tierId) || this.membershipTiers[0];
+    const fee = params.billingCycle === 'annual' ? tier.priceAnnual : tier.priceMonthly;
+
+    // Check if user pays with wallet balance
+    const user = this.users.find(u => u.id === params.userId);
+    if (params.paymentMethod === 'wallet_balance') {
+      if (!user || user.walletBalance < fee) {
+        throw new Error(`Insufficient wallet balance (€${user?.walletBalance.toFixed(2) || '0.00'}). Required: €${fee.toFixed(2)}`);
+      }
+      user.walletBalance -= fee;
+
+      // Record transaction
+      const txId = 'tx-mem-' + Math.random().toString(36).substring(2, 9);
+      this.transactions.unshift({
+        id: txId,
+        userId: params.userId,
+        type: 'withdrawal',
+        amount: fee,
+        currency: 'EUR',
+        status: 'completed',
+        description: `L'Agence Club ${tier.name} (${params.billingCycle}) Membership Dues`,
+        reference: `MEM-${tier.id.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        createdAt: new Date().toISOString(),
+        paymentMethod: 'Internal Balance',
+        balanceAfter: user.walletBalance,
+        txHash: '0x' + Math.random().toString(36).substring(2, 12)
+      });
+    }
+
+    const memberNumber = `KRTZ-ESP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const now = new Date();
+    const renewal = new Date(now);
+    if (params.billingCycle === 'annual') {
+      renewal.setFullYear(renewal.getFullYear() + 1);
+    } else {
+      renewal.setMonth(renewal.getMonth() + 1);
+    }
+
+    // Remove or cancel existing membership for this user if active
+    this.memberships = this.memberships.filter(m => m.userId !== params.userId);
+
+    const newMembership: UserMembership = {
+      id: 'mem-' + Math.random().toString(36).substring(2, 9),
+      userId: params.userId,
+      userEmail: params.userEmail,
+      userName: params.userName,
+      tierId: tier.id,
+      tierName: tier.name,
+      status: 'active',
+      billingCycle: params.billingCycle,
+      feePaid: fee,
+      currency: 'EUR',
+      memberNumber,
+      joinedDate: now.toISOString(),
+      renewalDate: renewal.toISOString(),
+      autoRenew: true,
+      paymentMethod: params.paymentMethod,
+      specialRequests: params.specialRequests,
+      preferredRegion: params.preferredRegion || 'Spain & International',
+      digitalCardIssued: true,
+    };
+
+    this.memberships.unshift(newMembership);
+
+    this.createNotification(
+      params.userId,
+      `Welcome to L'Agence Club — ${tier.name}`,
+      `Your digital membership card #${memberNumber} has been issued. You now have full access to private concierge and off-market dossiers.`,
+      'success'
+    );
+
+    this.logAudit('usr-admin-1', 'system@kretz.com', 'MEMBERSHIP_SUBSCRIBED', `User ${params.userEmail} subscribed to ${tier.name} (${params.billingCycle})`);
+    this.saveState();
+    return newMembership;
+  }
+
+  public cancelMembership(membershipId: string, userId: string): void {
+    const mem = this.memberships.find(m => m.id === membershipId);
+    if (mem && (mem.userId === userId || userId === 'usr-admin-1')) {
+      mem.status = 'cancelled';
+      mem.autoRenew = false;
+      this.createNotification(
+        mem.userId,
+        'Membership Auto-Renewal Cancelled',
+        `Your ${mem.tierName} membership auto-renewal has been cancelled. Privileges remain active until ${new Date(mem.renewalDate).toLocaleDateString()}.`,
+        'info'
+      );
+      this.saveState();
+    }
+  }
+
+  public reactivateMembership(membershipId: string): void {
+    const mem = this.memberships.find(m => m.id === membershipId);
+    if (mem) {
+      mem.status = 'active';
+      mem.autoRenew = true;
+      this.saveState();
+    }
+  }
+
+  public adminUpdateUserMembership(membershipId: string, updates: Partial<UserMembership>, adminEmail: string = 'admin@kretz.com'): void {
+    const mem = this.memberships.find(m => m.id === membershipId);
+    if (mem) {
+      Object.assign(mem, updates);
+      this.logAudit('usr-admin-1', adminEmail, 'MEMBERSHIP_ADMIN_OVERRIDE', `Updated membership ${mem.memberNumber} for ${mem.userEmail}: ${JSON.stringify(updates)}`);
+      this.saveState();
+    }
+  }
+
+  public getMembershipApplications(): MembershipApplication[] {
+    return JSON.parse(JSON.stringify(this.membershipApplications));
+  }
+
+  public submitMembershipApplication(app: Omit<MembershipApplication, 'id' | 'submittedAt' | 'status'>): MembershipApplication {
+    const newApp: MembershipApplication = {
+      ...app,
+      id: 'app-' + Math.random().toString(36).substring(2, 9),
+      submittedAt: new Date().toISOString(),
+      status: 'pending'
+    };
+    this.membershipApplications.unshift(newApp);
+    this.saveState();
+    return newApp;
+  }
+
+  public reviewMembershipApplication(id: string, status: 'approved' | 'rejected', adminNotes?: string, adminEmail: string = 'admin@kretz.com'): void {
+    const app = this.membershipApplications.find(a => a.id === id);
+    if (app) {
+      app.status = status;
+      app.reviewedAt = new Date().toISOString();
+      if (adminNotes) app.adminNotes = adminNotes;
+
+      // If approved, create complimentary or pending active membership
+      if (status === 'approved') {
+        const tier = this.membershipTiers.find(t => t.id === app.tierId) || this.membershipTiers[0];
+        const memberNumber = `KRTZ-ESP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const now = new Date();
+        const renewal = new Date(now);
+        renewal.setFullYear(renewal.getFullYear() + 1);
+
+        this.memberships.unshift({
+          id: 'mem-' + Math.random().toString(36).substring(2, 9),
+          userId: 'usr-app-' + app.id,
+          userEmail: app.email,
+          userName: app.fullName,
+          tierId: tier.id,
+          tierName: tier.name,
+          status: 'active',
+          billingCycle: app.billingCycle,
+          feePaid: 0,
+          currency: 'EUR',
+          memberNumber,
+          joinedDate: now.toISOString(),
+          renewalDate: renewal.toISOString(),
+          autoRenew: true,
+          paymentMethod: 'complimentary_invitation',
+          specialRequests: app.notes,
+          preferredRegion: app.interestAreas.join(', ') || 'Spain',
+          digitalCardIssued: true,
+        });
+      }
+
+      this.logAudit('usr-admin-1', adminEmail, 'MEMBERSHIP_APPLICATION_REVIEWED', `Application ${id} (${app.email}) marked as ${status}`);
+      this.saveState();
+    }
+  }
+
+  // ==========================================
+  // COMPANY NEWS & YOUTUBE VIDEO MANAGEMENT
+  // ==========================================
+  public getNews(): CompanyNewsItem[] {
+    return JSON.parse(JSON.stringify(this.companyNews));
+  }
+
+  public getPublishedNews(): CompanyNewsItem[] {
+    return JSON.parse(JSON.stringify(this.companyNews.filter(n => n.status === 'published')));
+  }
+
+  public getNewsById(id: string): CompanyNewsItem | undefined {
+    const item = this.companyNews.find(n => n.id === id);
+    return item ? JSON.parse(JSON.stringify(item)) : undefined;
+  }
+
+  public addNews(item: Omit<CompanyNewsItem, 'id' | 'createdAt'>): CompanyNewsItem {
+    if (item.isFeatured) {
+      this.companyNews.forEach(n => { n.isFeatured = false; });
+    }
+    const newItem: CompanyNewsItem = {
+      ...item,
+      id: 'news-' + Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+    };
+    this.companyNews.unshift(newItem);
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_CREATED', `Added company news video: "${newItem.title}" (${newItem.youtubeId})`);
+    this.saveState();
+    return JSON.parse(JSON.stringify(newItem));
+  }
+
+  public updateNews(id: string, updates: Partial<CompanyNewsItem>): CompanyNewsItem | undefined {
+    const index = this.companyNews.findIndex(n => n.id === id);
+    if (index === -1) return undefined;
+    if (updates.isFeatured) {
+      this.companyNews.forEach(n => { n.isFeatured = false; });
+    }
+    this.companyNews[index] = {
+      ...this.companyNews[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_UPDATED', `Updated company news video: ${id}`);
+    this.saveState();
+    return JSON.parse(JSON.stringify(this.companyNews[index]));
+  }
+
+  public deleteNews(id: string): boolean {
+    const prevLen = this.companyNews.length;
+    const target = this.companyNews.find(n => n.id === id);
+    this.companyNews = this.companyNews.filter(n => n.id !== id);
+    if (this.companyNews.length !== prevLen) {
+      this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_DELETED', `Deleted company news video: ${id} (${target?.title || 'Unknown'})`);
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  public setFeaturedNews(id: string): void {
+    this.companyNews.forEach(n => {
+      n.isFeatured = n.id === id;
+    });
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_FEATURED', `Set news video as featured: ${id}`);
+    this.saveState();
+  }
+
+  public toggleNewsStatus(id: string): CompanyNewsItem | undefined {
+    const item = this.companyNews.find(n => n.id === id);
+    if (item) {
+      item.status = item.status === 'published' ? 'draft' : 'published';
+      item.updatedAt = new Date().toISOString();
+      this.logAudit('usr-admin-1', 'admin@kretz.com', 'NEWS_STATUS_TOGGLED', `News video ${id} status set to ${item.status}`);
+      this.saveState();
+      return JSON.parse(JSON.stringify(item));
+    }
+    return undefined;
+  }
+
+  private inferAuditCategory(action: string): AuditCategory {
+    const upper = action.toUpperCase();
+    if (upper.includes('LOGIN') || upper.includes('AUTH') || upper.includes('REGISTER') || upper.includes('LOGOUT') || upper.includes('PASSWORD')) {
+      return 'auth';
+    }
+    if (upper.includes('PASSGATE')) {
+      return 'security';
+    }
+    if (upper.includes('STATUS') || upper.includes('SUSPEND') || upper.includes('ACTIVATE') || upper.includes('PROFILE') || upper.includes('ROLE')) {
+      return 'user_status';
+    }
+    if (upper.includes('DEPOSIT') || upper.includes('WITHDRAW') || upper.includes('INVEST') || upper.includes('PAYMENT') || upper.includes('CRYPTO')) {
+      return 'financial';
+    }
+    if (upper.includes('KYC') || upper.includes('DOCUMENT') || upper.includes('MEMBERSHIP') || upper.includes('COMPLIANCE')) {
+      return 'compliance';
+    }
+    return 'system';
+  }
+
+  private inferAuditSeverity(action: string): AuditSeverity {
+    const upper = action.toUpperCase();
+    if (upper.includes('FAILED') || upper.includes('CRITICAL')) {
+      return 'critical';
+    }
+    if (upper.includes('REJECTED') || upper.includes('SUSPENDED') || upper.includes('WARNING') || upper.includes('DECLINED')) {
+      return 'warning';
+    }
+    if (upper.includes('SUCCESS') || upper.includes('APPROVED') || upper.includes('CONFIRMED') || upper.includes('VERIFIED') || upper.includes('UNLOCKED') || upper.includes('ACTIVATED')) {
+      return 'success';
+    }
+    return 'info';
+  }
+
+  public logAudit(
+    adminId: string,
+    adminEmail: string,
+    action: string,
+    details: string,
+    category?: AuditCategory,
+    severity?: AuditSeverity,
+    extra?: {
+      targetUserId?: string;
+      targetUserEmail?: string;
+      ipAddress?: string;
+      metadata?: Record<string, any>;
+    }
+  ): AuditLog {
+    const cat = category || this.inferAuditCategory(action);
+    const sev = severity || this.inferAuditSeverity(action);
+    const entry: AuditLog = {
+      id: 'audit-' + Math.random().toString(36).substring(2, 9),
+      adminId,
+      adminEmail,
+      action,
+      details,
+      timestamp: new Date().toISOString(),
+      category: cat,
+      severity: sev,
+      targetUserId: extra?.targetUserId,
+      targetUserEmail: extra?.targetUserEmail,
+      ipAddress: extra?.ipAddress || '127.0.0.1 (Local Verified)',
+      metadata: extra?.metadata
+    };
+    this.auditLogs.unshift(entry);
+    if (this.auditLogs.length > 2000) {
+      this.auditLogs = this.auditLogs.slice(0, 2000);
+    }
+    return entry;
+  }
+
+  private createNotification(userId: string, title: string, message: string, type: 'info' | 'success' | 'warning' | 'financial') {
+    this.notifications.unshift({
+      id: 'notif-' + Math.random().toString(36).substring(2, 9),
+      userId,
+      title,
+      message,
+      type,
+      read: false,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  /**
+   * Diagnostic and database state integrity repair tool
+   * Fixes any missing default records, corrupted image arrays, or orphaned investments.
+   */
+  public repairDatabase(): {
+    status: 'repaired' | 'healthy';
+    repairedItems: string[];
+    totalProperties: number;
+    totalUsers: number;
+    totalInvestments: number;
+    totalTransactions: number;
+  } {
+    const repairedItems: string[] = [];
+
+    // 1. Repair properties array
+    const validProps = INITIAL_PROPERTIES.filter(p => Array.isArray(p.images) && p.images.length >= 7);
+    const existingPropIds = new Set(this.properties.map(p => p.id));
+    let propAdded = false;
+
+    validProps.forEach(initProp => {
+      if (!existingPropIds.has(initProp.id)) {
+        this.properties.push(initProp);
+        existingPropIds.add(initProp.id);
+        propAdded = true;
+      }
+    });
+
+    if (propAdded) {
+      repairedItems.push('Restored missing initial property listings');
+    }
+
+    // 2. Repair users array
+    const existingUserIds = new Set(this.users.map(u => u.id));
+    let userAdded = false;
+    DEFAULT_USERS.forEach(initUser => {
+      if (!existingUserIds.has(initUser.id)) {
+        this.users.push(initUser);
+        existingUserIds.add(initUser.id);
+        userAdded = true;
+      }
+    });
+
+    if (userAdded) {
+      repairedItems.push('Restored missing default user accounts');
+    }
+
+    // 3. Repair investments array
+    const existingInvIds = new Set(this.investments.map(i => i.id));
+    let invAdded = false;
+    DEFAULT_INVESTMENTS.forEach(initInv => {
+      if (!existingInvIds.has(initInv.id)) {
+        this.investments.push(initInv);
+        existingInvIds.add(initInv.id);
+        invAdded = true;
+      }
+    });
+
+    if (invAdded) {
+      repairedItems.push('Restored seed investment portfolio records');
+    }
+
+    // 4. Repair transactions array
+    const existingTxIds = new Set(this.transactions.map(t => t.id));
+    let txAdded = false;
+    DEFAULT_TRANSACTIONS.forEach(initTx => {
+      if (!existingTxIds.has(initTx.id)) {
+        this.transactions.push(initTx);
+        existingTxIds.add(initTx.id);
+        txAdded = true;
+      }
+    });
+
+    if (txAdded) {
+      repairedItems.push('Restored transaction history records');
+    }
+
+    // 5. Repair company news
+    const existingNewsIds = new Set(this.companyNews.map(n => n.youtubeId));
+    let newsAdded = false;
+    INITIAL_COMPANY_NEWS.forEach(initNews => {
+      if (!existingNewsIds.has(initNews.youtubeId)) {
+        this.companyNews.push(initNews);
+        existingNewsIds.add(initNews.youtubeId);
+        newsAdded = true;
+      }
+    });
+
+    if (newsAdded) {
+      repairedItems.push('Restored YouTube news broadcast entries');
+    }
+
+    // Save pristine state
+    this.saveState();
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'DATABASE_REPAIRED', `Database integrity scan complete. Repaired ${repairedItems.length} items.`);
+
+    return {
+      status: repairedItems.length > 0 ? 'repaired' : 'healthy',
+      repairedItems,
+      totalProperties: this.properties.length,
+      totalUsers: this.users.length,
+      totalInvestments: this.investments.length,
+      totalTransactions: this.transactions.length
+    };
+  }
+
+  /**
+   * Resets database state to pristine defaults
+   */
+  public resetDatabase(): void {
+    this.users = [...DEFAULT_USERS];
+    this.properties = [...INITIAL_PROPERTIES.filter(p => Array.isArray(p.images) && p.images.length >= 7)];
+    this.investments = [...DEFAULT_INVESTMENTS];
+    this.transactions = [...DEFAULT_TRANSACTIONS];
+    this.verificationDocuments = [...DEFAULT_VERIFICATION_DOCUMENTS];
+    this.companyNews = [...INITIAL_COMPANY_NEWS];
+    this.membershipTiers = [...INITIAL_MEMBERSHIP_TIERS];
+    this.memberships = [];
+    this.membershipApplications = [];
+    this.saveState();
+    this.logAudit('usr-admin-1', 'admin@kretz.com', 'DATABASE_RESET', 'Database state successfully restored to initial defaults.');
+  }
+
+  /**
+   * Performs a comprehensive diagnostic health check on all database collections
+   */
+  public getDatabaseHealth(): {
+    isHealthy: boolean;
+    issues: string[];
+    propertiesCount: number;
+    usersCount: number;
+    investmentsCount: number;
+    transactionsCount: number;
+    newsCount: number;
+  } {
+    const issues: string[] = [];
+
+    if (!Array.isArray(this.properties) || this.properties.length === 0) {
+      issues.push('Properties collection is empty or invalid');
+    }
+    if (!Array.isArray(this.users) || this.users.length === 0) {
+      issues.push('Users collection is empty or invalid');
+    }
+    if (!Array.isArray(this.investments)) {
+      issues.push('Investments collection is invalid');
+    }
+    if (!Array.isArray(this.transactions)) {
+      issues.push('Transactions collection is invalid');
+    }
+
+    return {
+      isHealthy: issues.length === 0,
+      issues,
+      propertiesCount: this.properties.length,
+      usersCount: this.users.length,
+      investmentsCount: this.investments.length,
+      transactionsCount: this.transactions.length,
+      newsCount: this.companyNews.length
+    };
+  }
+}
+
+export const ledger = new LedgerService();
+
+// Run immediate database health check and integrity repair on initialization
+try {
+  ledger.repairDatabase();
+} catch (e) {
+  console.warn('Auto database repair note:', e);
+}

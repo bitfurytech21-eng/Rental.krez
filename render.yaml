@@ -1,0 +1,18 @@
+# Legacy Render deployment (monorepo layout)
+services:
+  - type: web
+    name: kretz-luxury-real-estate
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_WEB
+        value: "true"
+      - fromGroup: kretz-core-runtime
+      - fromGroup: kretz-admin-security
+      - fromGroup: kretz-supabase-client
+      - fromGroup: kretz-cloudflare-turnstile
+      - fromGroup: kretz-transactional-email
+      - fromGroup: kretz-optional-integrations

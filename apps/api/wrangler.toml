@@ -1,0 +1,27 @@
+name = "rental-log-api"
+main = "src/worker.ts"
+compatibility_date = "2026-11-09"
+compatibility_flags = ["nodejs_compat"]
+find_additional_modules = true
+
+[vars]
+API_VERSION = "v1"
+RUNTIME_MODE = "workers-hono"
+
+# Production bindings (configure IDs before deploy):
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "rental-log"
+# database_id = "<id>"
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "<id>"
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "<id>"
+# [[kv_namespaces]]
+# binding = "IDEMPOTENCY"
+# id = "<id>"
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "rental-log-assets"
