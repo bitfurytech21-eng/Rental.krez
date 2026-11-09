@@ -1,1 +1,1 @@
-import '../../../packages/validation/src/financialService.test';
+import '../../../../packages/validation/src/financialService.test';
