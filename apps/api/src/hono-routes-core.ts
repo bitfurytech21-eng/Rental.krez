@@ -248,10 +248,72 @@ core.post('/api/v1/contact', async (c) => { const b: any = await c.req.json().ca
 core.post('/api/v1/memberships/apply', async (c) => { await c.req.json().catch(() => ({})); return c.json({ success: true, data: { id: newId('mem') }, message: 'Application received.', requestId: c.get('requestId') }, 201); });
 core.post('/api/v1/newsletter/subscribe', async (c) => c.json({ success: true, message: 'Subscribed.', requestId: c.get('requestId') }));
 core.post('/api/v1/security/verify-turnstile', async (c) => { const b: any = await c.req.json().catch(() => ({})); const t = await verifyTurnstile(c, b?.turnstileToken || b?.token); return c.json({ success: t.ok, message: t.ok ? 'Verified.' : (t.message || 'Verification failed.'), requestId: c.get('requestId') }, t.ok ? 200 : 400); });
+// Auth path aliases used by web client (base /api/v1 + /auth/*)
+for (const [from, to] of [['/api/v1/auth/admin-login','/api/v1/auth/admin/login'],['/api/v1/auth/admin-logout','/api/v1/auth/admin/logout'],['/api/v1/auth/admin-session','/api/v1/admin/session']] as const) {
+  core.get(from, (c) => core.fetch(new Request(new URL(to, c.req.url), c.req.raw), c.env, c.executionCtx));
+  core.post(from, (c) => core.fetch(new Request(new URL(to, c.req.url), c.req.raw), c.env, c.executionCtx));
+}
+
 core.post('/api/v1/auth/password/forgot', async (c) => c.json({ success: true, message: 'If the account exists, a reset email has been sent.', requestId: c.get('requestId') }));
 core.post('/api/v1/auth/password/reset', async (c) => fail(c, 'Password reset token processing not yet migrated to Workers runtime.', 501, { code: 'NOT_MIGRATED' }));
 core.post('/api/v1/admin/customize', requireAdminMw(), async (c) => fail(c, 'Admin credential customization uses Node fs; migrate to D1/KV binding.', 501, { code: 'NOT_MIGRATED' }));
+core.post('/api/v1/auth/admin-customize', requireAdminMw(), (c) => core.fetch(new Request(new URL('/api/v1/admin/customize', c.req.url), c.req.raw), c.env, c.executionCtx));
 core.get('/api/v1/user/referrals', requireAuthMw(), (c) => ok(c, { referralCode: 'REF-' + c.get('user').id.slice(-6).toUpperCase(), referralLink: 'https://rental.log/register?ref=REF', totalInvited: 0, totalRegistered: 0, totalFunded: 0, pendingReward: 0, earnedReward: 0, referrals: [] }));
 core.post('/api/v1/user/referrals/invite', requireAuthMw(), async (c) => { const b: any = await c.req.json().catch(() => ({})); return c.json({ success: true, message: 'Invite queued.', data: { referral: { id: newId('ref'), email: b.email || '', date: new Date().toISOString(), status: 'invited', reward: 0 }, referrals: [] }, requestId: c.get('requestId') }); });
+
+// Admin reads / actions (incremental Workers parity; persistent ops require D1/KV bindings)
+core.get('/api/v1/admin', requireAdminMw(), (c) => ok(c, { routes: ['dashboard','users','transactions','deposits','withdrawals','investments','settings','system-health','email'] }));
+core.get('/api/v1/admin/dashboard', requireAdminMw(), (c) => ok(c, { users: mockUsers.length, transactions: mockTransactions.length, listings: mockListings.length }));
+core.get('/api/v1/admin/stats', requireAdminMw(), (c) => core.fetch(new Request(new URL('/api/v1/admin/dashboard', c.req.url), c.req.raw), c.env, c.executionCtx));
+core.get('/api/v1/admin/users', requireAdminMw(), (c) => ok(c, mockUsers.map(sanitizeUser), { total: mockUsers.length }));
+core.get('/api/v1/admin/transactions', requireAdminMw(), (c) => ok(c, mockTransactions, { total: mockTransactions.length }));
+core.get('/api/v1/admin/deposits', requireAdminMw(), (c) => ok(c, mockTransactions.filter((t:any)=>t.type==='deposit'), { total: mockTransactions.filter((t:any)=>t.type==='deposit').length }));
+core.get('/api/v1/admin/withdrawals', requireAdminMw(), (c) => ok(c, mockTransactions.filter((t:any)=>t.type==='withdrawal'), { total: mockTransactions.filter((t:any)=>t.type==='withdrawal').length }));
+core.get('/api/v1/admin/investments', requireAdminMw(), (c) => ok(c, mockTransactions.filter((t:any)=>t.type==='investment'), { total: mockTransactions.filter((t:any)=>t.type==='investment').length }));
+core.put('/api/v1/admin/settings', requireAdminMw(), async (c) => { const b:any = await c.req.json().catch(()=>({})); Object.assign(platformConfig, b && typeof b==='object' ? b : {}); return ok(c, platformConfig, { message: 'Settings updated (runtime store).' }); });
+core.post('/api/v1/admin/users/:id/status', requireAdminMw(), async (c) => { const u = mockUsers.find((x:any)=>x.id===c.req.param('id')); if (!u) return fail(c,'User not found.',404,{code:'USER_NOT_FOUND'}); const b:any = await c.req.json().catch(()=>({})); if (b.status) u.status = b.status; if (b.reason) (u as any).suspendedReason = b.reason; return ok(c, sanitizeUser(u), { message:'Status updated.' }); });
+core.patch('/api/v1/admin/users/:id/status', requireAdminMw(), (c) => core.fetch(new Request(new URL(`/api/v1/admin/users/${c.req.param('id')}/status`, c.req.url), { method:'POST', headers:c.req.raw.headers, body:c.req.raw.body as any }), c.env, c.executionCtx));
+core.post('/api/v1/admin/users/:id/kyc', requireAdminMw(), async (c) => { const u = mockUsers.find((x:any)=>x.id===c.req.param('id')); if (!u) return fail(c,'User not found.',404,{code:'USER_NOT_FOUND'}); const b:any = await c.req.json().catch(()=>({})); if (b.status||b.kycStatus) u.kycStatus = b.status||b.kycStatus; return ok(c, sanitizeUser(u), { message:'KYC updated.' }); });
+core.get('/api/v1/admin/database/health', requireAdminMw(), (c) => ok(c, { connected: !!c.env?.DB, mode: c.env?.DB ? 'd1' : 'memory' }));
+core.get('/api/v1/admin/payment-config', requireAdminMw(), (c) => core.fetch(new Request(new URL('/api/v1/payments/config', c.req.url), c.req.raw), c.env, c.executionCtx));
+core.put('/api/v1/admin/payment-config', requireAdminMw(), async (c) => fail(c,'Payment config persistence requires D1/KV binding.',501,{code:'NOT_MIGRATED'}));
+
+// Translation/blockchain compat
+core.post('/api/v1/translate/test', async (c) => { const b:any = await c.req.json().catch(()=>({})); return c.json({ success:true, data:{ translated: b.text||'', provider:'noop-workers', message:'Translation provider not bound in Workers runtime.' }, requestId:c.get('requestId') }); });
+core.get('/api/v1/blockchain/infrastructure', (c) => ok(c, { mode:'workers', rpc: null, verifyRpc: c.req.query('verifyRpc')==='true', message:'RPC verification requires server-side RPC binding; use Node API for live checks.' }));
+
+// Admin email surface (contract-compatible stubs; real dispatch requires provider bindings)
+const emailTemplates = [{ id:'welcome', name:'Welcome' },{ id:'deposit_received', name:'Deposit Received' }];
+const emailAutomations:any[] = []; const emailLogs:any[] = []; const emailSettings = { provider:'none', from:'', enabled:false };
+core.get('/api/v1/admin/email/templates', requireAdminMw(), (c) => ok(c, emailTemplates));
+core.get('/api/v1/admin/email/preview/:templateId', requireAdminMw(), (c) => ok(c, { templateId:c.req.param('templateId'), subject:'Preview', html:`<p>Preview ${c.req.param('templateId')}</p>` }));
+core.get('/api/v1/admin/email/automations', requireAdminMw(), (c) => ok(c, emailAutomations));
+core.patch('/api/v1/admin/email/automations/:id', requireAdminMw(), async (c) => { const b:any = await c.req.json().catch(()=>({})); return ok(c, { id:c.req.param('id'), ...b }, { message:'Automation update requires durable binding; accepted as runtime no-op.' }); });
+core.get('/api/v1/admin/email/logs', requireAdminMw(), (c) => ok(c, emailLogs));
+core.post('/api/v1/admin/email/logs/:id/retry', requireAdminMw(), (c) => ok(c, { id:c.req.param('id') }, { message:'Email retry requires provider binding.' }));
+core.get('/api/v1/admin/email/settings', requireAdminMw(), (c) => ok(c, emailSettings));
+core.post('/api/v1/admin/email/send-test', requireAdminMw(), async (c) => { await c.req.json().catch(()=>({})); return ok(c, { queued:false }, { message:'Test email requires provider binding.' }); });
+core.post('/api/v1/admin/email/execute-command', requireAdminMw(), async (c) => { await c.req.json().catch(()=>({})); return ok(c, { executed:false }, { message:'Email command requires provider binding.' }); });
+core.post('/api/v1/admin/email/verify-provider', requireAdminMw(), async (c) => ok(c, { verified:false }, { message:'Provider verification requires binding/secret.' }));
+
+// Admin financial/distribution actions (Workers stubs: require D1 transaction + audit bindings for production)
+for (const [p, msg] of [
+  ['/api/v1/admin/deposits/:id/approve','Deposit approval requires durable ledger binding.'],
+  ['/api/v1/admin/deposits/:id/reject','Deposit rejection requires durable ledger binding.'],
+  ['/api/v1/admin/withdrawals/:id/approve','Withdrawal approval requires durable ledger binding.'],
+  ['/api/v1/admin/withdrawals/:id/reject','Withdrawal rejection requires durable ledger binding.'],
+  ['/api/v1/admin/distributions/process','Distribution processing requires durable ledger binding.'],
+  ['/api/v1/admin/distributions/records/:id/adjust','Distribution adjustment requires durable ledger binding.'],
+] as const) core.post(p, requireAdminMw(), (c)=>fail(c,msg,501,{code:'NOT_MIGRATED'}));
+for (const p of ['/api/v1/admin/distributions/configs','/api/v1/admin/distributions/properties/:id/toggle']) {
+  core.get(p, requireAdminMw(), (c)=>ok(c, []));
+  core.post(p, requireAdminMw(), (c)=>fail(c,'Distribution config mutation requires durable binding.',501,{code:'NOT_MIGRATED'}));
+  core.put(p, requireAdminMw(), (c)=>fail(c,'Distribution config mutation requires durable binding.',501,{code:'NOT_MIGRATED'}));
+}
+core.get('/api/v1/admin/audit-logs', requireAdminMw(), (c)=>ok(c, [], { total:0 }));
+core.get('/api/v1/admin/logs', requireAdminMw(), (c)=>ok(c, [], { total:0 }));
+core.get('/api/v1/admin/properties', requireAdminMw(), (c)=>ok(c, mockListings, { total: mockListings.length }));
+core.get('/api/v1/admin/insights', requireAdminMw(), (c)=>ok(c, []));
+core.post('/api/v1/admin/email/settings', requireAdminMw(), async (c)=>{ const b:any=await c.req.json().catch(()=>({})); return ok(c,{...emailSettings,...(b||{})},{message:'Email settings persistence requires binding.'}); });
 
 export default core;
