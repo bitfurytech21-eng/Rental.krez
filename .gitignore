@@ -1,12 +1,14 @@
 node_modules/
+**/node_modules/
 build/
 dist/
+**/dist/
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
 .aistudio/
+apps/api/.admin-credentials.json
 server/.admin-credentials.json
-
-.env
+.wrangler/

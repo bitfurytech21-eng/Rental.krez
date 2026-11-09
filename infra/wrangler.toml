@@ -1,0 +1,24 @@
+# Cloudflare Workers API (Hono/Workers adapter target)
+# The current runtime API is Express under apps/api/src and apps/api/server.ts.
+# Migrate routes to a Workers fetch handler (e.g. Hono) and set main accordingly.
+
+name = "rental-log-api"
+main = "apps/api/src/worker.ts"
+compatibility_date = "2026-11-09"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+API_VERSION = "v1"
+
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "rental-log"
+# database_id = "<set-in-cloudflare>"
+
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "rental-log-assets"
+
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "<set-in-cloudflare>"

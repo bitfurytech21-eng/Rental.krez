@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "paths": {
+      "@rental-log/database": ["../../packages/database/src/index.ts"],
+      "@rental-log/validation": ["../../packages/validation/src/index.ts"]
+    }
+  },
+  "include": ["src", "server.ts", "../../packages/database/src", "../../packages/validation/src"]
+}
