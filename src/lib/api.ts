@@ -225,7 +225,7 @@ export async function apiRequest<T = any>(
 
       const errorMessage =
         (typeof responseData === 'object' && responseData !== null && (responseData.message || responseData.error)) ||
-        response.statusText ||
+        (response.status === 405 ? 'Authentication server endpoint not found (HTTP 405).' : response.statusText) ||
         `HTTP Error ${response.status}`;
 
       const errorCode = (typeof responseData === 'object' && responseData?.code) || undefined;
