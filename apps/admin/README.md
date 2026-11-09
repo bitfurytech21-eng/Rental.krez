@@ -1,9 +1,9 @@
 # @rental-log/admin
 
-Standalone admin Vite app (Cloudflare Pages-capable). It currently reuses admin/auth/providers/components from `apps/web/src` via `@web/*` aliases to preserve behavior while extraction is incremental.
+Standalone admin Vite app for Cloudflare Pages. It currently reuses admin/auth/providers/components from `apps/web/src` via aliases to preserve behavior while extraction is incremental (`apps/web` still serves `/admin`).
 
-- Dev: `npm run dev -w @rental-log/admin` (port 3001, reads root `.env`)
-- Build: `npm run build -w @rental-log/admin`
-- Admin UI source remains primarily in `apps/web/src/components/admin`; move components into `apps/admin/src` or `packages/ui`/`packages/auth` as coupling is reduced.
+- `npm run dev -w @rental-log/admin`
+- `npm run build -w @rental-log/admin`
+- `npm run lint -w @rental-log/admin`
 
-`apps/web` still serves `/admin` routes for backward compatibility.
+Next extraction step: move `apps/web/src/components/admin/*` and shared auth/UI dependencies into `apps/admin/src` / `packages/ui` / `packages/auth`, then switch `apps/web` `/admin` to redirect.

@@ -1,35 +1,23 @@
 # Rental-log (Monorepo)
 
-Restructured layout:
-
 ```text
 apps/
- ├─ web    (React/Vite)           # UI, routes, admin UI
- ├─ api    (Express + TS; Workers target via infra/wrangler.toml)
- └─ admin  (placeholder; admin lives in apps/web for now)
+ ├─ web    (React/Vite)            # main app; still serves /admin for compatibility
+ ├─ api    (Cloudflare Hono worker + Express/Node fallback)
+ └─ admin  (standalone Vite admin; currently reuses web admin modules)
 
-packages/
- ├─ ui           (shared UI placeholder)
- ├─ database     (shared data/content exports)
- ├─ auth         (placeholder)
- └─ validation   (financial/distribution logic & types)
-
-infra/
- ├─ wrangler.toml
- ├─ migrations/
- ├─ schema.sql
- ├─ github-actions/
- └─ supabase-legacy/
+packages/ ui, database, auth, validation
+infra/    wrangler.toml, migrations/, schema.sql, github-actions/, supabase-legacy/
 ```
 
-## Dev
+## Key commands
+- `npm install`
+- `npm run dev` / `npm run dev:web` — web
+- `npm run dev -w @rental-log/admin` — admin
+- `npm run dev -w @rental-log/api` — Workers (wrangler); `npm run dev:api:node` — Express fallback
+- `npm run lint` — web + api type checks
+- `npm test -w @rental-log/web`; `npx tsx apps/api/src/worker.test.ts`; `npx tsx apps/api/src/routes.test.ts`
+- `npm run build` (web), `npm run build -w @rental-log/admin`, `npm run build:api` / `npm run deploy:api`
 
-- `npm install` (workspaces)
-- `npm run dev` — Vite web (`apps/web`)
-- `npm run dev:api` — API (`apps/api`)
-- `npm run build` — builds web
-- `npm start` — starts API (serves `apps/web/dist` if present; set `SERVE_WEB=true` for Vite middleware in dev)
-
-## Target stack (brief)
-
-React/Vite/TS/TanStack Query/Zustand (web), Cloudflare Workers/Hono (API target), Postgres Neon/Supabase or D1, Drizzle, Better Auth/Clerk, R2, KV, Sentry. GitHub Actions → Cloudflare Pages + Workers → Postgres → R2.
+## Status
+Workers/Hono has core routes migrated (health/config/blog/team/listings/auth/profile/portfolio/distributions subset) with 501 fallback for unmigrated legacy endpoints; Express `apps/api/src/routes.ts` remains the full legacy surface. Admin is a standalone build but still reuses web admin components/providers for behavior parity.

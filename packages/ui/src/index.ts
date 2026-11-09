@@ -1,4 +1,1 @@
-/**
- * UI package boundary. Shared admin/web components should migrate here.
- */
-export {};
+export const uiPackageReady = true;
