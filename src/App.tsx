@@ -621,7 +621,7 @@ function MainApp() {
     <div
       className={`flex flex-col ${
         isDashboardView
-          ? 'bg-[#090e17] text-[#f1f5f9] h-screen overflow-hidden'
+          ? 'bg-[#F8FAFC] dark:bg-[#0B1220] text-[#0F172A] dark:text-[#E2E8F0] font-sans h-screen overflow-hidden'
           : 'bg-background text-foreground font-sans min-h-screen'
       }`}
     >
