@@ -2,7 +2,6 @@ name = "rental-log-api"
 main = "src/worker.ts"
 compatibility_date = "2026-11-09"
 compatibility_flags = ["nodejs_compat"]
-find_additional_modules = true
 
 [vars]
 API_VERSION = "v1"
