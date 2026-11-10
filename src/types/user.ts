@@ -121,6 +121,7 @@ export interface User {
   kycDocumentType?: string;
   kycSubmittedAt?: string;
   walletBalance: number; // Available EUR
+  pendingBalance?: number; // Pending/Locked EUR
   investedBalance: number; // In active properties
   totalEarned: number; // Realized rental yields
   createdAt: string;

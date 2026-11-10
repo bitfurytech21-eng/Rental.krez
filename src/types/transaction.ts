@@ -1,6 +1,6 @@
 export type TransactionType = 'deposit' | 'withdrawal' | 'investment' | 'distribution' | 'fee';
 
-export type TransactionStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected';
+export type TransactionStatus = 'pending' | 'approved' | 'processing' | 'completed' | 'rejected' | 'failed' | 'cancelled';
 
 export interface Transaction {
   id: string;

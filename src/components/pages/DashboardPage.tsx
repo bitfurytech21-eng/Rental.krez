@@ -11,6 +11,8 @@ import { TransactionsTab } from '../fintech/pages/TransactionsTab';
 import { IncomeTab } from '../fintech/pages/IncomeTab';
 import { DocumentsTab } from '../fintech/pages/DocumentsTab';
 import { SettingsTab } from '../fintech/pages/SettingsTab';
+import { DepositPage } from '../fintech/pages/DepositPage';
+import { WithdrawalPage } from '../fintech/pages/WithdrawalPage';
 import { Property } from '../../types/property';
 import { Investment } from '../../types/investment';
 import { Transaction } from '../../types/transaction';
@@ -57,9 +59,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         return 'income';
       case 'documents':
         return 'documents';
+      case 'deposit':
+        return 'deposit';
+      case 'withdraw':
+      case 'withdrawal':
+        return 'withdraw';
       case 'settings':
       case 'profile':
       case 'wallet':
+        return 'settings';
+      case 'support':
+      case 'help':
         return 'settings';
       default:
         return 'overview';
@@ -98,8 +108,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     setSelectedPropertyModal(property);
   };
 
+  const [isTabLoading, setIsTabLoading] = useState(false);
+
   const handleNavigateTab = (tabId: string) => {
-    setActiveTab(normalizeTab(tabId));
+    const nextTab = normalizeTab(tabId);
+    if (nextTab !== activeTab) {
+      setIsTabLoading(true);
+      setActiveTab(nextTab);
+      setTimeout(() => setIsTabLoading(false), 200);
+    }
   };
 
   return (
@@ -120,6 +137,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             onSelectProperty={handleSelectProperty}
             onNavigateTab={handleNavigateTab}
             onOpenKyc={() => setKycModalOpen(true)}
+            isLoading={isTabLoading}
           />
         )}
 
@@ -148,6 +166,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {activeTab === 'income' && (
           <IncomeTab
             investments={investments}
+          />
+        )}
+
+        {activeTab === 'deposit' && (
+          <DepositPage
+            transactions={transactions}
+            onOpenKyc={() => setKycModalOpen(true)}
+            onNavigateTab={handleNavigateTab}
+          />
+        )}
+
+        {activeTab === 'withdraw' && (
+          <WithdrawalPage
+            transactions={transactions}
+            onOpenKyc={() => setKycModalOpen(true)}
+            onNavigateTab={handleNavigateTab}
           />
         )}
 

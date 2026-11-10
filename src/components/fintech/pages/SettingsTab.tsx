@@ -224,7 +224,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onOpenKyc }) => {
             <div className="flex items-center justify-between">
               <h3 className="text-[16px] font-semibold">Connected Bank Accounts (SEPA / Wire)</h3>
               <button
-                onClick={() => toast.info('Opened Bank Account Link Flow (Plaid/Tink)')}
+                onClick={() => toast.info('Opened Bank Account Link Flow (SEPA Wire Details)')}
                 className="px-3 py-1.5 rounded-[8px] bg-[#0F4C81] text-white text-[12px] font-semibold"
               >
                 + Add Bank Account
@@ -258,14 +258,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ onOpenKyc }) => {
             <h3 className="text-[16px] font-semibold">Connected Web3 Whitelist Wallet</h3>
             <div className="p-4 rounded-[8px] bg-[#F8FAFC] dark:bg-[#0B1220] border border-[#E2E8F0] dark:border-[#1E293B] space-y-3 text-[13px]">
               <div>
-                <span className="text-[12px] text-[#64748B] block">Primary Ethereum / Polygon Address</span>
+                <span className="text-[12px] text-[#64748B] block">Primary BEP-20 Wallet Address</span>
                 <span className="font-mono font-semibold text-[14px] text-[#0F4C81] dark:text-[#14B8A6] tabular-nums">
                   0x71C8135C0e41B3fA128912389128f9A19b28A0bf
                 </span>
               </div>
               <div className="flex justify-between items-center text-[12px] pt-2 border-t border-[#E2E8F0] dark:border-[#1E293B]">
                 <span className="text-[#64748B]">Network:</span>
-                <span className="font-medium">Ethereum Mainnet (Chain ID: 1)</span>
+                <span className="font-medium">BNB Smart Chain (BEP-20)</span>
               </div>
               <div className="flex justify-between items-center text-[12px]">
                 <span className="text-[#64748B]">ERC-3643 Whitelist Status:</span>

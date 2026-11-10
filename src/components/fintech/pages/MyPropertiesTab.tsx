@@ -28,50 +28,35 @@ export const MyPropertiesTab: React.FC<MyPropertiesTabProps> = ({
   const [isTransferring, setIsTransferring] = useState(false);
 
   // Combine investments with property details
-  const myHoldings = investments.length > 0
-    ? investments.map((inv) => {
-        const prop = properties.find((p) => p.id === inv.propertyId);
-        return {
-          id: inv.id,
-          property: prop || {
-            id: inv.propertyId,
-            title: inv.propertyTitle,
-            location: inv.propertyLocation,
-            images: [inv.propertyImage],
-            estimatedAnnualYield: inv.estimatedAnnualYield,
-            tokenPrice: inv.tokenPrice,
-            totalValuation: 4500000,
-          },
-          tokens: inv.tokensPurchased,
-          value: inv.currentValuation || inv.totalAmountInvested,
-          incomeEarned: inv.totalDividendsReceived || (inv.totalAmountInvested * 0.045),
-          nextPayout: 'April 1, 2026',
-          nextPayoutAmount: ((inv.totalAmountInvested * (inv.estimatedAnnualYield / 100)) / 12),
-          yield: inv.estimatedAnnualYield,
-        };
-      })
-    : properties.slice(0, 3).map((p, idx) => {
-        const tokens = [450, 600, 320][idx];
-        const val = tokens * p.tokenPrice;
-        return {
-          id: `demo-${p.id}`,
-          property: p,
-          tokens,
-          value: val,
-          incomeEarned: val * 0.042,
-          nextPayout: 'April 1, 2026',
-          nextPayoutAmount: (val * (p.estimatedAnnualYield / 100)) / 12,
-          yield: p.estimatedAnnualYield,
-        };
-      });
+  const myHoldings = investments.map((inv) => {
+    const prop = properties.find((p) => p.id === inv.propertyId);
+    return {
+      id: inv.id,
+      property: prop || {
+        id: inv.propertyId,
+        title: inv.propertyTitle,
+        location: inv.propertyLocation,
+        images: [inv.propertyImage],
+        estimatedAnnualYield: inv.estimatedAnnualYield,
+        tokenPrice: inv.tokenPrice,
+        totalValuation: 4500000,
+      },
+      tokens: inv.tokensPurchased,
+      value: inv.currentValuation || inv.totalAmountInvested,
+      incomeEarned: inv.totalDividendsReceived || (inv.totalAmountInvested * 0.045),
+      nextPayout: 'April 1, 2026',
+      nextPayoutAmount: ((inv.totalAmountInvested * (inv.estimatedAnnualYield / 100)) / 12),
+      yield: inv.estimatedAnnualYield,
+    };
+  });
 
   const totalValue = myHoldings.reduce((sum, h) => sum + h.value, 0);
   const totalEarned = myHoldings.reduce((sum, h) => sum + h.incomeEarned, 0);
   const totalTokens = myHoldings.reduce((sum, h) => sum + h.tokens, 0);
 
   const handleExecuteTransfer = () => {
-    if (!transferAddress.trim()) {
-      toast.error('Please enter a valid Ethereum or Polygon address');
+    if (!transferAddress.trim() || !transferAddress.startsWith('0x')) {
+      toast.error('Please enter a valid BEP-20 address (0x...)');
       return;
     }
     setIsTransferring(true);
@@ -119,8 +104,23 @@ export const MyPropertiesTab: React.FC<MyPropertiesTabProps> = ({
       </div>
 
       {/* Property Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px]">
-        {myHoldings.map((item) => {
+      {myHoldings.length === 0 ? (
+        <div className="p-12 text-center rounded-[12px] bg-white dark:bg-[#111A2C] border border-[#E2E8F0] dark:border-[#1E293B] space-y-3">
+          <Building2 className="w-12 h-12 text-[#64748B] mx-auto" />
+          <h4 className="text-[16px] font-semibold text-[#0F172A] dark:text-[#E2E8F0]">No Property Token Holdings</h4>
+          <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] max-w-sm mx-auto">
+            You do not hold active real estate tokens yet. Browse marketplace offerings to acquire fractional property units.
+          </p>
+          <button
+            onClick={onExploreProperties}
+            className="px-4 py-2 rounded-[8px] bg-[#0F4C81] text-white text-[13px] font-semibold cursor-pointer shadow-xs"
+          >
+            Explore Marketplace
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[16px]">
+          {myHoldings.map((item) => {
           const prop = item.property as Property;
           return (
             <div
@@ -201,6 +201,7 @@ export const MyPropertiesTab: React.FC<MyPropertiesTabProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* Transfer Modal */}
       {transferModalItem && (

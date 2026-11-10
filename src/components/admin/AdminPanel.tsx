@@ -23,6 +23,7 @@ import {
   ToggleRight,
   AlertCircle,
   AlertTriangle,
+  Clock,
   FileText,
   Activity,
   UploadCloud,
@@ -58,8 +59,10 @@ import { AdminEmailManager } from './AdminEmailManager';
 import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
 import { AdminPaymentDistributionManager } from './AdminPaymentDistributionManager';
 import { AdminMembershipTab } from './AdminMembershipTab';
+import { AdminApprovalsView } from './AdminApprovalsView';
+import { AdminSettingsView } from './AdminSettingsView';
 
-export type AdminTabType = 'dashboard' | 'users' | 'membership' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'payment-distribution' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
+export type AdminTabType = 'dashboard' | 'approvals' | 'users' | 'membership' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'payment-distribution' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
@@ -361,27 +364,7 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleCreateTestDeposit = () => {
-    try {
-      const tx = ledger.createSamplePendingDeposit(5000);
-      refreshAll();
-      setActionSuccess(`Generated sample deposit request: ${formatCurrency(tx.amount)} (${tx.reference}). You can now review and approve it.`);
-      setTimeout(() => setActionSuccess(null), 4000);
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to create sample deposit');
-    }
-  };
 
-  const handleCreateTestWithdrawal = () => {
-    try {
-      const tx = ledger.createSamplePendingWithdrawal(1500);
-      refreshAll();
-      setActionSuccess(`Generated sample withdrawal request: ${formatCurrency(tx.amount)} (${tx.reference}). You can now review and approve it.`);
-      setTimeout(() => setActionSuccess(null), 4000);
-    } catch (e: any) {
-      setActionError(e.message || 'Failed to create sample withdrawal');
-    }
-  };
 
   const handleReviewKYC = (userId: string, approved: boolean) => {
     try {
@@ -609,6 +592,15 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setActiveTab('approvals')}
+                className="text-xs font-bold px-3.5 py-2.5 rounded-xl flex items-center gap-2 cursor-pointer shadow-sm border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 transition-colors"
+                title="Open Approvals Console"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <span>{pendingDeposits.length + pendingWithdrawals.length} Pending Approvals</span>
+              </button>
               <button
                 type="button"
                 onClick={() => navigateTo('/')}
@@ -916,6 +908,40 @@ export const AdminPanel: React.FC = () => {
           />
         )}
 
+        {/* Tab 1: Approvals Console (Deposits, Withdrawals, History) */}
+        {(activeTab === 'approvals' || activeTab === 'deposits' || activeTab === 'withdrawals') && (
+          <AdminApprovalsView
+            transactions={transactions}
+            users={users}
+            currentAdminEmail={activeUser.email}
+            onRefreshAll={refreshAll}
+            onQuickSuccess={(msg) => {
+              setActionSuccess(msg);
+              setTimeout(() => setActionSuccess(null), 4000);
+            }}
+            onQuickError={(msg) => {
+              setActionError(msg);
+              setTimeout(() => setActionError(null), 4000);
+            }}
+          />
+        )}
+
+        {/* Tab 2: Payment Settings */}
+        {activeTab === 'payment-settings' && (
+          <AdminSettingsView
+            paymentConfig={paymentConfig}
+            onRefreshAll={refreshAll}
+            onQuickSuccess={(msg) => {
+              setActionSuccess(msg);
+              setTimeout(() => setActionSuccess(null), 4000);
+            }}
+            onQuickError={(msg) => {
+              setActionError(msg);
+              setTimeout(() => setActionError(null), 4000);
+            }}
+          />
+        )}
+
         {/* Tab 0.5: User Management View */}
         {activeTab === 'users' && (
           <AdminUserManagement
@@ -946,14 +972,6 @@ export const AdminPanel: React.FC = () => {
                 <p className="text-xs text-[#69736F]">Review and approve incoming bank wire confirmations and crypto transfers</p>
               </div>
               <div className="flex items-center gap-2.5">
-                <button
-                  onClick={handleCreateTestDeposit}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
-                  title="Simulate a new incoming investor deposit request"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>Simulate Investor Deposit</span>
-                </button>
                 <span className="text-xs font-bold px-3 py-1 bg-[#EEF1EC] text-[#27845D] rounded-full whitespace-nowrap">
                   {pendingDeposits.length} Requests Pending
                 </span>
@@ -964,15 +982,7 @@ export const AdminPanel: React.FC = () => {
               <div className="text-center py-12 text-xs text-[#69736F] space-y-3">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto opacity-40" />
                 <p className="text-sm font-semibold text-[#18211F]">All deposits are up to date.</p>
-                <p className="max-w-md mx-auto">New investor transfer requests submitted from the Deposit button will appear here for administrative verification.</p>
-                <button
-                  onClick={handleCreateTestDeposit}
-                  className="btn btn-primary text-xs font-bold px-4 py-2 mt-2 bg-[#182D2A] hover:bg-[#24423C] text-white inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#B7E36A]" />
-                  <span>Generate Test Deposit Request (€5,000)</span>
-                </button>
-              </div>
+               </div>
             ) : (
               <div className="space-y-4">
                 {pendingDeposits.map((tx) => {
@@ -1069,14 +1079,6 @@ export const AdminPanel: React.FC = () => {
                 <p className="text-xs text-[#69736F]">Approve and execute bank wire payouts and cryptocurrency payouts</p>
               </div>
               <div className="flex items-center gap-2.5">
-                <button
-                  onClick={handleCreateTestWithdrawal}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
-                  title="Simulate a new incoming investor withdrawal request"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>Simulate Investor Withdrawal</span>
-                </button>
                 <span className="text-xs font-bold px-3 py-1 bg-[#EEF1EC] text-[#27845D] rounded-full whitespace-nowrap">
                   {pendingWithdrawals.length} Requests Pending
                 </span>
@@ -1087,14 +1089,6 @@ export const AdminPanel: React.FC = () => {
               <div className="text-center py-12 text-xs text-[#69736F] space-y-3">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto opacity-40" />
                 <p className="text-sm font-semibold text-[#18211F]">No pending withdrawals.</p>
-                <p className="max-w-md mx-auto">All requested disbursements have been fulfilled. New withdrawal requests will appear here for payout authorization.</p>
-                <button
-                  onClick={handleCreateTestWithdrawal}
-                  className="btn btn-secondary text-xs font-bold px-4 py-2 mt-2 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>Generate Test Withdrawal Request (€1,500)</span>
-                </button>
               </div>
             ) : (
               <div className="space-y-4">

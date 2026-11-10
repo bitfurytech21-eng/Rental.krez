@@ -68,12 +68,7 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({
     printAuditLogReport(reportData);
   };
 
-  const handleSeedSamples = () => {
-    const updated = ledger.seedComplianceSampleAuditLogs();
-    setLogs(updated);
-    setActionNotice('Compliance audit trail populated with verified audit events.');
-    setTimeout(() => setActionNotice(null), 3000);
-  };
+
 
   const handleClearLogs = () => {
     ledger.clearAuditLogs();

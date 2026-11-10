@@ -14,6 +14,8 @@ import { Transaction } from '../../../types/transaction';
 import { User } from '../../../types/user';
 import { formatCurrency, formatDate } from '../../../lib/utils';
 
+import { KpiRowSkeleton, TableSkeleton, ChartSkeleton } from '../SkeletonLoaders';
+
 interface OverviewTabProps {
   user: User | null;
   investments: Investment[];
@@ -22,6 +24,7 @@ interface OverviewTabProps {
   onSelectProperty: (property: Property) => void;
   onNavigateTab: (tab: string) => void;
   onOpenKyc: () => void;
+  isLoading?: boolean;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -32,6 +35,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   onSelectProperty,
   onNavigateTab,
   onOpenKyc,
+  isLoading = false,
 }) => {
   const [timeframe, setTimeframe] = useState<'1M' | '6M' | '1Y' | 'ALL'>('1Y');
   const [showKycBanner, setShowKycBanner] = useState<boolean>(true);
@@ -188,6 +192,23 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   }, [investments, properties]);
 
   const isKycVerified = user?.kycStatus === 'verified';
+
+  if (isLoading) {
+    return (
+      <div className="space-y-[16px]">
+        <KpiRowSkeleton />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-[16px]">
+          <div className="lg:col-span-8">
+            <ChartSkeleton height="h-[320px]" />
+          </div>
+          <div className="lg:col-span-4">
+            <ChartSkeleton height="h-[210px]" />
+          </div>
+        </div>
+        <TableSkeleton rows={4} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-[16px] text-[#0F172A] dark:text-[#E2E8F0]">

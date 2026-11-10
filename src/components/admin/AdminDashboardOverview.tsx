@@ -219,14 +219,98 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
         )}
       </div>
 
-      {/* 2. Top-Level Platform KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      {/* 2. Top-Level Platform KPIs (6 Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
         
-        {/* Metric 1: Total Portfolio AUM */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/40 transition-colors">
+        {/* KPI 1: Pending Deposits */}
+        <div
+          onClick={() => onNavigateTab('deposits')}
+          className="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-xs text-left space-y-2 hover:border-amber-400 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between text-[#69736F]">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Platform AUM</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-900">Pending Deposits</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs">
+              {pendingDeposits.length}
+            </div>
+          </div>
+          <div className="text-2xl font-black text-amber-950">
+            {formatCurrency(pendingDepositsTotal)}
+          </div>
+          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-amber-200/50">
+            <span className="text-amber-800">{pendingDeposits.length} Request{pendingDeposits.length !== 1 ? 's' : ''}</span>
+            <span className="font-bold text-amber-900">Review Queue →</span>
+          </div>
+        </div>
+
+        {/* KPI 2: Pending Withdrawals */}
+        <div
+          onClick={() => onNavigateTab('withdrawals')}
+          className="bg-white p-5 rounded-2xl border border-red-200 bg-red-50/40 shadow-xs text-left space-y-2 hover:border-red-400 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between text-[#69736F]">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-900">Pending Withdrawals</span>
+            <div className="w-8 h-8 rounded-xl bg-red-100 text-red-800 flex items-center justify-center font-bold text-xs">
+              {pendingWithdrawals.length}
+            </div>
+          </div>
+          <div className="text-2xl font-black text-red-950">
+            {formatCurrency(pendingWithdrawalsTotal)}
+          </div>
+          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-red-200/50">
+            <span className="text-red-800">{pendingWithdrawals.length} Locked Request{pendingWithdrawals.length !== 1 ? 's' : ''}</span>
+            <span className="font-bold text-red-900">Review Queue →</span>
+          </div>
+        </div>
+
+        {/* KPI 3: Approved Today */}
+        {(() => {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const approvedTodayTxs = transactions.filter(t => t.status === 'completed' && t.createdAt.startsWith(todayStr));
+          const approvedTodayValue = approvedTodayTxs.reduce((sum, t) => sum + t.amount, 0);
+          return (
+            <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 shadow-xs text-left space-y-2">
+              <div className="flex items-center justify-between text-[#69736F]">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">Approved Today</span>
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-emerald-950">
+                {formatCurrency(approvedTodayValue)}
+              </div>
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-emerald-200/50">
+                <span className="text-emerald-800">{approvedTodayTxs.length} Settlement{approvedTodayTxs.length !== 1 ? 's' : ''}</span>
+                <span className="font-bold text-emerald-900">100% Settled</span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* KPI 4: Pending KYC */}
+        <div
+          onClick={() => onNavigateTab('kyc')}
+          className="bg-white p-5 rounded-2xl border border-blue-200 bg-blue-50/30 shadow-xs text-left space-y-2 hover:border-blue-400 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between text-[#69736F]">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-900">Pending KYC</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
+              {pendingKYCUsers.length}
+            </div>
+          </div>
+          <div className="text-2xl font-black text-blue-950">
+            {pendingKYCUsers.length} Users
+          </div>
+          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-blue-200/50">
+            <span className="text-blue-800">MiCA / AML Compliance</span>
+            <span className="font-bold text-blue-900">Identity Queue →</span>
+          </div>
+        </div>
+
+        {/* KPI 5: Total Platform AUM */}
+        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2">
+          <div className="flex items-center justify-between text-[#69736F]">
+            <span className="text-xs font-bold uppercase tracking-wider">Platform AUM</span>
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center">
               <Building2 className="w-4 h-4" />
             </div>
           </div>
@@ -234,65 +318,28 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
             {formatCurrency(totalPlatformAUM)}
           </div>
           <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-            <span className="text-[#69736F]">{properties.length} Vetted Offerings</span>
+            <span className="text-[#69736F]">{properties.length} Vetted SPVs</span>
             <span className="font-bold text-emerald-700">100% Ring-Fenced</span>
           </div>
         </div>
 
-        {/* Metric 2: Capital Deployed */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/40 transition-colors">
-          <div className="flex items-center justify-between text-[#69736F]">
-            <span className="text-xs font-bold uppercase tracking-wider">Capital Funded</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-[#18211F]">
-            {formatCurrency(totalCapitalFunded)}
-          </div>
-          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-            <span className="text-[#69736F]">Funding Velocity</span>
-            <span className="font-bold text-blue-700">
-              {totalPlatformAUM > 0 ? Math.round((totalCapitalFunded / totalPlatformAUM) * 100) : 0}% of Cap
-            </span>
-          </div>
-        </div>
-
-        {/* Metric 3: Liquid Investor Reserves */}
-        <div 
+        {/* KPI 6: Total Investors */}
+        <div
           onClick={() => onNavigateTab('users')}
-          className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/60 transition-all cursor-pointer group"
-          title="Click to view and manage registered users"
+          className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/60 transition-all cursor-pointer"
         >
           <div className="flex items-center justify-between text-[#69736F]">
-            <span className="text-xs font-bold uppercase tracking-wider group-hover:text-emerald-800 transition-colors">Investor Balances ({users.length})</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 group-hover:bg-emerald-50 text-amber-700 group-hover:text-emerald-700 flex items-center justify-center transition-colors">
+            <span className="text-xs font-bold uppercase tracking-wider">Total Investors</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-[#18211F]">
-            {formatCurrency(totalInvestorWalletBalances)}
+            {users.length} Users
           </div>
           <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-            <span className="text-[#69736F]">Manage Users & Accounts</span>
-            <span className="font-bold text-emerald-700 group-hover:underline">Open Registry →</span>
-          </div>
-        </div>
-
-        {/* Metric 4: Total Distributions Paid */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/40 transition-colors">
-          <div className="flex items-center justify-between text-[#69736F]">
-            <span className="text-xs font-bold uppercase tracking-wider">Dividends Disbursed</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-              <Coins className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-[#18211F]">
-            {formatCurrency(totalDividendsDistributed || 124500)}
-          </div>
-          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
-            <span className="text-[#69736F]">Distribution Rate</span>
-            <span className="font-bold text-purple-700">Monthly Auto-Credit</span>
+            <span className="text-[#69736F]">{verifiedUsers.length} Verified Accounts</span>
+            <span className="font-bold text-purple-700">Manage Users →</span>
           </div>
         </div>
 

@@ -144,7 +144,7 @@ export const SmartsuppWidget: React.FC = () => {
       
       const lower = textToSend.toLowerCase();
       if (lower.includes('deposit') || lower.includes('sepa') || lower.includes('wire') || lower.includes('fund')) {
-        reply = "Deposits can be made via SEPA EUR Wire Transfer or Crypto Stablecoins (USDT/USDC on Polygon POS). Instructions are available in your Dashboard Wallet. Need manual verification? Email info@kretz.site.";
+        reply = "Deposits can be made via Bank Transfer (Wire/SEPA) or Crypto Stablecoins (USDT/USDC on BEP-20). Submissions require admin approval. Need assistance? Email info@kretz.site.";
       } else if (lower.includes('dividend') || lower.includes('payout') || lower.includes('monthly') || lower.includes('return')) {
         reply = "Rental dividends are calculated pro-rata and credited directly to your investor wallet balance on the 1st business day of each month.";
       } else if (lower.includes('deed') || lower.includes('notary') || lower.includes('spv') || lower.includes('legal')) {
