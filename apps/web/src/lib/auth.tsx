@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole, AccountType } from '../types/user';
 import { ledger } from './ledger';
 import { supabase, isSupabaseConfigured, getAuthRedirectUrl } from './supabaseClient';
+import { supabaseService } from './supabaseService';
 import { Session } from '@supabase/supabase-js';
 import { setAuthToken, apiRequest, authApi } from './api';
 
@@ -69,6 +70,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fresh = ledger.getUserById(user.id);
     if (fresh) {
       setUser({ ...fresh });
+    }
+    // When Supabase is configured, also refresh from profiles table
+    if (isSupabaseConfigured()) {
+      supabaseService.getProfileById(user.id).then(supabaseUser => {
+        if (supabaseUser) {
+          setUser(supabaseUser);
+          // Also sync back to local ledger for components that use it
+          try {
+            ledger.updateUserProfile(user.id, supabaseUser as any);
+          } catch {}
+        }
+      }).catch(() => {});
     }
   };
 
@@ -466,12 +479,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Authentication failed. No user was returned by Supabase.');
     }
 
+    // Sync profile to Supabase profiles table
     const synced = ledger.syncSupabaseUser(
       data.user.id,
       data.user.email || email,
       data.user.user_metadata?.full_name || email.split('@')[0] || 'Investor',
-      (data.user.user_metadata?.role as UserRole) || 'investor'
+      (data.user.user_metadata?.role as UserRole) || 'investor',
+      (data.user.user_metadata?.account_type as AccountType) || undefined,
+      data.user.user_metadata?.country,
+      data.user.user_metadata?.phone_number
     );
+
+    // Ensure profile exists in Supabase profiles table
+    if (isSupabaseConfigured()) {
+      const existingProfile = await supabaseService.getProfileById(data.user.id);
+      if (!existingProfile) {
+        await supabaseService.createProfile({
+          id: data.user.id,
+          email: data.user.email || email,
+          fullName: data.user.user_metadata?.full_name || email.split('@')[0] || 'Investor',
+          role: (data.user.user_metadata?.role as UserRole) || 'investor',
+          accountType: (data.user.user_metadata?.account_type as AccountType) || 'individual_investor',
+          kycStatus: 'unverified',
+          walletBalance: 0,
+          investedBalance: 0,
+          totalEarned: 0,
+          createdAt: new Date().toISOString(),
+          country: data.user.user_metadata?.country,
+          phoneNumber: data.user.user_metadata?.phone_number,
+          status: 'active',
+        }).catch(() => {});
+      }
+    }
+
     setUser(synced);
     setSession(data.session);
     const standardToken = data.session?.access_token || (synced.role === 'admin' ? 'admin_sess_' + synced.id : 'sess_' + synced.id);
@@ -752,6 +792,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fullName.trim(),
       role
     );
+
+    // Ensure profile exists in Supabase profiles table
+    if (isSupabaseConfigured()) {
+      const existingProfile = await supabaseService.getProfileById(data.user.id);
+      if (!existingProfile) {
+        await supabaseService.createProfile({
+          id: data.user.id,
+          email: data.user.email || cleanEmail,
+          fullName: fullName.trim(),
+          role,
+          accountType: determinedAccountType,
+          kycStatus: 'unverified',
+          walletBalance: 0,
+          investedBalance: 0,
+          totalEarned: 0,
+          createdAt: new Date().toISOString(),
+          country: country || 'France',
+          phoneNumber: phoneNumber || '',
+          status: 'active',
+        }).catch(() => {});
+      }
+    }
+
     setUser(synced);
 
     if (data.session) {

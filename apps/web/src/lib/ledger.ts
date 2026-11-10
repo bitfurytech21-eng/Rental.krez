@@ -457,7 +457,7 @@ export const DEFAULT_AUDIT_LOGS: AuditLog[] = [
   }
 ];
 
-class LedgerService {
+export class LedgerService {
   private users: User[];
   private properties: Property[];
   private investments: Investment[];
@@ -2953,7 +2953,135 @@ class LedgerService {
   }
 }
 
+const localLedger = new LedgerService();
+
+/* ------------------------------------------------------------------ */
+/*  Unified Ledger Type                                               */
+/* ------------------------------------------------------------------ */
+
+export interface UnifiedLedger {
+  // Sync methods (local ledger)
+  subscribe(listener: () => void): () => void;
+  getUsers(): User[];
+  getUserById(id: string): User | null;
+  getUserByEmail(email: string): User | null;
+  getUsersByRole(role: UserRole): User[];
+  getProperties(): Property[];
+  getPropertyById(id: string): Property | null;
+  getPropertyBySlug(slug: string): Property | null;
+  getInvestments(userId: string): Investment[];
+  getTransactions(userId?: string): Transaction[];
+  getVerificationDocuments(): VerificationDocument[];
+  getPaymentConfig(): PaymentConfig;
+  getAuditLogs(): AuditLog[];
+  getNotifications(): Notification[];
+  getMembershipTiers(): MembershipTier[];
+  getCompanyNews(): CompanyNewsItem[];
+  getFavorites(userId: string): string[];
+  getPreferences(userId: string): Record<string, any>;
+  getSubBalances(userId: string): Record<string, number>;
+  getP2PListings(): any[];
+  getUsersCount(): number;
+  getAuditLogCount(): number;
+  isSupabaseAvailable(): boolean;
+
+  // Async methods (may delegate to Supabase)
+  getUsersFromSupabase(): Promise<User[]>;
+  getUserByIdFromSupabase(id: string): Promise<User | null>;
+  getUserByEmailFromSupabase(email: string): Promise<User | null>;
+  getPropertiesFromSupabase(): Promise<Property[]>;
+  getPropertyByIdFromSupabase(id: string): Promise<Property | null>;
+  getInvestmentsFromSupabase(userId: string): Promise<Investment[]>;
+  getTransactionsFromSupabase(userId?: string): Promise<Transaction[]>;
+  getVerificationDocumentsFromSupabase(): Promise<VerificationDocument[]>;
+  getPaymentConfigFromSupabase(): Promise<PaymentConfig>;
+  getAuditLogsFromSupabase(limit?: number): Promise<AuditLog[]>;
+  getNotificationsFromSupabase(userId?: string): Promise<Notification[]>;
+  getMembershipTiersFromSupabase(): Promise<MembershipTier[]>;
+  getCompanyNewsFromSupabase(): Promise<CompanyNewsItem[]>;
+  getFavoritesFromSupabase(userId: string): Promise<string[]>;
+  getPreferencesFromSupabase(userId: string): Promise<Record<string, any>>;
+  getSubBalancesFromSupabase(userId: string): Promise<Record<string, number>>;
+  getP2PListingsFromSupabase(): Promise<any[]>;
+  createUser(profile: {
+    email: string;
+    fullName: string;
+    role?: UserRole;
+    accountType?: AccountType;
+    country?: string;
+    phoneNumber?: string;
+  }): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User>;
+  deleteUser(id: string): Promise<void>;
+  syncSupabaseUser(
+    id: string,
+    email: string,
+    fullName: string,
+    role: UserRole,
+    accountType?: AccountType,
+    country?: string,
+    phoneNumber?: string
+  ): Promise<User>;
+  createProperty(property: Partial<Property>): Promise<Property>;
+  updateProperty(id: string, updates: Partial<Property>): Promise<Property>;
+  hidePropertyFromFrontend(id: string, adminEmail: string, reason?: string): Promise<void>;
+  createInvestment(investment: Partial<Investment>): Promise<Investment>;
+  updateInvestment(id: string, updates: Partial<Investment>): Promise<Investment>;
+  createTransaction(transaction: Partial<Transaction>): Promise<Transaction>;
+  updateTransaction(id: string, updates: Partial<Transaction>): Promise<Transaction>;
+  recordManualCredit(
+    adminEmail: string,
+    userId: string,
+    amount: number,
+    currency: string,
+    paymentMethod: string,
+    reference?: string,
+    notes?: string
+  ): Promise<Transaction>;
+  createSamplePendingDeposit(amount: number): Promise<Transaction>;
+  createSamplePendingWithdrawal(amount: number): Promise<Transaction>;
+  reviewDeposit(txId: string, approved: boolean): Promise<void>;
+  reviewWithdrawal(txId: string, approved: boolean): Promise<void>;
+  updateUserPaymentDetails(userId: string, details: {
+    cryptoDepositAddress?: string;
+    bankIban?: string;
+  }): Promise<void>;
+  restoreDefaults(): Promise<{ message: string }>;
+  reviewVerificationDocument(docId: string, approved: boolean, reason?: string): Promise<void>;
+  updatePaymentConfig(config: PaymentConfig): Promise<void>;
+  addCryptoNetwork(network: Omit<CryptoNetworkConfig, 'id'>): Promise<CryptoNetworkConfig>;
+  deleteCryptoNetwork(id: string): Promise<void>;
+  toggleCryptoNetwork(id: string): Promise<void>;
+  recordAuditLog(
+    adminId: string,
+    adminEmail: string,
+    action: string,
+    details: string,
+    category: AuditCategory,
+    severity: AuditSeverity,
+    metadata?: Record<string, any>
+  ): Promise<void>;
+  createNotification(
+    userId: string,
+    title: string,
+    message: string,
+    type?: Notification['type']
+  ): Promise<void>;
+  updateUserAvatar(userId: string, avatarUrl: string): Promise<void>;
+  addFavorite(userId: string, propertyId: string): Promise<void>;
+  removeFavorite(userId: string, propertyId: string): Promise<void>;
+  savePreferences(userId: string, prefs: Record<string, any>): Promise<void>;
+  setSubBalance(userId: string, currency: string, amount: number): Promise<void>;
+}
+
 export const ledger = new LedgerService();
+
+/**
+ * Supabase-backed ledger service is exported separately from ./supabaseLedger.
+ * Import { supabaseLedger } from './supabaseLedger' when Supabase is configured.
+ * The default `ledger` export remains the localStorage-backed LedgerService
+ * for backward compatibility when Supabase env vars are not set.
+ */
 
 // Run immediate database health check and integrity repair on initialization
 try {
@@ -2961,3 +3089,9 @@ try {
 } catch (e) {
   console.warn('Auto database repair note:', e);
 }
+
+// Re-export Supabase service and client helpers for direct access
+export { supabaseService } from './supabaseService';
+export { supabase } from './supabaseClient';
+export { isSupabaseConfigured } from './supabaseClient';
+export type { SupabaseProfile, SupabaseProperty, SupabaseInvestment, SupabaseTransaction } from './supabaseService';
