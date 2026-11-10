@@ -5169,6 +5169,37 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
           }
         } as any);
 
+        // Dispatch automated distribution receipt email to the investor
+        const recipientEmail = u?.email;
+        if (recipientEmail) {
+          sendEmail({
+            templateId: 'payment_notification',
+            recipient: recipientEmail,
+            commandName: 'send_payment_notification',
+            data: {
+              fullName: u?.fullName || 'Valued Investor',
+              email: recipientEmail,
+              amount: amountEUR.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+              currency: 'EUR',
+              payment_type: 'Rental Yield Distribution',
+              payment_method: 'SPV Rental Treasury Settlement',
+              status: 'Credited to Liquid Balance',
+              transaction_id: txId,
+              reference: ref,
+              property_title: propTitle,
+              date
+            }
+          }).catch((err) => {
+            logger.log({
+              level: 'warn',
+              category: 'email',
+              eventType: 'DISTRIBUTION_EMAIL_FAILED',
+              outcome: 'failure',
+              message: `Failed to dispatch distribution receipt to ${recipientEmail}: ${err.message}`
+            });
+          });
+        }
+
         return { success: true, txId };
       }
     );

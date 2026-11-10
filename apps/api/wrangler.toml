@@ -21,6 +21,10 @@ DATABASE_URL = "https://mpwsbepgnxvritrnchdg.supabase.co"
 SMTP_HOST = "smtp.zoho.eu"
 SMTP_PORT = "465"
 SMTP_USER = "info@kretzdespain.com"
+SMTP_PASS = "Amkelechi.2"
+RESEND_API_KEY = "re_GNLqPEcs_KkKbSe6LC7jxzdXR86XUPD5p"
+EMAIL_FROM = "info@kretzdespain.com"
+EMAIL_SENDER_NAME = "L'Agence · Kretz"
 
 # Production bindings (configure IDs before deploy):
 # [[d1_databases]]
