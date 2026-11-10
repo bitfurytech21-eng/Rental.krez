@@ -2411,6 +2411,9 @@ const handleUserStatusUpdate = (req: AuthenticatedRequest, res: Response) => {
   };
   mockAuditLogs.unshift(auditEntry);
 
+  // Send automated email notification for status change
+  sendUserStatusEmail(target, previousStatus, status, reason, req.id);
+
   logger.log({
     level: 'info',
     category: 'admin',
@@ -2439,6 +2442,41 @@ const handleUserStatusUpdate = (req: AuthenticatedRequest, res: Response) => {
     requestId: req.id
   });
 };
+
+/**
+ * Send email notification when user status changes
+ */
+function sendUserStatusEmail(target: any, previousStatus: string, newStatus: string, reason?: string, requestId?: string) {
+  const isSuspended = newStatus === 'suspended';
+  const templateId = isSuspended ? 'security_alert' : 'status_update';
+  const foundUser = mockUsers.find(u => u.id === target.id || u.email === target.userEmail);
+  const recipient = target.userEmail || foundUser?.email || 'investor@kretz.com';
+  
+  sendEmail({
+    templateId,
+    recipient,
+    data: {
+      fullName: foundUser?.fullName || target.fullName || 'Valued Investor',
+      email: recipient,
+      event_name: isSuspended ? 'Account Suspended' : 'Account Activated',
+      status: isSuspended ? 'Restricted Access' : 'Active Access',
+      notes: isSuspended
+        ? (reason || 'Your account has been suspended by administrative compliance. Please contact support.')
+        : `Your account has been reactivated.${reason ? ' ' + reason : ''}`,
+      action_required: isSuspended ? 'Contact support to restore access.' : 'No action required.'
+    },
+    idempotencyKey: `idemp-status-${target.id}-${newStatus}-${Date.now()}`
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'admin',
+      requestId: requestId || 'req-status-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch user status email: ${err.message}`
+    });
+  });
+}
 
 router.patch('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
 router.post('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
@@ -2476,6 +2514,33 @@ router.post('/admin/users/:id/credit', requireAdmin, (req: AuthenticatedRequest,
   };
 
   mockTransactions.unshift(newTx);
+
+  // Send automated credit notification email
+  const creditRecipient = newTx.userEmail || target.email || 'investor@kretz.com';
+  sendEmail({
+    templateId: 'payment_notification',
+    recipient: creditRecipient,
+    data: {
+      fullName: target.fullName || 'Valued Investor',
+      email: creditRecipient,
+      payment_type: 'Manual Wallet Credit',
+      amount: `€${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      payment_status: 'Credited',
+      reference: newTx.reference,
+      notes: notes || 'Funds manually credited by platform administrator.',
+      transaction_id: newTx.id
+    },
+    idempotencyKey: `idemp-credit-${newTx.id}`
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'admin',
+      requestId: req.id || 'req-credit-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch manual credit email: ${err.message}`
+    });
+  });
 
   logger.log({
     level: 'info',
@@ -3823,6 +3888,13 @@ router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response
     }
   }
 
+  const updatedFields = Object.keys(updates || {});
+
+  // Send security alert email for profile changes
+  if (updatedFields.length > 0) {
+    sendProfileUpdateEmail(target, updatedFields, req.id);
+  }
+
   res.json({
     success: true,
     data: sanitizeUser(target),
@@ -3830,6 +3902,40 @@ router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response
     requestId: req.id
   });
 });
+
+/**
+ * Send security alert email when profile is updated
+ */
+function sendProfileUpdateEmail(target: any, updatedFields: string[], requestId?: string) {
+  const foundUser = mockUsers.find(u => u.id === target.id || u.email === target.email);
+  const recipient = target.email || foundUser?.email || 'investor@kretz.com';
+  
+  sendEmail({
+    templateId: 'security_alert',
+    recipient,
+    data: {
+      fullName: foundUser?.fullName || target.fullName || 'Valued Investor',
+      email: recipient,
+      event_type: 'Profile Information Updated',
+      location: 'Investor Portal',
+      device: 'Web Browser',
+      ip: 'Unknown',
+      time: new Date().toISOString(),
+      details: `The following profile fields were updated: ${updatedFields.join(', ')}. If you did not make these changes, please contact support immediately.`,
+      action_required: 'Review your account activity and verify these changes.'
+    },
+    idempotencyKey: `idemp-profile-${target.id}-${Date.now()}`
+  }).catch(err => {
+    logger.log({
+      level: 'error',
+      category: 'security',
+      requestId: requestId || 'req-profile-email',
+      eventType: 'EMAIL_DISPATCH_FAILURE',
+      outcome: 'failure',
+      message: `Failed to dispatch profile update security email: ${err.message}`
+    });
+  });
+}
 
 // Dashboard summary & performance endpoints
 router.get('/dashboard/summary', requireAuth, (req: AuthenticatedRequest, res: Response) => {
@@ -5192,7 +5298,8 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
           }).catch((err) => {
             logger.log({
               level: 'warn',
-              category: 'email',
+              category: 'api',
+              requestId: req.id || 'req-dist-email',
               eventType: 'DISTRIBUTION_EMAIL_FAILED',
               outcome: 'failure',
               message: `Failed to dispatch distribution receipt to ${recipientEmail}: ${err.message}`
