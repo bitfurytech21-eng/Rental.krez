@@ -91,6 +91,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const [mobileHeaderMenuOpen, setMobileHeaderMenuOpen] = useState(false);
   const [, setLedgerVersion] = useState(0);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
@@ -125,6 +126,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     } catch {}
     return 'slate';
   });
+
+  const handleAvatarUploadFromFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file (JPEG, PNG, WebP)');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image file is too large. Maximum size is 5MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result && user) {
+        ledger.updateUserAvatar(user.id, result);
+        userApi.updateProfile({ avatarUrl: result }).catch(() => {});
+        refreshUser();
+        toast.success('Profile photo updated.');
+        setUserDropdownOpen(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     return ledger.subscribe(() => {
@@ -490,9 +514,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* User Mini Card */}
-        <div className="p-1.5 mx-2 my-1.5 bg-[var(--dash-sidebar-card)] rounded-lg border border-[var(--dash-sidebar-border)] flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-[#1E3A34] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-            {user.fullName.split(' ').map(n => n[0]).join('')}
+        <div className="p-1.5 mx-2 my-1.5 bg-[var(--dash-sidebar-card)] rounded-lg border border-[var(--dash-sidebar-border)] flex items-center gap-2 cursor-pointer group" onClick={() => setUserDropdownOpen(!userDropdownOpen)}>
+          <div className="w-6 h-6 rounded bg-[#1E3A34] text-white flex items-center justify-center font-bold text-[10px] shrink-0 overflow-hidden border-2 border-white">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
+            ) : (
+              user.fullName.split(' ').map(n => n[0]).join('')
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-[11px] text-[var(--dash-text)] truncate leading-tight">{user.fullName}</h3>
@@ -504,6 +532,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
             </div>
           </div>
+          {userDropdownOpen && (
+            <span className="absolute -right-1 -top-1 w-2 h-2 rounded-full bg-emerald-500 text-[7px] font-bold flex items-center justify-center animate-pulse">✓</span>
+          )}
         </div>
 
         {/* Navigation Items */}
@@ -845,6 +876,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <User className="w-3.5 h-3.5 text-[#1E3A34] dark:text-[#D6A15D]" />
                     <span>Profile &amp; Banking</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      setUserDropdownOpen(false);
+                      if (avatarFileInputRef.current) {
+                        avatarFileInputRef.current.click();
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)] flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5 text-[#1E3A34] dark:text-[#D6A15D]" />
+                    <span>Update Profile Photo</span>
+                  </button>
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleAvatarUploadFromFile(file);
+                    }}
+                  />
                   <button
                     onClick={() => { setActiveTab('wallet'); setUserDropdownOpen(false); }}
                     className="w-full text-left px-3 py-2 text-xs text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)] flex items-center gap-2 transition-colors cursor-pointer"
