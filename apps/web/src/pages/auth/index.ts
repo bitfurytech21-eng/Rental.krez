@@ -1,0 +1,1 @@
+export { AuthPages } from '../../components/pages/AuthPages';

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Building2, Coins, TrendingUp } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import {
   KREZ_GALLERY_ITEMS,
@@ -10,6 +10,8 @@ import {
 import { KRETZ_CORE_LEADERSHIP } from '../../data/kretzTeam';
 import { BLOG_POSTS } from '../../data/blogPosts';
 import { ledger } from '../../lib/ledger';
+import { formatCurrency } from '../../lib/utils';
+import { Property } from '../../types/property';
 import { KrezImage, KrezReveal } from './KrezReveal';
 import { AnimatedHomepageHeroBackground } from '../visuals/AnimatedHomepageHeroBackground';
 
@@ -238,6 +240,95 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
             >
               How It Works
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Live Properties Showcase */}
+      <section className="bg-[#FAF8F5] text-[#18211F] py-section-sm md:py-section-spacing border-t border-[#E5DDD1]">
+        <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
+          <KrezReveal>
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+              <div>
+                <p className="text-xs font-semibold tracking-widest uppercase text-accent">
+                  Featured Live Offerings
+                </p>
+                <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-foreground md:text-4xl">
+                  Properties Open for Investment
+                </h2>
+                <p className="mt-2 text-sm text-[#6A635C] max-w-xl">
+                  Shares in income-producing European buildings, divided into fixed-price units with running costs itemized on the ledger.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate('/properties')}
+                className="inline-flex items-center gap-2 self-start text-xs font-semibold tracking-widest uppercase text-[#1A1A1A] transition-colors duration-fast hover:text-accent md:self-auto cursor-pointer"
+              >
+                <span>View All Properties</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </KrezReveal>
+
+          <div className="mt-10 grid gap-gutter md:grid-cols-2 lg:grid-cols-3">
+            {(() => {
+              const frontendProps = ledger.getFrontendProperties();
+              const featured = frontendProps.slice(0, 6);
+              return featured.map((prop, index) => (
+                <KrezReveal key={prop.id} delay={(index % 3) * 0.05}>
+                  <article className="group rounded-2xl border border-[#E5DDD1] bg-white overflow-hidden shadow-xs transition-all duration-300 hover:shadow-md hover:border-[#9a7b3f]">
+                    <div className="aspect-[4/3] overflow-hidden bg-[#F4F1EA]">
+                      <img
+                        src={prop.images[0] || prop.bannerImage}
+                        alt={prop.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <span className="absolute top-3 left-3 rounded-full bg-[#182D2A] text-[#B7E36A] px-2 py-0.5 text-[10px] font-bold">
+                        {prop.status}
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-[10px] font-semibold tracking-wider uppercase text-[#9a7b3f]">
+                        {prop.city}, {prop.country}
+                      </p>
+                      <h3 className="mt-1 text-base font-bold text-[#1A1A1A] group-hover:text-[#9a7b3f] transition-colors">
+                        {prop.title}
+                      </h3>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <span className="block text-muted">Yield</span>
+                          <span className="block font-bold text-[#182D2A]">{prop.estimatedAnnualYield}% net</span>
+                        </div>
+                        <div>
+                          <span className="block text-muted">Price</span>
+                          <span className="block font-bold text-[#182D2A]">{prop.tokenPrice}/share</span>
+                        </div>
+                      </dl>
+                      <div className="mt-4">
+                        <div className="w-full bg-[#E5DDD1] h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#213138] transition-all duration-500"
+                            style={{ width: `${Math.min(100, Math.round((prop.fundedAmount / prop.targetAmount) * 100))}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-[10px] text-[#6A635C] font-medium">
+                          {Math.round((prop.fundedAmount / prop.targetAmount) * 100)}% funded
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate(`/properties/${prop.id}`)}
+                        className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-pill bg-[#182D2A] px-5 py-2.5 text-xs font-bold text-white transition-transform duration-fast hover:scale-105 cursor-pointer"
+                      >
+                        <span>View & Invest</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </article>
+                </KrezReveal>
+              ));
+            })()}
           </div>
         </div>
       </section>

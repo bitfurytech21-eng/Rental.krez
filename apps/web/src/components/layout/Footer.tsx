@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { LagenceLogo } from '../common/LagenceLogo';
+import { ArrowRight } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (path: string) => void;
@@ -16,6 +18,28 @@ const EXPLORE_LINKS = [
 ];
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterStatus, setNewsletterStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail || !newsletterEmail.includes('@')) {
+      setNewsletterStatus('error');
+      return;
+    }
+    try {
+      await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newsletterEmail }),
+      });
+      setNewsletterStatus('success');
+      setNewsletterEmail('');
+    } catch {
+      setNewsletterStatus('error');
+    }
+  };
+
   return (
     <footer data-nav-dark="true" className="bg-ink text-white">
       <div className="mx-auto max-w-container px-gutter py-section-sm md:px-gutter-md md:py-section-spacing lg:px-gutter-lg">
@@ -66,6 +90,38 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             >
               info@kretzdespain.com
             </a>
+          </div>
+
+          <div>
+            <h2 className="text-xs font-semibold tracking-widest uppercase text-white/50">
+              Market Brief
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-white/70">
+              Monthly insights on tokenized real estate, yield performance, and new SPV offerings.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="mt-4 flex flex-wrap gap-2">
+              <input
+                type="email"
+                placeholder="Your email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
+                required
+                className="flex-1 min-w-[150px] px-3 py-2 rounded-full border border-white/20 bg-white/5 text-white placeholder-white/40 focus:border-accent focus:outline-none text-sm"
+              />
+              <button
+                type="submit"
+                disabled={newsletterStatus === 'success'}
+                className="px-4 py-2 rounded-full bg-[#c59b4c] text-[#0B1B30] text-xs font-bold uppercase tracking-wider hover:bg-[#b88f3f] transition-colors cursor-pointer disabled:opacity-60"
+              >
+                Subscribe
+              </button>
+            </form>
+            {newsletterStatus === 'success' && (
+              <p className="mt-2 text-xs text-emerald-400">Thanks for subscribing.</p>
+            )}
+            {newsletterStatus === 'error' && (
+              <p className="mt-2 text-xs text-rose-400">Please enter a valid email.</p>
+            )}
           </div>
         </div>
 

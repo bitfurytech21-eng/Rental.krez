@@ -1067,34 +1067,238 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                   </div>
 
-                  {notifications.filter(n => !n.read).length > 0 && (() => {
-                    const unreadList = notifications.filter(n => !n.read);
-                    const firstUnread = unreadList[0];
-                    return (
-                      <div className="cinematic-card px-4 py-2.5 rounded-xl flex items-center justify-between gap-3 shadow-md text-xs">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-6 h-6 rounded-md bg-[#202020] text-[#35C9F5] border border-[#303030] flex items-center justify-center shrink-0">
-                            <Bell className="w-3 h-3" />
-                          </div>
-                          <div className="text-xs leading-tight truncate">
-                            <span className="font-semibold text-white mr-1.5">{firstUnread.title}:</span>
-                            <span className="text-[#A0A0A0]">{firstUnread.message}</span>
-                          </div>
-                        </div>
-                        <button onClick={() => setActiveTab('notifications')} className="text-xs font-semibold text-[#35C9F5] hover:underline whitespace-nowrap shrink-0 cursor-pointer">
-                          View Unread ({unreadList.length})
-                        </button>
-                      </div>
-                    );
-                  })()}
+{notifications.filter(n => !n.read).length > 0 && (() => {
+  const unreadList = notifications.filter(n => !n.read);
+  const firstUnread = unreadList[0];
+  return (
+    <div className="cinematic-card px-4 py-2.5 rounded-xl flex items-center justify-between gap-3 shadow-md text-xs">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="w-6 h-6 rounded-md bg-[#202020] text-[#35C9F5] border border-[#303030] flex items-center justify-center shrink-0">
+          <Bell className="w-3 h-3" />
+        </div>
+        <div className="text-xs leading-tight truncate">
+          <span className="font-semibold text-white mr-1.5">{firstUnread.title}:</span>
+          <span className="text-[#A0A0A0]">{firstUnread.message}</span>
+        </div>
+      </div>
+      <button onClick={() => setActiveTab('notifications')} className="text-xs font-semibold text-[#35C9F5] hover:underline whitespace-nowrap shrink-0 cursor-pointer">
+        View Unread ({unreadList.length})
+      </button>
+    </div>
+  );
+})()}
 
-                  {/* Portfolio Valuation & 4 Financial Metric Cards */}
-                  <BalanceCard
+{/* Investor Action Center */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+  {/* KYC Compliance Status */}
+  <div className={`p-4 rounded-2xl border shadow-xs text-left ${
+    user.kycStatus === 'verified'
+      ? 'bg-emerald-50/60 border-emerald-200/60 dark:bg-emerald-900/20 dark:border-emerald-800/50'
+      : user.kycStatus === 'pending'
+      ? 'bg-amber-50/60 border-amber-200/60 dark:bg-amber-900/20 dark:border-amber-800/50'
+      : 'bg-rose-50/60 border-rose-200/60 dark:bg-rose-900/20 dark:border-rose-800/50'
+  }`}>
+    <div className="flex items-center justify-between mb-2">
+      <span className="text-[10px] uppercase font-bold tracking-wider ${
+        user.kycStatus === 'verified' ? 'text-emerald-800 dark:text-emerald-400' : user.kycStatus === 'pending' ? 'text-amber-800 dark:text-amber-400' : 'text-rose-800 dark:text-rose-400'
+      } flex items-center gap-1.5">
+        <ShieldCheck className="w-3 h-3" /> KYC Status
+      </span>
+      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+        user.kycStatus === 'verified'
+          ? 'bg-emerald-100/60 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-400'
+          : user.kycStatus === 'pending'
+          ? 'bg-amber-100/60 dark:bg-amber-900/50 text-amber-800 dark:text-amber-400'
+          : 'bg-rose-100/60 dark:bg-rose-900/50 text-rose-800 dark:text-rose-400'
+      }`}>
+        {user.kycStatus.charAt(0).toUpperCase() + user.kycStatus.slice(1)}
+      </span>
+    </div>
+    <p className="text-[11px] leading-relaxed text-[#6B7280] dark:text-[#9CA3AF]">
+      {user.kycStatus === 'verified'
+        ? 'Identity verified — full platform access enabled.'
+        : user.kycStatus === 'pending'
+        ? 'Identity verification under review. Please upload your documents.'
+        : 'Identity verification required to invest.'}
+    </p>
+    {(user.kycStatus !== 'verified') && (
+      <button
+        onClick={() => setActiveTab('verification')}
+        className="mt-2.5 w-full py-1.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+          user.kycStatus === 'pending'
+            ? 'bg-emerald-600/10 dark:bg-emerald-900/30 border-emerald-300/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600/20'
+            : 'bg-rose-600/10 dark:bg-rose-900/30 border-rose-300/50 text-rose-600 dark:text-rose-400 hover:bg-rose-600/20'
+        }"
+      >
+        <ArrowRight className="w-3 h-3" />
+        <span>Review Documents</span>
+      </button>
+    )}
+  </div>
+
+  {/* Pending Distributions */}
+  <div className="p-4 rounded-2xl border shadow-xs text-left bg-[#151515] dark:bg-[#1A1A1A] border-[#303030] dark:border-[#404040]">
+    <div className="flex items-center justify-between mb-2">
+      <span className="text-[10px] uppercase font-bold tracking-wider text-[#9CA3AF] flex items-center gap-1.5">
+        <Coins className="w-3 h-3 text-[#55BDE8]" /> Distributions
+      </span>
+      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#55BDE8]/10 text-[#55BDE8] border border-[#55BDE8]/30">
+        Monthly
+      </span>
+    </div>
+    <div className="text-2xl font-black text-[#F5F5F2] mt-1">
+      {formatCurrency(user.totalEarned || 0)}
+    </div>
+    <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">
+      Total rental yields credited to your wallet.
+    </p>
+    <button
+      onClick={() => setActiveTab('distributions')}
+      className="mt-2.5 w-full py-1.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border-white/10 text-[#55BDE8]"
+    >
+      <ArrowRight className="w-3 h-3" />
+      <span>View History</span>
+    </button>
+  </div>
+
+  {/* Pending Transactions */}
+  <div className="p-4 rounded-2xl border shadow-xs text-left bg-[#151515] dark:bg-[#1A1A1A] border-[#303030] dark:border-[#404040]">
+    <div className="flex items-center justify-between mb-2">
+      <span className="text-[10px] uppercase font-bold tracking-wider text-[#9CA3AF] flex items-center gap-1.5">
+        <Clock className="w-3 h-3 text-[#D6A15D]" /> Activity
+      </span>
+      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${transactions.filter(t => t.status === 'pending').length > 0 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'}`}>
+        {transactions.filter(t => t.status === 'pending').length > 0 ? transactions.filter(t => t.status === 'pending').length : 'All Clear'}
+      </span>
+    </div>
+    <div className="text-2xl font-black text-[#F5F5F2] mt-1">
+      {formatCurrency(transactions.filter(t => t.status === 'completed').reduce((sum, t) => sum + t.amount, 0))}
+    </div>
+    <p className="text-[11px] text-[#6B7280] dark:text-[#9CA3AF] mt-1">
+      Settled transaction volume across all ledger records.
+    </p>
+    <button
+      onClick={() => setActiveTab('transactions')}
+      className="mt-2.5 w-full py-1.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/10 border-white/10 text-[#55BDE8]"
+    >
+      <ArrowRight className="w-3 h-3" />
+      <span>View Ledger</span>
+    </button>
+  </div>
+
+  {/* Quick Actions */}
+  <div className="p-4 rounded-2xl border shadow-xs text-left bg-[#151515] dark:bg-[#1A1A1A] border-[#303030] dark:border-[#404040]">
+    <div className="flex items-center justify-between mb-3">
+      <span className="text-[10px] uppercase font-bold tracking-wider text-[#9CA3AF] flex items-center gap-1.5">
+        <RefreshCw className="w-3 h-3 text-[#1E3A34] dark:text-[#D6A15D]" /> Quick Actions
+      </span>
+    </div>
+    <div className="grid grid-cols-2 gap-2">
+      <button
+        onClick={() => setIsDepositOpen(true)}
+        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-[#55BDE8] transition-colors cursor-pointer flex items-center gap-1.5"
+      >
+        <ArrowDownLeft className="w-3 h-3 text-[#55BDE8]" />
+        <span>Deposit</span>
+      </button>
+      <button
+        onClick={() => setIsWithdrawOpen(true)}
+        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-[#EF4444] transition-colors cursor-pointer flex items-center gap-1.5"
+      >
+        <ArrowUpRight className="w-3 h-3 text-[#EF4444]" />
+        <span>Withdraw</span>
+      </button>
+      <button
+        onClick={() => setActiveTab('properties')}
+        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-[#1E3A34] dark:text-[#D6A15D] transition-colors cursor-pointer flex items-center gap-1.5"
+      >
+        <Building2 className="w-3 h-3 text-[#1E3A34] dark:text-[#D6A15D]" />
+        <span>Invest</span>
+      </button>
+      <button
+        onClick={() => setActiveTab('profile')}
+        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-[#1E3A34] dark:text-[#D6A15D] transition-colors cursor-pointer flex items-center gap-1.5"
+      >
+        <User className="w-3 h-3 text-[#1E3A34] dark:text-[#D6A15D]" />
+        <span>Profile</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+{/* Portfolio Valuation & 4 Financial Metric Cards */}
+<BalanceCard
                     user={user}
                     transactions={transactions}
                     onDeposit={() => setIsDepositOpen(true)}
                     onWithdraw={() => setIsWithdrawOpen(true)}
                   />
+
+                  {/* Account Health Score */}
+                  <div className="p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl bg-[#151515] dark:bg-[#1A1A1A] space-y-4">
+                    <div className="flex justify-between items-center pb-3 border-b border-[#303030] dark:border-[#404040]">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-bold text-white">Account Health</h3>
+                        <p className="text-xs text-[#999999]">Compliance, security, and portfolio wellness indicators</p>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        user.kycStatus === 'verified' && (user.status || 'active') === 'active'
+                          ? 'bg-emerald-100/60 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-400 border border-emerald-200/60'
+                          : 'bg-amber-100/60 dark:bg-amber-900/50 text-amber-800 dark:text-amber-400 border border-amber-200/60'
+                      }`}>
+                        {user.kycStatus === 'verified' && (user.status || 'active') === 'active' ? 'Healthy' : 'Attention Needed'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] dark:border-[#404040]">
+                        <span className="text-[10px] font-bold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block">Identity Status</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                            user.kycStatus === 'verified'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400'
+                          }`}>
+                            {user.kycStatus === 'verified' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                          </span>
+                          <span className="text-xs font-semibold text-[#F5F5F2]">
+                            {user.kycStatus === 'verified' ? 'Verified' : user.kycStatus === 'pending' ? 'Pending' : 'Unverified'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] dark:border-[#404040]">
+                        <span className="text-[10px] font-bold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block">Account Standing</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                            (user.status || 'active') === 'active'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400'
+                              : 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-400'
+                          }`}>
+                            <ShieldCheck className="w-3 h-3" />
+                          </span>
+                          <span className="text-xs font-semibold text-[#F5F5F2]">
+                            {(user.status || 'active') === 'active' ? 'Active' : 'Suspended'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] dark:border-[#404040]">
+                        <span className="text-[10px] font-bold text-[#6B7280] dark:text-[#9CA3AF] uppercase tracking-wider block">Portfolio Diversity</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                            investments.length >= 3
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400'
+                              : investments.length >= 1
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-400'
+                              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                          }`}>
+                            <Building2 className="w-3 h-3" />
+                          </span>
+                          <span className="text-xs font-semibold text-[#F5F5F2]">
+                            {investments.length} Properties
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Recent Human-Centered Transactions Feed */}
                   <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">

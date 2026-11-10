@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, Wallet, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { KREZ_IMAGES } from '../../data/krezTemplateData';
 import { KrezAuthModal, openKrezAuthModal } from '../krez/KrezAuthModal';
 import { HeaderLanguageButton } from './HeaderLanguageButton';
 import { LagenceLogo } from '../common/LagenceLogo';
+import { formatCurrency } from '../../lib/utils';
 
 interface HeaderProps {
   currentPath: string;
@@ -135,12 +136,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
 
             {/* Auth Buttons */}
             {user ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleNav('/dashboard')}
                   className="px-4 py-2 rounded-full bg-[#213138] text-[#f5f0ea] text-xs font-bold uppercase tracking-wider hover:bg-[#18252b] transition-all cursor-pointer shadow-xs"
                 >
+                  <Wallet className="w-3 h-3 mr-1" />
                   Dashboard
                 </button>
                 {isAdmin && (
@@ -159,16 +161,32 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 >
                   Account
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/properties')}
+                  className="px-4 py-2 rounded-full border border-[#c59b4c] text-[#c59b4c] text-xs font-bold uppercase tracking-wider hover:bg-[#c59b4c] hover:text-[#0B1B30] transition-all cursor-pointer shadow-xs"
+                >
+                  Invest <ArrowRight className="w-3 h-3 ml-1" />
+                </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => openKrezAuthModal('login')}
-                className="flex items-center gap-2 text-xs sm:text-sm font-heading font-semibold tracking-wider uppercase transition-all duration-fast hover:opacity-85 cursor-pointer text-current px-3.5 py-1.5 rounded-full border border-current/25 hover:border-[#c59b4c] hover:text-[#c59b4c]"
-              >
-                <UserIcon className="w-4 h-4 stroke-[2]" />
-                <span>SIGN IN</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => openKrezAuthModal('login')}
+                  className="flex items-center gap-2 text-xs sm:text-sm font-heading font-semibold tracking-wider uppercase transition-all duration-fast hover:opacity-85 cursor-pointer text-current px-3.5 py-1.5 rounded-full border border-current/25 hover:border-[#c59b4c] hover:text-[#c59b4c]"
+                >
+                  <UserIcon className="w-4 h-4 stroke-[2]" />
+                  <span>SIGN IN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/properties')}
+                  className="px-4 py-2 rounded-full border border-[#c59b4c] text-[#c59b4c] text-xs font-bold uppercase tracking-wider hover:bg-[#c59b4c] hover:text-[#0B1B30] transition-all cursor-pointer shadow-xs ml-2"
+                >
+                  Invest <ArrowRight className="w-3 h-3 ml-1" />
+                </button>
+              </>
             )}
 
             {/* Mobile / Full Menu Toggle */}
@@ -227,62 +245,71 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             })}
           </nav>
 
-          <div className="mx-auto flex w-full max-w-container flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted">
-            <div className="flex flex-wrap items-center gap-5">
-              {user && (
+            <div className="mx-auto flex w-full max-w-container flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-xs text-muted">
+              <div className="flex flex-wrap items-center gap-5">
+                {user && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleNav('/dashboard')}
+                      className="font-medium uppercase tracking-widest text-foreground hover:text-accent transition-colors duration-fast cursor-pointer"
+                    >
+                      Investor Dashboard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNav('/wallet')}
+                      className="font-medium uppercase tracking-widest text-foreground hover:text-accent transition-colors duration-fast cursor-pointer"
+                    >
+                      Wallet ({formatCurrency(user.walletBalance)})
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
-                  onClick={() => handleNav('/dashboard')}
-                  className="font-medium uppercase tracking-widest text-foreground hover:text-accent transition-colors duration-fast cursor-pointer"
+                  onClick={() => handleNav('/club')}
+                  className="uppercase tracking-widest text-[#c59b4c] hover:text-foreground transition-colors duration-fast cursor-pointer font-bold"
                 >
-                  Investor Dashboard
+                  Club Privé
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => handleNav('/club')}
-                className="uppercase tracking-widest text-[#c59b4c] hover:text-foreground transition-colors duration-fast cursor-pointer font-bold"
-              >
-                Club Privé
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNav('/insights')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
-              >
-                Insights
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNav('/trust')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
-              >
-                Trust Centre
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNav('/legal')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
-              >
-                Legal
-              </button>
-              <button
-                type="button"
-                onClick={() => handleNav('/token')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
-              >
-                Solana Infrastructure
-              </button>
-              {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => handleNav('/admin')}
-                  className="font-semibold uppercase tracking-widest text-accent hover:text-foreground transition-colors duration-fast cursor-pointer"
+                  onClick={() => handleNav('/insights')}
+                  className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
                 >
-                  Admin Console
+                  Insights
                 </button>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/trust')}
+                  className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+                >
+                  Trust Centre
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/legal')}
+                  className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+                >
+                  Legal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNav('/token')}
+                  className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+                >
+                  Solana Infrastructure
+                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleNav('/admin')}
+                    className="font-semibold uppercase tracking-widest text-accent hover:text-foreground transition-colors duration-fast cursor-pointer"
+                  >
+                    Admin Console
+                  </button>
+                )}
+              </div>
 
             <div className="flex items-center gap-4">
               <HeaderLanguageButton />

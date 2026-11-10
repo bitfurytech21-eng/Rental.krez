@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@web/lib/auth';
 import { useNavigation } from '@web/lib/navigation';
-import { ledger, CryptoNetworkConfig, VerificationDocument } from '@web/lib/ledger';
+import { ledger, CryptoNetworkConfig, VerificationDocument, PaymentConfig } from '@web/lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '@web/lib/utils';
 import { Property, PropertyType, PropertyStatus } from '@web/types/property';
 import {
@@ -42,14 +42,55 @@ import {
   Check,
   Mail,
   Crown,
-  LogOut
+  LogOut,
+  Sun,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  BarChart3,
+  PieChart,
+  Settings,
+  History,
+  Inbox,
+  Key,
+  UserPlus,
+  AlertOctagon,
+  Monitor,
+  Smartphone,
+  Send,
+  Zap,
+  DollarSign,
+  Banknote,
+  Briefcase,
+  ShieldAlert,
+  CheckSquare,
+  Maximize,
+  Minimize,
+  Menu,
+  X as XIcon,
+  Calendar,
+  Link,
+  Copy,
+  Globe as GlobeIcon,
+  Wifi,
+  Server,
+  Database,
+  ShieldCheck,
+  User,
+  Heart,
+  Target,
+  Rocket,
+  Award,
+  Flame,
+  Grid,
+  List,
+  Clipboard
 } from 'lucide-react';
 
 import { PropertyDocumentsHub } from '@web/components/documents/PropertyDocumentsHub';
-import { AdminMonitoringView } from './AdminMonitoringView';
 import { AdminDashboardOverview } from './AdminDashboardOverview';
-import { AdminNewsManager } from './AdminNewsManager';
 import { AdminUserManagement } from './AdminUserManagement';
+import { AdminNewsManager } from './AdminNewsManager';
 import { AdminInsightsCMS } from './AdminInsightsCMS';
 import { AdminAccountSettings } from './AdminAccountSettings';
 import { AdminReconciliationView } from './AdminReconciliationView';
@@ -58,8 +99,85 @@ import { AdminEmailManager } from './AdminEmailManager';
 import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
 import { AdminPaymentDistributionManager } from './AdminPaymentDistributionManager';
 import { AdminMembershipTab } from './AdminMembershipTab';
+import { AdminMonitoringView } from './AdminMonitoringView';
+import { AdminReferralsTab } from './AdminReferralsTab';
+import { AdminSupportTab } from './AdminSupportTab';
+import { AdminMarketingTab } from './AdminMarketingTab';
+import { AdminWebsiteTab } from './AdminWebsiteTab';
+import { AdminSiteSettingsTab } from './AdminSiteSettingsTab';
 
-export type AdminTabType = 'dashboard' | 'users' | 'membership' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'payment-distribution' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
+export type AdminTabType =
+  | 'dashboard'
+  | 'users'
+  | 'membership'
+  | 'reconciliation'
+  | 'deposits'
+  | 'withdrawals'
+  | 'manual-payment'
+  | 'payment-distribution'
+  | 'kyc'
+  | 'properties'
+  | 'property-documents'
+  | 'audit'
+  | 'payment-settings'
+  | 'logs'
+  | 'verification_docs'
+  | 'news'
+  | 'insights'
+  | 'admin-security'
+  | 'emails'
+  | 'frontend-errors'
+  | 'referrals'
+  | 'support'
+  | 'marketing'
+  | 'website'
+  | 'site-settings';
+
+interface AdminNavItem {
+  id: AdminTabType;
+  label: string;
+  icon: React.ElementType;
+  group: 'overview' | 'finance' | 'compliance' | 'content' | 'system';
+  badge?: number;
+}
+
+const ADMIN_NAV_ITEMS: AdminNavItem[] = [
+  { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard, group: 'overview' },
+  { id: 'users', label: 'Investor Registry', icon: Users, group: 'overview', badge: 10 },
+  { id: 'membership', label: 'Club Memberships', icon: Crown, group: 'overview' },
+  { id: 'deposits', label: 'Deposit Approvals', icon: ArrowDownLeft, group: 'finance', badge: 0 },
+  { id: 'withdrawals', label: 'Withdrawal Approvals', icon: ArrowUpRight, group: 'finance', badge: 0 },
+  { id: 'manual-payment', label: 'Manual Payments', icon: CreditCard, group: 'finance' },
+  { id: 'payment-distribution', label: 'Distribution Engine', icon: DollarSign, group: 'finance' },
+  { id: 'payment-settings', label: 'Treasury & Gateways', icon: Banknote, group: 'finance' },
+  { id: 'kyc', label: 'KYC Compliance Queue', icon: ShieldCheck, group: 'compliance', badge: 1 },
+  { id: 'verification_docs', label: 'Document Proofs', icon: UploadCloud, group: 'compliance', badge: 2 },
+  { id: 'properties', label: 'Property Portfolio', icon: Building2, group: 'overview' },
+  { id: 'property-documents', label: 'Property Documents', icon: FileText, group: 'overview' },
+  { id: 'reconciliation', label: 'Ledger Reconciliation', icon: Scale, group: 'compliance' },
+  { id: 'audit', label: 'Audit Trail', icon: ClipboardList, group: 'compliance' },
+  { id: 'news', label: 'Company News', icon: Tv, group: 'content' },
+  { id: 'insights', label: 'Editorial CMS', icon: BookOpen, group: 'content' },
+  { id: 'referrals', label: 'Plans & Referrals', icon: Target, group: 'content' },
+  { id: 'support', label: 'Support & Reports', icon: FileText, group: 'system' },
+  { id: 'marketing', label: 'Marketing', icon: Sparkles, group: 'content' },
+  { id: 'website', label: 'Website Pages', icon: Globe, group: 'content' },
+  { id: 'logs', label: 'System Monitoring', icon: Monitor, group: 'system' },
+  { id: 'frontend-errors', label: 'Error Buffer', icon: AlertTriangle, group: 'system' },
+  { id: 'admin-security', label: 'Admin Security', icon: Shield, group: 'system' },
+  { id: 'emails', label: 'Email Delivery', icon: Mail, group: 'system' },
+  { id: 'site-settings', label: 'Site Settings', icon: Settings, group: 'system' },
+];
+
+const NAV_GROUPS = [
+  { key: 'overview', label: 'Overview', color: 'text-emerald-700' },
+  { key: 'finance', label: 'Finance & Treasury', color: 'text-blue-700' },
+  { key: 'compliance', label: 'Compliance & Risk', color: 'text-amber-700' },
+  { key: 'content', label: 'Content & Editorial', color: 'text-purple-700' },
+  { key: 'system', label: 'System & Security', color: 'text-slate-700' },
+] as const;
+
+type Theme = 'light' | 'dark' | 'system';
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
@@ -90,17 +208,23 @@ export const AdminPanel: React.FC = () => {
 
   const activeUser = user;
 
-  const getInitialAdminTab = (): AdminTabType => {
+  // Theme persistence
+  const [theme, setTheme] = useState<Theme>('system');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+
+  const getInitialAdminTab = useCallback((): AdminTabType => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'payment-distribution', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+      const valid: AdminTabType[] = ADMIN_NAV_ITEMS.map((i) => i.id);
       if (valid.includes(hash as any)) return hash as any;
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
       if (q && valid.includes(q as any)) return q as any;
     }
     return 'dashboard';
-  };
+  }, []);
 
   const [activeTab, setActiveTab] = useState<AdminTabType>(getInitialAdminTab);
   const [transactions, setTransactions] = useState(ledger.getTransactions());
@@ -127,9 +251,10 @@ export const AdminPanel: React.FC = () => {
   const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'deposit_proof' | 'kyc_identity' | 'proof_of_address'>('all');
   const [docFilterStatus, setDocFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
-  React.useEffect(() => {
-    const valid: AdminTabType[] = ['dashboard', 'users', 'membership', 'reconciliation', 'deposits', 'withdrawals', 'manual-payment', 'payment-distribution', 'kyc', 'properties', 'property-documents', 'audit', 'payment-settings', 'logs', 'verification_docs', 'news', 'insights', 'admin-security', 'emails', 'frontend-errors'];
+  // Real-time refresh interval
+  useEffect(() => {
     const syncTabFromLocation = () => {
+      const valid: AdminTabType[] = ADMIN_NAV_ITEMS.map((i) => i.id);
       const hashFromPath = currentPath.includes('#') ? currentPath.split('#')[1].toLowerCase() : '';
       const hashFromWin = typeof window !== 'undefined' ? window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase() : '';
       const candidate = hashFromPath || hashFromWin;
@@ -142,65 +267,48 @@ export const AdminPanel: React.FC = () => {
     return () => window.removeEventListener('hashchange', syncTabFromLocation);
   }, [currentPath]);
 
-  // Manual Payment Credit State
-  const [selectedUserId, setSelectedUserId] = useState<string>(users[0]?.id || '');
-  const [manualAmount, setManualAmount] = useState<number>(1000);
-  const [manualCurrency, setManualCurrency] = useState<string>('EUR');
-  const [manualMethod, setManualMethod] = useState<string>('Direct SEPA Wire Received');
-  const [manualReference, setManualReference] = useState<string>('');
-  const [manualNotes, setManualNotes] = useState<string>('Funds confirmed in UNLIMIT corporate treasury account.');
-  const [isSubmittingCredit, setIsSubmittingCredit] = useState<boolean>(false);
+  // Theme management
+  useEffect(() => {
+    const root = document.documentElement;
+    const resolve = () => {
+      if (theme === 'system') {
+        const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setResolvedTheme(dark ? 'dark' : 'light');
+        root.classList.toggle('dark', dark);
+      } else {
+        setResolvedTheme(theme);
+        root.classList.toggle('dark', theme === 'dark');
+      }
+    };
+    resolve();
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    if (theme === 'system') {
+      media.addEventListener('change', resolve);
+      return () => media.removeEventListener('change', resolve);
+    }
+  }, [theme]);
 
-  // User Dedicated Payment Detail Assignment State
-  const [editUserPaymentId, setEditUserPaymentId] = useState<string>(users[0]?.id || '');
-  const [userCustomCryptoAddress, setUserCustomCryptoAddress] = useState<string>('');
-  const [userCustomIban, setUserCustomIban] = useState<string>('');
+  // Periodic data refresh (real-time simulation)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTransactions(ledger.getTransactions());
+      setProperties(ledger.getProperties());
+      setUsers(ledger.getUsers());
+      setVerificationDocs(ledger.getVerificationDocuments());
+      setAuditLogs(ledger.getAuditLogs());
+      setPaymentConfig(ledger.getPaymentConfig());
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // Add New Crypto Network State
-  const [showAddNetwork, setShowAddNetwork] = useState<boolean>(false);
-  const [newNetName, setNewNetName] = useState<string>('Base Network');
-  const [newNetToken, setNewNetToken] = useState<string>('USDC');
-  const [newNetProtocol, setNewNetProtocol] = useState<string>('Base');
-  const [newNetAddress, setNewNetAddress] = useState<string>('0x71C8135C0e41B3fA128912389128f9A19b28A0bf');
-  const [newNetContractEnd, setNewNetContractEnd] = useState<string>('831ec7');
-
-  // New Property Form State
-  const [showNewPropertyModal, setShowNewPropertyModal] = useState<boolean>(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newLocation, setNewLocation] = useState('');
-  const [newType, setNewType] = useState<PropertyType>('Residential');
-  const [newTarget, setNewTarget] = useState<number>(350000);
-  const [newYield, setNewYield] = useState<number>(11.5);
-  const [newAppreciation, setNewAppreciation] = useState<number>(4.0);
-  const [newDuration, setNewDuration] = useState<number>(36);
-  const [adminPropertyFilter, setAdminPropertyFilter] = useState<'all' | 'hidden' | 'frontend' | 'upcoming' | 'funded' | 'funding'>('all');
-
-  // Property Operational Function & Frontend Approval State
-  const [assignModalProperty, setAssignModalProperty] = useState<Property | null>(null);
-  const [assignedFunctionInput, setAssignedFunctionInput] = useState<string>('');
-  const [assignedAgentInput, setAssignedAgentInput] = useState<string>('Valentin Kretz');
-  const [targetLaunchStatus, setTargetLaunchStatus] = useState<PropertyStatus>('funding');
-  const [approvalNotes, setApprovalNotes] = useState<string>('');
-  const [checklist, setChecklist] = useState({
-    spvDeedVerified: true,
-    ricsValuationCertified: true,
-    smartContractGenerated: true,
-    amlKycApproved: true,
-  });
-
-  const pendingDeposits = transactions.filter(t => t.type === 'deposit' && t.status === 'pending');
-  const pendingWithdrawals = transactions.filter(t => t.type === 'withdrawal' && t.status === 'pending');
-  const pendingKYCUsers = users.filter(u => u.kycStatus === 'pending');
-  const pendingVerificationDocs = verificationDocs.filter(d => d.status === 'pending');
-
-  const refreshAll = () => {
+  const refreshAll = useCallback(() => {
     setTransactions(ledger.getTransactions());
     setProperties(ledger.getProperties());
     setUsers(ledger.getUsers());
     setVerificationDocs(ledger.getVerificationDocuments());
     setAuditLogs(ledger.getAuditLogs());
     setPaymentConfig(ledger.getPaymentConfig());
-  };
+  }, []);
 
   const handleRestoreDefaults = () => {
     try {
@@ -271,6 +379,57 @@ export const AdminPanel: React.FC = () => {
     ledger.toggleCryptoNetwork(id);
     refreshAll();
   };
+
+  // Manual Payment Credit State
+  const [selectedUserId, setSelectedUserId] = useState<string>(users[0]?.id || '');
+  const [manualAmount, setManualAmount] = useState<number>(1000);
+  const [manualCurrency, setManualCurrency] = useState<string>('EUR');
+  const [manualMethod, setManualMethod] = useState<string>('Direct SEPA Wire Received');
+  const [manualReference, setManualReference] = useState<string>('');
+  const [manualNotes, setManualNotes] = useState<string>('Funds confirmed in UNLIMIT corporate treasury account.');
+  const [isSubmittingCredit, setIsSubmittingCredit] = useState<boolean>(false);
+
+  // User Dedicated Payment Detail Assignment State
+  const [editUserPaymentId, setEditUserPaymentId] = useState<string>(users[0]?.id || '');
+  const [userCustomCryptoAddress, setUserCustomCryptoAddress] = useState<string>('');
+  const [userCustomIban, setUserCustomIban] = useState<string>('');
+
+  // Add New Crypto Network State
+  const [showAddNetwork, setShowAddNetwork] = useState<boolean>(false);
+  const [newNetName, setNewNetName] = useState<string>('Base Network');
+  const [newNetToken, setNewNetToken] = useState<string>('USDC');
+  const [newNetProtocol, setNewNetProtocol] = useState<string>('Base');
+  const [newNetAddress, setNewNetAddress] = useState<string>('0x71C8135C0e41B3fA128912389128f9A19b28A0bf');
+  const [newNetContractEnd, setNewNetContractEnd] = useState<string>('831ec7');
+
+  // New Property Form State
+  const [showNewPropertyModal, setShowNewPropertyModal] = useState<boolean>(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newType, setNewType] = useState<PropertyType>('Residential');
+  const [newTarget, setNewTarget] = useState<number>(350000);
+  const [newYield, setNewYield] = useState<number>(11.5);
+  const [newAppreciation, setNewAppreciation] = useState<number>(4.0);
+  const [newDuration, setNewDuration] = useState<number>(36);
+  const [adminPropertyFilter, setAdminPropertyFilter] = useState<'all' | 'hidden' | 'frontend' | 'upcoming' | 'funded' | 'funding'>('all');
+
+  // Property Operational Function & Frontend Approval State
+  const [assignModalProperty, setAssignModalProperty] = useState<Property | null>(null);
+  const [assignedFunctionInput, setAssignedFunctionInput] = useState<string>('');
+  const [assignedAgentInput, setAssignedAgentInput] = useState<string>('Valentin Kretz');
+  const [targetLaunchStatus, setTargetLaunchStatus] = useState<PropertyStatus>('funding');
+  const [approvalNotes, setApprovalNotes] = useState<string>('');
+  const [checklist, setChecklist] = useState({
+    spvDeedVerified: true,
+    ricsValuationCertified: true,
+    smartContractGenerated: true,
+    amlKycApproved: true,
+  });
+
+  const pendingDeposits = transactions.filter(t => t.type === 'deposit' && t.status === 'pending');
+  const pendingWithdrawals = transactions.filter(t => t.type === 'withdrawal' && t.status === 'pending');
+  const pendingKYCUsers = users.filter(u => u.kycStatus === 'pending');
+  const pendingVerificationDocs = verificationDocs.filter(d => d.status === 'pending');
 
   const handleExecuteManualCredit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -584,2183 +743,1518 @@ export const AdminPanel: React.FC = () => {
 
   const selectedTargetUser = users.find(u => u.id === selectedUserId);
 
+  const isDark = resolvedTheme === 'dark';
+  const sidebarWidth = sidebarCollapsed ? 72 : 240;
+
+  const NavGroup = ({ key, label, color }: { key: string; label: string; color: string }) => {
+    const items = ADMIN_NAV_ITEMS.filter(i => i.group === key);
+    return (
+      <div key={key} className="mb-6 px-3">
+        <h3 className={`px-3 mb-2 text-[10px] font-bold uppercase tracking-wider ${color} opacity-70`}>{label}</h3>
+        <div className="space-y-0.5">
+          {items.map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  isActive
+                    ? isDark
+                      ? 'bg-emerald-500 text-[#0B1513] shadow-lg shadow-emerald-900/40'
+                      : 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-current' : 'text-current opacity-60'}`} />
+                  {sidebarCollapsed ? null : <span className="font-medium">{item.label}</span>}
+                </div>
+                {item.badge !== undefined && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                    item.badge > 0 ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
-      <div className="bg-[#F6F7F4] min-h-screen py-10">
-        <div className="container mx-auto px-4 sm:px-6">
-        
-          {/* Header */}
-          <div className="bg-[#182D2A] text-white p-7 rounded-3xl shadow-xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#24423C] text-[#B7E36A] flex items-center justify-center">
-                <Shield className="w-6 h-6" />
+      <div className={`min-h-screen ${isDark ? 'bg-[#0a0a0a] text-white' : 'bg-[#F6F7F4] text-[#18211F]'}`}>
+        {/* Mobile Sidebar Overlay */}
+        {showMobileSidebar && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setShowMobileSidebar(false)}
+          />
+        )}
+
+        {/* Sidebar */}
+        <aside
+          className={`fixed left-0 top-0 h-full z-30 transition-all duration-300 ${
+            isDark
+              ? 'bg-[#0d0d0d] border-r border-[#1a1a1a]'
+              : 'bg-white border-r border-[#E3E8E3]'
+          } w-${sidebarWidth} transform ${sidebarCollapsed ? '-translate-x-full md:translate-x-0' : 'translate-x-0 md:translate-x-0'}
+          `}
+        >
+          <div className="flex items-center justify-between h-16 px-4 bg-[#182D2A] text-white shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-[#24423C] text-[#B7E36A] flex items-center justify-center shrink-0">
+                <Shield className="w-5 h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-black text-white">Platform Administration</h1>
-                  <span className="bg-[#24423C] text-[#B7E36A] text-xs font-bold px-2 py-0.5 rounded-full uppercase">
-                    Super Admin
-                  </span>
-                </div>
-                <p className="text-xs text-[#A0A8A5]">
-                  Signed in as <strong className="text-white">{activeUser.email}</strong> · Manage payments, offerings, compliance, and custom security credentials.
-                </p>
+              {!sidebarCollapsed && (
+                <span className="font-black text-lg tracking-tight">Admin</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSidebarCollapsed((v) => !v)}
+                className="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                title="Collapse sidebar"
+              >
+                {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => setShowMobileSidebar(true)}
+                className="md:hidden p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-6">
+            {NAV_GROUPS.map((g) => (
+              <NavGroup key={g.key} label={g.label} color={g.color} />
+            ))}
+
+            <div className="pt-4 border-t border-[#2a2a2a]/40 px-3">
+              <div className="flex items-center gap-3 px-2 py-3 rounded-xl cursor-pointer hover:bg-slate-100/50 transition-colors group">
+                <Sun className="w-5 h-5 text-amber-500 shrink-0" />
+                <span className={`text-xs font-semibold ${sidebarCollapsed ? 'absolute -left-10 opacity-0 group-hover:opacity-100 transition-opacity' : ''}`}>Theme</span>
+                <select
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value as Theme)}
+                  className="w-full text-xs bg-transparent border-none outline-none cursor-pointer"
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">System</option>
+                </select>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="px-3 pb-4">
               <button
-                type="button"
                 onClick={() => navigateTo('/')}
-                className="text-xs font-bold px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-[#2d524a] bg-[#182D2A] text-[#A0A8A5] hover:text-white hover:bg-[#24423C] transition-colors"
-                title="View public marketplace"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100/50 transition-colors"
               >
-                <Globe className="w-3.5 h-3.5 text-[#B7E36A]" />
-                <span>Public Site</span>
+                <GlobeIcon className="w-5 h-5" />
+                {sidebarCollapsed ? null : <span>Public Site</span>}
               </button>
               <button
-                type="button"
-                onClick={() => setActiveTab('admin-security')}
-                className={`text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border transition-colors ${
-                  activeTab === 'admin-security'
-                    ? 'bg-[#B7E36A] text-[#182D2A] border-[#B7E36A]'
-                    : 'bg-[#24423C] text-[#B7E36A] hover:bg-[#2d524a] border-emerald-700/50'
-                }`}
-                title="Configure custom administrator email and password"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Custom Email &amp; Password</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => logout()}
-                className="btn bg-[#0D1815] text-red-300 hover:bg-black/60 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-red-500/30 transition-colors"
-                title="Sign out of administrator session"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50/50 transition-colors border border-red-500/20"
               >
-                <LogOut className="w-3.5 h-3.5 text-red-400" />
-                <span>Sign Out Admin</span>
+                <LogOut className="w-5 h-5" />
+                {sidebarCollapsed ? null : <span>Sign Out</span>}
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:pl-72' : `md:pl-${sidebarWidth}`}`}>
+          <header className="sticky top-0 z-20 bg-[#F6F7F4]/80 backdrop-blur-md border-b border-[#E3E8E3] px-6 py-4 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-black text-[#18211F] tracking-tight">Platform Administration</h1>
+              <p className="text-xs text-[#69736F] mt-0.5">
+                Signed in as <strong className="text-[#182D2A]">{activeUser.email}</strong> · Executive Command Center
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={refreshAll}
+                className="p-2 rounded-xl bg-white border border-[#E3E8E3] text-[#18211F] hover:bg-[#F6F7F4] text-xs font-bold transition-colors"
+                title="Refresh all data"
+              >
+                <RefreshCw className="w-4 h-4" />
               </button>
               <button
-                type="button"
                 onClick={handleRestoreDefaults}
-                className="btn bg-[#182D2A] text-white hover:bg-[#24423C] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm border border-emerald-800/40"
-                title="Restore all properties and videos to default"
+                className="p-2 rounded-xl bg-white border border-[#E3E8E3] text-[#182D2A] hover:bg-[#F6F7F4] text-xs font-bold transition-colors"
+                title="Restore defaults"
               >
-                <RotateCcw className="w-4 h-4 text-emerald-400" />
-                Restore Properties &amp; Videos
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowNewPropertyModal(true)}
-                className="btn btn-accent text-xs font-bold px-5 cursor-pointer"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Publish New Property
+                <RotateCcw className="w-4 h-4" />
               </button>
             </div>
-          </div>
+          </header>
 
-        {actionSuccess && (
-          <div className="p-4 mb-6 rounded-2xl bg-green-50 text-green-800 text-xs font-bold border border-green-200 flex items-center justify-between animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-              <span>{actionSuccess}</span>
-            </div>
-            <button onClick={() => setActionSuccess(null)} className="text-gray-500 hover:text-gray-700 cursor-pointer">✕</button>
-          </div>
-        )}
-
-        {actionError && (
-          <div className="p-4 mb-6 rounded-2xl bg-red-50 text-red-800 text-xs font-bold border border-red-200 flex items-center justify-between animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-              <span>{actionError}</span>
-            </div>
-            <button onClick={() => setActionError(null)} className="text-gray-500 hover:text-gray-700 cursor-pointer">✕</button>
-          </div>
-        )}
-
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-[#E3E8E3] mb-8 gap-5 text-xs sm:text-sm font-bold overflow-x-auto pb-1">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'dashboard' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Activity className="w-4 h-4 text-emerald-700" />
-            <span>Admin Dashboard</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'users' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Users className="w-4 h-4 text-[#27845D]" />
-            <span>User Management ({users.length})</span>
-            {users.filter(u => u.status === 'suspended').length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800">
-                {users.filter(u => u.status === 'suspended').length} suspended
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('membership')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'membership' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Crown className="w-4 h-4 text-[#c59b4c]" />
-            <span>Club Privé Memberships</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('deposits')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'deposits' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <ArrowDownLeft className="w-4 h-4" />
-            Deposit Approvals ({pendingDeposits.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('withdrawals')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'withdrawals' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <ArrowUpRight className="w-4 h-4" />
-            Withdrawal Approvals ({pendingWithdrawals.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('manual-payment')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'manual-payment' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <CreditCard className="w-4 h-4 text-[#27845D]" />
-            Manual Payment Integration
-          </button>
-
-          <button
-            onClick={() => setActiveTab('payment-distribution')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'payment-distribution' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Coins className="w-4 h-4 text-emerald-600" />
-            Daily Payment Distribution
-          </button>
-
-          <button
-            onClick={() => setActiveTab('payment-settings')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'payment-settings' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Coins className="w-4 h-4" />
-            Payment Gateways & Wallets
-          </button>
-
-          <button
-            onClick={() => setActiveTab('kyc')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'kyc' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            KYC Identity Queue ({pendingKYCUsers.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('verification_docs')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'verification_docs' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <UploadCloud className="w-4 h-4 text-[#27845D]" />
-            <span>Document & Proof Approvals ({pendingVerificationDocs.length})</span>
-            {pendingVerificationDocs.length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('properties')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'properties' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            Manage Properties ({properties.length})
-            {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval').length > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval').length} waiting
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('property-documents')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'property-documents' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <FileText className="w-4 h-4 text-[#27845D]" />
-            Property Documents ({properties.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('reconciliation')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'reconciliation' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Scale className="w-4 h-4 text-[#27845D]" />
-            <span>Reconciliation & Controls</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('news')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'news' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Tv className="w-4 h-4 text-[#107049]" />
-            <span>Company News & Videos</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('insights')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'insights' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 text-emerald-800" />
-            <span>Dossiers & Editorial CMS</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'audit' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <ClipboardList className="w-4 h-4 text-emerald-700" />
-            <span>Compliance Audit Trail</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'logs' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Activity className="w-4 h-4 text-emerald-600" />
-            <span>API Logs & System Monitoring</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('admin-security')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'admin-security' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Shield className="w-4 h-4 text-emerald-800" />
-            <span>Admin Security & Passphrase</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('emails')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'emails' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <Mail className="w-4 h-4 text-[#27845D]" />
-            <span>Email Templates &amp; Delivery</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('frontend-errors')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === 'frontend-errors' ? 'border-[#182D2A] text-[#182D2A]' : 'border-transparent text-[#69736F] hover:text-[#18211F]'
-            }`}
-          >
-            <AlertTriangle className="w-4 h-4 text-rose-600" />
-            <span>Frontend Error Buffer</span>
-          </button>
-        </div>
-
-        {/* Tab 0: Admin Executive Command Dashboard */}
-        {activeTab === 'dashboard' && (
-          <AdminDashboardOverview
-            properties={properties}
-            transactions={transactions}
-            users={users}
-            auditLogs={auditLogs}
-            paymentConfig={paymentConfig}
-            onNavigateTab={(tab) => setActiveTab(tab)}
-            onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
-            onRefreshAll={refreshAll}
-            onQuickCreditSuccess={(msg) => {
-              setActionSuccess(msg);
-              setTimeout(() => setActionSuccess(null), 3000);
-            }}
-            onTogglePropertyStatus={handleTogglePropertyStatus}
-          />
-        )}
-
-        {/* Tab 0.5: User Management View */}
-        {activeTab === 'users' && (
-          <AdminUserManagement
-            users={users}
-            currentAdminEmail={activeUser.email}
-            onRefreshAll={refreshAll}
-            onQuickSuccess={(msg) => {
-              setActionSuccess(msg);
-              setTimeout(() => setActionSuccess(null), 4000);
-            }}
-            onQuickError={(msg) => {
-              setActionError(msg);
-              setTimeout(() => setActionError(null), 4000);
-            }}
-            onNavigateToManualCredit={(targetId) => {
-              setSelectedUserId(targetId);
-              setActiveTab('manual-payment');
-            }}
-          />
-        )}
-
-        {/* Tab 1: Deposit Approvals */}
-        {activeTab === 'deposits' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-[#18211F]">Pending Investor Deposits</h3>
-                <p className="text-xs text-[#69736F]">Review and approve incoming bank wire confirmations and crypto transfers</p>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <button
-                  onClick={handleCreateTestDeposit}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
-                  title="Simulate a new incoming investor deposit request"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>Simulate Investor Deposit</span>
-                </button>
-                <span className="text-xs font-bold px-3 py-1 bg-[#EEF1EC] text-[#27845D] rounded-full whitespace-nowrap">
-                  {pendingDeposits.length} Requests Pending
-                </span>
-              </div>
-            </div>
-
-            {pendingDeposits.length === 0 ? (
-              <div className="text-center py-12 text-xs text-[#69736F] space-y-3">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto opacity-40" />
-                <p className="text-sm font-semibold text-[#18211F]">All deposits are up to date.</p>
-                <p className="max-w-md mx-auto">New investor transfer requests submitted from the Deposit button will appear here for administrative verification.</p>
-                <button
-                  onClick={handleCreateTestDeposit}
-                  className="btn btn-primary text-xs font-bold px-4 py-2 mt-2 bg-[#182D2A] hover:bg-[#24423C] text-white inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#B7E36A]" />
-                  <span>Generate Test Deposit Request (€5,000)</span>
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {pendingDeposits.map((tx) => {
-                  const investor = users.find(u => u.id === tx.userId);
-                  return (
-                    <div
-                      key={tx.id}
-                      className="p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1 text-left">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#27845D] bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200/60">
-                            Awaiting Deposit Approval
-                          </span>
-                          <span className="font-mono text-xs text-[#69736F] font-semibold">{tx.reference}</span>
-                        </div>
-                        
-                        <div className="flex items-baseline gap-2">
-                          <h4 className="text-xl font-black text-[#18211F]">
-                            {formatCurrency(tx.amount)}
-                          </h4>
-                          <span className="text-xs font-bold text-gray-500">({tx.currency})</span>
-                        </div>
-
-                        <div className="text-xs text-[#69736F] flex flex-wrap gap-x-4 gap-y-1">
-                          <span>Investor: <strong className="text-[#18211F]">{investor?.fullName || 'Investor'} ({investor?.email})</strong></span>
-                          <span>Method: <strong>{tx.paymentMethod}</strong></span>
-                        </div>
-
-                        {tx.txHash && (
-                          <div className="text-[11px] font-mono text-gray-500">
-                            Declared Tx/Note: <span className="text-[#18211F] bg-white px-2 py-0.5 rounded border border-[#E3E8E3] font-semibold">{tx.txHash}</span>
-                          </div>
-                        )}
-
-                        {/* Attached Deposit Proof / Receipt button */}
-                        {(() => {
-                          const matchingDoc = verificationDocs.find(d => d.transactionReference === tx.reference);
-                          const receiptUrl = tx.metadata?.receiptUrl || matchingDoc?.fileUrl;
-                          const receiptName = tx.metadata?.receiptFileName || matchingDoc?.fileName;
-                          if (!receiptUrl) return null;
-                          return (
-                            <div className="pt-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setPreviewProofModalDoc({
-                                  title: `Deposit Payment Receipt (${tx.reference})`,
-                                  fileUrl: receiptUrl,
-                                  fileName: receiptName || 'transfer_receipt.pdf',
-                                  type: tx.paymentMethod,
-                                  ref: tx.reference,
-                                  user: `${investor?.fullName || 'Investor'} (${investor?.email})`
-                                })}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#27845D] border border-emerald-300 text-xs font-bold cursor-pointer transition-colors shadow-2xs"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>View Attached Receipt ({receiptName || 'Wire Slip'})</span>
-                              </button>
-                            </div>
-                          );
-                        })()}
-
-                        <span className="text-[11px] text-[#828D89] block">Submitted: {formatDate(tx.createdAt)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <button
-                          onClick={() => handleReviewDeposit(tx.id, true)}
-                          className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center cursor-pointer shadow-sm"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve & Credit
-                        </button>
-                        <button
-                          onClick={() => handleReviewDeposit(tx.id, false)}
-                          className="btn btn-secondary text-xs font-bold px-4 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center cursor-pointer"
-                        >
-                          <XCircle className="w-4 h-4 mr-1.5" /> Decline
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 1: Withdrawal Approvals */}
-        {activeTab === 'withdrawals' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-              <div>
-                <h3 className="text-lg font-bold text-[#18211F]">Pending Investor Withdrawals</h3>
-                <p className="text-xs text-[#69736F]">Approve and execute bank wire payouts and cryptocurrency payouts</p>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <button
-                  onClick={handleCreateTestWithdrawal}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
-                  title="Simulate a new incoming investor withdrawal request"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>Simulate Investor Withdrawal</span>
-                </button>
-                <span className="text-xs font-bold px-3 py-1 bg-[#EEF1EC] text-[#27845D] rounded-full whitespace-nowrap">
-                  {pendingWithdrawals.length} Requests Pending
-                </span>
-              </div>
-            </div>
-
-            {pendingWithdrawals.length === 0 ? (
-              <div className="text-center py-12 text-xs text-[#69736F] space-y-3">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto opacity-40" />
-                <p className="text-sm font-semibold text-[#18211F]">No pending withdrawals.</p>
-                <p className="max-w-md mx-auto">All requested disbursements have been fulfilled. New withdrawal requests will appear here for payout authorization.</p>
-                <button
-                  onClick={handleCreateTestWithdrawal}
-                  className="btn btn-secondary text-xs font-bold px-4 py-2 mt-2 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>Generate Test Withdrawal Request (€1,500)</span>
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {pendingWithdrawals.map((tx) => {
-                  const investor = users.find(u => u.id === tx.userId);
-                  const isCrypto = !!tx.metadata?.destinationAddress;
-                  const destination = tx.metadata?.destinationAddress || tx.metadata?.bankIban || 'Bank Wire';
-
-                  return (
-                    <div
-                      key={tx.id}
-                      className="p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col md:flex-row md:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1 text-left">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-[#C24141] bg-red-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-200/60">
-                            {isCrypto ? 'Crypto Withdrawal' : 'SEPA Bank Wire'}
-                          </span>
-                          <span className="font-mono text-xs text-[#69736F] font-semibold">{tx.reference}</span>
-                        </div>
-
-                        <h4 className="text-xl font-black text-[#18211F]">
-                          {formatCurrency(tx.amount)}
-                        </h4>
-
-                        <div className="text-xs text-[#69736F] space-y-0.5">
-                          <div>Investor: <strong className="text-[#18211F]">{investor?.fullName} ({investor?.email})</strong></div>
-                          <div>
-                            Destination: <strong className="font-mono text-[#18211F] select-all bg-white px-2 py-0.5 rounded border border-[#E3E8E3]">{destination}</strong>
-                            {tx.metadata?.network && <span className="ml-2 text-[11px] text-[#27845D] font-bold">({tx.metadata.network})</span>}
-                          </div>
-                        </div>
-
-                        <span className="text-[11px] text-[#828D89] block">Requested: {formatDate(tx.createdAt)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <button
-                          onClick={() => handleReviewWithdrawal(tx.id, true)}
-                          className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center cursor-pointer shadow-sm"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                          Approve & Execute Payout
-                        </button>
-                        <button
-                          onClick={() => handleReviewWithdrawal(tx.id, false)}
-                          className="btn btn-secondary text-xs font-bold px-4 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center cursor-pointer"
-                        >
-                          <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                          Decline & Refund
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 2: Manual Payment Integration & Direct Credit */}
-        {activeTab === 'manual-payment' && (
-          <div className="space-y-8 animate-in fade-in duration-200">
-            {/* 1. Direct Credit Form */}
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
-              <div className="border-b border-[#E3E8E3] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-xl font-bold text-[#18211F] flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-[#27845D]" />
-                    Manual Payment Integration & Investor Balance Credit
-                  </h3>
-                  <p className="text-xs text-[#69736F]">
-                    Manually credit investor accounts for confirmed wire transfers, direct crypto deposits, or offline capital contributions.
-                  </p>
+          <main className="mx-auto max-w-7xl px-6 py-8">
+            {actionSuccess && (
+              <div className="mb-6 p-4 rounded-2xl bg-green-50 text-green-800 text-xs font-bold border border-green-200 flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                  <span>{actionSuccess}</span>
                 </div>
-                <span className="text-[11px] font-bold bg-[#E8F5E9] text-[#27845D] px-3 py-1 rounded-full">
-                  Immediate Ledger Settlement
-                </span>
+                <button onClick={() => setActionSuccess(null)} className="text-gray-500 hover:text-gray-700 cursor-pointer">✕</button>
               </div>
+            )}
 
-              <form onSubmit={handleExecuteManualCredit} className="space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  {/* Target Investor Select */}
-                  <div className="form-field">
-                    <label>Select Investor Account</label>
-                    <select
-                      value={selectedUserId}
-                      onChange={(e) => setSelectedUserId(e.target.value)}
-                      className="text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
-                      required
+            {actionError && (
+              <div className="mb-6 p-4 rounded-2xl bg-red-50 text-red-800 text-xs font-bold border border-red-200 flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>{actionError}</span>
+                </div>
+                <button onClick={() => setActionError(null)} className="text-gray-500 hover:text-gray-700 cursor-pointer">✕</button>
+              </div>
+            )}
+
+            {/* Active Tab Content */}
+            {activeTab === 'dashboard' && (
+              <AdminDashboardOverview
+                properties={properties}
+                transactions={transactions}
+                users={users}
+                auditLogs={auditLogs}
+                paymentConfig={paymentConfig}
+                onNavigateTab={(tab) => setActiveTab(tab as AdminTabType)}
+                onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
+                onRefreshAll={refreshAll}
+                onQuickCreditSuccess={(msg) => {
+                  setActionSuccess(msg);
+                  setTimeout(() => setActionSuccess(null), 3000);
+                }}
+                onTogglePropertyStatus={handleTogglePropertyStatus}
+              />
+            )}
+
+            {activeTab === 'users' && (
+              <AdminUserManagement
+                users={users}
+                currentAdminEmail={activeUser.email}
+                onRefreshAll={refreshAll}
+                onQuickSuccess={(msg) => {
+                  setActionSuccess(msg);
+                  setTimeout(() => setActionSuccess(null), 4000);
+                }}
+                onQuickError={(msg) => {
+                  setActionError(msg);
+                  setTimeout(() => setActionError(null), 4000);
+                }}
+                onNavigateToManualCredit={(targetId) => {
+                  setSelectedUserId(targetId);
+                  setActiveTab('manual-payment');
+                }}
+              />
+            )}
+
+            {activeTab === 'membership' && (
+              <AdminMembershipTab />
+            )}
+
+            {activeTab === 'reconciliation' && (
+              <AdminReconciliationView />
+            )}
+
+            {activeTab === 'deposits' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#18211F]">Pending Investor Deposits</h3>
+                    <p className="text-xs text-[#69736F]">Review and approve incoming bank wire confirmations and crypto transfers</p>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={handleCreateTestDeposit}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
                     >
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.fullName} ({u.email}) — Balance: {formatCurrency(u.walletBalance)} [{u.kycStatus.toUpperCase()}]
-                        </option>
-                      ))}
-                    </select>
-                    {selectedTargetUser && (
-                      <span className="text-[11px] text-[#27845D] font-semibold mt-1 block">
-                        Selected: {selectedTargetUser.fullName} · Current Balance: {formatCurrency(selectedTargetUser.walletBalance)} · KYC: {selectedTargetUser.kycStatus}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Amount and Currency */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2 form-field">
-                      <label>Credit Amount</label>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={manualAmount}
-                        onChange={(e) => setManualAmount(Number(e.target.value))}
-                        required
-                        className="text-xs font-bold"
-                      />
-                    </div>
-                    <div className="form-field">
-                      <label>Currency</label>
-                      <select
-                        value={manualCurrency}
-                        onChange={(e) => setManualCurrency(e.target.value)}
-                        className="text-xs font-bold p-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4]"
-                      >
-                        <option value="EUR">EUR (€)</option>
-                        <option value="USDT">USDT</option>
-                        <option value="USDC">USDC</option>
-                        <option value="ETH">ETH</option>
-                        <option value="BTC">BTC</option>
-                        <option value="SOL">SOL</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Payment Channel */}
-                  <div className="form-field">
-                    <label>Payment Method / Channel</label>
-                    <select
-                      value={manualMethod}
-                      onChange={(e) => setManualMethod(e.target.value)}
-                      className="text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4]"
-                    >
-                      <option value="Direct SEPA Wire Received">Direct SEPA Wire Received (Bank Settlement)</option>
-                      <option value="Direct OTC Crypto Treasury Inflow">Direct OTC Crypto Treasury Inflow</option>
-                      <option value="Institutional Cash / Bank Draft">Institutional Cash / Certified Bank Draft</option>
-                      <option value="Promotional Bonus / Institutional Reward">Promotional Bonus / Institutional Reward</option>
-                      <option value="Ledger Adjustment / Balance Rectification">Ledger Adjustment / Balance Rectification</option>
-                    </select>
-                  </div>
-
-                  {/* External Reference */}
-                  <div className="form-field">
-                    <label>External Transaction Reference / Bank Wire Ref</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. SANTANDER-WIRE-89410 or 0x39a..."
-                      value={manualReference}
-                      onChange={(e) => setManualReference(e.target.value)}
-                      className="text-xs font-mono"
-                    />
-                    <span className="text-[10px] text-[#69736F] mt-0.5 block">
-                      Leave empty to automatically generate a compliant sequential ledger reference.
+                      <Plus className="w-3.5 h-3.5 text-[#27845D]" />
+                      <span>Simulate Investor Deposit</span>
+                    </button>
+                    <span className="text-xs font-bold px-3 py-1 bg-[#EEF1EC] text-[#27845D] rounded-full whitespace-nowrap">
+                      {pendingDeposits.length} Requests Pending
                     </span>
                   </div>
-
-                  {/* Notes / Description */}
-                  <div className="form-field md:col-span-2">
-                    <label>Administrative Notes & Audit Justification</label>
-                    <textarea
-                      rows={2}
-                      value={manualNotes}
-                      onChange={(e) => setManualNotes(e.target.value)}
-                      placeholder="e.g. Funds verified by treasury officer via UNLIMIT corporate statement."
-                      className="text-xs"
-                      required
-                    />
-                  </div>
                 </div>
 
-                <div className="pt-2 flex items-center justify-between">
-                  <span className="text-xs text-[#69736F]">
-                    Action will atomically credit wallet balance, generate audited immutable ledger record, and notify the user.
-                  </span>
-                  <button
-                    type="submit"
-                    disabled={isSubmittingCredit}
-                    className="btn btn-primary text-xs font-bold px-6 py-3 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
-                  >
-                    {isSubmittingCredit ? (
-                      <>
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Processing payment...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>{`Execute & Credit ${formatCurrency(manualAmount)} to Investor`}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* 2. Assign Dedicated Payment Details to Investor */}
-            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
-              <div className="border-b border-[#E3E8E3] pb-4">
-                <h3 className="text-lg font-bold text-[#18211F] flex items-center gap-2">
-                  <UserCheck className="w-5 h-5 text-[#27845D]" />
-                  Assign Dedicated Payment Details to Specific Investor
-                </h3>
-                <p className="text-xs text-[#69736F]">
-                  Configure dedicated escrow deposit addresses or personal bank accounts for VIP and high-net-worth investors.
-                </p>
-              </div>
-
-              <form onSubmit={handleSaveUserPaymentDetails} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="form-field">
-                    <label>Select Investor</label>
-                    <select
-                      value={editUserPaymentId}
-                      onChange={(e) => {
-                        setEditUserPaymentId(e.target.value);
-                        const sel = users.find(u => u.id === e.target.value);
-                        if (sel) {
-                          setUserCustomCryptoAddress(sel.cryptoDepositAddress || '');
-                          setUserCustomIban(sel.bankIban || '');
-                        }
-                      }}
-                      className="text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4]"
-                    >
-                      {users.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.fullName} ({u.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-field">
-                    <label>Dedicated Crypto Deposit Address</label>
-                    <input
-                      type="text"
-                      placeholder="0x... or custom wallet address"
-                      value={userCustomCryptoAddress}
-                      onChange={(e) => setUserCustomCryptoAddress(e.target.value)}
-                      className="text-xs font-mono font-bold"
-                    />
-                  </div>
-
-                  <div className="form-field">
-                    <label>Designated European Bank IBAN</label>
-                    <input
-                      type="text"
-                      placeholder="ES91 2100 ..."
-                      value={userCustomIban}
-                      onChange={(e) => setUserCustomIban(e.target.value)}
-                      className="text-xs font-mono font-bold uppercase"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="submit"
-                    className="btn btn-secondary text-xs font-bold px-6 py-2.5 cursor-pointer hover:bg-gray-100"
-                  >
-                    Save Dedicated Payment Details
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Payment Settings & Treasury Wallets */}
-        {activeTab === 'payment-settings' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-8 animate-in fade-in duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E3E8E3] pb-4 gap-4">
-              <div>
-                <h3 className="text-xl font-bold text-[#18211F]">Payment Gateway & Treasury Wallet Settings</h3>
-                <p className="text-xs text-[#69736F]">
-                  Configure official SEPA bank accounts and multi-chain cryptocurrency treasury wallet addresses.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddNetwork(!showAddNetwork)}
-                className="btn btn-primary text-xs font-bold px-4 py-2 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center gap-1.5 cursor-pointer shadow-sm self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" />
-                Add New Treasury Wallet
-              </button>
-            </div>
-
-            {/* Modal / Card to Add New Crypto Network */}
-            {showAddNetwork && (
-              <div className="p-6 rounded-2xl bg-[#F6F7F4] border-2 border-[#27845D] space-y-4 animate-in fade-in">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-bold text-[#18211F] flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-[#27845D]" />
-                    Integrate New Crypto Treasury Wallet / Network
-                  </h4>
-                  <button onClick={() => setShowAddNetwork(false)} className="text-xs font-bold text-gray-500 hover:text-black">Cancel</button>
-                </div>
-
-                <form onSubmit={handleAddNewCryptoNetwork} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <label className="text-[11px] font-bold text-[#69736F] block mb-1">Network Display Name</label>
-                      <input
-                        type="text"
-                        value={newNetName}
-                        onChange={(e) => setNewNetName(e.target.value)}
-                        placeholder="e.g. Arbitrum One"
-                        required
-                        className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-[#69736F] block mb-1">Supported Token / Symbol</label>
-                      <input
-                        type="text"
-                        value={newNetToken}
-                        onChange={(e) => setNewNetToken(e.target.value.toUpperCase())}
-                        placeholder="e.g. USDT or USDC"
-                        required
-                        className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-[#69736F] block mb-1">Blockchain Protocol</label>
-                      <input
-                        type="text"
-                        value={newNetProtocol}
-                        onChange={(e) => setNewNetProtocol(e.target.value)}
-                        placeholder="e.g. Ethereum / Arbitrum / Solana"
-                        required
-                        className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-[#69736F] block mb-1">Contract Ending (Optional)</label>
-                      <input
-                        type="text"
-                        value={newNetContractEnd}
-                        onChange={(e) => setNewNetContractEnd(e.target.value)}
-                        placeholder="e.g. af88d0 or Native"
-                        className="text-xs font-mono w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
-                      />
-                    </div>
-                    <div className="md:col-span-4">
-                      <label className="text-[11px] font-bold text-[#69736F] block mb-1">Insured Treasury Wallet Address</label>
-                      <input
-                        type="text"
-                        value={newNetAddress}
-                        onChange={(e) => setNewNetAddress(e.target.value)}
-                        placeholder="0x... or network address"
-                        required
-                        className="text-xs font-mono font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-2">
+                {pendingDeposits.length === 0 ? (
+                  <div className="text-center py-12 text-xs text-[#69736F] space-y-3">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto opacity-40" />
+                    <p className="text-sm font-semibold text-[#18211F]">All deposits are up to date.</p>
+                    <p className="max-w-md mx-auto">New investor transfer requests submitted from the Deposit button will appear here for administrative verification.</p>
                     <button
-                      type="button"
-                      onClick={() => setShowAddNetwork(false)}
-                      className="btn btn-secondary text-xs font-bold px-4 py-2 cursor-pointer"
+                      onClick={handleCreateTestDeposit}
+                      className="btn btn-primary text-xs font-bold px-4 py-2 mt-2 bg-[#182D2A] hover:bg-[#24423C] text-white inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      Cancel
+                      <Plus className="w-3.5 h-3.5 text-[#B7E36A]" />
+                      <span>Generate Test Deposit Request (€5,000)</span>
                     </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingDeposits.map((tx) => {
+                      const investor = users.find(u => u.id === tx.userId);
+                      return (
+                        <div
+                          key={tx.id}
+                          className="p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col md:flex-row md:items-center justify-between gap-4"
+                        >
+                          <div className="space-y-1 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-[#27845D] bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-emerald-200/60">
+                                Awaiting Deposit Approval
+                              </span>
+                              <span className="font-mono text-xs text-[#69736F] font-semibold">{tx.reference}</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                              <h4 className="text-xl font-black text-[#18211F]">{formatCurrency(tx.amount)}</h4>
+                              <span className="text-xs font-bold text-gray-500">({tx.currency})</span>
+                            </div>
+                            <div className="text-xs text-[#69736F] flex flex-wrap gap-x-4 gap-y-1">
+                              <span>Investor: <strong className="text-[#18211F]">{investor?.fullName || 'Investor'} ({investor?.email})</strong></span>
+                              <span>Method: <strong>{tx.paymentMethod}</strong></span>
+                            </div>
+                            {tx.txHash && (
+                              <div className="text-[11px] font-mono text-gray-500">
+                                Declared Tx/Note: <span className="text-[#18211F] bg-white px-2 py-0.5 rounded border border-[#E3E8E3] font-semibold">{tx.txHash}</span>
+                              </div>
+                            )}
+                            {(() => {
+                              const matchingDoc = verificationDocs.find(d => d.transactionReference === tx.reference);
+                              const receiptUrl = tx.metadata?.receiptUrl || matchingDoc?.fileUrl;
+                              const receiptName = tx.metadata?.receiptFileName || matchingDoc?.fileName;
+                              if (!receiptUrl) return null;
+                              return (
+                                <div className="pt-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewProofModalDoc({
+                                      title: `Deposit Payment Receipt (${tx.reference})`,
+                                      fileUrl: receiptUrl,
+                                      fileName: receiptName || 'transfer_receipt.pdf',
+                                      type: tx.paymentMethod,
+                                      ref: tx.reference,
+                                      user: `${investor?.fullName || 'Investor'} (${investor?.email})`
+                                    })}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#27845D] border border-emerald-300 text-xs font-bold cursor-pointer transition-colors shadow-2xs"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>View Attached Receipt ({receiptName || 'Wire Slip'})</span>
+                                  </button>
+                                </div>
+                              );
+                            })()}
+                            <span className="text-[11px] text-[#828D89] block">Submitted: {formatDate(tx.createdAt)}</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <button
+                              onClick={() => handleReviewDeposit(tx.id, true)}
+                              className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center cursor-pointer shadow-sm"
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve & Credit
+                            </button>
+                            <button
+                              onClick={() => handleReviewDeposit(tx.id, false)}
+                              className="btn btn-secondary text-xs font-bold px-4 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center cursor-pointer"
+                            >
+                              <XCircle className="w-4 h-4 mr-1.5" /> Decline
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'withdrawals' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#18211F]">Pending Investor Withdrawals</h3>
+                    <p className="text-xs text-[#69736F]">Approve and execute bank wire payouts and cryptocurrency payouts</p>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={handleCreateTestWithdrawal}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#27845D]" />
+                      <span>Simulate Investor Withdrawal</span>
+                    </button>
+                    <span className="text-xs font-bold px-3 py-1 bg-[#EEF1EC] text-[#27845D] rounded-full whitespace-nowrap">
+                      {pendingWithdrawals.length} Requests Pending
+                    </span>
+                  </div>
+                </div>
+
+                {pendingWithdrawals.length === 0 ? (
+                  <div className="text-center py-12 text-xs text-[#69736F] space-y-3">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto opacity-40" />
+                    <p className="text-sm font-semibold text-[#18211F]">No pending withdrawals.</p>
+                    <p className="max-w-md mx-auto">All requested disbursements have been fulfilled. New withdrawal requests will appear here for payout authorization.</p>
+                    <button
+                      onClick={handleCreateTestWithdrawal}
+                      className="btn btn-secondary text-xs font-bold px-4 py-2 mt-2 inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#27845D]" />
+                      <span>Generate Test Withdrawal Request (€1,500)</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingWithdrawals.map((tx) => {
+                      const investor = users.find(u => u.id === tx.userId);
+                      const isCrypto = !!tx.metadata?.destinationAddress;
+                      const destination = tx.metadata?.destinationAddress || tx.metadata?.bankIban || 'Bank Wire';
+                      return (
+                        <div
+                          key={tx.id}
+                          className="p-5 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col md:flex-row md:items-center justify-between gap-4"
+                        >
+                          <div className="space-y-1 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-[#C24141] bg-red-50 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-200/60">
+                                {isCrypto ? 'Crypto Withdrawal' : 'SEPA Bank Wire'}
+                              </span>
+                              <span className="font-mono text-xs text-[#69736F] font-semibold">{tx.reference}</span>
+                            </div>
+                            <h4 className="text-xl font-black text-[#18211F]">{formatCurrency(tx.amount)}</h4>
+                            <div className="text-xs text-[#69736F] space-y-0.5">
+                              <div>Investor: <strong className="text-[#18211F]">{investor?.fullName} ({investor?.email})</strong></div>
+                              <div>
+                                Destination: <strong className="font-mono text-[#18211F] select-all bg-white px-2 py-0.5 rounded border border-[#E3E8E3]">{destination}</strong>
+                                {tx.metadata?.network && <span className="ml-2 text-[11px] text-[#27845D] font-bold">({tx.metadata.network})</span>}
+                              </div>
+                            </div>
+                            <span className="text-[11px] text-[#828D89] block">Requested: {formatDate(tx.createdAt)}</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <button
+                              onClick={() => handleReviewWithdrawal(tx.id, true)}
+                              className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center cursor-pointer shadow-sm"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                              Approve & Execute Payout
+                            </button>
+                            <button
+                              onClick={() => handleReviewWithdrawal(tx.id, false)}
+                              className="btn btn-secondary text-xs font-bold px-4 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5 mr-1.5" /> Decline & Refund
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'manual-payment' && (
+              <div className="space-y-8 animate-in fade-in duration-200">
+                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
+                  <div className="border-b border-[#E3E8E3] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-xl font-bold text-[#18211F] flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-[#27845D]" />
+                        Manual Payment Integration & Investor Balance Credit
+                      </h3>
+                      <p className="text-xs text-[#69736F]">
+                        Manually credit investor accounts for confirmed wire transfers, direct crypto deposits, or offline capital contributions.
+                      </p>
+                    </div>
+                    <span className="text-[11px] font-bold bg-[#E8F5E9] text-[#27845D] px-3 py-1 rounded-full">Immediate Ledger Settlement</span>
+                  </div>
+
+                  <form onSubmit={handleExecuteManualCredit} className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="form-field">
+                        <label>Select Investor Account</label>
+                        <select
+                          value={selectedUserId}
+                          onChange={(e) => setSelectedUserId(e.target.value)}
+                          className="text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] focus:outline-none focus:border-[#182D2A]"
+                          required
+                        >
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>
+                              {u.fullName} ({u.email}) — Balance: {formatCurrency(u.walletBalance)} [{u.kycStatus.toUpperCase()}]
+                            </option>
+                          ))}
+                        </select>
+                        {selectedTargetUser && (
+                          <span className="text-[11px] text-[#27845D] font-semibold mt-1 block">
+                            Selected: {selectedTargetUser.fullName} · Current Balance: {formatCurrency(selectedTargetUser.walletBalance)} · KYC: {selectedTargetUser.kycStatus}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2 form-field">
+                          <label>Credit Amount</label>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={manualAmount}
+                            onChange={(e) => setManualAmount(Number(e.target.value))}
+                            required
+                            className="text-xs font-bold"
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label>Currency</label>
+                          <select
+                            value={manualCurrency}
+                            onChange={(e) => setManualCurrency(e.target.value)}
+                            className="text-xs font-bold p-2.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4]"
+                          >
+                            <option value="EUR">EUR (€)</option>
+                            <option value="USDT">USDT</option>
+                            <option value="USDC">USDC</option>
+                            <option value="ETH">ETH</option>
+                            <option value="BTC">BTC</option>
+                            <option value="SOL">SOL</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-field">
+                        <label>Payment Method / Channel</label>
+                        <select
+                          value={manualMethod}
+                          onChange={(e) => setManualMethod(e.target.value)}
+                          className="text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4]"
+                        >
+                          <option value="Direct SEPA Wire Received">Direct SEPA Wire Received (Bank Settlement)</option>
+                          <option value="Direct OTC Crypto Treasury Inflow">Direct OTC Crypto Treasury Inflow</option>
+                          <option value="Institutional Cash / Bank Draft">Institutional Cash / Certified Bank Draft</option>
+                          <option value="Promotional Bonus / Institutional Reward">Promotional Bonus / Institutional Reward</option>
+                          <option value="Ledger Adjustment / Balance Rectification">Ledger Adjustment / Balance Rectification</option>
+                        </select>
+                      </div>
+                      <div className="form-field">
+                        <label>External Transaction Reference / Bank Wire Ref</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. SANTANDER-WIRE-89410 or 0x39a..."
+                          value={manualReference}
+                          onChange={(e) => setManualReference(e.target.value)}
+                          className="text-xs font-mono font-bold"
+                        />
+                        <span className="text-[10px] text-[#69736F] mt-0.5 block">
+                          Leave empty to automatically generate a compliant sequential ledger reference.
+                        </span>
+                      </div>
+                      <div className="form-field md:col-span-2">
+                        <label>Administrative Notes & Audit Justification</label>
+                        <textarea
+                          rows={2}
+                          value={manualNotes}
+                          onChange={(e) => setManualNotes(e.target.value)}
+                          placeholder="e.g. Funds verified by treasury officer via UNLIMIT corporate statement."
+                          className="text-xs font-bold"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-2 flex items-center justify-between">
+                      <span className="text-xs text-[#69736F]">
+                        Action will atomically credit wallet balance, generate audited immutable ledger record, and notify the user.
+                      </span>
+                      <button
+                        type="submit"
+                        disabled={isSubmittingCredit}
+                        className="btn btn-primary text-xs font-bold px-6 py-3 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                      >
+                        {isSubmittingCredit ? (
+                          <>
+                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Processing payment...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{`Execute & Credit ${formatCurrency(manualAmount)} to Investor`}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
+                  <div className="border-b border-[#E3E8E3] pb-4">
+                    <h3 className="text-lg font-bold text-[#18211F] flex items-center gap-2">
+                      <UserCheck className="w-5 h-5 text-[#27845D]" />
+                      Assign Dedicated Payment Details to Specific Investor
+                    </h3>
+                    <p className="text-xs text-[#69736F]">
+                      Configure dedicated escrow deposit addresses or personal bank accounts for VIP and high-net-worth investors.
+                    </p>
+                  </div>
+                  <form onSubmit={handleSaveUserPaymentDetails} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="form-field">
+                        <label>Select Investor</label>
+                        <select
+                          value={editUserPaymentId}
+                          onChange={(e) => {
+                            setEditUserPaymentId(e.target.value);
+                            const sel = users.find(u => u.id === e.target.value);
+                            if (sel) {
+                              setUserCustomCryptoAddress(sel.cryptoDepositAddress || '');
+                              setUserCustomIban(sel.bankIban || '');
+                            }
+                          }}
+                          className="text-xs font-bold p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4]"
+                        >
+                          {users.map(u => (
+                            <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-field">
+                        <label>Dedicated Crypto Deposit Address</label>
+                        <input
+                          type="text"
+                          placeholder="0x... or custom wallet address"
+                          value={userCustomCryptoAddress}
+                          onChange={(e) => setUserCustomCryptoAddress(e.target.value)}
+                          className="text-xs font-mono font-bold"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>Designated European Bank IBAN</label>
+                        <input
+                          type="text"
+                          placeholder="ES91 2100 ..."
+                          value={userCustomIban}
+                          onChange={(e) => setUserCustomIban(e.target.value)}
+                          className="text-xs font-mono font-bold uppercase"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        className="btn btn-secondary text-xs font-bold px-6 py-2.5 cursor-pointer hover:bg-gray-100"
+                      >
+                        Save Dedicated Payment Details
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'payment-distribution' && (
+              <AdminPaymentDistributionManager />
+            )}
+
+            {activeTab === 'payment-settings' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-8 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E3E8E3] pb-4 gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-[#18211F]">Payment Gateway & Treasury Wallet Settings</h3>
+                    <p className="text-xs text-[#69736F]">
+                      Configure official SEPA bank accounts and multi-chain cryptocurrency treasury wallet addresses.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddNetwork(!showAddNetwork)}
+                    className="btn btn-primary text-xs font-bold px-4 py-2 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center gap-1.5 cursor-pointer shadow-sm self-start sm:self-auto"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add New Treasury Wallet
+                  </button>
+                </div>
+
+                {showAddNetwork && (
+                  <div className="p-6 rounded-2xl bg-[#F6F7F4] border-2 border-[#27845D] space-y-4 animate-in fade-in">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-sm font-bold text-[#18211F] flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-[#27845D]" />
+                        Integrate New Crypto Treasury Wallet / Network
+                      </h4>
+                      <button onClick={() => setShowAddNetwork(false)} className="text-xs font-bold text-gray-500 hover:text-black">Cancel</button>
+                    </div>
+                    <form onSubmit={handleAddNewCryptoNetwork} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="text-[11px] font-bold text-[#69736F] block mb-1">Network Display Name</label>
+                          <input
+                            type="text"
+                            value={newNetName}
+                            onChange={(e) => setNewNetName(e.target.value)}
+                            placeholder="e.g. Arbitrum One"
+                            required
+                            className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-[#69736F] block mb-1">Supported Token / Symbol</label>
+                          <input
+                            type="text"
+                            value={newNetToken}
+                            onChange={(e) => setNewNetToken(e.target.value.toUpperCase())}
+                            placeholder="e.g. USDT or USDC"
+                            required
+                            className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-[#69736F] block mb-1">Blockchain Protocol</label>
+                          <input
+                            type="text"
+                            value={newNetProtocol}
+                            onChange={(e) => setNewNetProtocol(e.target.value)}
+                            placeholder="e.g. Ethereum / Arbitrum / Solana"
+                            required
+                            className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-[#69736F] block mb-1">Contract Ending (Optional)</label>
+                          <input
+                            type="text"
+                            value={newNetContractEnd}
+                            onChange={(e) => setNewNetContractEnd(e.target.value)}
+                            placeholder="e.g. af88d0 or Native"
+                            className="text-xs font-mono w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                          />
+                        </div>
+                        <div className="md:col-span-4">
+                          <label className="text-[11px] font-bold text-[#69736F] block mb-1">Insured Treasury Wallet Address</label>
+                          <input
+                            type="text"
+                            value={newNetAddress}
+                            onChange={(e) => setNewNetAddress(e.target.value)}
+                            placeholder="0x... or network address"
+                            required
+                            className="text-xs font-mono font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddNetwork(false)}
+                          className="btn btn-secondary text-xs font-bold px-4 py-2 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn btn-primary text-xs font-bold px-6 py-2 bg-[#27845D] text-white cursor-pointer"
+                        >
+                          Save & Enable Network
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                <form onSubmit={handleSavePaymentConfig} className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-[#27845D]" />
+                      <h4 className="text-sm font-bold text-[#182D2A] uppercase tracking-wider">Traditional European Bank Transfer (SEPA / Wire)</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="form-field">
+                        <label>Bank Name / Institution</label>
+                        <input
+                          type="text"
+                          value={paymentConfig.traditional.bankName}
+                          onChange={(e) => setPaymentConfig({
+                            ...paymentConfig,
+                            traditional: { ...paymentConfig.traditional, bankName: e.target.value }
+                          })}
+                          required
+                          className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>Beneficiary Name</label>
+                        <input
+                          type="text"
+                          value={paymentConfig.traditional.beneficiary}
+                          onChange={(e) => setPaymentConfig({
+                            ...paymentConfig,
+                            traditional: { ...paymentConfig.traditional, beneficiary: e.target.value }
+                          })}
+                          required
+                          className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>IBAN Account</label>
+                        <input
+                          type="text"
+                          value={paymentConfig.traditional.iban}
+                          onChange={(e) => setPaymentConfig({
+                            ...paymentConfig,
+                            traditional: { ...paymentConfig.traditional, iban: e.target.value }
+                          })}
+                          required
+                          className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>BIC / SWIFT</label>
+                        <input
+                          type="text"
+                          value={paymentConfig.traditional.bic}
+                          onChange={(e) => setPaymentConfig({
+                            ...paymentConfig,
+                            traditional: { ...paymentConfig.traditional, bic: e.target.value }
+                          })}
+                          required
+                          className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>Support Email for Wire Receipts</label>
+                        <input
+                          type="email"
+                          value={paymentConfig.traditional.supportEmail}
+                          onChange={(e) => setPaymentConfig({
+                            ...paymentConfig,
+                            traditional: { ...paymentConfig.traditional, supportEmail: e.target.value }
+                          })}
+                          required
+                          className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label>Bank Routing / Clearing Code</label>
+                        <input
+                          type="text"
+                          value={paymentConfig.traditional.routingNumber || ''}
+                          onChange={(e) => setPaymentConfig({
+                            ...paymentConfig,
+                            traditional: { ...paymentConfig.traditional, routingNumber: e.target.value }
+                          })}
+                          placeholder="e.g. ES912100"
+                          className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                        />
+                      </div>
+                      <div className="form-field md:col-span-2">
+                        <label>Wire Transfer Instructions shown to Investors</label>
+                        <textarea
+                          rows={2}
+                          value={paymentConfig.traditional.instructions}
+                          onChange={(e) => setPaymentConfig({
+                            ...paymentConfig,
+                            traditional: { ...paymentConfig.traditional, instructions: e.target.value }
+                          })}
+                          required
+                          className="text-xs font-bold w-full p-2.5 rounded-xl border border-[#E3E8E3] bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-6 border-t border-[#E3E8E3]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-[#27845D]" />
+                        <h4 className="text-sm font-bold text-[#182D2A] uppercase tracking-wider">
+                          Cryptocurrency Treasury Wallet: USDC (BEP20)
+                        </h4>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {paymentConfig.cryptoNetworks.map((net, index) => (
+                        <div
+                          key={net.id}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            net.enabled !== false ? 'bg-[#F6F7F4] border-[#E3E8E3]' : 'bg-gray-100/60 border-gray-200 opacity-60'
+                          }`}
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                            <div className="md:col-span-3">
+                              <label className="text-[10px] font-bold text-[#69736F] block">Network Name</label>
+                              <input
+                                type="text"
+                                value={net.name}
+                                onChange={(e) => {
+                                  const updated = [...paymentConfig.cryptoNetworks];
+                                  updated[index].name = e.target.value;
+                                  setPaymentConfig({ ...paymentConfig, cryptoNetworks: updated });
+                                }}
+                                className="text-xs font-bold w-full bg-white p-2 rounded-xl border border-[#E3E8E3]"
+                              />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="text-[10px] font-bold text-[#69736F] block">Token Symbol</label>
+                              <input
+                                type="text"
+                                value={net.token}
+                                onChange={(e) => {
+                                  const updated = [...paymentConfig.cryptoNetworks];
+                                  updated[index].token = e.target.value;
+                                  setPaymentConfig({ ...paymentConfig, cryptoNetworks: updated });
+                                }}
+                                className="text-xs font-bold w-full bg-white p-2 rounded-xl border border-[#E3E8E3]"
+                              />
+                            </div>
+                            <div className="md:col-span-5">
+                              <label className="text-[10px] font-bold text-[#69736F] block">Treasury Wallet Address</label>
+                              <input
+                                type="text"
+                                value={net.walletAddress}
+                                onChange={(e) => {
+                                  const updated = [...paymentConfig.cryptoNetworks];
+                                  updated[index].walletAddress = e.target.value;
+                                  setPaymentConfig({ ...paymentConfig, cryptoNetworks: updated });
+                                }}
+                                className="text-xs font-mono font-bold w-full bg-white p-2 rounded-xl border border-[#E3E8E3]"
+                              />
+                            </div>
+                            <div className="md:col-span-2 flex items-center justify-end gap-2 pt-3 md:pt-0">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCryptoNetwork(net.id)}
+                                title={net.enabled !== false ? 'Disable Network' : 'Enable Network'}
+                                className="text-xs font-bold p-2 text-gray-500 hover:text-black cursor-pointer"
+                              >
+                                {net.enabled !== false ? (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">Active</span>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-lg">Disabled</span>
+                                )}
+                              </button>
+                              {confirmDeleteNetId === net.id ? (
+                                <div className="inline-flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCryptoNetwork(net.id, net.name)}
+                                    className="px-2 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold cursor-pointer"
+                                  >
+                                    Remove
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteNetId(null)}
+                                    className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteNetId(net.id)}
+                                  title="Delete Network"
+                                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex justify-end">
                     <button
                       type="submit"
-                      className="btn btn-primary text-xs font-bold px-6 py-2 bg-[#27845D] text-white cursor-pointer"
+                      className="btn btn-primary text-xs font-bold px-8 py-3 bg-[#182D2A] text-white hover:bg-[#24423C] cursor-pointer shadow-md"
                     >
-                      Save & Enable Network
+                      Save Payment Settings & Treasury Configurations
                     </button>
                   </div>
                 </form>
               </div>
             )}
 
-            <form onSubmit={handleSavePaymentConfig} className="space-y-8">
-              {/* Traditional Bank Transfer Settings */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-[#27845D]" />
-                  <h4 className="text-sm font-bold text-[#182D2A] uppercase tracking-wider">Traditional European Bank Transfer (SEPA / Wire)</h4>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="form-field">
-                    <label>Bank Name / Institution</label>
-                    <input
-                      type="text"
-                      value={paymentConfig.traditional.bankName}
-                      onChange={(e) => setPaymentConfig({
-                        ...paymentConfig,
-                        traditional: { ...paymentConfig.traditional, bankName: e.target.value }
-                      })}
-                      required
-                    />
+            {activeTab === 'kyc' && (
+              <div className="bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-sm">
+                <h3 className="text-lg font-bold text-[#18211F] mb-4">Investor Identity Verifications (AML5/6)</h3>
+                {pendingKYCUsers.length === 0 ? (
+                  <div className="text-center py-10 text-xs text-[#69736F]">
+                    All registered investors have been reviewed. No pending KYC submissions.
                   </div>
-                  <div className="form-field">
-                    <label>Beneficiary Name</label>
-                    <input
-                      type="text"
-                      value={paymentConfig.traditional.beneficiary}
-                      onChange={(e) => setPaymentConfig({
-                        ...paymentConfig,
-                        traditional: { ...paymentConfig.traditional, beneficiary: e.target.value }
-                      })}
-                      required
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label>IBAN Account</label>
-                    <input
-                      type="text"
-                      value={paymentConfig.traditional.iban}
-                      onChange={(e) => setPaymentConfig({
-                        ...paymentConfig,
-                        traditional: { ...paymentConfig.traditional, iban: e.target.value }
-                      })}
-                      required
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label>BIC / SWIFT</label>
-                    <input
-                      type="text"
-                      value={paymentConfig.traditional.bic}
-                      onChange={(e) => setPaymentConfig({
-                        ...paymentConfig,
-                        traditional: { ...paymentConfig.traditional, bic: e.target.value }
-                      })}
-                      required
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label>Support Email for Wire Receipts</label>
-                    <input
-                      type="email"
-                      value={paymentConfig.traditional.supportEmail}
-                      onChange={(e) => setPaymentConfig({
-                        ...paymentConfig,
-                        traditional: { ...paymentConfig.traditional, supportEmail: e.target.value }
-                      })}
-                      required
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label>Bank Routing / Clearing Code</label>
-                    <input
-                      type="text"
-                      value={paymentConfig.traditional.routingNumber || ''}
-                      onChange={(e) => setPaymentConfig({
-                        ...paymentConfig,
-                        traditional: { ...paymentConfig.traditional, routingNumber: e.target.value }
-                      })}
-                      placeholder="e.g. ES912100"
-                    />
-                  </div>
-                  <div className="form-field md:col-span-2">
-                    <label>Wire Transfer Instructions shown to Investors</label>
-                    <textarea
-                      rows={2}
-                      value={paymentConfig.traditional.instructions}
-                      onChange={(e) => setPaymentConfig({
-                        ...paymentConfig,
-                        traditional: { ...paymentConfig.traditional, instructions: e.target.value }
-                      })}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Crypto Wallets & Networks Settings */}
-              <div className="space-y-4 pt-6 border-t border-[#E3E8E3]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-[#27845D]" />
-                    <h4 className="text-sm font-bold text-[#182D2A] uppercase tracking-wider">
-                      Cryptocurrency Treasury Wallet: USDC (BEP20)
-                    </h4>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {paymentConfig.cryptoNetworks.map((net, index) => (
-                    <div
-                      key={net.id}
-                      className={`p-4 rounded-2xl border transition-all ${
-                        net.enabled !== false ? 'bg-[#F6F7F4] border-[#E3E8E3]' : 'bg-gray-100/60 border-gray-200 opacity-60'
-                      }`}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-                        <div className="md:col-span-3">
-                          <label className="text-[10px] font-bold text-[#69736F] block">Network Name</label>
-                          <input
-                            type="text"
-                            value={net.name}
-                            onChange={(e) => {
-                              const updated = [...paymentConfig.cryptoNetworks];
-                              updated[index].name = e.target.value;
-                              setPaymentConfig({ ...paymentConfig, cryptoNetworks: updated });
-                            }}
-                            className="text-xs font-bold w-full bg-white p-2 rounded-xl border border-[#E3E8E3]"
-                          />
+                ) : (
+                  <div className="space-y-4">
+                    {pendingKYCUsers.map((u) => (
+                      <div
+                        key={u.id}
+                        className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      >
+                        <div>
+                          <h4 className="text-sm font-bold text-[#18211F]">{u.fullName}</h4>
+                          <p className="text-xs text-[#69736F]">{u.email} · {u.country || 'Spain'}</p>
+                          <span className="text-[11px] text-[#27845D] font-semibold block mt-1">
+                            Submitted: {u.kycSubmittedAt ? formatDate(u.kycSubmittedAt) : 'Recently'} · Doc: {u.kycDocumentType || 'Passport'}
+                          </span>
+                          {(() => {
+                            const matchingDoc = verificationDocs.find(d => d.userId === u.id && d.category === 'kyc_identity');
+                            if (!matchingDoc) return null;
+                            return (
+                              <div className="pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewProofModalDoc({
+                                    title: `Identity Verification Scan: ${u.fullName}`,
+                                    fileUrl: matchingDoc.fileUrl,
+                                    fileName: matchingDoc.fileName,
+                                    type: matchingDoc.documentType,
+                                    user: `${u.fullName} (${u.email})`
+                                  })}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#27845D] border border-emerald-300 text-xs font-bold cursor-pointer transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>View Uploaded {matchingDoc.documentType} Scan</span>
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </div>
-
-                        <div className="md:col-span-2">
-                          <label className="text-[10px] font-bold text-[#69736F] block">Token Symbol</label>
-                          <input
-                            type="text"
-                            value={net.token}
-                            onChange={(e) => {
-                              const updated = [...paymentConfig.cryptoNetworks];
-                              updated[index].token = e.target.value;
-                              setPaymentConfig({ ...paymentConfig, cryptoNetworks: updated });
-                            }}
-                            className="text-xs font-bold w-full bg-white p-2 rounded-xl border border-[#E3E8E3]"
-                          />
-                        </div>
-
-                        <div className="md:col-span-5">
-                          <label className="text-[10px] font-bold text-[#69736F] block">Treasury Wallet Address</label>
-                          <input
-                            type="text"
-                            value={net.walletAddress}
-                            onChange={(e) => {
-                              const updated = [...paymentConfig.cryptoNetworks];
-                              updated[index].walletAddress = e.target.value;
-                              setPaymentConfig({ ...paymentConfig, cryptoNetworks: updated });
-                            }}
-                            className="text-xs font-mono font-bold w-full bg-white p-2 rounded-xl border border-[#E3E8E3]"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2 flex items-center justify-end gap-2 pt-3 md:pt-0">
+                        <div className="flex items-center gap-2">
                           <button
-                            type="button"
-                            onClick={() => handleToggleCryptoNetwork(net.id)}
-                            title={net.enabled !== false ? 'Disable Network' : 'Enable Network'}
-                            className="text-xs font-bold p-2 text-gray-500 hover:text-black cursor-pointer"
+                            onClick={() => handleReviewKYC(u.id, true)}
+                            className="btn btn-primary btn-sm bg-[#27845D] text-xs font-bold cursor-pointer"
                           >
-                            {net.enabled !== false ? (
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-lg">Active</span>
-                            ) : (
-                              <span className="text-[10px] font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-lg">Disabled</span>
-                            )}
+                            Approve Verification
                           </button>
-
-                          {confirmDeleteNetId === net.id ? (
-                            <div className="inline-flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCryptoNetwork(net.id, net.name)}
-                                className="px-2 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold cursor-pointer"
-                              >
-                                Remove
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeleteNetId(null)}
-                                className="px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteNetId(net.id)}
-                              title="Delete Network"
-                              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleReviewKYC(u.id, false)}
+                            className="btn btn-secondary btn-sm text-xs font-bold text-red-600 cursor-pointer"
+                          >
+                            Reject
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'verification_docs' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E3E8E3] pb-5">
+                  <div>
+                    <h3 className="text-xl font-bold text-[#18211F]">Investor Document & Proof Approvals Vault</h3>
+                    <p className="text-xs text-[#69736F]">
+                      Review, inspect, and confirm bank transfer wire receipts, crypto payment proofs, and AML identity documents uploaded from investor dashboards.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const testRef = `DEP-EUR-${Math.floor(100000 + Math.random() * 900000)}`;
+                        ledger.processDeposit(
+                          users.find(u => u.role !== 'admin')?.id || users[0].id,
+                          7500,
+                          'EUR',
+                          'SEPA Bank Wire Transfer (UNLIMIT Escrow)',
+                          testRef,
+                          {
+                            receiptUrl: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
+                            receiptFileName: `unlimit_wire_slip_${testRef}.pdf`,
+                            receiptFileSize: 260000,
+                            notes: 'Simulated investor wire transfer slip upload'
+                          }
+                        );
+                        refreshAll();
+                        setActionSuccess(`Simulated new investor upload with transfer slip (${testRef}).`);
+                        setTimeout(() => setActionSuccess(null), 4000);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#27845D]" />
+                      <span>Simulate Investor Upload (€7,500)</span>
+                    </button>
+                    <span className="text-xs font-bold px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full whitespace-nowrap">
+                      {pendingVerificationDocs.length} Pending Confirmation
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="pt-4 flex justify-end">
-                <button
-                  type="submit"
-                  className="btn btn-primary text-xs font-bold px-8 py-3 bg-[#182D2A] text-white hover:bg-[#24423C] cursor-pointer shadow-md"
-                >
-                  Save Payment Settings & Treasury Configurations
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-[#F6F7F4] rounded-2xl border border-[#E3E8E3] text-xs">
+                  <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                    <span className="font-bold text-[#18211F] flex items-center gap-1">
+                      <Filter className="w-3.5 h-3.5 text-[#27845D]" /> Category:
+                    </span>
+                    {(['all', 'deposit_proof', 'kyc_identity', 'proof_of_address'] as const).map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setDocFilterCategory(cat)}
+                        className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
+                          docFilterCategory === cat
+                            ? 'bg-[#182D2A] text-white shadow-xs'
+                            : 'bg-white text-[#69736F] hover:text-[#18211F] border border-[#E3E8E3]'
+                        }`}
+                      >
+                        {cat === 'all' ? 'All Categories' : cat === 'deposit_proof' ? 'Deposit Receipts' : cat === 'kyc_identity' ? 'Identity (KYC)' : 'Address Proofs'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                    <span className="font-bold text-[#18211F]">Status:</span>
+                    {(['all', 'pending', 'approved', 'rejected'] as const).map(st => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => setDocFilterStatus(st)}
+                        className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
+                          docFilterStatus === st
+                            ? 'bg-[#182D2A] text-white shadow-xs'
+                            : 'bg-white text-[#69736F] hover:text-[#18211F] border border-[#E3E8E3]'
+                        }`}
+                      >
+                        {st === 'all' ? 'All' : st === 'pending' ? 'Pending' : st === 'approved' ? 'Approved' : 'Declined'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-        {/* Tab 4: KYC Reviews */}
-        {activeTab === 'kyc' && (
-          <div className="bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-sm">
-            <h3 className="text-lg font-bold text-[#18211F] mb-4">Investor Identity Verifications (AML5/6)</h3>
-            {pendingKYCUsers.length === 0 ? (
-              <div className="text-center py-10 text-xs text-[#69736F]">
-                All registered investors have been reviewed. No pending KYC submissions.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {pendingKYCUsers.map((u) => (
-                  <div
-                    key={u.id}
-                    className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] flex flex-col md:flex-row md:items-center justify-between gap-4"
-                  >
-                    <div>
-                      <h4 className="text-sm font-bold text-[#18211F]">{u.fullName}</h4>
-                      <p className="text-xs text-[#69736F]">{u.email} · {u.country || 'Spain'}</p>
-                      <span className="text-[11px] text-[#27845D] font-semibold block mt-1">
-                        Submitted: {u.kycSubmittedAt ? formatDate(u.kycSubmittedAt) : 'Recently'} · Doc: {u.kycDocumentType || 'Passport'}
-                      </span>
-                      {(() => {
-                        const matchingDoc = verificationDocs.find(d => d.userId === u.id && d.category === 'kyc_identity');
-                        if (!matchingDoc) return null;
-                        return (
-                          <div className="pt-2">
+                {(() => {
+                  const filtered = verificationDocs.filter(d => {
+                    const matchesCat = docFilterCategory === 'all' || d.category === docFilterCategory;
+                    const matchesStatus = docFilterStatus === 'all' || d.status === docFilterStatus;
+                    return matchesCat && matchesStatus;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center py-12 text-[#69736F] space-y-3">
+                        <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto opacity-40" />
+                        <p className="text-sm font-semibold text-[#18211F]">No documents found for this filter.</p>
+                        <p className="text-xs max-w-sm mx-auto">
+                          All investor transfer proofs and KYC scans have been processed.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {filtered.map(doc => (
+                        <div
+                          key={doc.id}
+                          className="p-5 rounded-2xl border border-[#E3E8E3] bg-[#F6F7F4] flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-left"
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shrink-0 mt-0.5 shadow-xs">
+                              {doc.category === 'deposit_proof' ? (
+                                <CreditCard className="w-6 h-6" />
+                              ) : (
+                                <UserCheck className="w-6 h-6" />
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-sm text-[#18211F]">{doc.title}</span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                  doc.status === 'pending'
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                                    : doc.status === 'approved'
+                                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                                    : 'bg-red-100 text-red-900 border border-red-200'
+                                }`}>
+                                  {doc.status === 'pending' ? 'Pending Admin Confirmation' : doc.status === 'approved' ? 'Confirmed & Approved' : 'Declined'}
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-800">
+                                  {doc.documentType}
+                                </span>
+                              </div>
+                              <div className="text-xs text-[#69736F] flex flex-wrap gap-x-4 gap-y-1">
+                                <span>Investor: <strong className="text-[#18211F]">{doc.userName} ({doc.userEmail})</strong></span>
+                                {doc.transactionReference && (
+                                  <span>Ref: <strong className="font-mono text-[#18211F]">{doc.transactionReference}</strong></span>
+                                )}
+                                {doc.amount && (
+                                  <span>Amount: <strong className="text-[#27845D]">{formatCurrency(doc.amount)} {doc.currency}</strong></span>
+                                )}
+                                <span>File: <span className="font-mono">{doc.fileName}</span></span>
+                                <span>Submitted: {formatDate(doc.uploadedAt)}</span>
+                              </div>
+                              {doc.notes && (
+                                <p className="text-[11px] text-[#4A5551] italic bg-white p-2 rounded-lg border border-[#E3E8E3] mt-1">
+                                  Note from investor: "{doc.notes}"
+                                </p>
+                              )}
+                              {doc.reviewedAt && (
+                                <span className="text-[10px] text-slate-500 block">
+                                  Reviewed by {doc.reviewedBy || 'compliance'} on {formatDate(doc.reviewedAt)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5 shrink-0 self-end lg:self-center">
                             <button
                               type="button"
                               onClick={() => setPreviewProofModalDoc({
-                                title: `Identity Verification Scan: ${u.fullName}`,
-                                fileUrl: matchingDoc.fileUrl,
-                                fileName: matchingDoc.fileName,
-                                type: matchingDoc.documentType,
-                                user: `${u.fullName} (${u.email})`
+                                title: doc.title,
+                                fileUrl: doc.fileUrl,
+                                fileName: doc.fileName,
+                                type: doc.documentType,
+                                ref: doc.transactionReference,
+                                user: `${doc.userName} (${doc.userEmail})`
                               })}
-                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#27845D] border border-emerald-300 text-xs font-bold cursor-pointer transition-colors"
+                              className="btn btn-secondary text-xs font-bold px-3.5 py-2.5 border-slate-300 bg-white hover:bg-slate-50 text-[#18211F] flex items-center gap-1.5 cursor-pointer shadow-xs"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>View Uploaded {matchingDoc.documentType} Scan</span>
+                              <Eye className="w-3.5 h-3.5 text-[#27845D]" />
+                              <span>Inspect Proof</span>
                             </button>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleReviewKYC(u.id, true)}
-                        className="btn btn-primary btn-sm bg-[#27845D] text-xs font-bold cursor-pointer"
-                      >
-                        Approve Verification
-                      </button>
-                      <button
-                        onClick={() => handleReviewKYC(u.id, false)}
-                        className="btn btn-secondary btn-sm text-xs font-bold text-red-600 cursor-pointer"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 4.5: Document & Proof Approvals Vault */}
-        {activeTab === 'verification_docs' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6 animate-in fade-in duration-200">
-            {/* Header & Simulated Action */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E3E8E3] pb-5">
-              <div>
-                <h3 className="text-xl font-bold text-[#18211F]">Investor Document & Proof Approvals Vault</h3>
-                <p className="text-xs text-[#69736F]">
-                  Review, inspect, and confirm bank transfer wire receipts, crypto payment proofs, and AML identity documents uploaded from investor dashboards.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const testRef = `DEP-EUR-${Math.floor(100000 + Math.random() * 900000)}`;
-                    ledger.processDeposit(
-                      users.find(u => u.role !== 'admin')?.id || users[0].id,
-                      7500,
-                      'EUR',
-                      'SEPA Bank Wire Transfer (UNLIMIT Escrow)',
-                      testRef,
-                      {
-                        receiptUrl: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
-                        receiptFileName: `unlimit_wire_slip_${testRef}.pdf`,
-                        receiptFileSize: 260000,
-                        notes: 'Simulated investor wire transfer slip upload'
-                      }
-                    );
-                    refreshAll();
-                    setActionSuccess(`Simulated new investor upload with transfer slip (${testRef}).`);
-                    setTimeout(() => setActionSuccess(null), 4000);
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#EEF2EC] hover:bg-[#E3E8E3] text-[#182D2A] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-[#DCE4DA]"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#27845D]" />
-                  <span>Simulate Investor Upload (€7,500)</span>
-                </button>
-
-                <span className="text-xs font-bold px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full whitespace-nowrap">
-                  {pendingVerificationDocs.length} Pending Confirmation
-                </span>
-              </div>
-            </div>
-
-            {/* Filter Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-[#F6F7F4] rounded-2xl border border-[#E3E8E3] text-xs">
-              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                <span className="font-bold text-[#18211F] flex items-center gap-1">
-                  <Filter className="w-3.5 h-3.5 text-[#27845D]" /> Category:
-                </span>
-                {(['all', 'deposit_proof', 'kyc_identity', 'proof_of_address'] as const).map(cat => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setDocFilterCategory(cat)}
-                    className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
-                      docFilterCategory === cat
-                        ? 'bg-[#182D2A] text-white shadow-xs'
-                        : 'bg-white text-[#69736F] hover:text-[#18211F] border border-[#E3E8E3]'
-                    }`}
-                  >
-                    {cat === 'all' ? 'All Categories' : cat === 'deposit_proof' ? 'Deposit Receipts' : cat === 'kyc_identity' ? 'Identity (KYC)' : 'Address Proofs'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                <span className="font-bold text-[#18211F]">Status:</span>
-                {(['all', 'pending', 'approved', 'rejected'] as const).map(st => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => setDocFilterStatus(st)}
-                    className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
-                      docFilterStatus === st
-                        ? 'bg-[#182D2A] text-white shadow-xs'
-                        : 'bg-white text-[#69736F] hover:text-[#18211F] border border-[#E3E8E3]'
-                    }`}
-                  >
-                    {st === 'all' ? 'All' : st === 'pending' ? 'Pending' : st === 'approved' ? 'Approved' : 'Declined'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filtered Documents List */}
-            {(() => {
-              const filtered = verificationDocs.filter(d => {
-                const matchesCat = docFilterCategory === 'all' || d.category === docFilterCategory;
-                const matchesStatus = docFilterStatus === 'all' || d.status === docFilterStatus;
-                return matchesCat && matchesStatus;
-              });
-
-              if (filtered.length === 0) {
-                return (
-                  <div className="text-center py-12 text-[#69736F] space-y-3">
-                    <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto opacity-40" />
-                    <p className="text-sm font-semibold text-[#18211F]">No documents found for this filter.</p>
-                    <p className="text-xs max-w-sm mx-auto">
-                      All investor transfer proofs and KYC scans have been processed.
-                    </p>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="space-y-4">
-                  {filtered.map(doc => (
-                    <div
-                      key={doc.id}
-                      className="p-5 rounded-2xl border border-[#E3E8E3] bg-[#F6F7F4] flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-left"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center font-bold shrink-0 mt-0.5 shadow-xs">
-                          {doc.category === 'deposit_proof' ? (
-                            <CreditCard className="w-6 h-6" />
-                          ) : (
-                            <UserCheck className="w-6 h-6" />
-                          )}
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-sm text-[#18211F]">{doc.title}</span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                              doc.status === 'pending'
-                                ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                                : doc.status === 'approved'
-                                ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
-                                : 'bg-red-100 text-red-900 border border-red-200'
-                            }`}>
-                              {doc.status === 'pending' ? 'Pending Admin Confirmation' : doc.status === 'approved' ? 'Confirmed & Approved' : 'Declined'}
-                            </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-800">
-                              {doc.documentType}
-                            </span>
-                          </div>
-
-                          <div className="text-xs text-[#69736F] flex flex-wrap gap-x-4 gap-y-1">
-                            <span>Investor: <strong className="text-[#18211F]">{doc.userName} ({doc.userEmail})</strong></span>
-                            {doc.transactionReference && (
-                              <span>Ref: <strong className="font-mono text-[#18211F]">{doc.transactionReference}</strong></span>
-                            )}
-                            {doc.amount && (
-                              <span>Amount: <strong className="text-[#27845D]">{formatCurrency(doc.amount)} {doc.currency}</strong></span>
-                            )}
-                            <span>File: <span className="font-mono">{doc.fileName}</span></span>
-                            <span>Submitted: {formatDate(doc.uploadedAt)}</span>
-                          </div>
-
-                          {doc.notes && (
-                            <p className="text-[11px] text-[#4A5551] italic bg-white p-2 rounded-lg border border-[#E3E8E3] mt-1">
-                              Note from investor: "{doc.notes}"
-                            </p>
-                          )}
-
-                          {doc.reviewedAt && (
-                            <span className="text-[10px] text-slate-500 block">
-                              Reviewed by {doc.reviewedBy || 'compliance'} on {formatDate(doc.reviewedAt)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-2.5 shrink-0 self-end lg:self-center">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewProofModalDoc({
-                            title: doc.title,
-                            fileUrl: doc.fileUrl,
-                            fileName: doc.fileName,
-                            type: doc.documentType,
-                            ref: doc.transactionReference,
-                            user: `${doc.userName} (${doc.userEmail})`
-                          })}
-                          className="btn btn-secondary text-xs font-bold px-3.5 py-2.5 border-slate-300 bg-white hover:bg-slate-50 text-[#18211F] flex items-center gap-1.5 cursor-pointer shadow-xs"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-[#27845D]" />
-                          <span>Inspect Proof</span>
-                        </button>
-
-                        {doc.status === 'pending' ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleReviewVerificationDoc(doc.id, true)}
-                              className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center gap-1.5 cursor-pointer shadow-sm"
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Confirm & Approve</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const reason = prompt('Specify rejection reason for investor:', 'Document scan is blurry or unreadable. Please provide a clear original PDF or photo.');
-                                if (reason !== null) {
-                                  handleReviewVerificationDoc(doc.id, false, reason);
-                                }
-                              }}
-                              className="btn btn-secondary text-xs font-bold px-3.5 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <XCircle className="w-4 h-4" />
-                              <span>Decline</span>
-                            </button>
-                          </>
-                        ) : doc.status === 'approved' ? (
-                          <span className="text-xs font-bold text-emerald-800 flex items-center gap-1 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>Approved & Settled</span>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleReviewVerificationDoc(doc.id, true)}
-                            className="btn btn-secondary text-xs font-bold px-3.5 py-2 text-emerald-800 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
-                          >
-                            Re-Approve
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* Tab 5: Manage Properties */}
-        {activeTab === 'properties' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E3E8E3] pb-5">
-              <div>
-                <h3 className="text-xl font-bold text-[#18211F]">Property Offerings Portfolio ({properties.length})</h3>
-                <p className="text-xs text-[#69736F]">
-                  Manage luxury assets, review pending properties waiting for listing approval, and configure funding statuses.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowNewPropertyModal(true)}
-                  className="btn btn-primary btn-sm text-xs font-bold cursor-pointer bg-[#27845D] hover:bg-[#1f6b4b] text-white flex items-center gap-1.5 px-3.5 py-2 rounded-xl shadow-xs"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Property to Inventory
-                </button>
-              </div>
-            </div>
-
-            {/* Invariant Explanatory Banner */}
-            <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-amber-950 shadow-xs">
-              <div className="flex items-start sm:items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center shrink-0">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-sm text-amber-950 flex items-center gap-2">
-                    <span>Admin Custody Invariant Enforced</span>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
-                      Isolated
-                    </span>
-                  </div>
-                  <p className="text-amber-800/90 text-xs mt-0.5 leading-relaxed">
-                    All hidden properties stay strictly in the admin part. They are quarantined from visitors and the public frontend until an operational function is assigned and formal approval is granted.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="px-3 py-1 rounded-xl bg-white border border-amber-300 font-bold text-amber-900 text-xs">
-                  {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false).length} Assets in Admin Custody
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Status KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div
-                onClick={() => setAdminPropertyFilter('all')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  adminPropertyFilter === 'all'
-                    ? 'border-[#182D2A] bg-[#182D2A] text-white shadow-sm'
-                    : 'border-[#E3E8E3] bg-[#F6F7F4] text-[#18211F] hover:bg-gray-100'
-                }`}
-              >
-                <div className="text-xs font-semibold opacity-80">Total Inventory</div>
-                <div className="text-2xl font-black mt-1">{properties.length}</div>
-              </div>
-
-              <div
-                onClick={() => setAdminPropertyFilter('hidden')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  adminPropertyFilter === 'hidden'
-                    ? 'border-amber-500 bg-amber-500 text-white shadow-sm'
-                    : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 ring-2 ring-amber-400/20'
-                }`}
-              >
-                <div className="text-xs font-bold flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5" />
-                  Hidden in Admin Part
-                </div>
-                <div className="text-2xl font-black mt-1">
-                  {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false).length}
-                </div>
-              </div>
-
-              <div
-                onClick={() => setAdminPropertyFilter('frontend')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  adminPropertyFilter === 'frontend'
-                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
-                    : 'border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
-                }`}
-              >
-                <div className="text-xs font-bold flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5" />
-                  Live on Frontend
-                </div>
-                <div className="text-2xl font-black mt-1">
-                  {properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend === true && Boolean(p.assignedFunction)).length}
-                </div>
-              </div>
-
-              <div
-                onClick={() => setAdminPropertyFilter('upcoming')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  adminPropertyFilter === 'upcoming'
-                    ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
-                    : 'border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100'
-                }`}
-              >
-                <div className="text-xs font-bold">Launching Soon</div>
-                <div className="text-2xl font-black mt-1">
-                  {properties.filter(p => p.status === 'upcoming').length}
-                </div>
-              </div>
-            </div>
-
-            {/* Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 pb-1 border-b border-[#E3E8E3]">
-              {[
-                { label: `All Inventory (${properties.length})`, val: 'all' },
-                { label: `🔒 Hidden in Admin (${properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false).length})`, val: 'hidden' },
-                { label: `🌐 Live on Frontend (${properties.filter(p => p.status !== 'hidden' && p.status !== 'pending_approval' && p.approvedForFrontend === true && Boolean(p.assignedFunction)).length})`, val: 'frontend' },
-                { label: `Active Funding (${properties.filter(p => p.status === 'funding').length})`, val: 'funding' },
-                { label: `Launching Soon (${properties.filter(p => p.status === 'upcoming').length})`, val: 'upcoming' },
-                { label: `100% Funded (${properties.filter(p => p.status === 'funded').length})`, val: 'funded' },
-              ].map((tab) => (
-                <button
-                  key={tab.val}
-                  onClick={() => setAdminPropertyFilter(tab.val as any)}
-                  className={`text-xs px-3.5 py-1.5 rounded-full font-bold transition-all cursor-pointer ${
-                    adminPropertyFilter === tab.val
-                      ? 'bg-[#182D2A] text-white shadow-sm'
-                      : 'bg-[#EEF1EC] text-[#69736F] hover:text-[#18211F] hover:bg-gray-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Properties List */}
-            <div className="divide-y divide-[#E3E8E3]">
-              {properties
-                .filter((p) => {
-                  const isHidden = p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false;
-                  if (adminPropertyFilter === 'all') return true;
-                  if (adminPropertyFilter === 'hidden') return isHidden;
-                  if (adminPropertyFilter === 'frontend') return !isHidden && Boolean(p.assignedFunction);
-                  return p.status === adminPropertyFilter;
-                })
-                .map((p) => {
-                  const isHidden = p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false;
-                  const hasFunction = Boolean(p.assignedFunction && p.assignedFunction.trim());
-
-                  return (
-                    <div
-                      key={p.id}
-                      className={`py-4 px-3 sm:px-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${
-                        isHidden ? 'bg-amber-50/70 border border-amber-200/80 my-2 shadow-xs' : 'hover:bg-[#F6F7F4]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-[#E3E8E3]">
-                          <img
-                            src={p.images[0] || p.bannerImage}
-                            alt={p.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-bold text-[#18211F] truncate">{p.title}</h4>
-
-                            {/* Visibility Invariant Pill */}
-                            {isHidden ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                                <Lock className="w-3 h-3 text-amber-700" />
-                                Admin Part Only (Hidden)
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                <Globe className="w-3 h-3 text-emerald-700" />
-                                Live on Frontend
-                              </span>
-                            )}
-
-                            {/* Function Status Badge */}
-                            {hasFunction ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
-                                <Tag className="w-3 h-3 text-blue-600" />
-                                {p.assignedFunction}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300">
-                                <AlertCircle className="w-3 h-3 text-rose-700" />
-                                Function Unassigned
-                              </span>
-                            )}
-
-                            {/* Operational Status */}
-                            {p.status === 'upcoming' && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
-                                Launching Soon
-                              </span>
-                            )}
-                            {p.status === 'funded' && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                Fully Funded
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 text-xs text-[#69736F] flex-wrap">
-                            <span>{p.location}</span>
-                            <span>·</span>
-                            <span className="font-semibold text-[#27845D]">{p.estimatedAnnualYield}% Yield</span>
-                            <span>·</span>
-                            <span>Min: <strong className="text-[#18211F]">{formatCurrency(p.minimumInvestment || 750)}</strong></span>
-                            <span>·</span>
-                            <span>Term: <strong>{p.durationMonths} Mos</strong></span>
-                            <span>·</span>
-                            <span>Target: {formatCurrency(p.targetAmount)}</span>
-                            {p.agent?.name && (
+                            {doc.status === 'pending' ? (
                               <>
-                                <span>·</span>
-                                <span className="text-[#18211F]">Agent: {p.agent.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReviewVerificationDoc(doc.id, true)}
+                                  className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span>Confirm & Approve</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const reason = prompt('Specify rejection reason for investor:', 'Document scan is blurry or unreadable. Please provide a clear original PDF or photo.');
+                                    if (reason !== null) {
+                                      handleReviewVerificationDoc(doc.id, false, reason);
+                                    }
+                                  }}
+                                  className="btn btn-secondary text-xs font-bold px-3.5 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                  <span>Decline</span>
+                                </button>
                               </>
+                            ) : doc.status === 'approved' ? (
+                              <span className="text-xs font-bold text-emerald-800 flex items-center gap-1 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>Approved & Settled</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleReviewVerificationDoc(doc.id, true)}
+                                className="btn btn-secondary text-xs font-bold px-3.5 py-2 text-emerald-800 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
+                              >
+                                Re-Approve
+                              </button>
                             )}
                           </div>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 shrink-0 self-end md:self-auto flex-wrap">
-                        {/* Function Assignment & Approval CTAs */}
-                        {isHidden ? (
-                          <button
-                            onClick={() => handleOpenAssignModal(p)}
-                            className="btn text-xs font-bold px-3.5 py-1.5 bg-[#27845D] hover:bg-[#1f6b4b] text-white rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
-                            title="Assign function and approve to appear on frontend"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Assign Function & Approve</span>
-                          </button>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleOpenAssignModal(p)}
-                              className="text-xs font-bold px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-[#18211F] rounded-xl flex items-center gap-1 cursor-pointer transition-all border border-[#E3E8E3]"
-                              title="Edit assigned function"
-                            >
-                              <Tag className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Edit Function</span>
-                            </button>
-                            <button
-                              onClick={() => handleHideProperty(p)}
-                              className="text-xs font-bold px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl flex items-center gap-1 cursor-pointer transition-all border border-amber-200"
-                              title="Remove from frontend and quarantine in admin custody"
-                            >
-                              <Lock className="w-3.5 h-3.5" />
-                              <span>Hide to Admin</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Status Switcher Select */}
-                        <div className="flex items-center gap-1.5">
-                          <label className="text-[11px] font-bold text-[#69736F] hidden sm:inline">Status:</label>
-                          <select
-                            value={p.status}
-                            onChange={(e) => handleSetPropertyStatus(p, e.target.value as PropertyStatus)}
-                            className="text-xs font-bold px-2.5 py-1.5 rounded-xl border border-[#E3E8E3] bg-white text-[#18211F] cursor-pointer"
-                          >
-                            <option value="funding">Funding Active</option>
-                            <option value="upcoming">Launching Soon</option>
-                            <option value="funded">100% Funded</option>
-                            <option value="hidden">Hidden in Admin (Quarantined)</option>
-                          </select>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   );
-                })}
-            </div>
-          </div>
-        )}
+                })()}
+              </div>
+            )}
 
-        {/* Tab: Property Documents Automatic Generator */}
-        {activeTab === 'property-documents' && (
-          <div className="animate-in fade-in duration-200">
-            <PropertyDocumentsHub properties={properties} />
-          </div>
-        )}
+            {activeTab === 'properties' && (
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E3E8E3] pb-5">
+                  <div>
+                    <h3 className="text-xl font-bold text-[#18211F]">Property Offerings Portfolio ({properties.length})</h3>
+                    <p className="text-xs text-[#69736F]">
+                      Manage luxury assets, review pending properties waiting for listing approval, and configure funding statuses.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowNewPropertyModal(true)}
+                      className="btn btn-primary btn-sm text-xs font-bold cursor-pointer bg-[#27845D] hover:bg-[#1f6b4b] text-white flex items-center gap-1.5 px-3.5 py-2 rounded-xl shadow-xs"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Property to Inventory
+                    </button>
+                  </div>
+                </div>
 
-        {/* Tab: Ledger Reconciliation & Dual-Approval Controls */}
-        {activeTab === 'reconciliation' && (
-          <div className="animate-in fade-in duration-200">
-            <AdminReconciliationView />
-          </div>
-        )}
+                <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-amber-950 shadow-xs">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 flex items-center justify-center shrink-0">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-amber-950 flex items-center gap-2">
+                        <span>Admin Custody Invariant Enforced</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 border border-amber-300">
+                          Isolated
+                        </span>
+                      </div>
+                      <p className="text-amber-800/90 text-xs mt-0.5 leading-relaxed">
+                        All hidden properties stay strictly in the admin part. They are quarantined from visitors and the public frontend until an operational function is assigned and formal approval is granted.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="px-3 py-1 rounded-xl bg-white border border-amber-300 font-bold text-amber-900 text-xs">
+                      {properties.filter(p => p.status === 'hidden' || p.status === 'pending_approval' || p.approvedForFrontend === false).length} Assets in Admin Custody
+                    </span>
+                  </div>
+                </div>
 
-        {/* Tab: Company News & YouTube Video Integration */}
-        {activeTab === 'news' && (
-          <div className="animate-in fade-in duration-200">
-            <AdminNewsManager />
-          </div>
-        )}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div
+                    onClick={() => setAdminPropertyFilter('all')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      adminPropertyFilter === 'all'
+                        ? 'border-[#182D2A] bg-[#182D2A] text-white shadow-sm'
+                        : 'border-[#E3E8E3] bg-[#F6F7F4] text-[#18211F] hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold opacity-80">Total Inventory</div>
+                    <div className="text-2xl font-black mt-1">{properties.length}</div>
+                  </div>
+                  <div
+                    onClick={() => setAdminPropertyFilter('funding')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      adminPropertyFilter === 'funding'
+                        ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-sm'
+                        : 'border-[#E3E8E3] bg-[#F6F7F4] text-[#18211F] hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold opacity-80">Funding</div>
+                    <div className="text-2xl font-black mt-1">{properties.filter(p => p.status === 'funding').length}</div>
+                  </div>
+                  <div
+                    onClick={() => setAdminPropertyFilter('funded')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      adminPropertyFilter === 'funded'
+                        ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-sm'
+                        : 'border-[#E3E8E3] bg-[#F6F7F4] text-[#18211F] hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold opacity-80">Funded</div>
+                    <div className="text-2xl font-black mt-1">{properties.filter(p => p.status === 'funded').length}</div>
+                  </div>
+                  <div
+                    onClick={() => setAdminPropertyFilter('upcoming')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all ${
+                      adminPropertyFilter === 'upcoming'
+                        ? 'border-purple-600 bg-purple-50 text-purple-900 shadow-sm'
+                        : 'border-[#E3E8E3] bg-[#F6F7F4] text-[#18211F] hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="text-xs font-semibold opacity-80">Upcoming</div>
+                    <div className="text-2xl font-black mt-1">{properties.filter(p => p.status === 'upcoming').length}</div>
+                  </div>
+                </div>
 
-        {/* Tab: Real Estate Dossiers & Editorial CMS (Immo Matin Structure) */}
-        {activeTab === 'insights' && (
-          <div className="animate-in fade-in duration-200">
-            <AdminInsightsCMS
-              currentAdminEmail={activeUser.email}
-              onViewLiveArticle={(slug) => {
-                navigateTo(`/insights/${slug}`);
-              }}
-              onRefreshAll={refreshAll}
-            />
-          </div>
-        )}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#E3E8E3] text-[#69736F] font-bold uppercase text-[10px] tracking-wider bg-[#F9FAF8]">
+                        <th className="py-3 px-3">Property Asset / SPV</th>
+                        <th className="py-3 px-3">City & Type</th>
+                        <th className="py-3 px-3">Funding Progress</th>
+                        <th className="py-3 px-3">Yield (Net IRR)</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3 text-right">Quick Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E3E8E3]">
+                      {properties
+                        .filter(p => adminPropertyFilter === 'all' || p.status === adminPropertyFilter)
+                        .map((prop) => {
+                          const percent = Math.min(100, Math.round((prop.fundedAmount / prop.targetAmount) * 100));
+                          return (
+                            <tr key={prop.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-3.5 px-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                                    <img src={prop.images[0] || prop.bannerImage} alt={prop.title} className="w-full h-full object-cover" />
+                                  </div>
+                                  <div>
+                                    <span className="font-bold text-[#18211F] block text-xs hover:text-emerald-800">{prop.title}</span>
+                                    <span className="text-[10px] text-[#69736F] font-mono">
+                                      {prop.tokenTicker} · {prop.blockchainNetwork || 'Polygon POS'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-3">
+                                <span className="font-semibold text-[#18211F] block">{prop.city}</span>
+                                <span className="text-[10px] text-[#69736F]">{prop.type}</span>
+                              </td>
+                              <td className="py-3.5 px-3 min-w-[160px]">
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-[11px] font-semibold">
+                                    <span className="text-[#18211F]">{formatCurrency(prop.fundedAmount)}</span>
+                                    <span className="text-[#69736F]">{percent}%</span>
+                                  </div>
+                                  <div className="w-full bg-[#E8EEED] h-2 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-500 ${
+                                        percent >= 100 ? 'bg-emerald-600' : 'bg-[#182D2A]'
+                                      }`}
+                                      style={{ width: `${percent}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] text-[#69736F] block">Goal: {formatCurrency(prop.targetAmount)}</span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-3">
+                                <span className="font-black text-emerald-800 block text-xs">{prop.estimatedAnnualYield}%</span>
+                                <span className="text-[10px] text-[#69736F]">+{prop.capitalAppreciationYield}% apprec.</span>
+                              </td>
+                              <td className="py-3.5 px-3">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  prop.status === 'funding'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : prop.status === 'funded'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : prop.status === 'upcoming'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {prop.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-3 text-right">
+                                <button
+                                  onClick={() => handleTogglePropertyStatus(prop)}
+                                  className="text-[11px] font-semibold text-emerald-800 hover:text-emerald-950 hover:underline cursor-pointer"
+                                  title="Click to cycle status: Funding -> Funded -> Upcoming -> Funding"
+                                >
+                                  Cycle Status
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-        {/* Tab 6: Audit Logs & Compliance Trail */}
-        {activeTab === 'audit' && (
-          <AdminAuditLogsView currentAdminEmail={activeUser.email} />
-        )}
+            {activeTab === 'property-documents' && (
+              <PropertyDocumentsHub properties={properties} />
+            )}
 
-        {/* Tab 7: API Logs & System Monitoring */}
-        {activeTab === 'logs' && <AdminMonitoringView />}
+            {activeTab === 'audit' && (
+              <AdminAuditLogsView currentAdminEmail={activeUser.email} />
+            )}
 
-        {/* Tab 8: Admin Security & Passphrase Settings */}
-        {activeTab === 'admin-security' && <AdminAccountSettings />}
+            {activeTab === 'logs' && (
+              <AdminMonitoringView />
+            )}
 
-        {/* Tab 9: Institutional Email Communication & Templates */}
-        {activeTab === 'emails' && <AdminEmailManager />}
+            {activeTab === 'admin-security' && (
+              <AdminAccountSettings />
+            )}
 
-        {/* Tab 10: Client-Side Frontend Error Buffer */}
-        {activeTab === 'frontend-errors' && <AdminFrontendErrorLogView />}
+            {activeTab === 'emails' && (
+              <AdminEmailManager />
+            )}
 
-        {/* Tab 11: Property Payment Distribution & Daily Synchronization */}
-        {activeTab === 'payment-distribution' && <AdminPaymentDistributionManager />}
+            {activeTab === 'frontend-errors' && (
+              <AdminFrontendErrorLogView />
+            )}
 
-        {/* Tab 12: Club Privé Membership Management */}
-        {activeTab === 'membership' && <AdminMembershipTab />}
+            {activeTab === 'news' && (
+              <AdminNewsManager />
+            )}
+
+            {activeTab === 'insights' && (
+              <AdminInsightsCMS currentAdminEmail={activeUser.email} onRefreshAll={refreshAll} />
+            )}
+
+            {activeTab === 'referrals' && (
+              <AdminReferralsTab />
+            )}
+
+            {activeTab === 'support' && (
+              <AdminSupportTab />
+            )}
+
+            {activeTab === 'marketing' && (
+              <AdminMarketingTab />
+            )}
+
+            {activeTab === 'website' && (
+              <AdminWebsiteTab />
+            )}
+
+            {activeTab === 'site-settings' && (
+              <AdminSiteSettingsTab />
+            )}
+          </main>
+        </div>
       </div>
 
-      {/* New Property Modal */}
-      {showNewPropertyModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-[#E3E8E3] relative max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-[#18211F]">Publish New Real Estate Asset</h3>
-              <button onClick={() => setShowNewPropertyModal(false)} className="text-gray-400 hover:text-black text-xl font-bold cursor-pointer">
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateProperty} className="space-y-4">
-              <div className="form-field">
-                <label>Property Name / Title</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Barcelona Eixample Boutique Apartments"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Address & City</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Carrer de Mallorca 112, Barcelona, Spain"
-                  value={newLocation}
-                  onChange={(e) => setNewLocation(e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-field">
-                  <label>Asset Category</label>
-                  <select
-                    value={newType}
-                    onChange={(e) => setNewType(e.target.value as PropertyType)}
-                  >
-                    <option value="Residential">Residential</option>
-                    <option value="Coliving">Coliving Hub</option>
-                    <option value="Vacation Rental">Vacation Rental</option>
-                    <option value="Commercial">Commercial</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Target Funding (EUR)</label>
-                  <input
-                    type="number"
-                    min={50000}
-                    step={10000}
-                    value={newTarget}
-                    onChange={(e) => setNewTarget(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="form-field">
-                  <label>Est. Net Yield (%)</label>
-                  <input
-                    type="number"
-                    step={0.1}
-                    value={newYield}
-                    onChange={(e) => setNewYield(Number(e.target.value))}
-                  />
-                </div>
-                <div className="form-field">
-                  <label>Capital Gain (%)</label>
-                  <input
-                    type="number"
-                    step={0.1}
-                    value={newAppreciation}
-                    onChange={(e) => setNewAppreciation(Number(e.target.value))}
-                  />
-                </div>
-                <div className="form-field">
-                  <label>Duration (Mo)</label>
-                  <input
-                    type="number"
-                    value={newDuration}
-                    onChange={(e) => setNewDuration(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 flex gap-3">
-                <button type="submit" className="btn btn-primary flex-1 text-xs font-bold cursor-pointer">
-                  Publish Property to Marketplace
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewPropertyModal(false)}
-                  className="btn btn-secondary text-xs cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Document Proof Inspector Modal */}
+      {/* Document Proof Preview Modal */}
       {previewProofModalDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div 
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-[#E3E8E3] relative max-h-[90vh] flex flex-col space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-[#E3E8E3] pb-3 text-left">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-[#27845D] tracking-wider block">
-                  Encrypted Compliance Proof Inspector
-                </span>
-                <h3 className="text-lg font-black text-[#18211F]">{previewProofModalDoc.title}</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-[#E3E8E3] overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b border-[#E3E8E3] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#182D2A] text-[#B7E36A] flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#18211F]">{previewProofModalDoc.title}</h3>
+                  <p className="text-xs text-[#69736F]">{previewProofModalDoc.user}</p>
+                </div>
               </div>
               <button
-                type="button"
                 onClick={() => setPreviewProofModalDoc(null)}
-                className="p-2 rounded-full hover:bg-slate-100 text-slate-500 hover:text-black cursor-pointer"
+                className="p-1 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <div className="flex-1 overflow-y-auto rounded-2xl bg-slate-950 p-2 flex items-center justify-center min-h-[320px]">
-              {previewProofModalDoc.fileUrl.startsWith('data:image') || previewProofModalDoc.fileUrl.startsWith('http') ? (
-                <img
-                  src={previewProofModalDoc.fileUrl}
-                  alt={previewProofModalDoc.title}
-                  className="max-h-[60vh] max-w-full rounded-xl object-contain shadow-md"
-                />
-              ) : (
-                <div className="text-center p-8 text-white space-y-2">
-                  <FileText className="w-16 h-16 mx-auto text-emerald-400" />
-                  <p className="text-sm font-bold">{previewProofModalDoc.fileName}</p>
-                  <p className="text-xs text-slate-400">PDF Document Proof</p>
+            <div className="p-6 overflow-y-auto">
+              <div className="flex flex-col gap-4">
+                <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold text-[#27845D] uppercase tracking-wider">
+                      {previewProofModalDoc.type}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      {previewProofModalDoc.ref || 'No reference'}
+                    </span>
+                  </div>
+                  <img
+                    src={previewProofModalDoc.fileUrl}
+                    alt={previewProofModalDoc.fileName}
+                    className="w-full max-h-[400px] object-cover rounded-xl border border-[#E3E8E3]"
+                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=Document+Preview+Unavailable';
+                    }}
+                  />
+                  <p className="mt-2 text-xs text-[#69736F]">{previewProofModalDoc.fileName}</p>
                 </div>
-              )}
-            </div>
-
-            <div className="p-3.5 bg-[#F6F7F4] rounded-2xl border border-[#E3E8E3] flex flex-wrap items-center justify-between text-xs text-[#69736F] gap-2 text-left">
-              <div>
-                {previewProofModalDoc.user && (
-                  <span className="block">Investor: <strong className="text-[#18211F]">{previewProofModalDoc.user}</strong></span>
-                )}
-                {previewProofModalDoc.ref && (
-                  <span className="block mt-0.5">Reference: <strong className="font-mono text-[#18211F]">{previewProofModalDoc.ref}</strong></span>
-                )}
-              </div>
-              <div>
-                <span>File: <strong className="font-mono text-[#18211F]">{previewProofModalDoc.fileName}</strong></span>
               </div>
             </div>
-
-            <div className="flex justify-end pt-2 border-t border-[#E3E8E3]">
+            <div className="p-4 border-t border-[#E3E8E3] flex justify-end gap-2">
               <button
-                type="button"
                 onClick={() => setPreviewProofModalDoc(null)}
-                className="btn btn-secondary text-xs font-bold px-6 py-2.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-[#18211F] bg-white border border-[#E3E8E3] hover:bg-[#F6F7F4] cursor-pointer"
               >
-                Close Inspector
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Property Operational Function & Frontend Approval Workflow Modal */}
-      {assignModalProperty && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-[#E3E8E3] relative max-h-[92vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex justify-between items-start gap-4 mb-5 border-b border-[#E3E8E3] pb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800">
-                    Admin Custody Workflow · Institutional Governance
-                  </span>
-                </div>
-                <h3 className="text-xl font-black text-[#18211F]">
-                  Assign Operational Function & Approve for Frontend
-                </h3>
-                <p className="text-xs text-[#69736F] mt-1 leading-relaxed">
-                  All hidden properties stay strictly in the admin part. An operational function must be assigned and formal administrative approval given before this asset appears on the frontend.
-                </p>
-              </div>
-              <button
-                onClick={() => setAssignModalProperty(null)}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 hover:text-black font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Property Summary Card */}
-            <div className="bg-[#F6F7F4] p-4 rounded-2xl border border-[#E3E8E3] flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-200 shrink-0 border border-gray-300">
-                <img
-                  src={assignModalProperty.images[0] || assignModalProperty.bannerImage}
-                  alt={assignModalProperty.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="space-y-1 flex-1 min-w-0">
-                <h4 className="text-sm font-black text-[#18211F] truncate">
-                  {assignModalProperty.title}
-                </h4>
-                <div className="flex items-center gap-3 text-xs text-[#69736F] flex-wrap">
-                  <span>{assignModalProperty.location}</span>
-                  <span>·</span>
-                  <span className="font-bold text-[#27845D]">{assignModalProperty.estimatedAnnualYield}% Net Yield</span>
-                  <span>·</span>
-                  <span>Target: {formatCurrency(assignModalProperty.targetAmount)}</span>
-                  <span>·</span>
-                  <span>Ticker: <strong className="font-mono text-[#18211F]">{assignModalProperty.tokenTicker}</strong></span>
-                </div>
-                <div className="flex items-center gap-2 text-[11px] pt-0.5">
-                  <span className="text-amber-800 font-semibold">Current Custody State:</span>
-                  <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
-                    {assignModalProperty.status === 'hidden' ? 'Hidden in Admin Custody' : assignModalProperty.status.toUpperCase()}
-                  </span>
-                  {assignModalProperty.assignedFunction ? (
-                    <span className="text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 font-medium">
-                      Current Function: {assignModalProperty.assignedFunction}
-                    </span>
-                  ) : (
-                    <span className="text-rose-800 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 font-bold">
-                      Function: Unassigned
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Step 1: Assign Operational Function */}
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-[#18211F] flex items-center gap-1.5">
-                  <Tag className="w-4 h-4 text-[#27845D]" />
-                  <span>1. Assign Property Operational Function (Required)</span>
-                </label>
-                <span className="text-[11px] text-emerald-800 font-bold">Mandatory for Frontend Approval</span>
-              </div>
-
-              {/* Function Preset Selector Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { id: 'fn-1', label: 'Institutional Fractional Tokenization', desc: 'Public Marketplace fractional participatory note' },
-                  { id: 'fn-2', label: 'Exclusive Off-Market Private Desk', desc: 'Confidential syndicate for accredited & family office partners' },
-                  { id: 'fn-3', label: 'High-Yield Vacation Rental Syndicate', desc: 'Short-term luxury villa letting (Riviera / Balearic Islands)' },
-                  { id: 'fn-4', label: 'Prime Metropolitan Trophy Residence', desc: 'Core capital appreciation asset in Paris 16th / Salamanca' },
-                  { id: 'fn-5', label: 'Club Privé Private Allocation', desc: 'Reserved allocation for Tier 1 & Tier 2 membership holders' },
-                  { id: 'fn-6', label: 'Heritage Château & Vineyard Syndicate', desc: 'Historic estate with agricultural & hospitality yield streams' },
-                ].map((fn) => (
-                  <button
-                    key={fn.id}
-                    type="button"
-                    onClick={() => setAssignedFunctionInput(fn.label)}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                      assignedFunctionInput === fn.label
-                        ? 'border-[#27845D] bg-emerald-50/70 text-emerald-950 ring-2 ring-emerald-500/30 shadow-xs'
-                        : 'border-[#E3E8E3] hover:border-gray-300 bg-white text-[#18211F]'
-                    }`}
-                  >
-                    <div className="text-xs font-bold flex items-center justify-between">
-                      <span>{fn.label}</span>
-                      {assignedFunctionInput === fn.label && <Check className="w-3.5 h-3.5 text-[#27845D]" />}
-                    </div>
-                    <div className="text-[10px] text-[#69736F] mt-1 leading-normal">
-                      {fn.desc}
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Text Input for Custom Function */}
-              <div className="pt-1">
-                <label className="text-[11px] font-semibold text-[#69736F] block mb-1">
-                  Or specify a custom operational mandate:
-                </label>
-                <input
-                  type="text"
-                  value={assignedFunctionInput}
-                  onChange={(e) => setAssignedFunctionInput(e.target.value)}
-                  placeholder="e.g. Bespoke Family Office Syndicate, Prime Riviera Flagship..."
-                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] focus:border-[#27845D] focus:ring-1 focus:ring-[#27845D] bg-white text-[#18211F]"
-                />
-              </div>
-            </div>
-
-            {/* Step 2: Assign Lead Broker & Target Launch Status */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="text-xs font-bold text-[#18211F] block mb-1.5">
-                  2. Assigned Lead Agent / Broker
-                </label>
-                <select
-                  value={assignedAgentInput}
-                  onChange={(e) => setAssignedAgentInput(e.target.value)}
-                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] bg-white text-[#18211F] cursor-pointer"
-                >
-                  <option value="Valentin Kretz">Valentin Kretz (Partner · European Offerings)</option>
-                  <option value="Martin Kretz">Martin Kretz (Managing Partner · Paris Core)</option>
-                  <option value="Louis Kretz">Louis Kretz (Partner · Riviera & Balearic)</option>
-                  <option value="Olivier Kretz">Olivier Kretz (Founding Director)</option>
-                  <option value="Sandrine Kretz">Sandrine Kretz (Creative & Asset Curator)</option>
-                  <option value="L'Agence Institutional Advisory Desk">L'Agence Institutional Advisory Desk</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#18211F] block mb-1.5">
-                  3. Target Launch Status on Frontend
-                </label>
-                <select
-                  value={targetLaunchStatus}
-                  onChange={(e) => setTargetLaunchStatus(e.target.value as PropertyStatus)}
-                  className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] bg-white text-[#18211F] cursor-pointer"
-                >
-                  <option value="funding">Funding Active (Open for immediate investment)</option>
-                  <option value="upcoming">Launching Soon (Upcoming pipeline countdown)</option>
-                  <option value="funded">100% Funded (Track record archive)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Step 3: Governance & Due Diligence Checklist */}
-            <div className="bg-[#F8FAF8] border border-[#E3E8E3] rounded-2xl p-4 mb-6 space-y-2.5">
-              <div className="text-xs font-bold text-[#18211F] flex items-center justify-between">
-                <span>4. Administrative Due Diligence Validation Checklist</span>
-                <span className="text-[10px] text-[#27845D] font-bold">Audit Certified</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#52605C]">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checklist.spvDeedVerified}
-                    onChange={(e) => setChecklist({ ...checklist, spvDeedVerified: e.target.checked })}
-                    className="rounded text-[#27845D] focus:ring-[#27845D]"
-                  />
-                  <span>SPV Constitutional Deeds Audited</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checklist.ricsValuationCertified}
-                    onChange={(e) => setChecklist({ ...checklist, ricsValuationCertified: e.target.checked })}
-                    className="rounded text-[#27845D] focus:ring-[#27845D]"
-                  />
-                  <span>RICS Appraisal Certified</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checklist.smartContractGenerated}
-                    onChange={(e) => setChecklist({ ...checklist, smartContractGenerated: e.target.checked })}
-                    className="rounded text-[#27845D] focus:ring-[#27845D]"
-                  />
-                  <span>Smart Contract & Ticker Bound</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checklist.amlKycApproved}
-                    onChange={(e) => setChecklist({ ...checklist, amlKycApproved: e.target.checked })}
-                    className="rounded text-[#27845D] focus:ring-[#27845D]"
-                  />
-                  <span>AML / Compliance Screening Cleared</span>
-                </label>
-              </div>
-
-              <div className="pt-1.5">
-                <input
-                  type="text"
-                  placeholder="Optional approval notes / executive sign-off remarks..."
-                  value={approvalNotes}
-                  onChange={(e) => setApprovalNotes(e.target.value)}
-                  className="w-full text-xs px-3 py-2 rounded-xl border border-[#E3E8E3] bg-white text-[#18211F]"
-                />
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#E3E8E3]">
-              <button
-                type="button"
-                onClick={() => setAssignModalProperty(null)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-100 cursor-pointer"
-              >
-                Cancel
-              </button>
-
-              <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={handleSaveFunctionOnly}
-                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5"
-                  title="Save the assigned function without approving; keeps the asset strictly in admin custody."
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Save Function (Keep in Admin)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleApproveForFrontend}
-                  disabled={!assignedFunctionInput.trim()}
-                  className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all ${
-                    assignedFunctionInput.trim()
-                      ? 'bg-[#27845D] hover:bg-[#1f6b4b]'
-                      : 'bg-gray-300 cursor-not-allowed'
-                  }`}
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Approve & Publish to Frontend</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  </>
+    </>
   );
 };

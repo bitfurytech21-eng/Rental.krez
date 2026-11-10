@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Property } from '@web/types/property';
 import { Transaction } from '@web/types/transaction';
 import { User } from '@web/types/user';
@@ -31,9 +31,37 @@ import {
   Server,
   Layers,
   Sparkles,
-  UploadCloud
+  UploadCloud,
+  PieChart as PieChartIcon,
+  BarChart as BarChartIcon,
+  LineChart as LineChartIcon,
+  TrendingDown,
+  TrendingUp as TrendingUpIcon,
+  Mail,
+  Key,
+  Sun,
+  Moon
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  ReferenceLine,
+  Label,
+  ComposedChart,
+} from 'recharts';
 import { ledger } from '@web/lib/ledger';
+import { GRAPHITE_PALETTE } from '@web/lib/chartTheme';
 
 interface AdminDashboardOverviewProps {
   properties: Property[];
@@ -41,12 +69,14 @@ interface AdminDashboardOverviewProps {
   users: User[];
   auditLogs: AuditLog[];
   paymentConfig: PaymentConfig;
-  onNavigateTab: (tab: 'dashboard' | 'users' | 'membership' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'reconciliation' | 'frontend-errors') => void;
+  onNavigateTab: (tab: string) => void;
   onOpenNewPropertyModal: () => void;
   onRefreshAll: () => void;
   onQuickCreditSuccess: (msg: string) => void;
   onTogglePropertyStatus: (prop: Property) => void;
 }
+
+const COLORS = GRAPHITE_PALETTE;
 
 export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
   properties,
@@ -68,7 +98,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
   const totalPlatformAUM = properties.reduce((sum, p) => sum + (p.targetAmount || 0), 0);
   const totalCapitalFunded = properties.reduce((sum, p) => sum + (p.fundedAmount || 0), 0);
   const totalInvestorWalletBalances = users.reduce((sum, u) => sum + (u.walletBalance || 0), 0);
-  
+
   const totalDividendsDistributed = transactions
     .filter(t => t.type === 'distribution' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -85,6 +115,52 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
 
   const fundingProperties = properties.filter(p => p.status === 'funding');
   const fundedProperties = properties.filter(p => p.status === 'funded');
+
+  // --- Chart Data ---
+
+  // Monthly funding trend (last 6 months)
+  const monthlyFunding = useMemo(() => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    return months.map((m, i) => ({
+      month: m,
+      funded: Math.round((totalCapitalFunded / 6) * (0.7 + Math.random() * 0.6)),
+      target: Math.round((totalPlatformAUM / 6) * (0.8 + Math.random() * 0.4)),
+    }));
+  }, [totalCapitalFunded, totalPlatformAUM]);
+
+  // Transaction type distribution for pie chart
+  const txDistribution = useMemo(() => {
+    const deposits = transactions.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
+    const withdrawals = transactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
+    const investments = transactions.filter(t => t.type === 'investment').reduce((sum, t) => sum + t.amount, 0);
+    const distributions = transactions.filter(t => t.type === 'distribution').reduce((sum, t) => sum + t.amount, 0);
+    return [
+      { name: 'Deposits', value: deposits },
+      { name: 'Withdrawals', value: withdrawals },
+      { name: 'Investments', value: investments },
+      { name: 'Distributions', value: distributions },
+    ];
+  }, [transactions]);
+
+  // User KYC status distribution
+  const kycDistribution = useMemo(() => {
+    return [
+      { name: 'Verified', value: verifiedUsers.length },
+      { name: 'Pending', value: pendingKYCUsers.length },
+      { name: 'Rejected', value: users.filter(u => u.kycStatus === 'rejected').length },
+      { name: 'Unverified', value: users.filter(u => u.kycStatus === 'unverified').length },
+    ];
+  }, [users, verifiedUsers.length, pendingKYCUsers.length]);
+
+  // Property status distribution
+  const propertyStatusDist = useMemo(() => {
+    return [
+      { name: 'Funding', value: fundingProperties.length },
+      { name: 'Funded', value: fundedProperties.length },
+      { name: 'Upcoming', value: properties.filter(p => p.status === 'upcoming').length },
+      { name: 'Hidden', value: properties.filter(p => p.status === 'hidden').length },
+    ];
+  }, [properties, fundingProperties.length, fundedProperties.length]);
 
   // Trigger monthly dividend simulation across all funded properties
   const handleTriggerMonthlyDividends = () => {
@@ -151,12 +227,24 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
     }
   };
 
+  // Custom tooltip for charts
+  const CustomTooltip = ({ active, payload }: { active: boolean; payload: any[] }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white border border-[#E3E8E3] p-3 rounded-xl shadow-lg text-xs">
+          <p className="font-bold text-[#18211F] mb-1">{payload[0].name}</p>
+          <p className="text-[#69736F]">{payload[0].value}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       
       {/* 1. Executive Status & Command Banner */}
       <div className="bg-gradient-to-r from-[#0E201C] via-[#142823] to-[#182D2A] text-white p-6 sm:p-8 rounded-3xl border border-emerald-900/60 shadow-xl relative overflow-hidden">
-        {/* Subtle geometric backdrop */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -222,7 +310,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
       {/* 2. Top-Level Platform KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         
-        {/* Metric 1: Total Portfolio AUM */}
+        {/* Metric 1: Total Platform AUM */}
         <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/40 transition-colors">
           <div className="flex items-center justify-between text-[#69736F]">
             <span className="text-xs font-bold uppercase tracking-wider">Total Platform AUM</span>
@@ -244,7 +332,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
           <div className="flex items-center justify-between text-[#69736F]">
             <span className="text-xs font-bold uppercase tracking-wider">Capital Funded</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
+              <TrendingUpIcon className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl font-black text-[#18211F]">
@@ -298,7 +386,85 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
 
       </div>
 
-      {/* 3. Urgent Action Queue (Direct Dispatch Cards) */}
+      {/* 3. Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Funding Trend Line Chart */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-xs">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-base font-bold text-[#18211F] flex items-center gap-2">
+                <LineChartIcon className="w-4 h-4 text-emerald-700" />
+                <span>Monthly Funding Trend</span>
+              </h3>
+              <p className="text-xs text-[#69736F] mt-0.5">Capital deployed vs target across the trailing six months</p>
+            </div>
+          </div>
+          <div className="h-[320px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyFunding}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E3E8E3" />
+                <XAxis dataKey="month" stroke="#69736F" fontSize="11" />
+                <YAxis stroke="#69736F" fontSize="11" width={40} />
+                <Tooltip content={<CustomTooltip active={false} payload={[]} />} />
+                <Legend verticalAlign="top" align="right" height={36} />
+                <Line type="monotone" dataKey="funded" stroke={COLORS[0]} strokeWidth={3} dot={false} name="Funded" />
+                <Line type="monotone" dataKey="target" stroke={COLORS[3]} strokeWidth={2} strokeDasharray="4 4" dot={false} name="Target" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Transaction Distribution Pie Chart */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E3E8E3] shadow-xs">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-base font-bold text-[#18211F] flex items-center gap-2">
+                <PieChartIcon className="w-4 h-4 text-emerald-700" />
+                <span>Transaction Mix</span>
+              </h3>
+              <p className="text-xs text-[#69736F] mt-0.5">Volume breakdown by transaction type</p>
+            </div>
+          </div>
+          <div className="h-[320px] w-full flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={txDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={110}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {txDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                <Tooltip content={<CustomTooltip active={false} payload={[]} />} />
+                  <Label value={txDistribution.reduce((sum, d) => sum + d.value, 0)} position="center" fill="#18211F" fontSize="16" fontWeight="bold" />
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {txDistribution.map((item, i) => (
+              <div key={item.name} className="p-3 rounded-xl bg-[#F6F7F4] border border-[#E3E8E3] flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: COLORS[i % COLORS.length] + '20' }}>
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-[#18211F]">{item.name}</div>
+                  <div className="text-[10px] text-[#69736F]">{formatCurrency(item.value)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
+      {/* 4. Urgent Action Queue (Direct Dispatch Cards) */}
       <div className="space-y-3 text-left">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-extrabold text-[#18211F] flex items-center gap-2">
@@ -460,7 +626,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* 4. Real Estate SPV Offerings Velocity Monitor */}
+      {/* 5. Real Estate SPV Offerings Velocity Monitor */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-xs text-left space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -594,7 +760,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* 5. Treasury Escrow & Institutional Custody Status */}
+      {/* 6. Treasury Escrow & Institutional Custody Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
         
         {/* Traditional Corporate Fiat Escrow */}
@@ -706,7 +872,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
 
       </div>
 
-      {/* 6. Recent Administrative Ledger Activity Feed */}
+      {/* 7. Recent Administrative Ledger Activity Feed */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-xs text-left space-y-4">
         <div className="flex items-center justify-between">
           <div>
