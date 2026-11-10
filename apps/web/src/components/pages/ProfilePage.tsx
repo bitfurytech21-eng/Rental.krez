@@ -20,6 +20,7 @@ import {
   RotateCcw,
   FileText,
   X,
+  Bell,
 } from 'lucide-react';
 import { ImageUploader } from '../common/ImageUploader';
 import { AccountTypeSwitcher } from '../common/AccountTypeSwitcher';
@@ -49,6 +50,45 @@ interface ProfilePageProps {
 
 const MAX_KYC_FILE_BYTES = 15 * 1024 * 1024; // 15MB
 
+const EMAIL_PREFERENCES = [
+  {
+    id: 'deposit_confirmation',
+    label: 'Deposit Confirmations',
+    desc: 'Receive confirmation when your bank wire or crypto deposit is received and cleared.',
+    default: true,
+  },
+  {
+    id: 'withdrawal_status',
+    label: 'Withdrawal Status',
+    desc: 'Get notified when your withdrawal request is approved, processed, or paid out.',
+    default: true,
+  },
+  {
+    id: 'dividend_distribution',
+    label: 'Monthly Dividend Distributions',
+    desc: 'Alert when rental yields and capital distributions are credited to your wallet.',
+    default: true,
+  },
+  {
+    id: 'investment_confirmation',
+    label: 'Investment Confirmations',
+    desc: 'Email receipt when you purchase or reinvest in a new property SPV.',
+    default: true,
+  },
+  {
+    id: 'kyc_status_updates',
+    label: 'KYC & Compliance Updates',
+    desc: 'Notification when your identity verification status changes (approved, rejected, pending).',
+    default: true,
+  },
+  {
+    id: 'marketing_communications',
+    label: 'Marketing & Newsletter',
+    desc: 'Occasional emails about new property launches, yield updates, and exclusive investor events.',
+    default: false,
+  },
+] as const;
+
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   dashboardTheme,
   onSelectTheme,
@@ -66,6 +106,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [message, setMessage] = useState<string | null>(null);
   const [localTheme, setLocalTheme] = useState<DashboardThemeId>(() => {
     return (localStorage.getItem('dashboard_theme') as DashboardThemeId) || 'slate';
+  });
+
+  const [emailPrefs, setEmailPrefs] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem(`email_prefs_${user?.id || 'default'}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Object.fromEntries(
+          EMAIL_PREFERENCES.map((p) => [p.id, parsed[p.id] ?? p.default])
+        );
+      }
+    } catch {}
+    return Object.fromEntries(EMAIL_PREFERENCES.map((p) => [p.id, p.default]));
   });
 
   // Editable Profile & Banking state
@@ -601,6 +655,78 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* Account Type Switcher Component */}
         <AccountTypeSwitcher user={user} onRefresh={refreshUser} onMessage={(m) => setMessage(m)} />
+
+        {/* Email Notification Preferences */}
+        <div className="dash-card p-6 rounded-3xl border shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-inherit/30">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#00D2FF]/15 text-[#00D2FF] border border-[#00D2FF]/30 flex items-center justify-center shrink-0">
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold dash-text">Email Notification Preferences</h3>
+                <p className="text-xs dash-muted">
+                  Choose which automated emails you receive for account actions, investment updates, and marketing communications.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {EMAIL_PREFERENCES.map((pref) => {
+              const isEnabled = emailPrefs[pref.id] ?? pref.default;
+              return (
+                <div
+                  key={pref.id}
+                  className="p-3.5 rounded-2xl dash-inner border flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-[#151515] border border-[#303030] flex items-center justify-center shrink-0">
+                      <Bell className="w-4 h-4 text-[#00D2FF] shrink-0" />
+                    </div>
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="space-y-0.5">
+                        <span className="font-bold dash-text text-sm">{pref.label}</span>
+                        <p className="text-[10px] dash-muted leading-relaxed">{pref.desc}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !isEnabled;
+                      setEmailPrefs((prev) => ({ ...prev, [pref.id]: next }));
+                      // Persist to localStorage
+                      try {
+                        const key = `email_prefs_${user.id}`;
+                        const existing = localStorage.getItem(key);
+                        const parsed = existing ? JSON.parse(existing) : {};
+                        localStorage.setItem(
+                          key,
+                          JSON.stringify({ ...parsed, email_prefs: { ...(parsed.email_prefs || {}), [pref.id]: next } })
+                        );
+                      } catch {}
+                      setMessage(`${pref.label} notifications ${next ? 'enabled' : 'disabled'}.`);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isEnabled
+                        ? 'bg-white text-black hover:bg-neutral-200 shadow-xs'
+                        : 'bg-[#1D1D1D] text-[#00D2FF] border border-[#00D2FF]/30 hover:bg-[#00D2FF]/10'
+                    }`}
+                  >
+                    {isEnabled ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pt-3 border-t border-inherit/30 text-[10px] dash-muted text-center">
+            <p>
+              Changes take effect immediately. You can always update your preferences here.
+            </p>
+          </div>
+        </div>
 
         {/* Dashboard Appearance & Color Theme Settings Feature */}
         <div className="dash-card p-6 rounded-3xl border shadow-sm space-y-6">

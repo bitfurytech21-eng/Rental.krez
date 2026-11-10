@@ -104,6 +104,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [supportFeedback, setSupportFeedback] = useState<string | null>(null);
   const [supportError, setSupportError] = useState<string | null>(null);
 
+  // Real-time Sync Indicator States
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('never');
+
+  const handleSyncData = async () => {
+    setIsSyncing(true);
+    try {
+      refreshUser();
+      setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    } catch {}
+    setIsSyncing(false);
+  };
+
   // Membership States
   const [userMembership, setUserMembership] = useState(() => user ? ledger.getUserMembership(user.id) : null);
   const [membershipTiers, setMembershipTiers] = useState(() => ledger.getMembershipTiers());
@@ -833,6 +846,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {notifications.filter(n => !n.read).length > 0 && (
                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30] text-[8px] font-black rounded-full flex items-center justify-center">
                   {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
+
+            {/* Real-time Data Sync Indicator */}
+            <button
+              onClick={handleSyncData}
+              className={`relative p-2 rounded-lg transition-all cursor-pointer border shadow-xs ${
+                isSyncing
+                  ? 'bg-[#1E3A34] text-[#B7E36A] border-[#1E3A34] dark:bg-[#D6A15D] dark:border-[#D6A15D] dark:text-[#0B1B30]'
+                  : 'bg-[var(--dash-header-controls)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)]'
+              }`}
+              title={isSyncing ? 'Syncing data…' : `Last synced ${lastSyncTime}`}
+              aria-label={isSyncing ? 'Syncing data…' : `Last synced ${lastSyncTime}`}
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`}
+              />
+              {isSyncing && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#B7E36A] text-[#1E3A34] text-[7px] font-black rounded-full flex items-center justify-center">
+                  ●
                 </span>
               )}
             </button>
