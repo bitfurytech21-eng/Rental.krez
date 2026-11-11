@@ -1,0 +1,6 @@
+{
+  "name": "Rental-log",
+  "description": "Full-stack fractional real estate investment platform offering tokenized European & global properties with monthly rental yields.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

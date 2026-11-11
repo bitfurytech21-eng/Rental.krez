@@ -1,0 +1,15 @@
+name = "lagence-api"
+main = "apps/api/src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+API_VERSION = "v1"
+
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "lagence_session_kv_id"
+
+[site]
+bucket = "./apps/web/dist"

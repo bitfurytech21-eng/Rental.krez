@@ -1,0 +1,110 @@
+From 8ceb02755f1e6ce50774d1eeff7de4b679bb8306 Mon Sep 17 00:00:00 2001
+From: bitfurytech21-eng <bitfurytech21-eng@users.noreply.github.com>
+Date: Fri, 6 Nov 2026 00:55:51 +0000
+Subject: [PATCH] fix(security): block admin privilege escalation in login and
+ validate password-reset tokens
+
+Two critical issues remained in server/routes.ts:
+
+1. POST /auth/login auto-provisioned an account on first login and derived the
+   role from the email address (role: email.includes('admin') ? 'admin' : 'investor')
+   with kycStatus 'approved' and a EUR 15,000 balance. Anyone registering with an
+   address containing 'admin' was granted an approved administrator account.
+   New accounts are now always created as role 'investor', kycStatus 'pending',
+   balance 0.
+
+2. POST /auth/password/reset read a token from the body but never validated it,
+   so an unauthenticated caller could reset any account's password. The endpoint
+   now requires a token, verifies and single-use consumes it via
+   verifyAndConsumeToken(token, 'password_reset') before applying any change, and
+   raises the minimum password length from 6 to 8 characters.
+
+Verified: tsc --noEmit clean, npm run build succeeds, 52/52 tests pass.
+---
+ server/routes.ts | 49 ++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 43 insertions(+), 6 deletions(-)
+
+diff --git a/server/routes.ts b/server/routes.ts
+index 3d471c1..912f9d0 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -494,9 +494,11 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
+       id: `usr-${crypto.randomBytes(4).toString('hex')}`,
+       email: normalizedEmail,
+       fullName: normalizedEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+-      role: normalizedEmail.includes('admin') ? 'admin' : 'investor',
+-      kycStatus: 'approved',
+-      balance: 15000,
++      // Public login must never grant elevated privileges: any email containing
++      // the substring "admin" previously auto-provisioned an administrator account.
++      role: 'investor',
++      kycStatus: 'pending',
++      balance: 0,
+       currency: 'EUR',
+       createdAt: new Date().toISOString()
+     };
+@@ -1763,15 +1765,50 @@ router.post('/security/verify-turnstile', securityLimiter, async (req: Authentic
+ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) => {
+   const { token, newPassword } = req.body || {};
+ 
+-  if (!newPassword || newPassword.length < 6) {
++  if (!token || typeof token !== 'string') {
+     return res.status(400).json({
+       success: false,
+-      error: 'New password must be at least 6 characters.',
++      error: 'A valid password reset token is required.',
++      code: 'MISSING_RESET_TOKEN',
++      requestId: req.id
++    });
++  }
++
++  if (!newPassword || newPassword.length < 8) {
++    return res.status(400).json({
++      success: false,
++      error: 'New password must be at least 8 characters.',
+       code: 'WEAK_PASSWORD',
+       requestId: req.id
+     });
+   }
+ 
++  // Validate and single-use consume the recovery token BEFORE applying any change.
++  // Previously this endpoint reset the password without ever checking the token,
++  // allowing an unauthenticated attacker to reset any account's password.
++  const verification = verifyAndConsumeToken(token, 'password_reset');
++  if (!verification.valid) {
++    logger.log({
++      level: 'warn',
++      category: 'security',
++      requestId: req.id || 'req-reset-invalid',
++      method: 'POST',
++      route: '/api/v1/auth/password/reset',
++      statusCode: 400,
++      eventType: 'PASSWORD_RESET_REJECTED',
++      outcome: 'failure',
++      message: `Password reset rejected: ${verification.error}`,
++      errorCode: 'INVALID_RESET_TOKEN'
++    });
++
++    return res.status(400).json({
++      success: false,
++      error: verification.error || 'Invalid or expired password reset token.',
++      code: 'INVALID_RESET_TOKEN',
++      requestId: req.id
++    });
++  }
++
+   logger.log({
+     level: 'info',
+     category: 'auth',
+@@ -1781,7 +1818,7 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
+     statusCode: 200,
+     eventType: 'PASSWORD_RESET_COMPLETED',
+     outcome: 'success',
+-    message: 'Password successfully updated via recovery authorization.'
++    message: `Password successfully updated via recovery authorization for ${verification.email}.`
+   });
+ 
+   res.json({
+-- 
+2.39.5
+
