@@ -9,9 +9,10 @@ interface BalanceCardProps {
   transactions?: Transaction[];
   onDeposit: () => void;
   onWithdraw: () => void;
+  isLoading?: boolean;
 }
 
-export const BalanceCard: React.FC<BalanceCardProps> = ({ user, transactions = [], onDeposit, onWithdraw }) => {
+export const BalanceCard: React.FC<BalanceCardProps> = ({ user, transactions = [], onDeposit, onWithdraw, isLoading = false }) => {
   const totalPortfolio = user.walletBalance + user.investedBalance;
 
   // Real pending transactions from verified ledger records
@@ -52,7 +53,11 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({ user, transactions = [
           </div>
 
           <div className="financial-val-hero text-[#F5F5F2] tracking-tight leading-none mt-1">
-            <AnimatedNumericValue value={totalPortfolio} variant="primary" />
+            {isLoading ? (
+              <div className="h-10 w-48 bg-neutral-800 rounded-lg animate-pulse" />
+            ) : (
+              <AnimatedNumericValue value={totalPortfolio} variant="primary" />
+            )}
           </div>
 
           <p className="text-[13.5px] sm:text-[14px] financial-label-secondary mt-2.5 leading-relaxed max-w-xl">

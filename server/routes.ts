@@ -202,7 +202,7 @@ export function sanitizeUser(user: MockUser): Omit<MockUser, 'passwordHash'> {
 }
 
 // In-memory data store for server-authoritative state
-// Seed accounts with industry-standard bcrypt hashes
+// Seed accounts with industry-standard bcrypt hashes and 0 balance
 let mockUsers: MockUser[] = [
   {
     id: 'usr-admin-kretz-site',
@@ -211,7 +211,7 @@ let mockUsers: MockUser[] = [
     passwordHash: hashPassword('AdminSecret2026!'),
     role: 'admin',
     kycStatus: 'approved',
-    balance: 500000,
+    balance: 0,
     currency: 'EUR',
     country: 'Spain',
     countryCode: 'ES',
@@ -227,7 +227,7 @@ let mockUsers: MockUser[] = [
     passwordHash: hashPassword('AdminSecret2026!'),
     role: 'admin',
     kycStatus: 'approved',
-    balance: 250000,
+    balance: 0,
     currency: 'EUR',
     country: 'Spain',
     countryCode: 'ES',
@@ -243,7 +243,7 @@ let mockUsers: MockUser[] = [
     passwordHash: hashPassword('InvestorPass123!'),
     role: 'investor',
     kycStatus: 'approved',
-    balance: 45000,
+    balance: 0,
     currency: 'EUR',
     isEmailVerified: true,
     status: 'active',
@@ -256,7 +256,7 @@ let mockUsers: MockUser[] = [
     passwordHash: hashPassword('InvestorPass123!'),
     role: 'investor',
     kycStatus: 'pending',
-    balance: 15000,
+    balance: 0,
     currency: 'EUR',
     isEmailVerified: true,
     status: 'active',
@@ -354,35 +354,8 @@ let mockListings = [
   }
 ];
 
-let mockTransactions = [
-  {
-    id: 'tx-dep-101',
-    userId: 'usr-investor-01',
-    userEmail: 'investor@kretz.com',
-    type: 'deposit',
-    amount: 15000,
-    currency: 'EUR',
-    status: 'completed',
-    method: 'SEPA Bank Wire',
-    reference: 'KZ-DEP-99214',
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
-  },
-  {
-    id: 'tx-inv-102',
-    userId: 'usr-investor-01',
-    userEmail: 'investor@kretz.com',
-    type: 'investment',
-    amount: 10000,
-    currency: 'EUR',
-    status: 'completed',
-    method: 'Platform Balance',
-    propertyId: 'prop-villa-mirador',
-    propertyTitle: 'Villa El Mirador',
-    tokensPurchased: 100,
-    reference: 'KZ-INV-88120',
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
-  }
-];
+// Real transactions store initialized empty
+let mockTransactions: any[] = [];
 
 let platformConfig = {
   platformName: 'Kretz Prime Real Estate Platform',
@@ -2769,6 +2742,13 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: Authenticate
       existing.projectedAnnualDividend = Math.round(existing.totalCost * annualYieldRate * 100) / 100;
     } else {
       const cost = Number(tx.amount || 0);
+      const realDividendsForProp = mockTransactions
+        .filter(t => (t.userId === userId || (Boolean(resolvedEmail) && t.userEmail === resolvedEmail)) &&
+                     (t.type === 'dividend' || t.type === 'distribution' || t.type === 'payout') &&
+                     t.status === 'completed' &&
+                     (t as any).propertyId === propId)
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
       holdingsMap.set(propId, {
         id: tx.id,
         propertyId: propId,
@@ -2777,7 +2757,7 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: Authenticate
         totalCost: cost,
         currentValue: cost,
         projectedAnnualDividend: Math.round(cost * annualYieldRate * 100) / 100,
-        dividendsReceived: userId === 'usr-investor-01' && propId === 'prop-villa-mirador' ? 320 : 0,
+        dividendsReceived: realDividendsForProp,
         purchaseDate: tx.createdAt,
         certificateId: tx.reference || 'KZ-CERT'
       });
@@ -2809,12 +2789,41 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: Authenticate
  */
 router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const user = findUserRecordForRequest(req);
-  const bal = user ? user.balance : (req.user?.balance ?? 0);
+  const userId = req.user!.id;
+  const userEmail = req.user?.email?.toLowerCase();
+
+  // Scoped to the logged-in user
+  const userTxs = mockTransactions.filter(
+    t => t.userId === userId || (userEmail && t.userEmail?.toLowerCase() === userEmail)
+  );
+
+  let calculatedBalance = user ? user.balance : (req.user?.balance ?? 0);
+  if (userTxs.length > 0) {
+    let txSum = 0;
+    for (const tx of userTxs) {
+      const amt = Number(tx.amount || 0);
+      if (tx.status === 'completed') {
+        if (tx.type === 'deposit' || tx.type === 'dividend' || tx.type === 'payout' || tx.type === 'distribution') {
+          txSum += amt;
+        } else if (tx.type === 'withdrawal' || tx.type === 'investment' || tx.type === 'purchase') {
+          txSum -= amt;
+        }
+      } else if (tx.status === 'pending' && tx.type === 'withdrawal') {
+        txSum -= amt;
+      }
+    }
+    calculatedBalance = Math.max(0, Math.round(txSum * 100) / 100);
+  }
+
+  if (user) {
+    user.balance = calculatedBalance;
+  }
+
   res.json({
     success: true,
     data: {
-      balance: bal,
-      subBalances: getOrInitUserSubBalances(req.user!.id, bal),
+      balance: calculatedBalance,
+      subBalances: getOrInitUserSubBalances(req.user!.id, calculatedBalance),
       currency: 'EUR'
     },
     requestId: req.id
@@ -2825,15 +2834,39 @@ router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: Authe
  * GET /api/v1/transactions
  */
 router.get('/transactions', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const userEmail = req.user?.email?.toLowerCase();
+  
   // If user is ordinary investor, filter to their transactions
   const txs = req.user?.role === 'admin' 
     ? mockTransactions 
-    : mockTransactions.filter(t => t.userId === req.user?.id);
+    : mockTransactions.filter(t => t.userId === userId || (userEmail && t.userEmail?.toLowerCase() === userEmail));
+
+  // Ensure transaction model conforms to standard data structure:
+  // id, user_id, type (deposit, withdrawal, purchase, payout), amount, currency, status, reference, created_at
+  const formattedTxs = txs.map(t => ({
+    id: t.id,
+    user_id: t.userId,
+    userId: t.userId,
+    type: t.type,
+    amount: Number(t.amount || 0),
+    currency: t.currency || 'EUR',
+    status: t.status,
+    reference: t.reference,
+    created_at: t.createdAt || t.created_at || new Date().toISOString(),
+    createdAt: t.createdAt || t.created_at || new Date().toISOString(),
+    description: t.description || `${t.type} transaction`,
+    paymentMethod: t.paymentMethod || t.method || 'System',
+    propertyId: (t as any).propertyId,
+    propertyTitle: (t as any).propertyTitle,
+    tokensPurchased: (t as any).tokensPurchased,
+    txHash: (t as any).txHash
+  }));
 
   res.json({
     success: true,
-    data: txs,
-    total: txs.length,
+    data: formattedTxs,
+    total: formattedTxs.length,
     requestId: req.id
   });
 });
@@ -3860,18 +3893,37 @@ router.get('/dashboard/summary', requireAuth, (req: AuthenticatedRequest, res: R
 });
 
 router.get('/dashboard/performance', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const userInvTxs = mockTransactions.filter(
+    t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
+  );
+
+  const totalInv = userInvTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const userDividends = mockTransactions.filter(
+    t => t.userId === userId && (t.type === 'dividend' || t.type === 'payout' || t.type === 'distribution') && t.status === 'completed'
+  );
+
+  // Group real dividends by month if any exist
+  const historyMap = new Map<string, { yield: number; totalValue: number }>();
+  userDividends.forEach(d => {
+    const dDate = new Date(d.createdAt || Date.now());
+    const mKey = dDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const prev = historyMap.get(mKey) || { yield: 0, totalValue: totalInv };
+    prev.yield += Number(d.amount || 0);
+    historyMap.set(mKey, prev);
+  });
+
+  const historicalPerformance = Array.from(historyMap.entries()).map(([month, data]) => ({
+    month,
+    yield: data.yield,
+    totalValue: data.totalValue
+  }));
+
   res.json({
     success: true,
     data: {
-      annualizedReturnPercent: 12.8,
-      historicalPerformance: [
-        { month: 'May 2026', yield: 25.0, totalValue: 10000 },
-        { month: 'Jun 2026', yield: 26.5, totalValue: 10120 },
-        { month: 'Jul 2026', yield: 26.5, totalValue: 10250 },
-        { month: 'Aug 2026', yield: 27.0, totalValue: 10380 },
-        { month: 'Sep 2026', yield: 27.0, totalValue: 10450 },
-        { month: 'Oct 2026', yield: 27.5, totalValue: 10580 }
-      ]
+      annualizedReturnPercent: totalInv > 0 ? 8.4 : 0,
+      historicalPerformance
     },
     requestId: req.id
   });
@@ -3879,16 +3931,34 @@ router.get('/dashboard/performance', requireAuth, (req: AuthenticatedRequest, re
 
 // Financial Reports
 router.get('/reports/account-statement', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userRecord = findUserRecordForRequest(req);
+  const userId = req.user!.id;
+  const userEmail = req.user?.email?.toLowerCase();
+  const userTxs = mockTransactions.filter(
+    t => t.userId === userId || (userEmail && t.userEmail?.toLowerCase() === userEmail)
+  );
+
+  const totalDeposits = userTxs
+    .filter(t => t.type === 'deposit' && t.status === 'completed')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const totalInvested = userTxs
+    .filter(t => (t.type === 'investment' || t.type === 'purchase') && t.status === 'completed')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const totalDividendsReceived = userTxs
+    .filter(t => (t.type === 'dividend' || t.type === 'payout' || t.type === 'distribution') && t.status === 'completed')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const currentBalance = userRecord ? userRecord.balance : 0;
+
   res.json({
     success: true,
     data: {
-      statementId: 'STMT-2026-Q3',
-      periodStart: '2026-07-01',
-      periodEnd: '2026-09-30',
-      totalDeposits: 15000.00,
-      totalInvested: 10000.00,
-      totalDividendsReceived: 320.00,
-      currentBalance: req.user?.balance || 1500.00
+      statementId: `STMT-${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`,
+      periodStart: `${new Date().getFullYear()}-01-01`,
+      periodEnd: new Date().toISOString().split('T')[0],
+      totalDeposits,
+      totalInvested,
+      totalDividendsReceived,
+      currentBalance
     },
     requestId: req.id
   });
@@ -3896,14 +3966,15 @@ router.get('/reports/account-statement', requireAuth, (req: AuthenticatedRequest
 
 // Referral Program
 router.get('/referrals', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const userCode = `REF-${req.user?.id?.slice(0, 8).toUpperCase() || 'KZ2026'}`;
   res.json({
     success: true,
     data: {
-      referralCode: `REF-${req.user?.id?.slice(0, 8).toUpperCase() || 'KZ2026'}`,
+      referralCode: userCode,
       referralLink: `https://kretzdespain.com/ref/${req.user?.id || 'usr-01'}`,
-      totalReferred: 3,
-      activeInvestors: 2,
-      commissionEarned: 150.00,
+      totalReferred: 0,
+      activeInvestors: 0,
+      commissionEarned: 0.00,
       currency: 'EUR'
     },
     requestId: req.id
@@ -3914,12 +3985,9 @@ router.get('/referrals/earnings', requireAuth, (req: AuthenticatedRequest, res: 
   res.json({
     success: true,
     data: {
-      totalEarnings: 150.00,
+      totalEarnings: 0.00,
       pendingPayout: 0.00,
-      history: [
-        { id: 'ref-01', userEmail: 'm.dupont@client.fr', amount: 75.0, date: new Date(Date.now() - 86400000 * 12).toISOString(), status: 'paid' },
-        { id: 'ref-02', userEmail: 's.weber@investor.de', amount: 75.0, date: new Date(Date.now() - 86400000 * 5).toISOString(), status: 'paid' }
-      ]
+      history: []
     },
     requestId: req.id
   });

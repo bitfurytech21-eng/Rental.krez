@@ -46,7 +46,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
   // Form State preserved across steps
   const [method, setMethod] = useState<'sepa' | 'crypto'>('sepa');
-  const [amount, setAmount] = useState<number>(5000);
+  const [amount, setAmount] = useState<number>(0);
   const [senderName] = useState<string>(user?.fullName || '');
   const [senderReference, setSenderReference] = useState<string>('');
   

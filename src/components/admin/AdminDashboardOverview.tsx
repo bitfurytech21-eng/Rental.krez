@@ -288,7 +288,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
             </div>
           </div>
           <div className="text-2xl font-black text-[#18211F]">
-            {formatCurrency(totalDividendsDistributed || 124500)}
+            {formatCurrency(totalDividendsDistributed || 0)}
           </div>
           <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
             <span className="text-[#69736F]">Distribution Rate</span>

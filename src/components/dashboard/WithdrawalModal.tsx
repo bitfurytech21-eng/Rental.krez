@@ -21,8 +21,8 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 }) => {
   const { user, refreshUser } = useAuth();
   const [method, setMethod] = useState<'sepa' | 'crypto'>('sepa');
-  const [amount, setAmount] = useState<number>(100);
-  const [iban, setIban] = useState<string>(user?.bankIban || 'ES9121000418450200051829');
+  const [amount, setAmount] = useState<number>(0);
+  const [iban, setIban] = useState<string>(user?.bankIban || '');
   // Crypto withdrawal is streamlined exclusively to USDC (BEP20) on BNB Smart Chain
   const cryptoToken = 'USDC';
   const cryptoNetwork = 'BNB Smart Chain (BEP20)';

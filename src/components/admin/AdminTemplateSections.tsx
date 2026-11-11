@@ -43,12 +43,7 @@ export const AdminTemplateSectionView: React.FC<TemplateSectionProps> = ({
   });
 
   // Support Tickets State
-  const [tickets, setTickets] = useState([
-    { id: 'TCK-8921', user: 'Marc Levinson', email: 'marc.l@invest.fr', subject: 'Inquiry on Roquebrune SPV Token Transfer', status: 'pending', priority: 'High', date: '10 mins ago', category: 'Tokenization' },
-    { id: 'TCK-8920', user: 'Helena Berg', email: 'h.berg@genevacap.ch', subject: 'Tax certificate for 2025 rental distributions', status: 'pending', priority: 'Medium', date: '1 hour ago', category: 'Tax & Compliance' },
-    { id: 'TCK-8919', user: 'Jean-Luc Moreau', email: 'jl.moreau@orange.fr', subject: 'SEPA Direct Wire payment confirmation delay', status: 'answered', priority: 'High', date: '3 hours ago', category: 'Deposits' },
-    { id: 'TCK-8918', user: 'Arthur Pendelton', email: 'arthur@pendelton.co.uk', subject: 'Club Privé Sovereign Tier requirements', status: 'closed', priority: 'Low', date: '1 day ago', category: 'Membership' }
-  ]);
+  const [tickets, setTickets] = useState<Array<{ id: string; user: string; email: string; subject: string; status: string; priority: string; date: string; category: string }>>([]);
   const [ticketFilter, setTicketFilter] = useState<'all' | 'pending' | 'closed' | 'answered'>('all');
   const [activeTicketReply, setActiveTicketReply] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');

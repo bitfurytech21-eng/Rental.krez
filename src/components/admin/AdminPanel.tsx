@@ -147,15 +147,6 @@ export const AdminPanel: React.FC = () => {
     }));
   };
 
-  const SPV_DATA = [
-    { name: 'Roquebrune-Cap-Martin, Golf Bleu', id: 'KTZ-KP1102', category: 'Villa', type: 'Luxury SPV', funded: 3540000, total: 5900000 },
-    { name: 'Reception apartment, Paris', id: 'KTZ-KP1117', category: 'Apartment', type: 'Prime SPV', funded: 10191000, total: 12900000 },
-    { name: "Château d'Armainvilliers", id: 'KTZ-KP1173', category: 'Château', type: 'Heritage SPV', funded: 176400, total: 180000 },
-    { name: 'House, Antibes', id: 'KTZ-KP1183', category: 'Villa', type: 'Riviera SPV', funded: 4028000, total: 5300000 },
-    { name: 'The Pink Palace, Le Vesinet', id: 'KTZ-KP1214', category: 'Private mansion', type: 'Trophy SPV', funded: 36100000, total: 38000000 },
-    { name: "Architect's house, Sèvres", id: 'KTZ-P1340A', category: 'House', type: 'Residential SPV', funded: 3650000, total: 5000000 }
-  ];
-
   const isTemplateOnlySection = (tab: string): boolean => {
     const liveTabs = [
       'dashboard',
@@ -203,6 +194,19 @@ export const AdminPanel: React.FC = () => {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmDeleteNetId, setConfirmDeleteNetId] = useState<string | null>(null);
+
+  const SPV_DATA = properties.map((p) => {
+    const funded = p.fundedAmount || 0;
+    const total = p.targetAmount || 0;
+    return {
+      name: p.title,
+      id: `KTZ-${p.id}`,
+      category: p.type || 'Real Estate',
+      type: `${p.city || 'Prime'} SPV`,
+      funded,
+      total,
+    };
+  });
 
   // Document proof preview modal
   const [previewProofModalDoc, setPreviewProofModalDoc] = useState<{
@@ -704,7 +708,7 @@ export const AdminPanel: React.FC = () => {
           s: [
             { k: 'deposit-system-automatic-gateways', l: 'Automatic gateways' },
             { k: 'deposit-system-manual-gateways', l: 'Manual gateways' },
-            { k: 'deposit-system-pending-deposits', l: 'Pending deposits', b: pendingDeposits.length || 29 },
+            { k: 'deposit-system-pending-deposits', l: 'Pending deposits', b: pendingDeposits.length },
             { k: 'deposit-system-approved-deposits', l: 'Approved deposits' },
             { k: 'deposit-system-successful-deposits', l: 'Successful deposits' },
             { k: 'deposit-system-rejected-deposits', l: 'Rejected deposits' },
@@ -716,7 +720,7 @@ export const AdminPanel: React.FC = () => {
           l: 'Withdrawals',
           s: [
             { k: 'withdrawals-withdraw-methods', l: 'Withdraw methods' },
-            { k: 'withdrawals-pending-log', l: 'Pending log', b: pendingWithdrawals.length || 2 },
+            { k: 'withdrawals-pending-log', l: 'Pending log', b: pendingWithdrawals.length },
             { k: 'withdrawals-approved-log', l: 'Approved log' },
             { k: 'withdrawals-rejected-log', l: 'Rejected log' },
             { k: 'withdrawals-withdrawals-log', l: 'Withdrawals log' }
@@ -730,8 +734,8 @@ export const AdminPanel: React.FC = () => {
       g: 'Investors',
       i: [
         { k: 'users', l: 'Manage users', b: users.length, bt: String(users.length), d: 'Everyone with an account, with suspend and restore.', f: 'User Management tab', c: ['Search and filter users', `${users.filter(u => u.status === 'suspended').length} suspended account`, 'Open a profile'] },
-        { k: 'kyc', l: 'KYC queue', b: pendingKYCUsers.length || 1, d: 'Passport, DNI, and company documents for MiCA qualification.', f: 'KYC Compliance Queue, Pending KYC', c: [`${pendingKYCUsers.length || 1} investor in review`, 'Approve or reject with notes', 'Document viewer'] },
-        { k: 'proofs', l: 'Proof vault', b: pendingVerificationDocs.length || 2, d: 'Wire slips, crypto screenshots, and KYC uploads.', f: 'Upload and Proof Vault card', c: [`${pendingVerificationDocs.length || 2} uploads awaiting review`, 'Link each proof to a deposit or user'] },
+        { k: 'kyc', l: 'KYC queue', b: pendingKYCUsers.length, d: 'Passport, DNI, and company documents for MiCA qualification.', f: 'KYC Compliance Queue, Pending KYC', c: [`${pendingKYCUsers.length} investor in review`, 'Approve or reject with notes', 'Document viewer'] },
+        { k: 'proofs', l: 'Proof vault', b: pendingVerificationDocs.length, d: 'Wire slips, crypto screenshots, and KYC uploads.', f: 'Upload and Proof Vault card', c: [`${pendingVerificationDocs.length} uploads awaiting review`, 'Link each proof to a deposit or user'] },
         { k: 'club', l: 'Club Privé', d: 'Membership tiers and who holds them.', f: 'Club Privé Memberships tab', c: ['Members and tiers', 'Grant or revoke membership'] }
       ]
     },
@@ -759,7 +763,7 @@ export const AdminPanel: React.FC = () => {
       i: [
         { k: 'support-ticket', l: 'Support ticket', s: [
           { k: 'support-ticket-all-ticket', l: 'All ticket', d: 'All investor support tickets archive.', f: 'Support ticket menu' },
-          { k: 'support-ticket-pending-ticket', l: 'Pending ticket', b: 1289, d: 'Pending investor tickets awaiting review.', f: 'Support ticket menu' },
+          { k: 'support-ticket-pending-ticket', l: 'Pending ticket', b: 0, d: 'Pending investor tickets awaiting review.', f: 'Support ticket menu' },
           { k: 'support-ticket-closed-ticket', l: 'Closed ticket', d: 'Resolved and archived investor requests.', f: 'Support ticket menu' },
           { k: 'support-ticket-answered-ticket', l: 'Answered ticket', d: 'Tickets answered awaiting client follow-up.', f: 'Support ticket menu' }
         ]},

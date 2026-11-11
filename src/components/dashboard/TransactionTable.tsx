@@ -386,8 +386,18 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
         </div>
       )}
 
-      {/* Honest Empty Filter State */}
-      {filteredTransactions.length === 0 ? (
+      {/* Honest Empty State & Filter State */}
+      {transactions.length === 0 ? (
+        <div className="p-8 rounded-2xl border border-[#303030] bg-[#151515] text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-[#222222] border border-[#333333] text-emerald-400 mx-auto flex items-center justify-center">
+            <ArrowUpRight className="w-6 h-6 rotate-45" />
+          </div>
+          <p className="text-sm font-bold text-white">No transactions yet</p>
+          <p className="text-xs text-[#999999] max-w-sm mx-auto">
+            Your ledger balance is currently <span className="font-mono text-emerald-400 font-bold">$0.00 (€0.00)</span>. Deposit funds or initiate an investment to start record keeping.
+          </p>
+        </div>
+      ) : filteredTransactions.length === 0 ? (
         <div className="p-6 rounded-2xl border border-[#303030] bg-[#151515] text-center space-y-2">
           <p className="text-xs font-semibold text-white">
             No ledger records match your active search or filters.

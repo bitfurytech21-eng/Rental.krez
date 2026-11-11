@@ -307,7 +307,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3]">
             <span className="text-[10px] uppercase font-bold text-[#69736F] block tracking-wider">Total Investments</span>
             <span className="text-xl font-black text-[#18211F] mt-1 block">{totalActiveInvestments}</span>
-            <span className="text-[10px] text-gray-500 font-bold">Across 38 Assets</span>
+            <span className="text-[10px] text-gray-500 font-bold">Across {ledger.getProperties().length} Assets</span>
           </div>
         </div>
 

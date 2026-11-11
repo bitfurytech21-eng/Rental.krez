@@ -179,7 +179,7 @@ function generateTxHash(reference: string, amount: number, timestamp: string): s
 }
 
 // Authentic Platform Administrator & Demo Investor
-// Authentic Platform Administrator & Registered Investors
+// Authentic Platform Administrator & Registered Investors (Initialized with honest 0.00 balances)
 const DEFAULT_USERS: User[] = [
   {
     id: 'usr-admin-kretz-site',
@@ -188,7 +188,7 @@ const DEFAULT_USERS: User[] = [
     role: 'admin',
     accountType: 'admin',
     kycStatus: 'verified',
-    walletBalance: 500000,
+    walletBalance: 0,
     investedBalance: 0,
     totalEarned: 0,
     createdAt: '2026-01-01T00:00:00Z',
@@ -203,7 +203,7 @@ const DEFAULT_USERS: User[] = [
     role: 'admin',
     accountType: 'admin',
     kycStatus: 'verified',
-    walletBalance: 250000,
+    walletBalance: 0,
     investedBalance: 0,
     totalEarned: 0,
     createdAt: '2026-01-01T00:00:00Z',
@@ -218,13 +218,13 @@ const DEFAULT_USERS: User[] = [
     role: 'investor',
     accountType: 'individual_investor',
     kycStatus: 'verified',
-    walletBalance: 15000,
-    investedBalance: 63600,
-    totalEarned: 2850,
+    walletBalance: 0,
+    investedBalance: 0,
+    totalEarned: 0,
     createdAt: '2026-01-10T00:00:00Z',
     country: 'France',
-    bankIban: 'ES9121000418450200051829',
-    cryptoDepositAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2',
+    bankIban: '',
+    cryptoDepositAddress: '',
     status: 'active'
   },
   {
@@ -234,13 +234,13 @@ const DEFAULT_USERS: User[] = [
     role: 'investor',
     accountType: 'accredited_investor',
     kycStatus: 'verified',
-    walletBalance: 32500,
-    investedBalance: 72800,
-    totalEarned: 4120,
+    walletBalance: 0,
+    investedBalance: 0,
+    totalEarned: 0,
     createdAt: '2026-01-18T14:20:00Z',
     country: 'Monaco',
-    bankIban: 'MC5830006000010123456789012',
-    cryptoDepositAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
+    bankIban: '',
+    cryptoDepositAddress: '',
     status: 'active'
   },
   {
@@ -250,15 +250,15 @@ const DEFAULT_USERS: User[] = [
     role: 'investor',
     accountType: 'family_office',
     kycStatus: 'verified',
-    walletBalance: 120000,
-    investedBalance: 145600,
-    totalEarned: 11400,
+    walletBalance: 0,
+    investedBalance: 0,
+    totalEarned: 0,
     createdAt: '2026-02-02T09:15:00Z',
     country: 'Switzerland',
     companyName: 'Heritage Family Office SA',
     taxId: 'CHE-114.938.291',
-    bankIban: 'CH9300762011623852957',
-    cryptoDepositAddress: '0x5291bfa9821389128931a98124901b2a98124018',
+    bankIban: '',
+    cryptoDepositAddress: '',
     status: 'active'
   },
   {
@@ -268,13 +268,13 @@ const DEFAULT_USERS: User[] = [
     role: 'investor',
     accountType: 'joint_account',
     kycStatus: 'pending',
-    walletBalance: 4800,
-    investedBalance: 29120,
-    totalEarned: 950,
+    walletBalance: 0,
+    investedBalance: 0,
+    totalEarned: 0,
     createdAt: '2026-02-14T11:45:00Z',
     country: 'Monaco',
     jointHolderName: 'Alexander Rostov',
-    bankIban: 'MC5830006000010987654321098',
+    bankIban: '',
     status: 'suspended',
     suspendedReason: 'Annual AML re-verification review pending'
   },
@@ -285,258 +285,21 @@ const DEFAULT_USERS: User[] = [
     role: 'investor',
     accountType: 'corporate_entity',
     kycStatus: 'verified',
-    walletBalance: 85000,
-    investedBalance: 98280,
-    totalEarned: 5800,
+    walletBalance: 0,
+    investedBalance: 0,
+    totalEarned: 0,
     createdAt: '2026-02-28T16:00:00Z',
     country: 'France',
     companyName: 'Paris Invest Real Estate SARL',
     taxId: 'FR84910284719',
-    bankIban: 'FR7630003012345678901234567',
+    bankIban: '',
     status: 'active'
   }
 ];
 
-const DEFAULT_INVESTMENTS: Investment[] = [
-  {
-    id: 'inv-seed-01',
-    userId: 'usr-investor-1',
-    propertyId: 'prop-kretz-kp1-102',
-    propertyTitle: 'ROQUEBRUNE-CAP-MARTIN - Ramingao - Golf Bleu',
-    propertyLocation: 'Roquebrune Cap Martin, France',
-    propertyImage: 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
-    tokensPurchased: 150,
-    tokenPrice: 364,
-    totalAmountInvested: 54600,
-    purchasedAt: '2025-11-15T10:00:00Z',
-    startDate: '2025-11-15T10:00:00Z',
-    maturityDate: '2028-11-15T10:00:00Z',
-    durationMonths: 36,
-    estimatedAnnualYield: 7.5,
-    projectedMonthlyIncome: 354.90,
-    totalDividendsReceived: 843.75,
-    currentValuation: 57800,
-    unrealizedProfitLoss: 3200,
-    status: 'active',
-    transactionHash: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2_inv1',
-    certificateId: 'KZ-CERT-KP1102-8491',
-    fundingSource: 'wallet'
-  },
-  {
-    id: 'inv-seed-02',
-    userId: 'usr-investor-1',
-    propertyId: 'prop-kretz-kp1-103',
-    propertyTitle: 'PARIS 16th - Private Mansion Victor Hugo',
-    propertyLocation: 'Paris 16th, France',
-    propertyImage: 'https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg',
-    tokensPurchased: 90,
-    tokenPrice: 364,
-    totalAmountInvested: 9000,
-    purchasedAt: '2026-02-01T10:00:00Z',
-    startDate: '2026-02-01T10:00:00Z',
-    maturityDate: '2029-02-01T10:00:00Z',
-    durationMonths: 36,
-    estimatedAnnualYield: 8.2,
-    projectedMonthlyIncome: 63.96,
-    totalDividendsReceived: 492.00,
-    currentValuation: 9450,
-    unrealizedProfitLoss: 450,
-    status: 'active',
-    transactionHash: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2_inv2',
-    certificateId: 'KZ-CERT-PAR16-2049',
-    fundingSource: 'wallet'
-  },
-  {
-    id: 'inv-seed-03',
-    userId: 'usr-investor-2',
-    propertyId: 'prop-kretz-kp1-101',
-    propertyTitle: 'PARIS 7th - Champ de Mars Eiffel Tower Duplex',
-    propertyLocation: 'Paris 7th, France',
-    propertyImage: 'https://files.kretzrealestate.com/13f01fdf74a00194883d6a0cf0897ce5.jpg',
-    tokensPurchased: 200,
-    tokenPrice: 364,
-    totalAmountInvested: 72800,
-    purchasedAt: '2026-01-20T11:00:00Z',
-    startDate: '2026-01-20T11:00:00Z',
-    maturityDate: '2029-01-20T11:00:00Z',
-    durationMonths: 36,
-    estimatedAnnualYield: 8.9,
-    projectedMonthlyIncome: 540.00,
-    totalDividendsReceived: 1080.00,
-    currentValuation: 76000,
-    unrealizedProfitLoss: 3200,
-    status: 'active',
-    transactionHash: '0x71c8135c0e41b3fa128912389128f9a19b28a0bf_inv3',
-    certificateId: 'KZ-CERT-PAR7-5912',
-    fundingSource: 'wallet'
-  },
-  {
-    id: 'inv-seed-04',
-    userId: 'usr-investor-3',
-    propertyId: 'prop-kretz-kp1-105',
-    propertyTitle: 'CANNES - La Croisette Waterfront Penthouse',
-    propertyLocation: 'Cannes, French Riviera, France',
-    propertyImage: 'https://files.kretzrealestate.com/5f778a48b598d1a37c95ee13c1c73ec4.jpg',
-    tokensPurchased: 400,
-    tokenPrice: 364,
-    totalAmountInvested: 145600,
-    purchasedAt: '2026-02-05T09:30:00Z',
-    startDate: '2026-02-05T09:30:00Z',
-    maturityDate: '2029-02-05T09:30:00Z',
-    durationMonths: 36,
-    estimatedAnnualYield: 9.4,
-    projectedMonthlyIncome: 1140.70,
-    totalDividendsReceived: 2281.40,
-    currentValuation: 152000,
-    unrealizedProfitLoss: 6400,
-    status: 'active',
-    transactionHash: '0x5291bfa9821389128931a98124901b2a98124018_inv4',
-    certificateId: 'KZ-CERT-CAN-9810',
-    fundingSource: 'wallet'
-  },
-  {
-    id: 'inv-seed-05',
-    userId: 'usr-investor-4',
-    propertyId: 'prop-kretz-kp1-104',
-    propertyTitle: 'NEUILLY-SUR-SEINE - Boulevard d\'Argenson Mansion',
-    propertyLocation: 'Neuilly-sur-Seine, France',
-    propertyImage: 'https://files.kretzrealestate.com/7ec57be497c36a43b46fc0b91f5fa7cb.jpg',
-    tokensPurchased: 80,
-    tokenPrice: 364,
-    totalAmountInvested: 29120,
-    purchasedAt: '2026-02-18T14:00:00Z',
-    startDate: '2026-02-18T14:00:00Z',
-    maturityDate: '2029-02-18T14:00:00Z',
-    durationMonths: 36,
-    estimatedAnnualYield: 7.8,
-    projectedMonthlyIncome: 189.28,
-    totalDividendsReceived: 378.56,
-    currentValuation: 29500,
-    unrealizedProfitLoss: 380,
-    status: 'active',
-    transactionHash: '0x5830006000010987654321098_inv5',
-    certificateId: 'KZ-CERT-NEU-4102',
-    fundingSource: 'wallet'
-  },
-  {
-    id: 'inv-seed-06',
-    userId: 'usr-investor-5',
-    propertyId: 'prop-kretz-kp1-106',
-    propertyTitle: 'SAINT-TROPEZ - Les Parcs Private Estate & Vineyard',
-    propertyLocation: 'Saint-Tropez, France',
-    propertyImage: 'https://files.kretzrealestate.com/49baea38a6a27e7d6928e46957fb4a45.jpg',
-    tokensPurchased: 270,
-    tokenPrice: 364,
-    totalAmountInvested: 98280,
-    purchasedAt: '2026-03-02T10:15:00Z',
-    startDate: '2026-03-02T10:15:00Z',
-    maturityDate: '2029-03-02T10:15:00Z',
-    durationMonths: 36,
-    estimatedAnnualYield: 8.5,
-    projectedMonthlyIncome: 696.15,
-    totalDividendsReceived: 696.15,
-    currentValuation: 101000,
-    unrealizedProfitLoss: 2720,
-    status: 'active',
-    transactionHash: '0x7630003012345678901234567_inv6',
-    certificateId: 'KZ-CERT-STP-1920',
-    fundingSource: 'wallet'
-  }
-];
-
-const DEFAULT_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-dep-seed-1',
-    userId: 'usr-investor-1',
-    type: 'deposit',
-    amount: 10000,
-    currency: 'EUR',
-    status: 'pending',
-    description: 'Deposit request via SEPA Bank Wire Transfer (CaixaBank Escrow)',
-    reference: 'DEP-EUR-849201',
-    createdAt: '2026-03-15T10:30:00Z',
-    paymentMethod: 'SEPA Bank Wire Transfer',
-    balanceAfter: 15000,
-    txHash: '0xcaixa_wire_849201',
-    metadata: {
-      senderName: 'European Angel Partner',
-      bank: 'CaixaBank S.A.',
-      depositRef: 'DEP-EUR-849201'
-    }
-  },
-  {
-    id: 'tx-wd-seed-1',
-    userId: 'usr-investor-1',
-    type: 'withdrawal',
-    amount: 2500,
-    currency: 'EUR',
-    status: 'pending',
-    description: 'Withdrawal request to ES9121000418450200051829',
-    reference: 'WD-582914',
-    createdAt: '2026-03-15T09:15:00Z',
-    paymentMethod: 'SEPA Bank Wire',
-    balanceAfter: 12500,
-    metadata: {
-      bankIban: 'ES9121000418450200051829'
-    }
-  },
-  {
-    id: 'tx-dep-seed-2',
-    userId: 'usr-investor-2',
-    type: 'deposit',
-    amount: 50000,
-    currency: 'EUR',
-    status: 'completed',
-    description: 'Wire settlement credited by Treasury Desk',
-    reference: 'DEP-EUR-721094',
-    createdAt: '2026-01-19T10:00:00Z',
-    paymentMethod: 'SEPA Bank Wire Transfer',
-    balanceAfter: 50000,
-    txHash: '0xmonaco_wire_721094'
-  },
-  {
-    id: 'tx-dep-seed-3',
-    userId: 'usr-investor-3',
-    type: 'deposit',
-    amount: 200000,
-    currency: 'EUR',
-    status: 'completed',
-    description: 'Institutional Swiss Franc Wire Conversion & Escrow Credit',
-    reference: 'DEP-EUR-994102',
-    createdAt: '2026-02-03T11:00:00Z',
-    paymentMethod: 'Institutional Bank Wire',
-    balanceAfter: 200000,
-    txHash: '0xubs_swiss_994102'
-  },
-  {
-    id: 'tx-dep-seed-4',
-    userId: 'usr-investor-4',
-    type: 'deposit',
-    amount: 35000,
-    currency: 'EUR',
-    status: 'completed',
-    description: 'Joint Account Initial Deposit via Barclays Wire',
-    reference: 'DEP-EUR-310492',
-    createdAt: '2026-02-15T15:00:00Z',
-    paymentMethod: 'SEPA Bank Wire Transfer',
-    balanceAfter: 35000,
-    txHash: '0xbarclays_310492'
-  },
-  {
-    id: 'tx-dep-seed-5',
-    userId: 'usr-investor-5',
-    type: 'deposit',
-    amount: 150000,
-    currency: 'EUR',
-    status: 'completed',
-    description: 'Corporate Treasury Allocation via BNP Paribas Escrow',
-    reference: 'DEP-EUR-640192',
-    createdAt: '2026-03-01T12:00:00Z',
-    paymentMethod: 'Corporate SEPA Wire',
-    balanceAfter: 150000,
-    txHash: '0xbnp_corp_640192'
-  }
-];
+// Initialized empty - Real data originates exclusively from recorded transactions
+const DEFAULT_INVESTMENTS: Investment[] = [];
+const DEFAULT_TRANSACTIONS: Transaction[] = [];
 
 const DEFAULT_VERIFICATION_DOCUMENTS: VerificationDocument[] = [
   {
@@ -813,21 +576,12 @@ class LedgerService {
     });
     setStorage('properties', this.properties);
 
-    const storedInvestments = getStorage<Investment[]>('investments', DEFAULT_INVESTMENTS);
-    const existingInvIds = new Set(storedInvestments.map(i => i.id));
-    const missingInvs = DEFAULT_INVESTMENTS.filter(i => !existingInvIds.has(i.id));
-    this.investments = [...storedInvestments, ...missingInvs];
+    const storedInvestments = getStorage<Investment[]>('investments', []);
+    this.investments = storedInvestments.filter(i => !i.id.startsWith('inv-seed-'));
     setStorage('investments', this.investments);
 
-    const storedTxs = getStorage<Transaction[]>('transactions', DEFAULT_TRANSACTIONS);
-    const existingTxIds = new Set(storedTxs.map(t => t.id));
-    const missingTxs = DEFAULT_TRANSACTIONS.filter(t => !existingTxIds.has(t.id));
-    this.transactions = [...storedTxs, ...missingTxs];
-
-    // Ensure at least one pending deposit request is available for testing if empty
-    if (!this.transactions.some(t => t.type === 'deposit' && t.status === 'pending')) {
-      this.transactions.unshift(DEFAULT_TRANSACTIONS[0]);
-    }
+    const storedTxs = getStorage<Transaction[]>('transactions', []);
+    this.transactions = storedTxs.filter(t => !t.id.startsWith('tx-dep-seed-') && !t.id.startsWith('tx-wd-seed-') && !t.id.startsWith('tx-inv-seed-'));
     setStorage('transactions', this.transactions);
     this.verificationDocuments = getStorage('verificationDocuments', DEFAULT_VERIFICATION_DOCUMENTS);
     this.paymentConfig = getStorage('paymentConfig', DEFAULT_PAYMENT_CONFIG);
@@ -1199,13 +953,13 @@ class LedgerService {
       amount: amount,
       currency: 'EUR',
       status: 'pending',
-      description: `Withdrawal request to ${targetUser.bankIban || 'ES9121000418450200051829'}`,
+      description: `Withdrawal request to ${targetUser.bankIban || 'designated bank account'}`,
       reference: reference,
       createdAt: timestamp,
       paymentMethod: 'SEPA Bank Wire',
       balanceAfter: targetUser.walletBalance,
       metadata: {
-        bankIban: targetUser.bankIban || 'ES9121000418450200051829'
+        bankIban: targetUser.bankIban || ''
       }
     };
 
@@ -1302,7 +1056,7 @@ class LedgerService {
       country: country || 'Spain',
       phoneNumber: phoneNumber || '',
       kycStatus: isAdminEmail ? 'verified' : 'unverified',
-      walletBalance: isAdminEmail ? 500000 : 0,
+      walletBalance: 0,
       investedBalance: 0,
       totalEarned: 0,
       createdAt: new Date().toISOString(),
