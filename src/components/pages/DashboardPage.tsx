@@ -116,7 +116,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         return 'dark';
       }
     } catch {}
-    return 'light';
+    return 'dark';
   });
 
   const [dashboardTheme, setDashboardTheme] = useState<string>(() => {
