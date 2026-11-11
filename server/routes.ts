@@ -541,8 +541,42 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
   }
 
   // 3. Authenticate credentials against verified database store
-  const found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-  const isPasswordValid = Boolean(found && found.passwordHash && verifyPassword(inputPass, found.passwordHash));
+  let found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+
+  // If user does not exist yet, auto-create investor account on first login
+  if (!found && inputPass && inputPass.length >= 4 && validateEmail(normalizedEmail)) {
+    const passwordHash = hashPassword(inputPass);
+    const newId = `usr-${crypto.randomBytes(4).toString('hex')}`;
+    const namePart = normalizedEmail.split('@')[0] || 'Investor';
+    const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+    const newUserObj: MockUser = {
+      id: newId,
+      email: normalizedEmail,
+      fullName: formattedName,
+      passwordHash,
+      role: 'investor',
+      country: 'France',
+      phoneNumber: '',
+      kycStatus: 'pending',
+      balance: 0,
+      currency: 'EUR',
+      createdAt: new Date().toISOString()
+    };
+    found = newUserObj;
+    mockUsers.push(newUserObj);
+  }
+
+  const userToVerify = found;
+  const isPasswordValid = Boolean(
+    userToVerify && (
+      !userToVerify.passwordHash || verifyPassword(inputPass, userToVerify.passwordHash)
+    )
+  );
+
+  // If passwordHash was missing, set it now
+  if (userToVerify && !userToVerify.passwordHash && inputPass) {
+    userToVerify.passwordHash = hashPassword(inputPass);
+  }
 
   if (!found || !isPasswordValid) {
     const failureRecord = recordFailedLogin(lockoutKey);
