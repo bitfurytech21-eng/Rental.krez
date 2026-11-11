@@ -4,6 +4,7 @@ import { useNavigation } from '../../lib/navigation';
 import { ledger, CryptoNetworkConfig, VerificationDocument } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
+import { getAuthToken } from '../../lib/api';
 import {
   Shield,
   Plus,
@@ -429,6 +430,17 @@ export const AdminPanel: React.FC = () => {
         approved,
         approved ? undefined : 'Bank transfer wire reference or blockchain transaction could not be verified in treasury feed.'
       );
+      try {
+        const token = getAuthToken();
+        const endpoint = approved ? `/api/v1/admin/deposits/${txId}/approve` : `/api/v1/admin/deposits/${txId}/reject`;
+        await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        });
+      } catch (e) {}
       setActionSuccess(`Deposit request ${approved ? 'approved and credited to wallet balance' : 'declined'}.`);
       setActionError(null);
       refreshAll();
@@ -445,6 +457,17 @@ export const AdminPanel: React.FC = () => {
         approved,
         approved ? undefined : 'Compliance review flagged incomplete banking or wallet verification documentation.'
       );
+      try {
+        const token = getAuthToken();
+        const endpoint = approved ? `/api/v1/admin/withdrawals/${txId}/approve` : `/api/v1/admin/withdrawals/${txId}/reject`;
+        await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        });
+      } catch (e) {}
       setActionSuccess(`Withdrawal ${approved ? 'approved and transfer executed' : 'declined and capital refunded to investor'}.`);
       setActionError(null);
       refreshAll();
@@ -476,9 +499,20 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleReviewKYC = (userId: string, approved: boolean) => {
+  const handleReviewKYC = async (userId: string, approved: boolean) => {
     try {
       ledger.updateKYCStatus(userId, approved ? 'verified' : 'rejected');
+      try {
+        const token = getAuthToken();
+        await fetch(`/api/v1/admin/users/${userId}/kyc`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ status: approved ? 'verified' : 'rejected' })
+        });
+      } catch (e) {}
       setActionSuccess(`User KYC ${approved ? 'verified' : 'rejected'}.`);
       setActionError(null);
       refreshAll();

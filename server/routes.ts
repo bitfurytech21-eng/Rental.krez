@@ -44,6 +44,7 @@ import {
   validatePasswordStrength,
   validateEmail,
   createSession,
+  getSession,
   revokeSession,
   revokeAllUserSessions,
   checkBruteForceLimit,
@@ -2036,16 +2037,60 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
 
 /**
  * GET /api/v1/auth/session
- * Validates active session, verifies account non-suspended status, and returns sanitized profile
+ * Validates active session, verifies account non-suspended status, and returns sanitized profile.
+ * Gracefully handles unauthenticated probes with 200 OK { authenticated: false }.
  */
-router.get('/auth/session', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/auth/session', (req: AuthenticatedRequest, res: Response) => {
+  const authHeader = req.headers.authorization;
+  let token: string | undefined;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  }
+  if (!token && req.cookies && req.cookies.kretz_session) {
+    token = req.cookies.kretz_session;
+  }
+
+  if (!token) {
+    return res.json({
+      success: true,
+      data: {
+        authenticated: false,
+        user: null
+      },
+      authenticated: false,
+      user: null,
+      requestId: req.id
+    });
+  }
+
+  const session = getSession(token);
+  if (!session) {
+    return res.json({
+      success: true,
+      data: {
+        authenticated: false,
+        user: null
+      },
+      authenticated: false,
+      user: null,
+      requestId: req.id
+    });
+  }
+
+  req.user = { id: session.userId, email: session.email, role: session.role, fullName: session.fullName } as any;
+  req.session = session;
+
   const currentUser = findUserRecordForRequest(req);
 
   if (!currentUser) {
-    return res.status(401).json({
-      success: false,
-      error: 'Authenticated user profile not found.',
-      code: 'USER_NOT_FOUND',
+    return res.json({
+      success: true,
+      data: {
+        authenticated: false,
+        user: null
+      },
+      authenticated: false,
+      user: null,
       requestId: req.id
     });
   }
@@ -2070,6 +2115,7 @@ router.get('/auth/session', requireAuth, (req: AuthenticatedRequest, res: Respon
       user: safeUser,
       csrfToken
     },
+    authenticated: true,
     user: safeUser,
     csrfToken,
     requestId: req.id
