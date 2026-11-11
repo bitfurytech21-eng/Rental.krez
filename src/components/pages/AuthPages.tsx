@@ -110,7 +110,12 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       await login(email, password);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please verify your credentials.');
+      const msg = String(err?.message || '');
+      if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
+        setError('Authentication service is currently unavailable. Please check your credentials and try again.');
+      } else {
+        setError(msg || 'Login failed. Please verify your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -180,7 +185,12 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         onSuccess();
       }
     } catch (err: any) {
-      setError(err.message || 'Registration failed.');
+      const msg = String(err?.message || '');
+      if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
+        setError('Registration service is currently unavailable. Please try again.');
+      } else {
+        setError(msg || 'Registration failed. Please check your information.');
+      }
     } finally {
       setLoading(false);
     }

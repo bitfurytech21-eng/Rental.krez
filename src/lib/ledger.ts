@@ -68,6 +68,7 @@ export interface CryptoNetworkConfig {
   network: string;
   walletAddress: string;
   contractEnd?: string;
+  contractAddress?: string;
   enabled: boolean;
 }
 
@@ -79,6 +80,8 @@ export interface TraditionalPaymentConfig {
   supportEmail: string;
   instructions: string;
   routingNumber?: string;
+  address?: string;
+  country?: string;
 }
 
 export interface PaymentConfig {
@@ -116,360 +119,25 @@ export const LEDGER_FX_FEE_PERCENT = 0.15;
 
 const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
   traditional: {
-    beneficiary: "L'Agence Escrow Services S.L.",
-    iban: 'ES91 2100 0418 4502 0005 1829',
-    bic: 'CAIXESBBXXX',
-    bankName: 'CaixaBank Institutional Escrow',
+    beneficiary: 'PREDRAG MIRKOVIC',
+    iban: 'CY05 9020 0001 0000 0201 0908 5462',
+    bic: 'CARDCY2LXXX',
+    bankName: 'UNLIMIT',
     supportEmail: 'info@kretz.site',
-    instructions: 'Include your unique transfer reference in the wire transfer concept and email your transfer confirmation receipt to info@kretz.site for rapid verification.',
-    routingNumber: 'ES912100'
+    instructions: 'Include your unique transfer reference in the wire transfer concept and upload your transfer confirmation receipt for immediate verification.',
+    routingNumber: 'CY059020',
+    address: 'LIMASSOL 125 GEORGIOU GRIVA DIGENI',
+    country: 'CYPRUS'
   },
   cryptoNetworks: [
-    // USDT Networks
     {
-      id: 'net-usdt-erc20',
-      name: 'Ethereum (ERC20)',
-      token: 'USDT',
-      network: 'Ethereum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: '831ec7',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-trc20',
-      name: 'Tron (TRC20)',
-      token: 'USDT',
-      network: 'Tron',
-      walletAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-      contractEnd: '5012e4',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-polygon',
-      name: 'Polygon POS',
-      token: 'USDT',
-      network: 'Polygon',
-      walletAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2',
-      contractEnd: 'c2132d',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-bsc',
-      name: 'BNB Smart Chain (BEP20)',
-      token: 'USDT',
-      network: 'BNB Chain',
-      walletAddress: '0x5291bfa9821389128931a98124901b2a98124018',
-      contractEnd: '55d398',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-arbitrum',
-      name: 'Arbitrum One',
-      token: 'USDT',
-      network: 'Arbitrum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'Fdfd87',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-optimism',
-      name: 'Optimism (OP Mainnet)',
-      token: 'USDT',
-      network: 'Optimism',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: '94b008',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-solana',
-      name: 'Solana SPL',
-      token: 'USDT',
-      network: 'Solana',
-      walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-      contractEnd: 'Es9vM',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-ton',
-      name: 'TON Network',
-      token: 'USDT',
-      network: 'TON',
-      walletAddress: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
-      contractEnd: 'bXvK',
-      enabled: true
-    },
-    {
-      id: 'net-usdt-avax',
-      name: 'Avalanche C-Chain',
-      token: 'USDT',
-      network: 'Avalanche',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'c71984',
-      enabled: true
-    },
-
-    // USDC Networks
-    {
-      id: 'net-usdc-polygon',
-      name: 'Polygon POS',
-      token: 'USDC',
-      network: 'Polygon',
-      walletAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2',
-      contractEnd: 'e2891f',
-      enabled: true
-    },
-    {
-      id: 'net-usdc-erc20',
-      name: 'Ethereum (ERC20)',
-      token: 'USDC',
-      network: 'Ethereum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'a0b869',
-      enabled: true
-    },
-    {
-      id: 'net-usdc-solana',
-      name: 'Solana SPL',
-      token: 'USDC',
-      network: 'Solana',
-      walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-      contractEnd: 'EPjFW',
-      enabled: true
-    },
-    {
-      id: 'net-usdc-arbitrum',
-      name: 'Arbitrum One',
-      token: 'USDC',
-      network: 'Arbitrum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'af88d0',
-      enabled: true
-    },
-    {
-      id: 'net-usdc-base',
-      name: 'Base Mainnet',
-      token: 'USDC',
-      network: 'Base',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: '833589',
-      enabled: true
-    },
-    {
-      id: 'net-usdc-optimism',
-      name: 'Optimism (OP Mainnet)',
-      token: 'USDC',
-      network: 'Optimism',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: '0b2c63',
-      enabled: true
-    },
-    {
-      id: 'net-usdc-bsc',
+      id: 'net-usdc-bep20',
       name: 'BNB Smart Chain (BEP20)',
       token: 'USDC',
-      network: 'BNB Chain',
-      walletAddress: '0x5291bfa9821389128931a98124901b2a98124018',
+      network: 'BNB Smart Chain (BEP20)',
+      walletAddress: '0x8336A3f49125bAD02101B405699ac87e40D473BB',
       contractEnd: '8ac76a',
-      enabled: true
-    },
-    {
-      id: 'net-usdc-avax',
-      name: 'Avalanche C-Chain',
-      token: 'USDC',
-      network: 'Avalanche',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'B97781',
-      enabled: true
-    },
-
-    // ETH Networks
-    {
-      id: 'net-eth-erc20',
-      name: 'Ethereum (ERC20)',
-      token: 'ETH',
-      network: 'Ethereum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'Native',
-      enabled: true
-    },
-    {
-      id: 'net-eth-arbitrum',
-      name: 'Arbitrum One',
-      token: 'ETH',
-      network: 'Arbitrum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'Native L2',
-      enabled: true
-    },
-    {
-      id: 'net-eth-optimism',
-      name: 'Optimism (OP Mainnet)',
-      token: 'ETH',
-      network: 'Optimism',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'Native L2',
-      enabled: true
-    },
-    {
-      id: 'net-eth-base',
-      name: 'Base Mainnet',
-      token: 'ETH',
-      network: 'Base',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'Native L2',
-      enabled: true
-    },
-    {
-      id: 'net-eth-polygon',
-      name: 'Polygon POS (WETH)',
-      token: 'ETH',
-      network: 'Polygon',
-      walletAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2',
-      contractEnd: '7ceB23',
-      enabled: true
-    },
-
-    // BTC Networks
-    {
-      id: 'net-btc-native',
-      name: 'Bitcoin Native SegWit (Bech32)',
-      token: 'BTC',
-      network: 'Bitcoin',
-      walletAddress: 'bc1q9x46w98m4p74j9s2w83e65x7k2c5v0l2n8j4',
-      contractEnd: 'Native',
-      enabled: true
-    },
-    {
-      id: 'net-btc-legacy',
-      name: 'Bitcoin Legacy (P2PKH)',
-      token: 'BTC',
-      network: 'Bitcoin',
-      walletAddress: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-      contractEnd: 'Legacy',
-      enabled: true
-    },
-    {
-      id: 'net-btc-taproot',
-      name: 'Bitcoin Taproot',
-      token: 'BTC',
-      network: 'Bitcoin',
-      walletAddress: 'bc1p5d7rjq7g6rd22r3kyt5gt429z626498087qku5wqv30ng',
-      contractEnd: 'Taproot',
-      enabled: true
-    },
-    {
-      id: 'net-btc-bsc',
-      name: 'BNB Smart Chain (BEP20 - BTCB)',
-      token: 'BTC',
-      network: 'BNB Chain',
-      walletAddress: '0x5291bfa9821389128931a98124901b2a98124018',
-      contractEnd: '7136c2',
-      enabled: true
-    },
-
-    // SOL Networks
-    {
-      id: 'net-sol-native',
-      name: 'Solana SPL',
-      token: 'SOL',
-      network: 'Solana',
-      walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-      contractEnd: 'Native',
-      enabled: true
-    },
-
-    // BNB Networks
-    {
-      id: 'net-bnb-bep20',
-      name: 'BNB Smart Chain (BEP20)',
-      token: 'BNB',
-      network: 'BNB Chain',
-      walletAddress: '0x5291bfa9821389128931a98124901b2a98124018',
-      contractEnd: 'Native BNB',
-      enabled: true
-    },
-    {
-      id: 'net-bnb-opbnb',
-      name: 'opBNB Mainnet',
-      token: 'BNB',
-      network: 'opBNB',
-      walletAddress: '0x5291bfa9821389128931a98124901b2a98124018',
-      contractEnd: 'L2 BNB',
-      enabled: true
-    },
-
-    // XRP Networks
-    {
-      id: 'net-xrp-native',
-      name: 'Ripple XRP Ledger',
-      token: 'XRP',
-      network: 'Ripple',
-      walletAddress: 'rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh',
-      contractEnd: 'Tag: 108924',
-      enabled: true
-    },
-
-    // POL / MATIC Networks
-    {
-      id: 'net-pol-native',
-      name: 'Polygon POS (POL/MATIC)',
-      token: 'POL',
-      network: 'Polygon',
-      walletAddress: '0x39a9c29801869e94F2B85295c5Af646A9894A0b2',
-      contractEnd: 'Native POL',
-      enabled: true
-    },
-    {
-      id: 'net-pol-erc20',
-      name: 'Ethereum (ERC20)',
-      token: 'POL',
-      network: 'Ethereum',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: '455e53',
-      enabled: true
-    },
-
-    // AVAX Networks
-    {
-      id: 'net-avax-cchain',
-      name: 'Avalanche C-Chain',
-      token: 'AVAX',
-      network: 'Avalanche',
-      walletAddress: '0x71C8135C0e41B3fA128912389128f9A19b28A0bf',
-      contractEnd: 'Native AVAX',
-      enabled: true
-    },
-
-    // TON Networks
-    {
-      id: 'net-ton-native',
-      name: 'TON Network',
-      token: 'TON',
-      network: 'TON',
-      walletAddress: 'EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs',
-      contractEnd: 'Native TON',
-      enabled: true
-    },
-
-    // TRX Networks
-    {
-      id: 'net-trx-native',
-      name: 'Tron (TRC20)',
-      token: 'TRX',
-      network: 'Tron',
-      walletAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-      contractEnd: 'Native TRX',
-      enabled: true
-    },
-
-    // ADA Networks
-    {
-      id: 'net-ada-shelley',
-      name: 'Cardano Shelley',
-      token: 'ADA',
-      network: 'Cardano',
-      walletAddress: 'addr1q9k4k4z88046m8x0mwt7tgy0z22f0g0d6h98m24e',
-      contractEnd: 'Native ADA',
+      contractAddress: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
       enabled: true
     }
   ]
@@ -1163,6 +831,20 @@ class LedgerService {
     setStorage('transactions', this.transactions);
     this.verificationDocuments = getStorage('verificationDocuments', DEFAULT_VERIFICATION_DOCUMENTS);
     this.paymentConfig = getStorage('paymentConfig', DEFAULT_PAYMENT_CONFIG);
+    // Keep traditional bank configuration and crypto networks synchronized with canonical settings
+    if (
+      this.paymentConfig.traditional.iban !== DEFAULT_PAYMENT_CONFIG.traditional.iban ||
+      this.paymentConfig.traditional.beneficiary !== DEFAULT_PAYMENT_CONFIG.traditional.beneficiary ||
+      this.paymentConfig.traditional.bankName !== DEFAULT_PAYMENT_CONFIG.traditional.bankName ||
+      !this.paymentConfig.traditional.address ||
+      !this.paymentConfig.cryptoNetworks ||
+      this.paymentConfig.cryptoNetworks.length !== 1 ||
+      this.paymentConfig.cryptoNetworks[0]?.walletAddress !== DEFAULT_PAYMENT_CONFIG.cryptoNetworks[0].walletAddress
+    ) {
+      this.paymentConfig.traditional = { ...DEFAULT_PAYMENT_CONFIG.traditional };
+      this.paymentConfig.cryptoNetworks = [...DEFAULT_PAYMENT_CONFIG.cryptoNetworks];
+      setStorage('paymentConfig', this.paymentConfig);
+    }
     this.membershipTiers = getStorage('membershipTiers', INITIAL_MEMBERSHIP_TIERS);
     this.memberships = getStorage('memberships', []);
     this.membershipApplications = getStorage('membershipApplications', []);

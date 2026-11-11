@@ -1,109 +1,83 @@
-# L'Agence | Fractional Real Estate Investment Platform
+# Rental-log | Fractional Real Estate Investment Platform
 
-L'Agence is an institutional-grade, full-stack fractional real estate investment platform. It enables retail and institutional investors to acquire tokenized shares of vetted European luxury real estate assets starting from €100, collect automated monthly/daily rental yields, and monitor their portfolio with double-entry ledger verification.
-
----
-
-## Project Monorepo Architecture
-
-```
-L’Agence/
-├── apps/
-│   ├── web/                      Public site + investor dashboard
-│   │   └── src/
-│   │       ├── pages/
-│   │       │   ├── public/       Home, Properties, Property detail, About, FAQ, Contact
-│   │       │   ├── auth/         Login, Register, Reset password
-│   │       │   └── client/       Investor dashboard
-│   │       │       ├── Overview
-│   │       │       ├── Properties, Portfolio, Income
-│   │       │       ├── Deposit, Withdraw, Transactions
-│   │       │       └── Verification, Support, Profile
-│   │       ├── components/       Cards, tables, forms, sidebar
-│   │       └── lib/              API client, auth helpers
-│   │
-│   ├── admin/                    Admin panel
-│   │   └── src/
-│   │       ├── nav/              Grouped sidebar config
-│   │       └── pages/
-│   │           ├── Dashboard     Action queue
-│   │           ├── money/        Deposits, Withdrawals, Wallets, Ledger
-│   │           ├── investors/    Users, KYC, Proof vault, Club Privé
-│   │           ├── properties/   SPV portfolio, Issuance, Dividends, Restore
-│   │           ├── tokenization/ TokenizationAdmin + CSS
-│   │           ├── support/      Tickets, Reports
-│   │           ├── website/      Pages, Sections, Templates
-│   │           ├── settings/     Email, SMS, SEO, GDPR, Holiday
-│   │           ├── security/     Audit trail, Admin security
-│   │           └── system/       API logs, Error buffer, Cache
-│   │
-│   └── api/                      Express & Cloudflare Hono worker
-│       └── src/
-│           ├── index.ts          Mounts all routes
-│           ├── middleware/       requireAdmin, requireClient
-│           └── routes/
-│               ├── auth.ts
-│               ├── client/       Portfolio, deposits, withdrawals, tickets
-│               ├── admin/        Users, deposits, withdrawals, kyc, tickets
-│               └── tokenization.ts
-│
-├── packages/
-│   ├── ui/                       Shared buttons, cards, tables
-│   ├── database/                 DB client and types
-│   ├── auth/                     Sessions, roles (admin / client)
-│   └── validation/               Shared zod schemas
-│
-├── infra/
-│   ├── schema.sql
-│   └── migrations/
-│       └── 001_tokenization.sql
-│
-├── .env.example                  Variable names template (no real keys)
-├── .gitignore                    Git exclusions
-├── wrangler.toml                 Cloudflare worker deployment config
-└── README.md
-```
+Rental-log is an institutional-grade, full-stack fractional real estate investment platform inspired by the structure of [Reental](https://www.reental.co/en). It enables retail and institutional investors to acquire tokenized shares of vetted European and global real estate assets starting from €100, collect automated monthly rental yields, and monitor their portfolio with auditable blockchain verification.
 
 ---
 
-## 1. Features & Architectural Capabilities
+## 1. System Architecture & Features
 
-- **Design Language**: Custom architectural tokens, geometric typography, dark green aesthetic (`#182D2A`, accent `#B7E36A`), responsive navigation, zero-pill metadata discipline, and high-fidelity asset photography.
+- **Exact Brand & Design System**: Custom tokens, geometric typography, dark green aesthetic (`#182D2A`, accent `#B7E36A`), responsive navigation, zero-pill metadata discipline, and high-fidelity architectural photography.
 - **Double-Entry Auditable Ledger**:
   - ACID atomic transaction processing.
   - Concurrency locking preventing double withdrawals, race conditions, and unauthorized balance mutations.
   - Cryptographic transaction hashing linking every investment and dividend distribution.
 - **Real Estate Assets Directory**:
-  - Institutional SPV listings: *Valencia Ruzafa Smart Living*, *Madrid Chamberí Coliving*, *Malaga Coastline Beachfront*, and *Brickell Miami Bay Suites*.
+  - Pre-seeded with institutional assets: *Valencia Ruzafa Smart Living* (11.4% yield), *Madrid Chamberí Coliving* (12.8% yield), *Malaga Coastline Beachfront* (13.5% yield), and *Brickell Miami Bay Suites* (10.2% yield).
   - Independent RICS appraisals, cadastral references, and downloadable legal SPV documentation.
 - **Interactive Investment Return Simulator**:
-  - Real-time estimated monthly rental cashflow, multi-year compounding returns, and projected capital gains.
+  - Calculates real-time estimated monthly rental cashflow, multi-year returns, and projected capital gains based on token quantities.
 - **Investor Dashboard**:
-  - Total portfolio value, liquid available cash, invested capital, and realized earnings.
+  - Total portfolio value, liquid available cash, invested capital, and realized historical earnings.
   - Active property holdings with downloadable ownership certificates.
-  - Transaction ledger with status badges and audit hashes.
+  - Full transaction ledger table with status badges and audit hashes.
+- **Deposit & Withdrawal Engine**:
+  - SEPA bank wire instructions with personalized reference code concepts.
+  - Crypto stablecoin (USDT/USDC on Polygon POS) deposit address generator.
+  - Withdrawal flow with automatic balance escrow lock and admin review queue.
 - **Administrative Control Panel (`/admin`)**:
-  - Structured 11-group sidebar navigation (Overview, Money, Investors, Properties, Plans & Referrals, Support & Reports, Marketing, Website, Site Settings, Compliance & Security, System).
-  - Executive command center hero banner & live action queue cards.
-  - SPV portfolio funding velocity bars with Solana SPL token integration.
+  - Publish and manage property offerings (status cycling: funding / funded / upcoming).
+  - Review and approve/decline withdrawal requests with automatic refund logic.
+  - Identity verification (KYC AML5/6) review queue.
+  - System-wide audit log monitor.
 
 ---
 
-## 2. Quick Start & Execution
+## 2. Relational Database Models
+
+In production with PostgreSQL or Cloud SQL, the database follows this schema:
+
+1. **Users (`users`)**:
+   - `id`, `email`, `full_name`, `role` (`investor` | `admin`), `kyc_status`, `wallet_balance`, `created_at`.
+2. **Properties (`properties`)**:
+   - `id`, `slug`, `title`, `location`, `city`, `country`, `type`, `status`, `target_amount`, `funded_amount`, `token_price`, `total_tokens`, `available_tokens`, `estimated_annual_yield`, `duration_months`.
+3. **Investments (`investments`)**:
+   - `id`, `user_id`, `property_id`, `tokens_purchased`, `token_price`, `total_amount_invested`, `status`, `tx_hash`, `certificate_id`.
+4. **Transactions & Ledger (`transactions` / `ledger_entries`)**:
+   - `id`, `user_id`, `type` (`deposit` | `withdrawal` | `investment` | `distribution`), `amount`, `currency`, `status`, `reference`, `tx_hash`, `balance_after`.
+5. **Property Documents (`property_documents`)**:
+   - `id`, `property_id`, `name`, `category`, `size`, `url`.
+6. **Audit Logs (`audit_logs`)**:
+   - `id`, `admin_id`, `admin_email`, `action`, `details`, `timestamp`.
+
+---
+
+## 3. Production Deployment & External Requirements
+
+To deploy Rental-log in a live commercial production environment, the following external accounts and regulatory items are required:
+
+1. **Regulatory Approval**:
+   - Registration as an authorised Crowdfunding Service Provider (ECSPR under EU Regulation 2020/1503) or licensed participatory SPV debt issuer with local securities commissions (e.g., CNMV in Spain).
+2. **Payment Service Provider**:
+   - Integration with a regulated European payment institution (e.g., Lemonway, Mangopay, or Stripe Treasury) for client-segregated escrow accounts and automated SEPA Credit Transfers.
+3. **Identity Verification (KYC/AML)**:
+   - Integration with an automated identity provider (e.g., Sumsub, Onfido, or Veriff) for passport OCR and liveness biometric checks.
+4. **Blockchain RPC Provider**:
+   - Polygon POS RPC provider (e.g., Alchemy or Infura) and deployer wallet private key for smart contract interaction.
+
+---
+
+## 4. Running the Application
 
 ```bash
 # Install dependencies
-bun install
+npm install
 
-# Start full-stack dev server (port 3000)
+# Start development server
 npm run dev
 
-# Run TypeScript compilation and linter
+# Run TypeScript compiler check
 npm run lint
 
-# Run automated test suites (56 test suites)
-npm test
-
-# Build production bundle
+# Build for production
 npm run build
 ```

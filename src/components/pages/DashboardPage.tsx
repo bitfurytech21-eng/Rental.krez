@@ -1257,7 +1257,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     {
                       id: 'stg-3',
                       title: 'Wallet Funded',
-                      description: 'SEPA bank transfer or crypto deposit cleared in CaixaBank escrow.',
+                      description: 'SEPA bank transfer or crypto deposit cleared in institutional escrow.',
                       status: user.walletBalance > 0 ? 'completed' : 'pending',
                       metrics: { label: 'Available Cash', value: formatCurrency(user.walletBalance) },
                     },
@@ -1344,7 +1344,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-semibold text-[#00D2FF] bg-[#00D2FF]/15 border border-[#00D2FF]/30 px-2.5 py-1 rounded-full flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" /> CaixaBank Escrow
+                        <ShieldCheck className="w-3 h-3" /> Institutional Escrow
                       </span>
                     </div>
                   </div>
@@ -1391,7 +1391,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         </div>
                         <h3 className="text-sm font-bold text-white">Deposit Capital</h3>
                         <p className="text-xs text-[#D0D0D0] leading-relaxed">
-                          Add funds via SEPA wire transfer (CaixaBank Escrow) or crypto stablecoins (USDT, USDC, ETH).
+                          Add funds via SEPA wire transfer (UNLIMIT Escrow) or crypto USDC (BEP20).
                         </p>
                       </div>
                       <button

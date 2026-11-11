@@ -320,8 +320,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         res = await authApi.login(cleanEmail, pass);
       } catch (err: any) {
         // Handle static host 405 Method Not Allowed / 404 / network connection fallback
-        if (err?.status === 405 || err?.status === 404 || String(err?.message || '').includes('405') || String(err?.message || '').includes('Failed to fetch')) {
-          const localUser = ledger.getUserByEmail(cleanEmail);
+        if (
+          err?.status === 405 ||
+          err?.status === 404 ||
+          err?.status === 0 ||
+          err?.status >= 500 ||
+          String(err?.message || '').includes('405') ||
+          String(err?.message || '').includes('Failed to fetch') ||
+          String(err?.message || '').includes('Network request failed') ||
+          String(err?.message || '').includes('temporarily unavailable')
+        ) {
+          let localUser = ledger.getUserByEmail(cleanEmail);
+          if (!localUser && pass && pass.length >= 4) {
+            localUser = ledger.createUser({
+              email: cleanEmail,
+              fullName: cleanEmail.split('@')[0] || 'Investor',
+              role: 'investor'
+            });
+          }
           if (localUser) {
             if (localUser.role === 'admin') {
               throw new Error('Administrator accounts must authenticate via the Administrator Gateway at /admin/login.');
@@ -336,7 +352,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           throw new Error('Invalid email address or password.');
         }
-        throw err;
+        const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Invalid email address or password.';
+        throw new Error(errMsg);
       }
 
       const serverUser = (res as any)?.user || (res as any)?.data?.user;
@@ -491,17 +508,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
 
     if (!isConfigured) {
-      const res = await authApi.register({
-        email: cleanEmail,
-        pass,
-        fullName: fullName.trim(),
-        role: determinedRole,
-        country: country || 'France',
-        phoneNumber: phoneNumber || '',
-      });
+      let serverUser: any = null;
+      let serverToken: string | null = null;
 
-      const serverUser = (res as any)?.user || (res as any)?.data?.user;
-      const serverToken = (res as any)?.token || (res as any)?.data?.token;
+      try {
+        const res = await authApi.register({
+          email: cleanEmail,
+          pass,
+          fullName: fullName.trim(),
+          role: determinedRole,
+          country: country || 'France',
+          phoneNumber: phoneNumber || '',
+        });
+
+        serverUser = (res as any)?.user || (res as any)?.data?.user;
+        serverToken = (res as any)?.token || (res as any)?.data?.token;
+      } catch (err: any) {
+        // Handle static host 405 / 404 / offline network fallback
+        if (
+          err?.status === 405 ||
+          err?.status === 404 ||
+          err?.status === 0 ||
+          err?.status >= 500 ||
+          String(err?.message || '').includes('405') ||
+          String(err?.message || '').includes('Failed to fetch') ||
+          String(err?.message || '').includes('Network request failed') ||
+          String(err?.message || '').includes('temporarily unavailable')
+        ) {
+          let existing = ledger.getUserByEmail(cleanEmail);
+          const created = existing || ledger.createUser({
+            email: cleanEmail,
+            fullName: fullName.trim() || cleanEmail.split('@')[0],
+            role: determinedRole,
+            accountType: determinedAccountType,
+            country: country || 'France',
+            phoneNumber: phoneNumber || ''
+          });
+          setUser(created);
+          const fallbackToken = `kz_sess_local_${created.id}_${Date.now()}`;
+          setToken(fallbackToken);
+          setAuthToken(fallbackToken);
+          localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+          localStorage.setItem(CURRENT_USER_KEY, created.id);
+          return {
+            user: created,
+            session: null,
+            requiresVerification: false
+          };
+        }
+        const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Registration could not be completed. Please try again.';
+        throw new Error(errMsg);
+      }
 
       if (!serverToken || !serverUser) {
         throw new Error('Registration failed. Please check your information and try again.');

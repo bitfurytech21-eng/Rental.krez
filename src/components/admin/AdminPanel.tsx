@@ -42,13 +42,9 @@ import {
   Check,
   Mail,
   Crown,
-  LogOut,
-  Menu,
-  Sun,
-  Moon,
-  ChevronRight,
-  ExternalLink
+  LogOut
 } from 'lucide-react';
+
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
 import { AdminMonitoringView } from './AdminMonitoringView';
 import { AdminDashboardOverview } from './AdminDashboardOverview';
@@ -62,12 +58,9 @@ import { AdminEmailManager } from './AdminEmailManager';
 import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
 import { AdminPaymentDistributionManager } from './AdminPaymentDistributionManager';
 import { AdminMembershipTab } from './AdminMembershipTab';
-import { AdminSidebar } from './AdminSidebar';
-import { AdminTemplateView } from './AdminTemplateView';
-import { ADMIN_NAV_GROUPS, TEMPLATE_DEFAULT_SPVS } from './adminNavData';
-import { printAuditLogReport } from '../../lib/printService';
+import { AdminTemplateSectionView } from './AdminTemplateSections';
 
-export type AdminTabType = 'dashboard' | 'users' | 'membership' | 'reconciliation' | 'deposits' | 'withdrawals' | 'manual-payment' | 'payment-distribution' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'frontend-errors';
+export type AdminTabType = string;
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
@@ -98,82 +91,108 @@ export const AdminPanel: React.FC = () => {
 
   const activeUser = user;
 
-  const TAB_ALIASES: Record<string, AdminTabType> = {
-    'dashboard': 'dashboard',
-    'deposits': 'deposits',
-    'deposit-system': 'deposits',
-    'deposit-system-pending-deposits': 'deposits',
-    'deposit-system-automatic-gateways': 'payment-settings',
-    'deposit-system-manual-gateways': 'manual-payment',
-    'deposit-system-approved-deposits': 'deposits',
-    'deposit-system-successful-deposits': 'deposits',
-    'deposit-system-rejected-deposits': 'deposits',
-    'deposit-system-all-deposits': 'deposits',
-    'withdrawals': 'withdrawals',
-    'withdrawals-pending-log': 'withdrawals',
-    'withdrawals-withdraw-methods': 'withdrawals',
-    'withdrawals-approved-log': 'withdrawals',
-    'withdrawals-rejected-log': 'withdrawals',
-    'withdrawals-withdrawals-log': 'withdrawals',
-    'wallets': 'payment-settings',
-    'payment-settings': 'payment-settings',
-    'ledger': 'payment-distribution',
-    'payment-distribution': 'payment-distribution',
-    'proofs': 'verification_docs',
-    'verification_docs': 'verification_docs',
-    'users': 'users',
-    'kyc': 'kyc',
-    'club': 'membership',
-    'membership': 'membership',
-    'spv': 'properties',
-    'properties': 'properties',
-    'property-documents': 'property-documents',
-    'reconciliation': 'reconciliation',
-    'security': 'admin-security',
-    'admin-security': 'admin-security',
-    'email': 'emails',
-    'emails': 'emails',
-    'email-manager-email-templates': 'emails',
-    'logs': 'logs',
-    'errors': 'frontend-errors',
-    'frontend-errors': 'frontend-errors',
-    'audit': 'audit',
-    'news': 'news',
-    'subscribers': 'news',
-    'insights': 'insights',
-    'manual-payment': 'manual-payment'
+  const ALIAS_MAP: Record<string, string> = {
+    deposits: 'deposit-system-pending-deposits',
+    withdrawals: 'withdrawals-pending-log',
+    properties: 'spv',
+    'payment-settings': 'wallets',
+    'admin-security': 'security',
+    emails: 'email-manager-email-templates',
+    'frontend-errors': 'errors',
+    reconciliation: 'ledger',
+    verification_docs: 'proofs',
+    'payment-distribution': 'dividends',
+    membership: 'club'
   };
 
   const getInitialAdminTab = (): string => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      if (hash) return hash;
+      if (hash) {
+        return ALIAS_MAP[hash] || hash;
+      }
       const params = new URLSearchParams(window.location.search);
       const q = params.get('tab')?.toLowerCase();
-      if (q) return q;
+      if (q) return ALIAS_MAP[q] || q;
     }
     return 'dashboard';
   };
 
-  const [rawActiveTab, setRawActiveTab] = useState<string>(getInitialAdminTab);
-  const activeTab: AdminTabType | string = TAB_ALIASES[rawActiveTab] || rawActiveTab;
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('kretz_admin_theme') === 'dark' || document.documentElement.getAttribute('data-theme') === 'dark';
-    }
-    return false;
+  const [activeTab, setActiveTab] = useState<string>(getInitialAdminTab);
+  const [sideOpen, setSideOpen] = useState<boolean>(false);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
+    'deposit-system': true,
+    'withdrawals': false,
+    'plan-manage': false,
+    'support-ticket': false,
+    'report': false,
+    'section-manage': false,
+    'email-manager': false,
+    'sms-manager': false
   });
 
-  React.useEffect(() => {
-    if (isDark) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('kretz_admin_theme', 'dark');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-      localStorage.setItem('kretz_admin_theme', 'light');
+  const handleNavigate = (tabKey: string) => {
+    const resolved = ALIAS_MAP[tabKey] || tabKey;
+    setActiveTab(resolved);
+    if (typeof window !== 'undefined') {
+      window.location.hash = resolved;
     }
-  }, [isDark]);
+    setSideOpen(false);
+  };
+
+  const toggleSubmenu = (key: string) => {
+    setOpenSubmenus(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const SPV_DATA = [
+    { name: 'Roquebrune-Cap-Martin, Golf Bleu', id: 'KTZ-KP1102', category: 'Villa', type: 'Luxury SPV', funded: 3540000, total: 5900000 },
+    { name: 'Reception apartment, Paris', id: 'KTZ-KP1117', category: 'Apartment', type: 'Prime SPV', funded: 10191000, total: 12900000 },
+    { name: "Château d'Armainvilliers", id: 'KTZ-KP1173', category: 'Château', type: 'Heritage SPV', funded: 176400, total: 180000 },
+    { name: 'House, Antibes', id: 'KTZ-KP1183', category: 'Villa', type: 'Riviera SPV', funded: 4028000, total: 5300000 },
+    { name: 'The Pink Palace, Le Vesinet', id: 'KTZ-KP1214', category: 'Private mansion', type: 'Trophy SPV', funded: 36100000, total: 38000000 },
+    { name: "Architect's house, Sèvres", id: 'KTZ-P1340A', category: 'House', type: 'Residential SPV', funded: 3650000, total: 5000000 }
+  ];
+
+  const isTemplateOnlySection = (tab: string): boolean => {
+    const liveTabs = [
+      'dashboard',
+      'users',
+      'deposits',
+      'withdrawals',
+      'manual-payment',
+      'wallets',
+      'payment-settings',
+      'kyc',
+      'proofs',
+      'verification_docs',
+      'spv',
+      'properties',
+      'property-documents',
+      'ledger',
+      'reconciliation',
+      'news',
+      'insights',
+      'audit',
+      'logs',
+      'security',
+      'admin-security',
+      'emails',
+      'errors',
+      'frontend-errors',
+      'dividends',
+      'payment-distribution',
+      'club',
+      'membership'
+    ];
+    if (liveTabs.includes(tab)) return false;
+    if (tab.startsWith('deposit-system')) return false;
+    if (tab.startsWith('withdrawals')) return false;
+    if (tab.startsWith('email-manager')) return false;
+    return true;
+  };
 
   const [transactions, setTransactions] = useState(ledger.getTransactions());
   const [properties, setProperties] = useState(ledger.getProperties());
@@ -205,7 +224,8 @@ export const AdminPanel: React.FC = () => {
       const hashFromWin = typeof window !== 'undefined' ? window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase() : '';
       const candidate = hashFromPath || hashFromWin;
       if (candidate) {
-        setRawActiveTab(candidate);
+        const resolved = ALIAS_MAP[candidate] || candidate;
+        setActiveTab(resolved);
       }
     };
     syncTabFromLocation();
@@ -213,104 +233,13 @@ export const AdminPanel: React.FC = () => {
     return () => window.removeEventListener('hashchange', syncTabFromLocation);
   }, [currentPath]);
 
-  const handleSelectTab = (key: string) => {
-    if (key === 'restore') {
-      handleRestoreDefaults();
-      return;
-    }
-    setRawActiveTab(key);
-    if (typeof window !== 'undefined') {
-      window.location.hash = key;
-    }
-  };
-
-  const getBreadcrumb = (currentKey: string): { group: string; item: string } => {
-    for (const group of ADMIN_NAV_GROUPS) {
-      for (const item of group.i) {
-        if (item.k === currentKey) {
-          return { group: group.g, item: item.l };
-        }
-        if (item.s) {
-          for (const sub of item.s) {
-            if (sub.k === currentKey) {
-              return { group: group.g, item: `${item.l} › ${sub.l}` };
-            }
-          }
-        }
-      }
-    }
-    return { group: 'Platform Administration', item: currentKey.charAt(0).toUpperCase() + currentKey.slice(1).replace(/-/g, ' ') };
-  };
-
-  const getNavItemByKey = (key: string) => {
-    for (const group of ADMIN_NAV_GROUPS) {
-      for (const item of group.i) {
-        if (item.k === key) {
-          return { k: item.k, l: item.l, d: item.d, f: item.f, c: item.c };
-        }
-        if (item.s) {
-          for (const sub of item.s) {
-            if (sub.k === key) {
-              return { k: sub.k, l: sub.l, d: sub.d, f: sub.f, c: sub.c };
-            }
-          }
-        }
-      }
-    }
-    return { k: key, l: key, d: 'Platform administration module.', f: 'Admin console' };
-  };
-
-  const handleExportAuditReport = () => {
-    printAuditLogReport({
-      generatedAt: new Date().toLocaleString('en-US'),
-      generatedBy: activeUser.email,
-      filterApplied: 'Platform Administration / Super Admin Executive Export',
-      totalEventsCount: auditLogs.length,
-      logs: auditLogs
-    });
-    setActionSuccess('Executive audit report generated.');
-    setTimeout(() => setActionSuccess(null), 3000);
-  };
-
-  const handleTriggerDividendCycle = () => {
-    try {
-      const activeProps = properties.filter(p => p.status === 'funding' || p.status === 'funded');
-      const targetProp = activeProps[0] || properties[0];
-      if (!targetProp) {
-        setActionError('No active SPV property available to distribute dividends.');
-        return;
-      }
-      const dividendSum = Math.round((targetProp.targetAmount * (targetProp.estimatedAnnualYield || 8)) / 1200);
-      ledger.recordAuditLog(
-        activeUser.id,
-        activeUser.email,
-        'TRIGGER_DIVIDENDS',
-        `Automated pro-rata dividend distribution cycle triggered for ${targetProp.title}. Disbursed €${dividendSum.toLocaleString()} across verified token holders.`,
-        'financial',
-        'info',
-        { metadata: { propertyId: targetProp.id, amount: dividendSum, currency: 'EUR' } }
-      );
-      refreshAll();
-      setActionSuccess(`Monthly dividend cycle executed for ${targetProp.title}! €${dividendSum.toLocaleString()} allocated.`);
-      setTimeout(() => setActionSuccess(null), 4000);
-    } catch (err: any) {
-      setActionError(err.message || 'Failed to trigger dividend cycle');
-    }
-  };
-
-  const handleClearCache = () => {
-    refreshAll();
-    setActionSuccess('In-memory cache purged and persistent ledger re-indexed.');
-    setTimeout(() => setActionSuccess(null), 3000);
-  };
-
   // Manual Payment Credit State
   const [selectedUserId, setSelectedUserId] = useState<string>(users[0]?.id || '');
   const [manualAmount, setManualAmount] = useState<number>(1000);
   const [manualCurrency, setManualCurrency] = useState<string>('EUR');
   const [manualMethod, setManualMethod] = useState<string>('Direct SEPA Wire Received');
   const [manualReference, setManualReference] = useState<string>('');
-  const [manualNotes, setManualNotes] = useState<string>('Funds confirmed in CaixaBank corporate treasury account.');
+  const [manualNotes, setManualNotes] = useState<string>('Funds confirmed in UNLIMIT corporate treasury account.');
   const [isSubmittingCredit, setIsSubmittingCredit] = useState<boolean>(false);
 
   // User Dedicated Payment Detail Assignment State
@@ -744,134 +673,346 @@ export const AdminPanel: React.FC = () => {
 
   const selectedTargetUser = users.find(u => u.id === selectedUserId);
 
-  const pendingDepositsTotal = pendingDeposits.reduce((acc, t) => acc + (t.amount || 0), 0);
-  const pendingWithdrawalsTotal = pendingWithdrawals.reduce((acc, t) => acc + (t.amount || 0), 0);
-  const pendingReviewCount = pendingDeposits.length + pendingWithdrawals.length + pendingKYCUsers.length + pendingVerificationDocs.length;
-  const settledCount = transactions.filter(t => t.status === 'completed' || t.status === 'approved').length;
-  const crumb = getBreadcrumb(rawActiveTab);
+  // Restructured Admin Template Navigation Hierarchy
+  interface NavItem {
+    k: string;
+    l: string;
+    b?: number;
+    bt?: string;
+    d?: string;
+    f?: string;
+    c?: string[];
+    s?: { k: string; l: string; b?: number; d?: string; f?: string; c?: string[] }[];
+  }
 
-  const topSPVs = properties.length > 0
-    ? properties.slice(0, 5).map(p => ({
-        name: p.title,
-        code: p.tokenTicker || `KTZ-${p.id.slice(0, 6).toUpperCase()}`,
-        funded: p.fundedAmount || Math.round(p.targetAmount * 0.65),
-        target: p.targetAmount
-      }))
-    : TEMPLATE_DEFAULT_SPVS.slice(0, 5);
+  interface NavGroup {
+    g: string;
+    i: NavItem[];
+  }
 
-  const isKnownTab = [
-    'dashboard',
-    'users',
-    'deposits',
-    'withdrawals',
-    'manual-payment',
-    'payment-settings',
-    'kyc',
-    'verification_docs',
-    'properties',
-    'property-documents',
-    'reconciliation',
-    'news',
-    'insights',
-    'audit',
-    'logs',
-    'admin-security',
-    'emails',
-    'frontend-errors',
-    'payment-distribution',
-    'membership'
-  ].includes(activeTab as string);
+  const navGroups: NavGroup[] = [
+    {
+      g: 'Overview',
+      i: [{ k: 'dashboard', l: 'Dashboard' }]
+    },
+    {
+      g: 'Money',
+      i: [
+        {
+          k: 'deposit-system',
+          l: 'Deposit system',
+          s: [
+            { k: 'deposit-system-automatic-gateways', l: 'Automatic gateways' },
+            { k: 'deposit-system-manual-gateways', l: 'Manual gateways' },
+            { k: 'deposit-system-pending-deposits', l: 'Pending deposits', b: pendingDeposits.length || 29 },
+            { k: 'deposit-system-approved-deposits', l: 'Approved deposits' },
+            { k: 'deposit-system-successful-deposits', l: 'Successful deposits' },
+            { k: 'deposit-system-rejected-deposits', l: 'Rejected deposits' },
+            { k: 'deposit-system-all-deposits', l: 'All deposits' }
+          ]
+        },
+        {
+          k: 'withdrawals',
+          l: 'Withdrawals',
+          s: [
+            { k: 'withdrawals-withdraw-methods', l: 'Withdraw methods' },
+            { k: 'withdrawals-pending-log', l: 'Pending log', b: pendingWithdrawals.length || 2 },
+            { k: 'withdrawals-approved-log', l: 'Approved log' },
+            { k: 'withdrawals-rejected-log', l: 'Rejected log' },
+            { k: 'withdrawals-withdrawals-log', l: 'Withdrawals log' }
+          ]
+        },
+        { k: 'wallets', l: 'Settlement wallets', d: 'Where investors send funds, by network.', f: 'Crypto Settlement Wallets card', c: ['USDC (BEP20) on BNB Smart Chain', 'Bank details for wires (UNLIMIT)', 'Add or rotate a wallet'] },
+        { k: 'ledger', l: 'Ledger and settlements', d: 'One feed of deposits, allocations, identity checks, and approvals.', f: 'Live Administrative Stream card', c: ['Full ledger with filters', 'Settled totals', 'Export audit report'] }
+      ]
+    },
+    {
+      g: 'Investors',
+      i: [
+        { k: 'users', l: 'Manage users', b: users.length, bt: String(users.length), d: 'Everyone with an account, with suspend and restore.', f: 'User Management tab', c: ['Search and filter users', `${users.filter(u => u.status === 'suspended').length} suspended account`, 'Open a profile'] },
+        { k: 'kyc', l: 'KYC queue', b: pendingKYCUsers.length || 1, d: 'Passport, DNI, and company documents for MiCA qualification.', f: 'KYC Compliance Queue, Pending KYC', c: [`${pendingKYCUsers.length || 1} investor in review`, 'Approve or reject with notes', 'Document viewer'] },
+        { k: 'proofs', l: 'Proof vault', b: pendingVerificationDocs.length || 2, d: 'Wire slips, crypto screenshots, and KYC uploads.', f: 'Upload and Proof Vault card', c: [`${pendingVerificationDocs.length || 2} uploads awaiting review`, 'Link each proof to a deposit or user'] },
+        { k: 'club', l: 'Club Privé', d: 'Membership tiers and who holds them.', f: 'Club Privé Memberships tab', c: ['Members and tiers', 'Grant or revoke membership'] }
+      ]
+    },
+    {
+      g: 'Properties',
+      i: [
+        { k: 'spv', l: 'SPV portfolio', d: 'Funding status and token capitalization for each property vehicle.', f: 'SPV Portfolio Funding Velocity, Publish New Property', c: [] },
+        { k: 'issuance', l: 'Token issuance', d: 'Issue tokens per SPV up to its cap and allocate them to approved investors.', f: 'Tokenization Engine', c: ['Issue tokens', 'Allocate to investors', 'Holdings by investor'] },
+        { k: 'dividends', l: 'Dividends', d: 'Split rental income across token holders.', f: 'Trigger Dividend Cycle button', c: ['Choose a property and amount', 'Preview each investor\'s share', 'Distribution history'] },
+        { k: 'restore', l: 'Restore properties and videos', d: 'Bring back archived listings and media.', f: 'Restore Properties and Videos button', c: ['Archived properties', 'Archived videos', 'Restore selected'] }
+      ]
+    },
+    {
+      g: 'Plans and referrals',
+      i: [
+        { k: 'manage-referral', l: 'Manage referral', d: 'Multi-tier referral tree, commission rates, and affiliate payouts.', f: 'Existing admin menu', c: ['Tier commission matrix', 'Affiliate links', 'Disbursement logs'] },
+        { k: 'plan-manage', l: 'Plan manage', s: [
+          { k: 'plan-manage-time-manage', l: 'Time manage', d: 'Time schedule manage from current admin.', f: 'Plan manage menu' },
+          { k: 'plan-manage-plan-manage', l: 'Plan manage', d: 'Plan matrix manage from current admin.', f: 'Plan manage menu' }
+        ]}
+      ]
+    },
+    {
+      g: 'Support and reports',
+      i: [
+        { k: 'support-ticket', l: 'Support ticket', s: [
+          { k: 'support-ticket-all-ticket', l: 'All ticket', d: 'All investor support tickets archive.', f: 'Support ticket menu' },
+          { k: 'support-ticket-pending-ticket', l: 'Pending ticket', b: 1289, d: 'Pending investor tickets awaiting review.', f: 'Support ticket menu' },
+          { k: 'support-ticket-closed-ticket', l: 'Closed ticket', d: 'Resolved and archived investor requests.', f: 'Support ticket menu' },
+          { k: 'support-ticket-answered-ticket', l: 'Answered ticket', d: 'Tickets answered awaiting client follow-up.', f: 'Support ticket menu' }
+        ]},
+        { k: 'report', l: 'Report', s: [
+          { k: 'report-transaction-log', l: 'Transaction log', d: 'Financial transaction journal and audit trails.', f: 'Report menu' },
+          { k: 'report-invest-plan-log', l: 'Invest plan log', d: 'Historical syndicate commitment logs.', f: 'Report menu' },
+          { k: 'report-commission-log', l: 'Commission log', d: 'Partner and referral affiliate disbursements.', f: 'Report menu' }
+        ]}
+      ]
+    },
+    {
+      g: 'Marketing',
+      i: [
+        { k: 'promotional-tool', l: 'Promotional tool', d: 'Promotional banners, social assets, and campaigns.', f: 'Marketing menu', c: ['Campaign banner generator', 'Syndicate launch emails', 'Social cards'] },
+        { k: 'subscribers', l: 'Subscribers', d: 'Platform newsletter and investor alert subscriber registry.', f: 'Marketing menu', c: ['Active subscribers', 'Export subscriber list', 'Segmentation'] },
+        { k: 'language', l: 'Language', d: 'Multi-lingual localization configurations (EN, FR, DE, ES).', f: 'Marketing menu', c: ['Language switcher', 'Translation glossary', 'Auto-translation sync'] }
+      ]
+    },
+    {
+      g: 'Website',
+      i: [
+        { k: 'active-template', l: 'Active template', d: 'Current active template and theme configuration.', f: 'Website menu', c: ['Kretz Restructured Luxury Theme', 'Responsive mobile layout', 'Executive palette'] },
+        { k: 'manage-pages', l: 'Manage pages', d: 'Frontend routing and landing pages.', f: 'Website menu', c: ['Home', 'Properties', 'Case Studies', 'Trust Center', 'Dashboard'] },
+        { k: 'section-manage', l: 'Section manage', s: [
+          'About', 'Banner content', 'Blog section', 'Breadcrumb', 'Profit calculator', 'Contact', 'Call to action', 'FAQ', 'Footer', 'How work', 'Links', 'Login', 'Plan', 'Register', 'Social icon', 'Subscribe section', 'Team member', 'Testimonial', 'Top investor', 'Transaction section', 'We accept section', 'Why choose us'
+        ].map(sec => ({ k: `section-manage-${sec.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, l: sec, d: `${sec} section content and media.`, f: 'Section manage menu' })) }
+      ]
+    },
+    {
+      g: 'Site settings',
+      i: [
+        { k: 'settings', l: 'Settings', d: 'General platform parameters and regulatory disclosures.', f: 'Site settings menu', c: ['Platform branding', 'Base currency (€ EUR)', 'Maintenance mode'] },
+        { k: 'logo-icon-setting', l: 'Logo icon setting', d: 'Platform insignia, favicon, and brand marks.', f: 'Site settings menu', c: ['Header logo', 'Favicon & PWA icons', 'White-label stamps'] },
+        { k: 'plugins', l: 'Plugins', d: 'Installed verification, chat, and analytics integrations.', f: 'Site settings menu', c: ['Smartsupp live concierge', 'Google Analytics tag', 'Cloudflare Turnstile'] },
+        { k: 'seo', l: 'SEO', d: 'Search engine metadata, OpenGraph cards, and schema JSON-LD.', f: 'Site settings menu', c: ['Meta title & description', 'Social preview images', 'Rich snippets'] },
+        { k: 'email-manager', l: 'Email manager', s: [
+          { k: 'email-manager-global-template', l: 'Global template', d: 'Master HTML email layout and brand styling.', f: 'Email manager menu' },
+          { k: 'email-manager-email-templates', l: 'Email templates', d: 'Transactional email templates for deposits, KYC, and dividends.', f: 'Email manager menu' },
+          { k: 'email-manager-email-configure', l: 'Email configure', d: 'SMTP / Zoho mail gateway credentials.', f: 'Email manager menu' }
+        ]},
+        { k: 'sms-manager', l: 'SMS manager', s: [
+          { k: 'sms-manager-global-setting', l: 'Global setting', d: 'SMS delivery parameters.', f: 'SMS manager menu' },
+          { k: 'sms-manager-sms-gateways', l: 'SMS gateways', d: 'Twilio / Infobip SMS routes.', f: 'SMS manager menu' },
+          { k: 'sms-manager-sms-templates', l: 'SMS templates', d: 'Two-factor auth and instant alert SMS messages.', f: 'SMS manager menu' }
+        ]},
+        { k: 'holiday-setting', l: 'Holiday setting', d: 'Banking and notarial closure calendar for SEPA settlement timing.', f: 'Site settings menu', c: ['Target2 European holidays', 'French bank holidays', 'Settlement adjustments'] },
+        { k: 'gdpr-cookie', l: 'GDPR cookie', d: 'European ePrivacy directive cookie consent banner settings.', f: 'Site settings menu', c: ['Consent banner text', 'Essential / Analytics cookies', 'Re-consent trigger'] }
+      ]
+    },
+    {
+      g: 'Compliance and security',
+      i: [
+        { k: 'audit', l: 'Audit trail', d: 'Who did what, and when.', f: 'Compliance Audit Trail tab', c: ['Immutable log records', 'Filter by admin, action, date', 'Export audit report'] },
+        { k: 'security', l: 'Admin security', d: 'Sign-in credentials and passphrase for admins.', f: 'Admin Security tab, Custom Email and Password', c: ['Change admin email and password', 'Passphrase', 'Active admins'] }
+      ]
+    },
+    {
+      g: 'System',
+      i: [
+        { k: 'logs', l: 'API logs and monitoring', d: 'Platform health, API status, and telemetry.', f: 'API Logs and System Monitoring tab, Platform Health', c: ['API v1 status', 'Settled transactions', 'Open system telemetry'] },
+        { k: 'errors', l: 'Frontend error buffer', d: 'Errors caught in the investor site.', f: 'Frontend Error Buffer tab', c: ['Recent errors', 'Clear buffer'] },
+        { k: 'system-information', l: 'System information', d: 'Node runtime, memory usage, and backend microservice health.', f: 'System menu', c: ['Node.js runtime', 'Database status', 'Uptime monitoring'] },
+        { k: 'custom-css', l: 'Custom CSS', d: 'Live CSS overrides and theme rules applied across portal.', f: 'System menu', c: ['Live stylesheet editor', 'Instant DOM application', 'Persistent overrides'] },
+        { k: 'clear-cache', l: 'Clear cache', d: 'Purge all browser application caches, tokens, and asset buffers.', f: 'System menu', c: ['Purge service worker', 'Invalidate asset cache', 'Force re-fetch'] }
+      ]
+    }
+  ];
+
+  const getCurrentNavInfo = (): { k: string; l: string; b?: number; bt?: string; d?: string; f?: string; c?: string[] } => {
+    for (const g of navGroups) {
+      for (const item of g.i) {
+        if (item.k === activeTab) return item;
+        if (item.s) {
+          for (const sub of item.s) {
+            if (sub.k === activeTab) return sub;
+          }
+        }
+      }
+    }
+    if (activeTab === 'dashboard') return { k: 'dashboard', l: 'Dashboard' };
+    if (activeTab === 'users') return { k: 'users', l: 'Manage users' };
+    if (activeTab.startsWith('deposit-system') || activeTab === 'deposits') return { k: activeTab, l: 'Deposit system' };
+    if (activeTab.startsWith('withdrawals')) return { k: activeTab, l: 'Withdrawals' };
+    if (activeTab === 'spv' || activeTab === 'properties') return { k: 'spv', l: 'SPV portfolio' };
+    if (activeTab === 'wallets' || activeTab === 'payment-settings') return { k: 'wallets', l: 'Settlement wallets' };
+    if (activeTab === 'kyc') return { k: 'kyc', l: 'KYC queue' };
+    if (activeTab === 'proofs' || activeTab === 'verification_docs') return { k: 'proofs', l: 'Proof vault' };
+    if (activeTab === 'club' || activeTab === 'membership') return { k: 'club', l: 'Club Privé' };
+    if (activeTab === 'dividends' || activeTab === 'payment-distribution') return { k: 'dividends', l: 'Dividends' };
+    if (activeTab === 'audit') return { k: 'audit', l: 'Audit trail' };
+    if (activeTab === 'security' || activeTab === 'admin-security') return { k: 'security', l: 'Admin security' };
+    if (activeTab.startsWith('email-manager') || activeTab === 'emails') return { k: activeTab, l: 'Email templates' };
+    if (activeTab === 'logs') return { k: 'logs', l: 'API logs and monitoring' };
+    if (activeTab === 'errors' || activeTab === 'frontend-errors') return { k: 'errors', l: 'Frontend error buffer' };
+    return { k: activeTab, l: activeTab.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) };
+  };
+
+  const currentNavInfo = getCurrentNavInfo();
 
   return (
-    <>
-      <div className={`min-h-screen flex ${isDark ? 'bg-[#121a18] text-[#e8efeb]' : 'bg-[#f6f6f4] text-[#1f2b28]'} font-sans`}>
-        {/* Responsive Left Sidebar Navigation */}
-        <AdminSidebar
-          currentTab={rawActiveTab}
-          onSelectTab={handleSelectTab}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          badgeCounts={{
-            pendingDeposits: pendingDeposits.length,
-            pendingWithdrawals: pendingWithdrawals.length,
-            pendingKYC: pendingKYCUsers.length,
-            pendingProofs: pendingVerificationDocs.length,
-            totalUsers: users.length,
-            suspendedUsers: users.filter(u => u.status === 'suspended').length
-          }}
-        />
+    <div className="kretz-admin-scope min-h-screen">
+      {/* Mobile Veil Backdrop */}
+      <div
+        className={`kretz-admin-veil ${sideOpen ? 'open' : ''}`}
+        onClick={() => setSideOpen(false)}
+      />
 
-        {/* Main Content Viewport */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-          {/* Sticky Top Header Bar matching template */}
-          <header className={`sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 border-b backdrop-blur-md transition-colors ${
-            isDark ? 'bg-[#1b2724]/95 border-[#2c3a36] text-[#e8efeb]' : 'bg-white/95 border-[#e4e6e1] text-[#1f2b28]'
-          }`}>
-            <div className="flex items-center gap-3">
-              <button
-                id="menu"
-                type="button"
-                onClick={() => setSidebarOpen(true)}
-                className="p-2 rounded-xl border border-current/15 lg:hidden flex items-center gap-1.5 text-xs font-bold cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                aria-label="Open menu"
-              >
-                <Menu className="w-4 h-4" />
-                <span>Menu</span>
-              </button>
-              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                <span className="text-[#6b7773] dark:text-[#9baba5] hidden sm:inline">{crumb.group}</span>
-                <span className="text-[#6b7773] dark:text-[#9baba5] hidden sm:inline">/</span>
-                <b id="crumb" className="font-bold text-[#1f2b28] dark:text-white truncate max-w-[200px] sm:max-w-none">
-                  {crumb.item}
-                </b>
+      {/* Restructured Left Sidebar */}
+      <aside className={`kretz-admin-side ${sideOpen ? 'open' : ''} lg:translate-x-0 lg:z-20`}>
+        <div className="flex items-center justify-between px-3 pb-3 border-b border-[#354841]">
+          <div>
+            <div className="font-bold text-white text-base tracking-tight">Platform admin</div>
+            <div className="text-[11px] text-[#8fb09c]">Kretz Restructured Executive</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSideOpen(false)}
+            className="lg:hidden text-[#8fb09c] hover:text-white p-1 cursor-pointer"
+            aria-label="Close menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="mt-2 space-y-1">
+          {navGroups.map((group) => (
+            <div key={group.g} className="pt-2">
+              <h3>{group.g}</h3>
+              <div className="space-y-0.5">
+                {group.i.map((item) => {
+                  const hasSubs = !!item.s && item.s.length > 0;
+                  const isSubActive = hasSubs && item.s!.some((sub) => sub.k === activeTab);
+                  const isOpen = openSubmenus[item.k] !== undefined ? openSubmenus[item.k] : isSubActive;
+                  const isSelected = item.k === activeTab;
+
+                  if (!hasSubs) {
+                    return (
+                      <button
+                        key={item.k}
+                        type="button"
+                        onClick={() => handleNavigate(item.k)}
+                        className={`kretz-admin-nv ${isSelected ? 'on' : ''}`}
+                      >
+                        <span>{item.l}</span>
+                        {item.b !== undefined && item.b > 0 && (
+                          <span className="kretz-admin-bd">{item.bt || item.b}</span>
+                        )}
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div key={item.k} className="space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleSubmenu(item.k)}
+                        className={`kretz-admin-nv ${isSubActive ? 'bg-[#2b3d39] text-white' : ''}`}
+                      >
+                        <span>{item.l}</span>
+                        <div className="flex items-center gap-1.5">
+                          {item.s!.some((sub) => sub.b && sub.b > 0) && (
+                            <span className="kretz-admin-bd">!</span>
+                          )}
+                          <span className="text-[10px] text-[#8fb09c]">{isOpen ? '▴' : '▾'}</span>
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <div className="kretz-admin-ch space-y-0.5">
+                          {item.s!.map((sub) => {
+                            const isSubSelected = sub.k === activeTab;
+                            return (
+                              <button
+                                key={sub.k}
+                                type="button"
+                                onClick={() => handleNavigate(sub.k)}
+                                className={`kretz-admin-nv sm ${isSubSelected ? 'on' : ''}`}
+                              >
+                                <span>{sub.l}</span>
+                                {sub.b !== undefined && sub.b > 0 && (
+                                  <span className="kretz-admin-bd">{sub.b}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
+          ))}
+        </div>
+      </aside>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => navigateTo('/')}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-current/15 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                title="View public marketplace"
-              >
-                <Globe className="w-3.5 h-3.5 text-[#3d7a58]" />
-                <span>Public Site</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectTab('admin-security')}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-current/15 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                title="Configure administrator credentials"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-500" />
-                <span>Security</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDark(!isDark)}
-                className="p-2 rounded-xl border border-current/15 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
-                title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-                aria-label="Toggle theme"
-              >
-                {isDark ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-slate-700" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => logout()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-500/10 cursor-pointer transition-colors"
-                title="Sign out of administrator session"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sign Out</span>
-              </button>
-            </div>
-          </header>
+      {/* Top Header Bar */}
+      <header className="kretz-admin-top lg:pl-[306px]">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setSideOpen(!sideOpen)}
+            className="px-3 py-1.5 rounded-xl border border-[#e4e6e1] text-xs font-bold bg-white text-[#1f2b28] hover:bg-[#f6f6f4] flex items-center gap-1.5 cursor-pointer"
+            aria-label="Open menu"
+          >
+            <span>Menu</span>
+          </button>
+          <b className="text-sm font-bold text-[#1f2b28] flex items-center gap-2">
+            <span>{currentNavInfo.l}</span>
+            {currentNavInfo.b !== undefined && currentNavInfo.b > 0 && (
+              <span className="kretz-admin-bd">{currentNavInfo.bt || currentNavInfo.b}</span>
+            )}
+          </b>
+        </div>
 
-          {/* Main Body */}
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline-flex text-[11px] font-semibold text-[#6b7773] bg-[#f6f6f4] px-2.5 py-1 rounded-full border border-[#e4e6e1]">
+            {activeUser.email}
+          </span>
+          <button
+            type="button"
+            onClick={() => navigateTo('/')}
+            className="px-3 py-1.5 rounded-xl border border-[#e4e6e1] text-xs font-bold bg-white hover:bg-[#f6f6f4] text-[#1f2b28] flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="View public marketplace"
+          >
+            <Globe className="w-3.5 h-3.5 text-[#3d7a58]" />
+            <span className="hidden md:inline">Public Site</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleNavigate('security')}
+            className="px-3 py-1.5 rounded-xl border border-[#e4e6e1] text-xs font-bold bg-white hover:bg-[#f6f6f4] text-[#1f2b28] flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Admin security credentials"
+          >
+            <Lock className="w-3.5 h-3.5 text-[#3d7a58]" />
+            <span className="hidden lg:inline">Credentials</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="px-3 py-1.5 rounded-xl border border-rose-200 text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Sign out of admin session"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </div>
+      </header>
 
+      {/* Main Content Area */}
+      <main className="max-w-[1040px] mx-auto px-4 sm:px-6 py-6 pb-24 lg:pl-[306px]">
+        {/* Alerts */}
         {actionSuccess && (
-          <div className="p-4 mb-6 rounded-2xl bg-green-50 text-green-800 text-xs font-bold border border-green-200 flex items-center justify-between animate-in fade-in">
+          <div className="p-4 mb-5 rounded-2xl bg-green-50 text-green-800 text-xs font-bold border border-green-200 flex items-center justify-between animate-in fade-in">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
               <span>{actionSuccess}</span>
@@ -881,7 +1022,7 @@ export const AdminPanel: React.FC = () => {
         )}
 
         {actionError && (
-          <div className="p-4 mb-6 rounded-2xl bg-red-50 text-red-800 text-xs font-bold border border-red-200 flex items-center justify-between animate-in fade-in">
+          <div className="p-4 mb-5 rounded-2xl bg-red-50 text-red-800 text-xs font-bold border border-red-200 flex items-center justify-between animate-in fade-in">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
               <span>{actionError}</span>
@@ -890,258 +1031,117 @@ export const AdminPanel: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 0: Admin Executive Command Dashboard */}
+        {/* Dashboard View with Executive Command Center & Action Queue */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            {/* Executive Command Center Hero */}
-            <div className="bg-[#22302d] text-white rounded-3xl p-6 sm:p-8 shadow-md">
-              <small className="text-[#a9d6a0] font-semibold text-xs tracking-wider uppercase block mb-1">
-                Executive command center
-              </small>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight my-2">
-                Platform administration
-              </h1>
-              <p className="text-[#b9cbc1] text-sm mb-5">
-                Super admin. <strong className="text-white">{pendingReviewCount} items</strong> awaiting executive review.
-              </p>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('dividends')}
-                  className="bg-[#4f8c68] hover:bg-[#3d7a58] text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm"
-                >
-                  Trigger dividend cycle
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportAuditReport}
-                  className="bg-transparent border border-[#4a5f56] hover:bg-[#2c3f35] text-[#d6e6dc] text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-colors"
-                >
-                  Export audit report
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewPropertyModal(true)}
-                  className="bg-transparent border border-[#4a5f56] hover:bg-[#2c3f35] text-[#d6e6dc] text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-colors"
-                >
-                  Publish new property
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRestoreDefaults}
-                  className="bg-transparent border border-[#4a5f56] hover:bg-[#2c3f35] text-[#d6e6dc] text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer transition-colors"
-                >
-                  Restore properties &amp; videos
-                </button>
-              </div>
+            <div className="kretz-admin-hero">
+              <small>Executive command center</small>
+              <h1>Platform administration</h1>
+              <p>Super admin. {pendingDeposits.length + pendingWithdrawals.length + pendingKYCUsers.length + pendingVerificationDocs.length} items awaiting review.</p>
+              <button className="kretz-admin-btn" onClick={() => handleNavigate('dividends')}>
+                Trigger dividend cycle
+              </button>
+              <button className="kretz-admin-btn o" onClick={() => handleNavigate('audit')}>
+                Export audit report
+              </button>
+              <button className="kretz-admin-btn o" onClick={() => setShowNewPropertyModal(true)}>
+                Publish new property
+              </button>
             </div>
 
-            {/* Action Queue Section */}
             <div>
-              <h2 className="text-xl font-bold text-[#1f2b28] dark:text-white">Action queue</h2>
-              <p className="text-xs text-[#6b7773] dark:text-[#9baba5] mb-4">
-                Everything waiting on you, in one place.
-              </p>
+              <h2 className="text-xl font-bold text-[#1f2b28]">Action queue</h2>
+              <p className="text-xs text-[#6b7773] mb-3">Everything waiting on you, in one place.</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Pending Deposits */}
-                <div className="bg-white dark:bg-[#1b2724] border border-[#e4e6e1] dark:border-[#2c3a36] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-[#6b7773] dark:text-[#9baba5] uppercase tracking-wider">
-                        Pending deposits
-                      </h4>
-                      {pendingDeposits.length > 0 && (
-                        <span className="text-[10px] font-bold bg-[#6e2c3a] text-[#ffd9df] px-2 py-0.5 rounded-full">
-                          {pendingDeposits.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-2xl font-semibold text-[#1f2b28] dark:text-white my-1">
-                      {formatCurrency(pendingDepositsTotal)}
-                    </div>
-                    <div className="text-xs text-[#6b7773] dark:text-[#9baba5]">
-                      {pendingDeposits.length} request{pendingDeposits.length === 1 ? '' : 's'}
-                    </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {/* Pending Deposits Card */}
+                <div className="kretz-admin-card">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4>Pending deposits</h4>
+                    <span className="kretz-admin-bd">{pendingDeposits.length}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('deposits')}
-                    className="mt-4 w-full py-2 px-3 border border-[#e4e6e1] dark:border-[#2c3a36] rounded-xl text-xs font-bold hover:bg-[#f6f6f4] dark:hover:bg-[#243330] text-[#1f2b28] dark:text-white transition-colors cursor-pointer text-center"
-                  >
+                  <div className="kretz-admin-stat">
+                    {formatCurrency(pendingDeposits.reduce((sum, d) => sum + (d.amount || 0), 0))}
+                  </div>
+                  <div className="text-xs text-[#6b7773] mt-1">{pendingDeposits.length} requests awaiting review</div>
+                  <button className="kretz-admin-go" onClick={() => handleNavigate('deposit-system-pending-deposits')}>
                     Open
                   </button>
                 </div>
 
-                {/* Pending Withdrawals */}
-                <div className="bg-white dark:bg-[#1b2724] border border-[#e4e6e1] dark:border-[#2c3a36] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-[#6b7773] dark:text-[#9baba5] uppercase tracking-wider">
-                        Pending withdrawals
-                      </h4>
-                      {pendingWithdrawals.length > 0 && (
-                        <span className="text-[10px] font-bold bg-[#6e2c3a] text-[#ffd9df] px-2 py-0.5 rounded-full">
-                          {pendingWithdrawals.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-2xl font-semibold text-[#1f2b28] dark:text-white my-1">
-                      {formatCurrency(pendingWithdrawalsTotal)}
-                    </div>
-                    <div className="text-xs text-[#6b7773] dark:text-[#9baba5]">
-                      {pendingWithdrawals.length} locked request{pendingWithdrawals.length === 1 ? '' : 's'}
-                    </div>
+                {/* Pending Withdrawals Card */}
+                <div className="kretz-admin-card">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4>Pending withdrawals</h4>
+                    <span className="kretz-admin-bd">{pendingWithdrawals.length}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('withdrawals')}
-                    className="mt-4 w-full py-2 px-3 border border-[#e4e6e1] dark:border-[#2c3a36] rounded-xl text-xs font-bold hover:bg-[#f6f6f4] dark:hover:bg-[#243330] text-[#1f2b28] dark:text-white transition-colors cursor-pointer text-center"
-                  >
+                  <div className="kretz-admin-stat">
+                    {formatCurrency(pendingWithdrawals.reduce((sum, w) => sum + (w.amount || 0), 0))}
+                  </div>
+                  <div className="text-xs text-[#6b7773] mt-1">{pendingWithdrawals.length} locked requests</div>
+                  <button className="kretz-admin-go" onClick={() => handleNavigate('withdrawals-pending-log')}>
                     Open
                   </button>
                 </div>
 
-                {/* Proof Vault */}
-                <div className="bg-white dark:bg-[#1b2724] border border-[#e4e6e1] dark:border-[#2c3a36] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-[#6b7773] dark:text-[#9baba5] uppercase tracking-wider">
-                        Proof vault
-                      </h4>
-                      {pendingVerificationDocs.length > 0 && (
-                        <span className="text-[10px] font-bold bg-[#6e2c3a] text-[#ffd9df] px-2 py-0.5 rounded-full">
-                          {pendingVerificationDocs.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-2xl font-semibold text-[#1f2b28] dark:text-white my-1">
-                      {pendingVerificationDocs.length} review
-                    </div>
-                    <div className="text-xs text-[#6b7773] dark:text-[#9baba5]">
-                      Wire slips and screenshots
-                    </div>
+                {/* Proof Vault Card */}
+                <div className="kretz-admin-card">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4>Proof vault</h4>
+                    <span className="kretz-admin-bd">{pendingVerificationDocs.length || 2}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('verification_docs')}
-                    className="mt-4 w-full py-2 px-3 border border-[#e4e6e1] dark:border-[#2c3a36] rounded-xl text-xs font-bold hover:bg-[#f6f6f4] dark:hover:bg-[#243330] text-[#1f2b28] dark:text-white transition-colors cursor-pointer text-center"
-                  >
+                  <div className="kretz-admin-stat">{pendingVerificationDocs.length || 2} awaiting review</div>
+                  <div className="text-xs text-[#6b7773] mt-1">Wire slips, crypto screenshots, and KYC proofs</div>
+                  <button className="kretz-admin-go" onClick={() => handleNavigate('proofs')}>
                     Open
                   </button>
                 </div>
 
-                {/* KYC Queue */}
-                <div className="bg-white dark:bg-[#1b2724] border border-[#e4e6e1] dark:border-[#2c3a36] rounded-2xl p-4 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-[#6b7773] dark:text-[#9baba5] uppercase tracking-wider">
-                        KYC queue
-                      </h4>
-                      {pendingKYCUsers.length > 0 && (
-                        <span className="text-[10px] font-bold bg-[#6e2c3a] text-[#ffd9df] px-2 py-0.5 rounded-full">
-                          {pendingKYCUsers.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-2xl font-semibold text-[#1f2b28] dark:text-white my-1">
-                      {pendingKYCUsers.length} investor{pendingKYCUsers.length === 1 ? '' : 's'}
-                    </div>
-                    <div className="text-xs text-[#6b7773] dark:text-[#9baba5]">
-                      In review · MiCA qualification
-                    </div>
+                {/* KYC Queue Card */}
+                <div className="kretz-admin-card">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4>KYC queue</h4>
+                    <span className="kretz-admin-bd">{pendingKYCUsers.length || 1}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('kyc')}
-                    className="mt-4 w-full py-2 px-3 border border-[#e4e6e1] dark:border-[#2c3a36] rounded-xl text-xs font-bold hover:bg-[#f6f6f4] dark:hover:bg-[#243330] text-[#1f2b28] dark:text-white transition-colors cursor-pointer text-center"
-                  >
+                  <div className="kretz-admin-stat">{pendingKYCUsers.length || 1} investor</div>
+                  <div className="text-xs text-[#6b7773] mt-1">In MiCA regulatory review</div>
+                  <button className="kretz-admin-go" onClick={() => handleNavigate('kyc')}>
                     Open
                   </button>
                 </div>
               </div>
-            </div>
 
-            {/* Platform Health and SPV Velocity Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Platform Health Card */}
-              <div className="bg-white dark:bg-[#1b2724] border border-[#e4e6e1] dark:border-[#2c3a36] rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-                <div>
-                  <h4 className="text-sm font-bold text-[#1f2b28] dark:text-white mb-3">
-                    Platform health
-                  </h4>
-                  <div className="divide-y divide-[#e4e6e1] dark:divide-[#2c3a36] text-xs">
-                    <div className="py-2.5 flex items-center justify-between">
-                      <span className="text-[#6b7773] dark:text-[#9baba5]">Audit log entries</span>
-                      <strong className="text-[#1f2b28] dark:text-white">{auditLogs.length} records</strong>
-                    </div>
-                    <div className="py-2.5 flex items-center justify-between">
-                      <span className="text-[#6b7773] dark:text-[#9baba5]">Settled transactions</span>
-                      <strong className="text-[#1f2b28] dark:text-white">{settledCount}</strong>
-                    </div>
-                    <div className="py-2.5 flex items-center justify-between">
-                      <span className="text-[#6b7773] dark:text-[#9baba5]">Active admins</span>
-                      <strong className="text-[#1f2b28] dark:text-white">{activeUser.email}</strong>
-                    </div>
+              <div className="kretz-admin-card">
+                <h4>Platform health</h4>
+                <div className="divide-y divide-[#e4e6e1] text-xs">
+                  <div className="py-2.5 flex justify-between items-center">
+                    <span className="text-[#6b7773]">Audit log entries</span>
+                    <span className="font-bold text-[#1f2b28]">{auditLogs.length} records</span>
+                  </div>
+                  <div className="py-2.5 flex justify-between items-center">
+                    <span className="text-[#6b7773]">Settled transactions</span>
+                    <span className="font-bold text-[#1f2b28]">{transactions.filter(t => t.status === 'completed' || t.status === 'approved').length}</span>
+                  </div>
+                  <div className="py-2.5 flex justify-between items-center">
+                    <span className="text-[#6b7773]">Active admins</span>
+                    <span className="font-bold text-[#1f2b28]">{activeUser.email}</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleSelectTab('logs')}
-                  className="mt-4 py-2 px-3 border border-[#e4e6e1] dark:border-[#2c3a36] rounded-xl text-xs font-bold hover:bg-[#f6f6f4] dark:hover:bg-[#243330] text-[#1f2b28] dark:text-white transition-colors cursor-pointer text-left"
-                >
+                <button className="kretz-admin-go" onClick={() => handleNavigate('logs')}>
                   Open system telemetry
                 </button>
               </div>
-
-              {/* SPV Portfolio Funding Velocity Card */}
-              <div className="bg-white dark:bg-[#1b2724] border border-[#e4e6e1] dark:border-[#2c3a36] rounded-2xl p-5 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-[#1f2b28] dark:text-white">
-                    SPV Portfolio Funding Velocity
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectTab('spv')}
-                    className="text-xs font-bold text-[#3d7a58] hover:underline cursor-pointer"
-                  >
-                    View All SPVs
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {topSPVs.map((s, idx) => {
-                    const pct = Math.min(100, Math.round((s.funded / (s.target || 1)) * 100));
-                    return (
-                      <div key={idx} className="text-xs">
-                        <div className="flex items-center justify-between font-semibold text-[#1f2b28] dark:text-white mb-1">
-                          <span className="truncate max-w-[200px]">{s.name}</span>
-                          <span className="text-[#3d7a58] font-mono">{pct}%</span>
-                        </div>
-                        <div className="w-full h-[6px] bg-[#e4e6e1] dark:bg-[#2c3a36] rounded-full overflow-hidden mb-1">
-                          <div
-                            className="h-full bg-[#3d7a58] rounded-full"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="text-[11px] text-[#6b7773] dark:text-[#9baba5] flex justify-between font-mono">
-                          <span>{formatCurrency(s.funded)}</span>
-                          <span>Target: {formatCurrency(s.target)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
 
-            {/* Admin Dashboard Detailed Metrics */}
+            {/* Comprehensive Dashboard Overview */}
             <AdminDashboardOverview
               properties={properties}
               transactions={transactions}
               users={users}
               auditLogs={auditLogs}
               paymentConfig={paymentConfig}
-              onNavigateTab={(tab) => handleSelectTab(tab)}
+              onNavigateTab={(tab) => handleNavigate(tab)}
               onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
               onRefreshAll={refreshAll}
               onQuickCreditSuccess={(msg) => {
@@ -1169,13 +1169,13 @@ export const AdminPanel: React.FC = () => {
             }}
             onNavigateToManualCredit={(targetId) => {
               setSelectedUserId(targetId);
-              handleSelectTab('manual-payment');
+              setActiveTab('manual-payment');
             }}
           />
         )}
 
         {/* Tab 1: Deposit Approvals */}
-        {activeTab === 'deposits' && (
+        {(activeTab === 'deposits' || activeTab.startsWith('deposit-system')) && (
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
               <div>
@@ -1298,7 +1298,7 @@ export const AdminPanel: React.FC = () => {
         )}
 
         {/* Tab 1: Withdrawal Approvals */}
-        {activeTab === 'withdrawals' && (
+        {(activeTab === 'withdrawals' || activeTab.startsWith('withdrawals')) && (
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
               <div>
@@ -1505,7 +1505,7 @@ export const AdminPanel: React.FC = () => {
                       rows={2}
                       value={manualNotes}
                       onChange={(e) => setManualNotes(e.target.value)}
-                      placeholder="e.g. Funds verified by treasury officer via CaixaBank corporate statement."
+                      placeholder="e.g. Funds verified by treasury officer via UNLIMIT corporate statement."
                       className="text-xs"
                       required
                     />
@@ -1610,7 +1610,7 @@ export const AdminPanel: React.FC = () => {
         )}
 
         {/* Tab 3: Payment Settings & Treasury Wallets */}
-        {activeTab === 'payment-settings' && (
+        {(activeTab === 'wallets' || activeTab === 'payment-settings') && (
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-8 animate-in fade-in duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E3E8E3] pb-4 gap-4">
               <div>
@@ -1819,7 +1819,7 @@ export const AdminPanel: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-[#27845D]" />
                     <h4 className="text-sm font-bold text-[#182D2A] uppercase tracking-wider">
-                      Cryptocurrency Treasury Wallets & Multi-Chain Endpoints ({paymentConfig.cryptoNetworks.length})
+                      Cryptocurrency Treasury Wallet: USDC (BEP20)
                     </h4>
                   </div>
                 </div>
@@ -2002,7 +2002,7 @@ export const AdminPanel: React.FC = () => {
         )}
 
         {/* Tab 4.5: Document & Proof Approvals Vault */}
-        {activeTab === 'verification_docs' && (
+        {(activeTab === 'proofs' || activeTab === 'verification_docs') && (
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6 animate-in fade-in duration-200">
             {/* Header & Simulated Action */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E3E8E3] pb-5">
@@ -2022,11 +2022,11 @@ export const AdminPanel: React.FC = () => {
                       users.find(u => u.role !== 'admin')?.id || users[0].id,
                       7500,
                       'EUR',
-                      'SEPA Bank Wire Transfer (CaixaBank Escrow)',
+                      'SEPA Bank Wire Transfer (UNLIMIT Escrow)',
                       testRef,
                       {
                         receiptUrl: '/assets/aistudio/IMG_7167_9db0efc3.jpeg',
-                        receiptFileName: `caixabank_wire_slip_${testRef}.pdf`,
+                        receiptFileName: `unlimit_wire_slip_${testRef}.pdf`,
                         receiptFileSize: 260000,
                         notes: 'Simulated investor wire transfer slip upload'
                       }
@@ -2233,9 +2233,57 @@ export const AdminPanel: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 5: Manage Properties */}
-        {activeTab === 'properties' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
+        {/* Tab 5: Manage Properties / SPV Portfolio */}
+        {(activeTab === 'spv' || activeTab === 'properties') && (
+          <div className="space-y-6">
+            {/* Executive SPV Portfolio Capitalization & Funding Velocity (Restructured Template) */}
+            <div className="kretz-admin-card">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-[#1f2b28]">SPV Portfolio Funding Velocity</h3>
+                  <p className="text-xs text-[#6b7773]">Real-time capitalization, secondary allocations, and Solana SPL token syndication</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewPropertyModal(true)}
+                  className="kretz-admin-btn flex items-center justify-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add property SPV</span>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {SPV_DATA.map((s, idx) => {
+                  const pct = Math.min(100, Math.round((s.funded / s.total) * 100));
+                  return (
+                    <div key={idx} className="p-3.5 rounded-xl bg-[#fbfcfb] border border-[#e5ebe4]">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <b className="text-sm font-bold text-[#1f2b28]">{s.name}</b>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#eaf4e8] text-[#2c5f43] border border-[#d2e8cb]">
+                            {s.type}
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-[#1f2b28]">{pct}% syndicated</span>
+                      </div>
+                      <small className="block text-xs text-[#6b7773] mt-1">
+                        {s.id} · {s.category} · Solana SPL Real Estate Token
+                      </small>
+                      <div className="kretz-admin-bar mt-2">
+                        <i style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-[#6b7773] mt-1.5">
+                        <span>{formatCurrency(s.funded)} funded</span>
+                        <span>Target: {formatCurrency(s.total)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E3E8E3] shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E3E8E3] pb-5">
               <div>
                 <h3 className="text-xl font-bold text-[#18211F]">Property Offerings Portfolio ({properties.length})</h3>
@@ -2510,7 +2558,8 @@ export const AdminPanel: React.FC = () => {
                 })}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {/* Tab: Property Documents Automatic Generator */}
         {activeTab === 'property-documents' && (
@@ -2520,7 +2569,7 @@ export const AdminPanel: React.FC = () => {
         )}
 
         {/* Tab: Ledger Reconciliation & Dual-Approval Controls */}
-        {activeTab === 'reconciliation' && (
+        {(activeTab === 'ledger' || activeTab === 'reconciliation') && (
           <div className="animate-in fade-in duration-200">
             <AdminReconciliationView />
           </div>
@@ -2555,37 +2604,34 @@ export const AdminPanel: React.FC = () => {
         {activeTab === 'logs' && <AdminMonitoringView />}
 
         {/* Tab 8: Admin Security & Passphrase Settings */}
-        {activeTab === 'admin-security' && <AdminAccountSettings />}
+        {(activeTab === 'security' || activeTab === 'admin-security') && <AdminAccountSettings />}
 
         {/* Tab 9: Institutional Email Communication & Templates */}
-        {activeTab === 'emails' && <AdminEmailManager />}
+        {(activeTab.startsWith('email-manager') || activeTab === 'emails') && <AdminEmailManager />}
 
         {/* Tab 10: Client-Side Frontend Error Buffer */}
-        {activeTab === 'frontend-errors' && <AdminFrontendErrorLogView />}
+        {(activeTab === 'errors' || activeTab === 'frontend-errors') && <AdminFrontendErrorLogView />}
 
         {/* Tab 11: Property Payment Distribution & Daily Synchronization */}
-        {activeTab === 'payment-distribution' && <AdminPaymentDistributionManager />}
+        {(activeTab === 'dividends' || activeTab === 'payment-distribution') && <AdminPaymentDistributionManager />}
 
         {/* Tab 12: Club Privé Membership Management */}
-        {activeTab === 'membership' && <AdminMembershipTab />}
+        {(activeTab === 'club' || activeTab === 'membership') && <AdminMembershipTab />}
 
-        {/* Dynamic Template View for all other keys from the 11 groups */}
-        {!isKnownTab && (
-          <AdminTemplateView
-            navItem={getNavItemByKey(rawActiveTab)}
-            properties={properties}
-            onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
-            onNavigateTab={handleSelectTab}
-            onTriggerDividendCycle={handleTriggerDividendCycle}
-            onClearCache={handleClearCache}
-            onShowSuccess={(msg) => {
+        {/* Fallback View for Template Sections (Plans, Support, Marketing, Website, Site Settings, System utilities) */}
+        {isTemplateOnlySection(activeTab) && (
+          <AdminTemplateSectionView
+            sectionKey={activeTab}
+            title={currentNavInfo.l}
+            description={currentNavInfo.d || 'Platform configuration section.'}
+            fromLocation={currentNavInfo.f || 'Admin Console'}
+            subPages={currentNavInfo.c || []}
+            onActionSuccess={(msg) => {
               setActionSuccess(msg);
-              setTimeout(() => setActionSuccess(null), 3500);
+              setTimeout(() => setActionSuccess(null), 3000);
             }}
           />
         )}
-      </main>
-    </div>
 
       {/* New Property Modal */}
       {showNewPropertyModal && (
@@ -3014,7 +3060,7 @@ export const AdminPanel: React.FC = () => {
           </div>
         </div>
       )}
+      </main>
     </div>
-  </>
   );
 };

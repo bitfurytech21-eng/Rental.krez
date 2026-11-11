@@ -50,9 +50,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   const [senderName] = useState<string>(user?.fullName || '');
   const [senderReference, setSenderReference] = useState<string>('');
   
-  // Crypto selection
-  const [cryptoToken, setCryptoToken] = useState<string>('USDT');
-  const [cryptoNetwork, setCryptoNetwork] = useState<string>('Polygon POS');
+  // Crypto payment option is streamlined strictly to USDC (BEP20) on BNB Smart Chain
+  const cryptoToken = 'USDC';
+  const cryptoNetwork = 'BNB Smart Chain (BEP20)';
   const [declaredTxHash, setDeclaredTxHash] = useState<string>('');
 
   // Receipt upload state
@@ -77,15 +77,16 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
   if (!isOpen || !user) return null;
 
-  // Find enabled crypto networks from payment config
-  const enabledNetworks = paymentConfig.cryptoNetworks.filter(n => n.enabled);
-  const availableTokens = Array.from(new Set(enabledNetworks.map(n => n.token)));
-  const currentTokenNetworks = enabledNetworks.filter(n => n.token === cryptoToken);
-  
-  const selectedNetworkConfig = currentTokenNetworks.find(n => n.name === cryptoNetwork) || currentTokenNetworks[0] || {
-    walletAddress: user.cryptoDepositAddress || paymentConfig.traditional.iban,
-    network: 'Polygon',
-    token: cryptoToken
+  // Single canonical USDC (BEP20) configuration from payment config
+  const selectedNetworkConfig = paymentConfig.cryptoNetworks.find(n => n.token === 'USDC' && n.name.includes('BEP20')) || paymentConfig.cryptoNetworks[0] || {
+    id: 'net-usdc-bep20',
+    name: 'BNB Smart Chain (BEP20)',
+    token: 'USDC',
+    network: 'BNB Smart Chain (BEP20)',
+    walletAddress: user.cryptoDepositAddress || '0x8336A3f49125bAD02101B405699ac87e40D473BB',
+    contractEnd: '8ac76a',
+    contractAddress: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+    enabled: true
   };
 
   // Currency unit label based on payment method
@@ -135,13 +136,14 @@ export const DepositModal: React.FC<DepositModalProps> = ({
       };
 
       if (method === 'sepa') {
-        paymentMethodTitle = 'SEPA Bank Wire Transfer (CaixaBank Escrow)';
+        paymentMethodTitle = `SEPA Bank Wire Transfer (${paymentConfig.traditional.bankName} Escrow)`;
         metadata.bank = paymentConfig.traditional.bankName;
         metadata.iban = paymentConfig.traditional.iban;
         metadata.depositRef = externalRef;
       } else {
-        paymentMethodTitle = `Crypto Transfer - ${cryptoToken} (${selectedNetworkConfig.name || cryptoNetwork})`;
-        metadata.network = selectedNetworkConfig.network || cryptoNetwork;
+        paymentMethodTitle = 'Crypto Transfer - USDC (BEP20)';
+        metadata.network = 'BNB Smart Chain (BEP20)';
+        metadata.token = 'USDC';
         metadata.treasuryAddress = selectedNetworkConfig.walletAddress;
         metadata.declaredTxHash = declaredTxHash.trim() || undefined;
       }
@@ -308,7 +310,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-[#F5F5F2]">Bank Wire (SEPA)</h4>
-                    <p className="text-xs text-[#A5A6A5] mt-0.5">CaixaBank Institutional Escrow</p>
+                    <p className="text-xs text-[#A5A6A5] mt-0.5">{paymentConfig.traditional.bankName} Institutional Escrow</p>
                   </div>
                 </div>
 
@@ -332,8 +334,8 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     </span>
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-[#F5F5F2]">Cryptocurrency Transfer</h4>
-                    <p className="text-xs text-[#A5A6A5] mt-0.5">USDT, USDC, or SOL on-chain</p>
+                    <h4 className="text-sm font-bold text-[#F5F5F2]">USDC (BEP20) Transfer</h4>
+                    <p className="text-xs text-[#A5A6A5] mt-0.5">BNB Smart Chain Instant Settlement</p>
                   </div>
                 </div>
               </div>
@@ -456,7 +458,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                 <div className="space-y-3">
                   <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3 text-xs">
                     <div className="flex items-center justify-between pb-2 border-b border-[#303030]">
-                      <span className="font-bold text-[#F5F5F2]">CaixaBank Institutional Account</span>
+                      <span className="font-bold text-[#F5F5F2]">{paymentConfig.traditional.bankName} Escrow Account</span>
                       <span className="text-[10px] font-semibold text-[#55BDE8] bg-[#55BDE8]/10 border border-[#55BDE8]/20 px-2 py-0.5 rounded-full">
                         SEPA Direct Wire
                       </span>
@@ -469,7 +471,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="text-[#777979]">Bank Name:</span>
+                        <span className="text-[#777979]">Bank / Payment Provider:</span>
                         <span className="font-semibold text-[#F5F5F2]">{paymentConfig.traditional.bankName}</span>
                       </div>
 
@@ -500,6 +502,20 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                           </button>
                         </div>
                       </div>
+
+                      {paymentConfig.traditional.address && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#777979]">Provider Address:</span>
+                          <span className="font-semibold text-[#F5F5F2] text-right max-w-[65%]">{paymentConfig.traditional.address}</span>
+                        </div>
+                      )}
+
+                      {paymentConfig.traditional.country && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#777979]">Country:</span>
+                          <span className="font-semibold text-[#F5F5F2]">{paymentConfig.traditional.country}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-3 bg-[#090A0A] rounded-xl border border-[#E7B96D]/40 space-y-1">
@@ -522,38 +538,46 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#777979] mb-1">Asset</label>
-                      <select
-                        value={cryptoToken}
-                        onChange={(e) => {
-                          const t = e.target.value;
-                          setCryptoToken(t);
-                          const matching = enabledNetworks.filter(n => n.token === t);
-                          if (matching[0]) setCryptoNetwork(matching[0].name);
-                        }}
-                        className="w-full px-3 py-2 rounded-xl bg-[#141515] border border-[#303030] text-xs font-bold text-[#F5F5F2] focus:outline-none"
-                      >
-                        {availableTokens.map((t) => (
-                          <option key={t} value={t} className="bg-[#090A0A] text-[#F5F5F2]">{t}</option>
-                        ))}
-                      </select>
+                  {/* Single Designated Option Banner */}
+                  <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#303030]">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#202020] border border-[#303030] text-[#43C98B] flex items-center justify-center font-bold text-xs">
+                          $
+                        </div>
+                        <div>
+                          <span className="font-bold text-[#F5F5F2] text-sm block">USDC (BEP20)</span>
+                          <span className="text-[10px] text-[#A5A6A5]">BNB Smart Chain Network</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-[#43C98B] bg-[#43C98B]/10 border border-[#43C98B]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        BEP20 Mainnet
+                      </span>
                     </div>
 
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#777979] mb-1">Network</label>
-                      <select
-                        value={cryptoNetwork}
-                        onChange={(e) => setCryptoNetwork(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-[#141515] border border-[#303030] text-xs font-bold text-[#F5F5F2] focus:outline-none"
-                      >
-                        {currentTokenNetworks.map((net) => (
-                          <option key={net.id} value={net.name} className="bg-[#090A0A] text-[#F5F5F2]">
-                            {net.name} ({net.network})
-                          </option>
-                        ))}
-                      </select>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#777979]">Supported Token:</span>
+                        <span className="font-semibold text-[#F5F5F2]">USD Coin (USDC)</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#777979]">Settlement Network:</span>
+                        <span className="font-semibold text-[#55BDE8]">BNB Smart Chain (BEP20)</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#777979]">Contract Address:</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-[#A5A6A5]">0x8ac76a...580d</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard('0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', 'contract')}
+                            className="p-1 rounded bg-[#202020] border border-[#303030] text-[#A5A6A5] hover:text-[#F5F5F2] cursor-pointer"
+                            title="Copy Contract Address"
+                          >
+                            {copiedField === 'contract' ? <Check className="w-3 h-3 text-[#43C98B]" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -564,7 +588,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                       </div>
 
                       <div className="flex-1 space-y-2 text-xs">
-                        <span className="font-bold text-[#F5F5F2] block">Verified Treasury Address</span>
+                        <span className="font-bold text-[#F5F5F2] block">Verified BEP20 Treasury Address</span>
                         <div className="p-2 bg-[#090A0A] rounded-xl border border-[#303030] flex items-center justify-between gap-1">
                           <span className="font-mono text-[10px] text-[#F5F5F2] font-bold break-all select-all">
                             {selectedNetworkConfig.walletAddress}
@@ -572,11 +596,15 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                           <button
                             type="button"
                             onClick={() => copyToClipboard(selectedNetworkConfig.walletAddress, 'wallet')}
-                            className="p-1 rounded bg-[#141515] text-[#F5F5F2] cursor-pointer shrink-0"
+                            className="p-1.5 rounded bg-[#141515] hover:bg-[#202020] text-[#F5F5F2] cursor-pointer shrink-0"
+                            title="Copy Address"
                           >
-                            {copiedField === 'wallet' ? <Check className="w-3 h-3 text-[#43C98B]" /> : <Copy className="w-3 h-3" />}
+                            {copiedField === 'wallet' ? <Check className="w-3.5 h-3.5 text-[#43C98B]" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
                         </div>
+                        <p className="text-[10px] text-[#E7B96D] leading-tight">
+                          Transfer only <strong>USDC</strong> via <strong>BNB Smart Chain (BEP20)</strong>. Tokens transferred via other networks cannot be recovered.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -687,7 +715,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                 <div className="p-3.5 rounded-2xl bg-[#141515] border border-[#303030] space-y-2 text-xs">
                   <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
                     <span className="text-[#777979]">Method:</span>
-                    <span className="font-bold text-[#F5F5F2]">{method === 'sepa' ? 'SEPA Bank Wire' : `Crypto (${cryptoToken})`}</span>
+                    <span className="font-bold text-[#F5F5F2]">{method === 'sepa' ? `SEPA Bank Wire (${paymentConfig.traditional.bankName} Escrow)` : 'USDC (BEP20) Transfer'}</span>
                   </div>
                   <div className="flex justify-between items-center pb-1.5 border-b border-[#303030]">
                     <span className="text-[#777979]">Deposit Amount:</span>
@@ -703,7 +731,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-[#A5A6A5]">
-                    {method === 'sepa' ? 'Bank Transfer Reference / Wire Note' : 'Transaction Hash (TxHash)'}
+                    {method === 'sepa' ? 'Bank Transfer Reference / Wire Note' : 'BscScan Transaction Hash (TxID / TxHash)'}
                   </label>
                   <input
                     type="text"
@@ -712,7 +740,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                       if (method === 'sepa') setSenderReference(e.target.value);
                       else setDeclaredTxHash(e.target.value);
                     }}
-                    placeholder={method === 'sepa' ? `e.g. ${uniqueDepositRef}` : '0x...'}
+                    placeholder={method === 'sepa' ? `e.g. ${uniqueDepositRef}` : '0x... (BNB Smart Chain TxHash)'}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#202020] border border-[#303030] text-xs font-mono text-[#F5F5F2] placeholder:text-[#777979] focus:outline-none focus:border-[#55BDE8]"
                   />
                 </div>

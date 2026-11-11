@@ -2618,5 +2618,268 @@ body.desktop-mode-active .max-w-\[1400px\] {
   animation: cinematicFadeUp 650ms cubic-bezier(0.16, 1, 0.3, 1) 270ms forwards;
 }
 
+/* ========================================================
+   Kretz Admin Restructured Theme Classes
+   ======================================================== */
+.kretz-admin-scope {
+  --admin-bg: #f6f6f4;
+  --admin-card: #ffffff;
+  --admin-tx: #1f2b28;
+  --admin-mu: #6b7773;
+  --admin-bd: #e4e6e1;
+  --admin-dk: #22302d;
+  --admin-gr: #3d7a58;
+  --admin-lt: #a9d6a0;
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--admin-tx);
+  background: var(--admin-bg);
+}
+
+.kretz-admin-scope.dark,
+[data-theme="dark"] .kretz-admin-scope {
+  --admin-bg: #121a18;
+  --admin-card: #1b2724;
+  --admin-tx: #e8efeb;
+  --admin-mu: #9baba5;
+  --admin-bd: #2c3a36;
+}
+
+.kretz-admin-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--admin-card);
+  border-bottom: 1px solid var(--admin-bd);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.kretz-admin-side {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 290px;
+  max-width: 86%;
+  background: var(--admin-dk);
+  color: #cfe0d6;
+  z-index: 30;
+  transform: translateX(-105%);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  padding: 20px 12px 40px;
+}
+
+.kretz-admin-side.open {
+  transform: none;
+}
+
+.kretz-admin-veil {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 25;
+  display: none;
+}
+
+.kretz-admin-veil.open {
+  display: block;
+}
+
+.kretz-admin-side h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #8fb09c;
+  margin: 18px 12px 6px;
+  text-transform: uppercase;
+}
+
+.kretz-admin-nv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: #cfe0d6;
+  padding: 9px 12px;
+  border-radius: 12px;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.kretz-admin-nv:hover {
+  background: #2b3d39;
+  color: #ffffff;
+}
+
+.kretz-admin-nv.on {
+  background: #35523f;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.kretz-admin-bd {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: #6e2c3a;
+  color: #ffd9df;
+}
+
+.kretz-admin-bd.g {
+  background: #2f5a40;
+  color: #cdeed2;
+}
+
+.kretz-admin-ch {
+  margin: 0 0 4px 14px;
+  border-left: 1.5px dashed #4a6256;
+  padding-left: 6px;
+}
+
+.kretz-admin-nv.sm {
+  font-size: 13px;
+  padding: 7px 10px;
+  color: #a9c0b3;
+}
+
+.kretz-admin-nv.sm:hover {
+  color: #ffffff;
+  background: #2b3d39;
+}
+
+.kretz-admin-nv.sm.on {
+  color: #ffffff;
+  background: #35523f;
+  font-weight: 600;
+}
+
+.kretz-admin-hero {
+  background: var(--admin-dk);
+  color: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.kretz-admin-hero small {
+  color: var(--admin-lt);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.kretz-admin-hero h1 {
+  font-size: 26px;
+  line-height: 1.2;
+  margin: 8px 0;
+  font-weight: 700;
+}
+
+.kretz-admin-hero p {
+  color: #b9cbc1;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+
+.kretz-admin-btn {
+  background: #4f8c68;
+  color: #ffffff;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin: 0 8px 8px 0;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.kretz-admin-btn:hover {
+  background: #3d7a58;
+}
+
+.kretz-admin-btn.o {
+  background: transparent;
+  border: 1px solid #4a5f56;
+  color: #d6e6dc;
+}
+
+.kretz-admin-btn.o:hover {
+  background: #2b3d39;
+  color: #ffffff;
+}
+
+.kretz-admin-card {
+  background: var(--admin-card);
+  border: 1px solid var(--admin-bd);
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.kretz-admin-card h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--admin-tx);
+}
+
+.kretz-admin-stat {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--admin-tx);
+  letter-spacing: -0.02em;
+}
+
+.kretz-admin-bar {
+  height: 8px;
+  background: var(--admin-bd);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.kretz-admin-bar i {
+  display: block;
+  height: 100%;
+  background: var(--admin-gr);
+  border-radius: 6px;
+}
+
+.kretz-admin-go {
+  background: none;
+  border: 1px solid var(--admin-bd);
+  border-radius: 10px;
+  padding: 6px 14px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--admin-tx);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.kretz-admin-go:hover {
+  background: var(--admin-bg);
+  border-color: #3d7a58;
+  color: #3d7a58;
+}
+
+
 
 

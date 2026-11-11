@@ -641,8 +641,8 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
               <Coins className="w-4 h-4 text-emerald-700" />
               <span>Crypto Settlement Wallets</span>
             </h4>
-            <span className="text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-              Multi-Chain
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              BEP20
             </span>
           </div>
 
@@ -651,7 +651,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
               <div key={net.id} className="p-2.5 bg-[#F6F7F4] rounded-xl border border-[#E3E8E3] space-y-0.5">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-[#18211F] text-[11px]">{net.name} ({net.token})</span>
-                  <span className="text-[10px] font-mono text-emerald-700 font-bold">POS Verified</span>
+                  <span className="text-[10px] font-mono text-emerald-700 font-bold">BSC Verified</span>
                 </div>
                 <span className="font-mono text-[10px] text-slate-500 block truncate">
                   {net.walletAddress}
@@ -664,7 +664,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
             onClick={() => onNavigateTab('payment-settings')}
             className="w-full py-2.5 px-3 rounded-xl bg-[#EEF1EC] hover:bg-slate-200 text-[#182D2A] text-xs font-bold transition-colors cursor-pointer"
           >
-            Configure Crypto Networks ({paymentConfig.cryptoNetworks.length})
+            Configure Crypto Settlement: USDC (BEP20)
           </button>
         </div>
 

@@ -56,8 +56,8 @@ export const FirstTimeOnboardingModal: React.FC<FirstTimeOnboardingModalProps> =
     },
     {
       id: 3,
-      title: "Treasury Wallet & CaixaBank Escrow",
-      description: "Fund your account via SEPA wire transfer or USDC/SOL crypto gateway.",
+      title: "Treasury Wallet & Institutional Escrow",
+      description: "Fund your account via SEPA wire transfer or USDC (BEP20) crypto gateway.",
       icon: Wallet,
       status: user.walletBalance > 0 ? "completed" : "pending",
     },
