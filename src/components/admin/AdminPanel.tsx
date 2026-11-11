@@ -959,8 +959,10 @@ export const AdminPanel: React.FC = () => {
         </div>
       </aside>
 
-      {/* Top Header Bar */}
-      <header className="kretz-admin-top lg:pl-[306px]">
+      {/* Content Area Offset by Fixed 290px Sidebar on Desktop */}
+      <div className="lg:pl-[290px] min-h-screen flex flex-col">
+        {/* Top Header Bar */}
+        <header className="kretz-admin-top">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -1013,7 +1015,7 @@ export const AdminPanel: React.FC = () => {
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-[1040px] mx-auto px-4 sm:px-6 py-6 pb-24 lg:pl-[306px]">
+      <main className="max-w-[960px] w-full mx-auto px-4 sm:px-6 py-6 pb-24 flex-1">
         {/* Alerts */}
         {actionSuccess && (
           <div className="p-4 mb-5 rounded-2xl bg-green-50 text-green-800 text-xs font-bold border border-green-200 flex items-center justify-between animate-in fade-in">
@@ -3065,6 +3067,7 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
       </main>
+      </div>
     </div>
   );
 };
