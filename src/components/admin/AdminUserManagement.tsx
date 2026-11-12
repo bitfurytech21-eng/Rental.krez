@@ -473,7 +473,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                             {u.avatarUrl ? (
                               <img src={u.avatarUrl} alt="" className="w-full h-full object-cover rounded-xl" />
                             ) : (
-                              u.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U'
+                              (u.fullName || 'User').trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U'
                             )}
                           </div>
                           <div className="min-w-0">
@@ -818,7 +818,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <div className="p-6 border-b border-[#E3E8E3] bg-[#182D2A] text-white flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div className="w-12 h-12 rounded-2xl bg-[#24423C] text-[#B7E36A] flex items-center justify-center font-black text-sm">
-                  {inspectedUser.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  {(inspectedUser.fullName || 'User').trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U'}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">

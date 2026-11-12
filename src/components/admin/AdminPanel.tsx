@@ -106,15 +106,33 @@ export const AdminPanel: React.FC = () => {
     membership: 'club'
   };
 
+  const resolveTabCandidate = (raw?: string | null): string | null => {
+    if (!raw) return null;
+    let clean = raw.toLowerCase().trim();
+    if (clean.includes('?')) clean = clean.split('?')[0];
+    if (clean.includes('#')) {
+      const parts = clean.split('#');
+      clean = parts[1] || parts[0];
+    }
+    clean = clean.replace(/^#/, '').replace(/^\/+/, '').replace(/^admin\//, '').replace(/\/+$/, '');
+    if (!clean || clean === 'admin') return null;
+    return ALIAS_MAP[clean] || clean;
+  };
+
   const getInitialAdminTab = (): string => {
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase();
-      if (hash) {
-        return ALIAS_MAP[hash] || hash;
-      }
+      const hashCand = resolveTabCandidate(window.location.hash);
+      if (hashCand) return hashCand;
+
       const params = new URLSearchParams(window.location.search);
-      const q = params.get('tab')?.toLowerCase();
-      if (q) return ALIAS_MAP[q] || q;
+      const q = params.get('tab');
+      if (q) {
+        const queryCand = resolveTabCandidate(q);
+        if (queryCand) return queryCand;
+      }
+
+      const pathCand = resolveTabCandidate(window.location.pathname);
+      if (pathCand) return pathCand;
     }
     return 'dashboard';
   };
@@ -137,6 +155,11 @@ export const AdminPanel: React.FC = () => {
     setActiveTab(resolved);
     if (typeof window !== 'undefined') {
       window.location.hash = resolved;
+    }
+    // Auto-open parent submenu if navigating to subtab
+    const parentKey = Object.keys(openSubmenus).find(k => resolved.startsWith(k));
+    if (parentKey) {
+      setOpenSubmenus(prev => ({ ...prev, [parentKey]: true }));
     }
     setSideOpen(false);
   };
@@ -225,17 +248,25 @@ export const AdminPanel: React.FC = () => {
 
   React.useEffect(() => {
     const syncTabFromLocation = () => {
-      const hashFromPath = currentPath.includes('#') ? currentPath.split('#')[1].toLowerCase() : '';
-      const hashFromWin = typeof window !== 'undefined' ? window.location.hash.replace('#', '').replace(/^\//, '').toLowerCase() : '';
-      const candidate = hashFromPath || hashFromWin;
-      if (candidate) {
-        const resolved = ALIAS_MAP[candidate] || candidate;
+      const fromPath = resolveTabCandidate(currentPath);
+      const fromWinHash = typeof window !== 'undefined' ? resolveTabCandidate(window.location.hash) : null;
+      const fromWinPath = typeof window !== 'undefined' ? resolveTabCandidate(window.location.pathname) : null;
+      const resolved = fromWinHash || fromPath || fromWinPath;
+      if (resolved) {
         setActiveTab(resolved);
+        const parentKey = Object.keys(openSubmenus).find(k => resolved.startsWith(k));
+        if (parentKey) {
+          setOpenSubmenus(prev => ({ ...prev, [parentKey]: true }));
+        }
       }
     };
     syncTabFromLocation();
     window.addEventListener('hashchange', syncTabFromLocation);
-    return () => window.removeEventListener('hashchange', syncTabFromLocation);
+    window.addEventListener('popstate', syncTabFromLocation);
+    return () => {
+      window.removeEventListener('hashchange', syncTabFromLocation);
+      window.removeEventListener('popstate', syncTabFromLocation);
+    };
   }, [currentPath]);
 
   // Manual Payment Credit State
@@ -1078,13 +1109,31 @@ export const AdminPanel: React.FC = () => {
               <small>Executive command center</small>
               <h1>Platform administration</h1>
               <p>Super admin. {pendingDeposits.length + pendingWithdrawals.length + pendingKYCUsers.length + pendingVerificationDocs.length} items awaiting review.</p>
-              <button className="kretz-admin-btn" onClick={() => handleNavigate('dividends')}>
+              <button className="kretz-admin-btn cursor-pointer" onClick={() => {
+                handleNavigate('dividends');
+                setActionSuccess('Opened Dividend & Payment Distribution Manager.');
+                setTimeout(() => setActionSuccess(null), 3500);
+              }}>
                 Trigger dividend cycle
               </button>
-              <button className="kretz-admin-btn o" onClick={() => handleNavigate('audit')}>
+              <button className="kretz-admin-btn o cursor-pointer" onClick={() => {
+                try {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(auditLogs, null, 2));
+                  const downloadAnchor = document.createElement('a');
+                  downloadAnchor.setAttribute("href", dataStr);
+                  downloadAnchor.setAttribute("download", `kretz-audit-report-${new Date().toISOString().split('T')[0]}.json`);
+                  document.body.appendChild(downloadAnchor);
+                  downloadAnchor.click();
+                  downloadAnchor.remove();
+                  setActionSuccess(`Audit report exported successfully (${auditLogs.length} events logged).`);
+                  setTimeout(() => setActionSuccess(null), 3500);
+                } catch {
+                  handleNavigate('audit');
+                }
+              }}>
                 Export audit report
               </button>
-              <button className="kretz-admin-btn o" onClick={() => setShowNewPropertyModal(true)}>
+              <button className="kretz-admin-btn o cursor-pointer" onClick={() => setShowNewPropertyModal(true)}>
                 Publish new property
               </button>
             </div>

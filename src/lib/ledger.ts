@@ -2211,7 +2211,7 @@ class LedgerService {
     const newOrder: P2PListingOrder = {
       id: 'p2p-ord-' + Math.random().toString(36).substring(2, 9),
       sellerId: seller.id,
-      sellerName: `${seller.fullName.split(' ')[0]} ${seller.fullName.split(' ')[1]?.[0] || ''}.`.trim(),
+      sellerName: `${(seller.fullName || 'Seller').trim().split(/\s+/)[0]} ${(seller.fullName || '').trim().split(/\s+/)[1]?.[0] || ''}.`.trim(),
       propertyId: prop.id,
       propertyTitle: prop.title,
       propertyLocation: prop.location,

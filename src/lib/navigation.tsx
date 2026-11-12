@@ -32,12 +32,23 @@ const NavigationContext = createContext<NavigationContextValue | null>(null);
  */
 export const getPathFromLocation = (): string => {
   if (typeof window === 'undefined') return '/';
+  const pathname = window.location.pathname || '/';
+
+  // If the pathname is a dedicated top-level route (e.g. /admin, /dashboard, /properties),
+  // always honor the pathname! The hash is an in-page anchor or tab (e.g. /admin#users)
+  if (pathname !== '/' && pathname !== '') {
+    return pathname;
+  }
+
+  // Only if on root (/), check if hash represents a routed page (e.g. #/properties or #/admin)
   const rawHash = window.location.hash.replace(/^#/, '').trim();
   if (rawHash && rawHash !== '/') {
-    return rawHash.startsWith('/') ? rawHash : `/${rawHash}`;
+    if (rawHash.startsWith('/')) return rawHash;
+    if (rawHash === 'admin' || rawHash.startsWith('admin/')) return '/admin';
+    if (rawHash === 'dashboard' || rawHash.startsWith('dashboard/')) return '/dashboard';
+    if (rawHash === 'properties' || rawHash === 'login' || rawHash === 'register') return `/${rawHash}`;
   }
-  const path = window.location.pathname || '/';
-  return path;
+  return pathname;
 };
 
 /**
@@ -47,8 +58,15 @@ export const cleanRoutePath = (path: string): string => {
   if (!path || path === '' || path === '/') return '/';
   const trimmed = path.trim();
   if (trimmed.startsWith('#')) {
+    // If it's an in-page anchor while on a specific page, keep current page
+    if (typeof window !== 'undefined' && window.location.pathname && window.location.pathname !== '/') {
+      return window.location.pathname;
+    }
     const afterHash = trimmed.replace(/^#/, '').trim();
-    return afterHash.startsWith('/') ? afterHash : `/${afterHash}`;
+    if (afterHash.startsWith('/')) return afterHash;
+    if (afterHash === 'admin' || afterHash.startsWith('admin/')) return '/admin';
+    if (afterHash === 'dashboard' || afterHash.startsWith('dashboard/')) return '/dashboard';
+    return `/${afterHash}`;
   }
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 };
@@ -280,7 +298,16 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
    * Browser Back/Forward navigation support (popstate and hashchange)
    */
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (e: Event) => {
+      // If it's a hashchange while already on an internal page (e.g. /admin#deposits or /dashboard#portfolio),
+      // allow the component's internal hashchange/tab listener to handle it without page re-routing!
+      if (e.type === 'hashchange') {
+        const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+        if (pathname && pathname !== '/') {
+          return;
+        }
+      }
+
       const newPath = getPathFromLocation();
       const cleanNew = cleanRoutePath(newPath);
       const cleanCurrent = cleanRoutePath(currentPathRef.current);
@@ -337,10 +364,14 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
         return;
       }
 
+      // In-page hash anchors (e.g. href="#...") must not trigger full-page route transitions
+      if (href.startsWith('#')) {
+        return;
+      }
+
       // Check if it's an internal link
       const isInternal =
         href.startsWith('/') ||
-        href.startsWith('#') ||
         href.startsWith(window.location.origin);
 
       if (isInternal) {

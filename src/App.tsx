@@ -279,7 +279,61 @@ function MainApp() {
     }
 
     // Authoritative Admin Portal Routes with strict role enforcement
-    if (basePath.startsWith('/admin') || basePath === '/admin-login') {
+    const ADMIN_TAB_PREFIXES = [
+      '/admin',
+      '/admin-login',
+      '/users',
+      '/deposits',
+      '/withdrawals',
+      '/deposit-system',
+      '/spv',
+      '/kyc',
+      '/proofs',
+      '/wallets',
+      '/ledger',
+      '/reconciliation',
+      '/audit',
+      '/logs',
+      '/security',
+      '/admin-security',
+      '/dividends',
+      '/issuance',
+      '/restore',
+      '/manage-referral',
+      '/plan-manage',
+      '/support-ticket',
+      '/report',
+      '/promotional-tool',
+      '/subscribers',
+      '/language',
+      '/active-template',
+      '/manage-pages',
+      '/section-manage',
+      '/settings',
+      '/logo-icon-setting',
+      '/plugins',
+      '/seo',
+      '/email-manager',
+      '/sms-manager',
+      '/holiday-setting',
+      '/gdpr-cookie',
+      '/system-information',
+      '/custom-css',
+      '/clear-cache',
+      '/manual-payment'
+    ];
+
+    const isAdminRoute =
+      basePath.startsWith('/admin') ||
+      basePath === '/admin-login' ||
+      ADMIN_TAB_PREFIXES.some(
+        (prefix) =>
+          basePath === prefix ||
+          basePath.startsWith(`${prefix}-`) ||
+          basePath.startsWith(`${prefix}/`)
+      );
+
+    if (isAdminRoute) {
       if (basePath === '/admin/login' || basePath === '/admin-login') {
         return (
           <AdminLoginPortal
@@ -315,6 +369,22 @@ function MainApp() {
         return <KrezHowItWorksPage onNavigate={navigateTo} />;
 
       case '/portfolio':
+        if (user) {
+          return (
+            <DashboardPage
+              defaultTab="portfolio"
+              onSelectProperty={(id) => {
+                const p = properties.find((prop) => prop.id === id);
+                if (p) handleSelectProperty(p);
+              }}
+              onExploreProperties={() => navigateTo('/properties')}
+              onNavigateProfile={() => navigateTo('/profile')}
+              onNavigateTransactions={() => navigateTo('/transactions')}
+              onNavigatePortfolio={() => navigateTo('/portfolio')}
+              onNavigateHome={() => navigateTo('/')}
+            />
+          );
+        }
         return <KrezPortfolioPage onNavigate={navigateTo} />;
 
       case '/journal':
@@ -324,6 +394,22 @@ function MainApp() {
         return <KrezContactPage />;
 
       case '/account':
+        if (user) {
+          return (
+            <DashboardPage
+              defaultTab="overview"
+              onSelectProperty={(id) => {
+                const p = properties.find((prop) => prop.id === id);
+                if (p) handleSelectProperty(p);
+              }}
+              onExploreProperties={() => navigateTo('/properties')}
+              onNavigateProfile={() => navigateTo('/profile')}
+              onNavigateTransactions={() => navigateTo('/transactions')}
+              onNavigatePortfolio={() => navigateTo('/portfolio')}
+              onNavigateHome={() => navigateTo('/')}
+            />
+          );
+        }
         return <KrezAccountPage onNavigate={navigateTo} />;
 
       case '/insights':

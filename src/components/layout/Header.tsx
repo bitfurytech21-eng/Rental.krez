@@ -143,15 +143,6 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 >
                   Dashboard
                 </button>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => handleNav('/admin')}
-                    className="hidden sm:inline text-xs font-bold tracking-wider uppercase hover:opacity-75 transition-opacity cursor-pointer text-[#c59b4c]"
-                  >
-                    Admin
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => handleNav('/account')}
@@ -273,15 +264,6 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               >
                 Solana Infrastructure
               </button>
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => handleNav('/admin')}
-                  className="font-semibold uppercase tracking-widest text-accent hover:text-foreground transition-colors duration-fast cursor-pointer"
-                >
-                  Admin Console
-                </button>
-              )}
             </div>
 
             <div className="flex items-center gap-4">

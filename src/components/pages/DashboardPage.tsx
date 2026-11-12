@@ -492,7 +492,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* User Mini Card */}
         <div className="p-1.5 mx-2 my-1.5 bg-[var(--dash-sidebar-card)] rounded-lg border border-[var(--dash-sidebar-border)] flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-[#1E3A34] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-            {user.fullName.split(' ').map(n => n[0]).join('')}
+            {(user.fullName || 'User').trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-[11px] text-[var(--dash-text)] truncate leading-tight">{user.fullName}</h3>
@@ -814,14 +814,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               >
                 <div className="w-6 h-6 rounded-md bg-[#1E3A34] dark:bg-[#D6A15D] text-white dark:text-[#0B1B30] flex items-center justify-center font-black text-[11px] overflow-hidden shrink-0">
                   {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
+                    <img src={user.avatarUrl} alt={user.fullName || 'User Profile'} className="w-full h-full object-cover" />
                   ) : (
-                    user.fullName.charAt(0)
+                    (user.fullName || 'U').trim().charAt(0).toUpperCase()
                   )}
                 </div>
                 <div className="hidden md:flex flex-col text-left">
                   <span className="text-xs font-bold text-[var(--dash-text)] truncate max-w-[90px]">
-                    {user.fullName.split(' ')[0]}
+                    {(user.fullName || 'Investor').trim().split(/\s+/)[0]}
                   </span>
                   <span className="text-[10px] financial-num text-[#55BDE8] font-[600]">
                     {formatCurrency(user.walletBalance)}
@@ -1033,9 +1033,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <div className="flex items-center gap-3.5 z-10 min-w-0">
                       <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1D1E1E] border border-white/[0.12] text-[#F5F5F2] flex items-center justify-center font-bold text-sm shadow-inner shrink-0 overflow-hidden">
                         {user.avatarUrl ? (
-                          <img src={user.avatarUrl} alt={user.fullName} className="w-full h-full object-cover" />
+                          <img src={user.avatarUrl} alt={user.fullName || 'User Profile'} className="w-full h-full object-cover" />
                         ) : (
-                          user.fullName.split(' ').map(n => n[0]).join('')
+                          (user.fullName || 'User').trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase()
                         )}
                       </div>
                       <div className="min-w-0">

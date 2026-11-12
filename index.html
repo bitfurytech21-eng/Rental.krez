@@ -2,6 +2,68 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function() {
+        // Suppress Vite HMR WebSocket connection errors in AI Studio iframe environment
+        window.addEventListener('unhandledrejection', function(event) {
+          var msg = event && event.reason && (event.reason.message || String(event.reason));
+          if (typeof msg === 'string' && (msg.includes('WebSocket') || msg.includes('vite') || msg.includes('closed without opened'))) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('error', function(event) {
+          var msg = event && (event.message || '');
+          var file = event && (event.filename || '');
+          if ((typeof msg === 'string' && (msg.includes('WebSocket') || msg.includes('@vite/client'))) ||
+              (typeof file === 'string' && file.includes('@vite/client'))) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        // Safe mock for Vite HMR WebSocket protocol so @vite/client never rejects with "WebSocket closed without opened"
+        if (typeof window !== 'undefined' && window.WebSocket) {
+          var RealWebSocket = window.WebSocket;
+          var MockViteSocket = function(url, protocols) {
+            var isViteProtocol = protocols === 'vite-hmr' || protocols === 'vite-ping' ||
+              (Array.isArray(protocols) && (protocols.indexOf('vite-hmr') !== -1 || protocols.indexOf('vite-ping') !== -1));
+            if (isViteProtocol) {
+              var listeners = {};
+              var socket = {
+                readyState: 1, // OPEN
+                send: function() {},
+                close: function() {},
+                addEventListener: function(type, fn) {
+                  if (!listeners[type]) listeners[type] = [];
+                  listeners[type].push(fn);
+                  if (type === 'open') {
+                    setTimeout(function() {
+                      try { fn(new Event('open')); } catch (_) {}
+                    }, 0);
+                  }
+                },
+                removeEventListener: function(type, fn) {
+                  if (listeners[type]) {
+                    listeners[type] = listeners[type].filter(function(cb) { return cb !== fn; });
+                  }
+                },
+                dispatchEvent: function() { return true; }
+              };
+              return socket;
+            }
+            return new RealWebSocket(url, protocols);
+          };
+          MockViteSocket.prototype = RealWebSocket.prototype;
+          MockViteSocket.CONNECTING = RealWebSocket.CONNECTING;
+          MockViteSocket.OPEN = RealWebSocket.OPEN;
+          MockViteSocket.CLOSING = RealWebSocket.CLOSING;
+          MockViteSocket.CLOSED = RealWebSocket.CLOSED;
+          window.WebSocket = MockViteSocket;
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <title>Rental-log | Tokenized Luxury Real Estate Investment Platform</title>
     <meta name="description" content="Full-stack fractional real estate investment platform offering tokenized European & global properties with monthly rental yields." />

@@ -109,7 +109,7 @@ export const FirstTimeOnboardingModal: React.FC<FirstTimeOnboardingModalProps> =
               <Sparkles className="w-3 h-3" /> FIRST-TIME INVESTOR ONBOARDING
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
-              Welcome to L'Agence, {user.fullName.split(' ')[0]}
+              Welcome to L'Agence, {(user.fullName || 'Investor').trim().split(/\s+/)[0]}
             </h2>
             <p className="text-xs text-[#A5A6A5] leading-relaxed">
               Your investor portal is initialized. Complete these 4 steps to activate full SPV property allocation rights.

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-heading: 'Archivo', Helvetica, sans-serif;
   --font-serif: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
