@@ -16,7 +16,7 @@ import crypto from 'crypto';
 import { verifyAdminSessionToken } from './adminAuth';
 
 import { getSession, touchSession, verifyCsrfToken, ServerSession } from './authService';
-import { isSupabaseAuthConfigured, verifySupabaseAccessToken } from './supabaseDatabase';
+import { isSupabaseAuthConfigured, isSupabaseServerConfigured, verifySupabaseAccessToken, getAdminIdentityByEmail } from './supabaseDatabase';
 
 export type UserRoleType = 
   | 'investor' 
@@ -225,18 +225,33 @@ export async function authenticateToken(
     // 3. Handle Cryptographically Signed Admin Sessions (Environment Auth)
     if (token.startsWith('kretz_adm_')) {
       const adminSession = verifyAdminSessionToken(token);
-      if (adminSession) {
+      if (!adminSession) return next();
+      if (isSupabaseServerConfigured()) {
+        // Legacy signed admin credentials are accepted only when the same email
+        // maps to a provisioned administrator role in the authoritative database.
+        const identity = await getAdminIdentityByEmail(adminSession.email);
+        if (!identity) return next();
         req.user = {
-          id: adminSession.sub,
-          email: adminSession.email,
-          role: 'admin',
-          fullName: adminSession.fullName,
-          status: 'active'
+          id: identity.id,
+          email: identity.email,
+          role: identity.role,
+          fullName: identity.fullName,
+          accountType: identity.accountType,
+          balance: identity.balance,
+          status: identity.status || 'active',
+          suspendedReason: identity.suspendedReason
         };
         return next();
-      } else {
-        return next();
       }
+      if (process.env.NODE_ENV === 'production') return next();
+      req.user = {
+        id: adminSession.sub,
+        email: adminSession.email,
+        role: 'admin',
+        fullName: adminSession.fullName,
+        status: 'active'
+      };
+      return next();
     }
 
     // 4. Verify Supabase access tokens with Supabase Auth and load the authoritative
