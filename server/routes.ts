@@ -2824,8 +2824,34 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
 /**
  * GET /api/v1/portfolio
  */
-router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/portfolio', '/portfolio/summary'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const rows = await listUserInvestments(userId);
+      const holdings = rows.map((row: any) => {
+        const property = row.investment_plans || {};
+        const cost = Number(row.total_amount_invested || 0);
+        const annualYield = Number(property.estimated_annual_yield || 0);
+        return {
+          id: row.id, propertyId: row.plan_id, propertyTitle: property.title || row.plan_id,
+          tokensPurchased: Number(row.tokens_purchased || 0), totalCost: cost,
+          currentValue: Number(row.current_valuation || cost),
+          projectedAnnualDividend: Number((cost * annualYield / 100).toFixed(2)),
+          dividendsReceived: Number(row.total_dividends_received || 0),
+          purchaseDate: row.purchased_at, certificateId: row.certificate_id,
+          status: row.status, maturityDate: row.maturity_date
+        };
+      });
+      const totalPortfolioValue = holdings.reduce((sum: number, item: any) => sum + item.currentValue, 0);
+      const totalTokensHeld = holdings.reduce((sum: number, item: any) => sum + item.tokensPurchased, 0);
+      const totalDividendsReceived = holdings.reduce((sum: number, item: any) => sum + item.dividendsReceived, 0);
+      return res.json({ success: true, data: { holdings, totalHoldingsValue: totalPortfolioValue, totalPortfolioValue, totalTokensHeld, activePropertiesCount: holdings.filter((item: any) => item.status === 'active').length, totalDividendsReceived, currency: 'EUR' }, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-portfolio-db', eventType: 'PORTFOLIO_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Portfolio query failed.' });
+      return res.status(503).json({ success: false, error: 'Your investment portfolio is temporarily unavailable.', code: 'PORTFOLIO_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const matchedUser = findUserRecordForRequest(req);
   const resolvedEmail = matchedUser?.email || req.user?.email || '';
   const userInvTxs = mockTransactions.filter(
@@ -2893,7 +2919,16 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: Authenticate
 /**
  * GET /api/v1/wallet/balance
  */
-router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await getUserProfile(req.user!.id);
+      if (!profile) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: { balance: Number(profile.wallet_balance || 0), subBalances: { EUR: Number(profile.wallet_balance || 0) }, currency: 'EUR' }, requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Wallet balance is temporarily unavailable.', code: 'WALLET_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const user = findUserRecordForRequest(req);
   const userId = req.user!.id;
   const userEmail = req.user?.email?.toLowerCase();
