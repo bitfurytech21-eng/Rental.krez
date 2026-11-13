@@ -67,6 +67,11 @@ import { ALL_KRETZ_MEMBERS } from '../src/data/kretzTeam';
 import { BLOG_POSTS } from '../src/data/blogPosts';
 import { dailyPaymentService } from './dailyPaymentService';
 import { generatePropertyPaymentsCsv } from '../src/lib/distributionService';
+import {
+  isSupabaseServerConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
+  getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
+  getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary
+} from './supabaseDatabase';
 
 const router = Router();
 
