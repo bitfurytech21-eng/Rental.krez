@@ -44,7 +44,7 @@ export async function getPersistentAdminConfig() {
     adminEmail: email,
     fullName: 'Executive Administrator',
     passwordHash: hash,
-    updatedAt: 'environment',
+    updatedAt: 'environment:' + crypto.createHash('sha256').update(hash).digest('hex'),
     isCustomConfigured: false,
     mode: 'bcrypt_hash' as const
   };
