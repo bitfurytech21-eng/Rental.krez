@@ -14,6 +14,7 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger';
 import crypto from 'crypto';
 import { verifyAdminSessionToken } from './adminAuth';
+import { verifyPersistentAdminSession } from './persistentAdminAuth';
 
 import { getSession, touchSession, verifyCsrfToken, ServerSession } from './authService';
 import { isSupabaseAuthConfigured, isSupabaseServerConfigured, verifySupabaseAccessToken, getAdminIdentityByEmail } from './supabaseDatabase';
@@ -224,7 +225,9 @@ export async function authenticateToken(
 
     // 3. Handle Cryptographically Signed Admin Sessions (Environment Auth)
     if (token.startsWith('kretz_adm_')) {
-      const adminSession = verifyAdminSessionToken(token);
+      const adminSession = process.env.NODE_ENV === 'production'
+        ? await verifyPersistentAdminSession(token)
+        : verifyAdminSessionToken(token);
       if (!adminSession) return next();
       if (isSupabaseServerConfigured()) {
         // Legacy signed admin credentials are accepted only when the same email
