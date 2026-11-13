@@ -4379,8 +4379,19 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
   });
 });
 
-router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { depositId } = req.params;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+      return res.json({ success: true, data: toApiTransaction(row), message: `Deposit ${depositId} approved and cash credited to the investor wallet.`, requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Deposit approval could not be completed. Please retry after checking database availability.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const targetTx = mockTransactions.find(t => t.type === 'deposit' && (t.id === depositId || t.reference === depositId));
   if (!targetTx) {
     return res.status(404).json({ success: false, error: `Deposit transaction '${depositId}' not found.`, code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
@@ -4443,9 +4454,20 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: Authentica
   });
 });
 
-router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { depositId } = req.params;
   const { reason } = req.body || {};
+  if (isSupabaseServerConfigured()) {
+    try {
+      const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason || 'Transfer verification could not be matched.' });
+      return res.json({ success: true, data: toApiTransaction(row), message: `Deposit ${depositId} rejected.`, requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Deposit rejection could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const targetTx = mockTransactions.find(t => t.type === 'deposit' && (t.id === depositId || t.reference === depositId));
 
   if (!targetTx) {
@@ -4491,8 +4513,19 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: Authenticat
   });
 });
 
-router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { withdrawalId } = req.params;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+      return res.json({ success: true, data: toApiTransaction(row), message: `Withdrawal ${withdrawalId} approved and marked for payout processing.`, requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal approval could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const targetTx = mockTransactions.find(t => t.type === 'withdrawal' && (t.id === withdrawalId || t.reference === withdrawalId));
   if (!targetTx) {
     return res.status(404).json({ success: false, error: `Withdrawal '${withdrawalId}' not found.`, code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
@@ -4536,8 +4569,19 @@ router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: Auth
   });
 });
 
-router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { withdrawalId } = req.params;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Withdrawal rejected by finance review.' });
+      return res.json({ success: true, data: toApiTransaction(row), message: `Withdrawal ${withdrawalId} rejected and reserved funds refunded to the investor wallet.`, requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal rejection could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const targetTx = mockTransactions.find(t => t.type === 'withdrawal' && (t.id === withdrawalId || t.reference === withdrawalId));
   if (!targetTx) {
     return res.status(404).json({ success: false, error: `Withdrawal '${withdrawalId}' not found.`, code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
