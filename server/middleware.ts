@@ -54,17 +54,13 @@ interface RateLimitRecord {
 
 const rateLimitStore = new Map<string, RateLimitRecord>();
 
-/**
- * Clean up old rate limit records periodically
- */
-setInterval(() => {
-  const now = Date.now();
+function pruneExpiredRateLimits(now: number) {
+  // Lazy cleanup avoids background timers in the Cloudflare Workers runtime.
+  if (rateLimitStore.size < 500) return;
   for (const [key, record] of rateLimitStore.entries()) {
-    if (now > record.resetTime) {
-      rateLimitStore.delete(key);
-    }
+    if (now > record.resetTime) rateLimitStore.delete(key);
   }
-}, 60000);
+}
 
 /**
  * Rate Limiter Factory
@@ -79,6 +75,7 @@ export function rateLimiter(options: {
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
     const key = `${req.path}:${ip}`;
     const now = Date.now();
+    pruneExpiredRateLimits(now);
 
     let record = rateLimitStore.get(key);
     if (!record || now > record.resetTime) {
