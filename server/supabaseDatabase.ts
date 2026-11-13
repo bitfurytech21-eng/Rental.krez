@@ -36,6 +36,8 @@ export type VerifiedSupabaseIdentity = {
   role: 'investor' | 'admin' | 'super_admin' | 'finance_admin' | 'operations_admin' | 'support' | 'auditor';
   accountType?: string;
   balance?: number;
+  status?: 'active' | 'suspended';
+  suspendedReason?: string;
 };
 
 const rolePriority: VerifiedSupabaseIdentity['role'][] = [
@@ -53,7 +55,7 @@ export async function verifySupabaseAccessToken(token: string): Promise<Verified
 
   const [{ data: roleRows, error: roleError }, { data: profile, error: profileError }] = await Promise.all([
     authClient.from('user_roles').select('role').eq('user_id', authData.user.id),
-    authClient.from('user_profiles').select('full_name,account_type,wallet_balance').eq('id', authData.user.id).maybeSingle()
+    authClient.from('user_profiles').select('full_name,account_type,wallet_balance,account_status,suspended_reason').eq('id', authData.user.id).maybeSingle()
   ]);
   if (roleError || profileError) return null;
 
@@ -65,7 +67,9 @@ export async function verifySupabaseAccessToken(token: string): Promise<Verified
     fullName: profile?.full_name || authData.user.user_metadata?.full_name || authData.user.email?.split('@')[0] || 'Investor',
     role,
     accountType: profile?.account_type || 'individual_investor',
-    balance: Number(profile?.wallet_balance || 0)
+    balance: Number(profile?.wallet_balance || 0),
+    status: profile?.account_status === 'suspended' ? 'suspended' : 'active',
+    suspendedReason: profile?.suspended_reason || undefined
   };
 }
 
