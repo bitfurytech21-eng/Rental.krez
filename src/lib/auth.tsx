@@ -685,7 +685,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: cleanEmail,
             password: pass,
           });
-          if (!signInError && signInData?.user) {
+          if (!signInError && signInData?.user && signInData?.session) {
             const synced = ledger.syncSupabaseUser(
               signInData.user.id,
               signInData.user.email || cleanEmail,
@@ -694,7 +694,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             );
             setUser(synced);
             setSession(signInData.session);
-            const activeToken = signInData.session?.access_token || 'sess_' + synced.id;
+            const activeToken = signInData.session.access_token;
             setToken(activeToken);
             setAuthToken(activeToken);
             localStorage.setItem(CURRENT_USER_KEY, synced.id);
@@ -706,46 +706,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch {}
 
-        // Fallback: Sync user to local ledger and issue authenticated session
-        let existingUser = ledger.getUserByEmail(cleanEmail);
-        const synced = existingUser || ledger.createUser({
-          email: cleanEmail,
-          fullName: fullName.trim() || cleanEmail.split('@')[0],
-          role: determinedRole,
-          accountType: determinedAccountType,
-          country: country || 'France',
-          phoneNumber: phoneNumber || ''
-        });
-
-        setUser(synced);
-        const fallbackToken = 'sess_' + synced.id;
-        setToken(fallbackToken);
-        setAuthToken(fallbackToken);
-        localStorage.setItem(CURRENT_USER_KEY, synced.id);
-
-        // Dispatch welcome & verification email through platform server API
-        try {
-          await apiRequest('/auth/register', {
-            method: 'POST',
-            body: {
-              email: cleanEmail,
-              fullName: fullName.trim(),
-              password: pass,
-              role: determinedRole,
-              country: country || 'France',
-              phoneNumber: phoneNumber || ''
-            },
-            skipAuth: true
-          });
-        } catch (apiErr) {
-          console.warn('Server fallback email dispatch warning:', apiErr);
-        }
-
-        return {
-          user: synced,
-          session: null,
-          requiresVerification: false
-        };
+        throw new Error('Your account may have been created, but the confirmation email could not be sent. Please try again later or contact support to resend the verification email.');
       }
 
       throw new Error(error.message);
@@ -759,41 +720,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data.user.id,
       data.user.email || cleanEmail,
       fullName.trim(),
-      role
+      determinedRole,
+      determinedAccountType,
+      country || 'France',
+      phoneNumber || ''
     );
-    setUser(synced);
 
     if (data.session) {
+      setUser(synced);
       setSession(data.session);
       setToken(data.session.access_token);
       setAuthToken(data.session.access_token);
+      localStorage.setItem(CURRENT_USER_KEY, synced.id);
     } else {
-      const activeToken = 'sess_' + synced.id;
-      setToken(activeToken);
-      setAuthToken(activeToken);
+      // Email confirmation is required: do not fabricate a local token or mark the user authenticated.
+      setUser(null);
+      setSession(null);
+      setToken(null);
+      setAuthToken(null);
+      localStorage.removeItem(CURRENT_USER_KEY);
     }
-    localStorage.setItem(CURRENT_USER_KEY, synced.id);
-
-    // Call server endpoint to dispatch welcome & verification email via server emailService
-    try {
-      await apiRequest('/auth/register', {
-        method: 'POST',
-        body: {
-          email: cleanEmail,
-          fullName: fullName.trim(),
-          password: pass,
-          role: determinedRole,
-          country: country || 'France',
-          phoneNumber: phoneNumber || ''
-        },
-        skipAuth: true
-      });
-    } catch {}
 
     return {
       user: data.user,
       session: data.session,
-      requiresVerification: false,
+      requiresVerification: !data.session,
     };
   };
 
