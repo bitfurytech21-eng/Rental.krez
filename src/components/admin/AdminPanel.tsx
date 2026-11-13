@@ -4,7 +4,7 @@ import { useNavigation } from '../../lib/navigation';
 import { ledger, CryptoNetworkConfig, VerificationDocument } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
-import { getAuthToken } from '../../lib/api';
+import { getAuthToken, getApiUrl } from '../../lib/api';
 import {
   Shield,
   Plus,
@@ -535,7 +535,7 @@ export const AdminPanel: React.FC = () => {
       ledger.updateKYCStatus(userId, approved ? 'verified' : 'rejected');
       try {
         const token = getAuthToken();
-        await fetch(`/api/v1/admin/users/${userId}/kyc`, {
+        await fetch(getApiUrl(`/admin/users/${userId}/kyc`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
