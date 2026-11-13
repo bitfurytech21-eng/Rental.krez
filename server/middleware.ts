@@ -482,17 +482,22 @@ export function requireAdminOrLogSecret(
   res: Response,
   next: NextFunction
 ) {
-  const secretKey = process.env.ADMIN_LOG_API_KEY || process.env.ADMIN_LOG_API_SECRET || 'kretz_admin_log_secret_key_v1';
-  
-  const providedKey = 
+  // No built-in fallback secret: a missing deployment secret must never create
+  // a publicly guessable administrative bypass.
+  const secretKey = process.env.ADMIN_LOG_API_KEY || process.env.ADMIN_LOG_API_SECRET || '';
+  const providedKey =
     (req.headers['x-admin-log-api-key'] as string) ||
     (req.headers['x-admin-log-secret'] as string) ||
     (req.headers['x-admin-log-key'] as string);
 
   const authHeader = req.headers['authorization'];
   const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const suppliedKey = providedKey || bearerToken || '';
+  const secretMatches = Boolean(secretKey && suppliedKey &&
+    Buffer.byteLength(secretKey) === Buffer.byteLength(suppliedKey) &&
+    crypto.timingSafeEqual(Buffer.from(secretKey), Buffer.from(suppliedKey)));
 
-  if (providedKey === secretKey || bearerToken === secretKey) {
+  if (secretMatches) {
     if (!req.user) {
       req.user = {
         id: 'usr-admin-secret-system',
