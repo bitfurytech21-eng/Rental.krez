@@ -353,29 +353,7 @@ const contactInquiriesStore: Array<Record<string, any>> = [];
 const newsletterSubscribersStore = new Map<string, { email: string; source: string; subscribedAt: string; reference: string }>();
 const membershipApplicationsStore: Array<Record<string, any>> = [];
 const userReferralsStore = new Map<string, Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number; referralCode?: string }>>();
-const userNotificationsStore = new Map<string, any[]>([
-  [
-    'usr-investor-01',
-    [
-      {
-        id: 'notif-1',
-        title: 'Monthly Distribution Credited',
-        message: 'Your €320 rental yield for Villa El Mirador has been credited to your available balance.',
-        type: 'financial',
-        read: false,
-        createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'notif-2',
-        title: 'KYC Document Verified',
-        message: 'Your European investor accredited identity verification has been confirmed.',
-        type: 'success',
-        read: true,
-        createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
-      }
-    ]
-  ]
-]);
+const userNotificationsStore = new Map<string, any[]>();
 
 const TREASURY_FX_RATES_TO_EUR: Record<string, number> = {
   EUR: 1.0,
@@ -3745,7 +3723,7 @@ router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, 
   );
   const investedTotal = userInvTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const uniqueProps = new Set(userInvTxs.map(t => (t as any).propertyId)).size;
-  const earnedDividends = userId === 'usr-investor-01' ? 320.0 : 0.0;
+  const earnedDividends = 0;
   const projectedMonthlyIncome = Number((investedTotal * 0.061).toFixed(2));
 
   res.json({
@@ -3941,13 +3919,7 @@ router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest,
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  res.json({
-    success: true,
-    data: [
-      { id: 'inv-001', userId: 'usr-investor-01', userEmail: 'investor@kretz.com', propertyTitle: 'Villa El Mirador', tokensPurchased: 100, totalCost: 10000, purchaseDate: new Date(Date.now() - 86400000 * 30).toISOString() }
-    ],
-    requestId: req.id
-  });
+  return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 });
 
 router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
