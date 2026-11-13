@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const clean = (value?: string) => String(value || '').trim().replace(/^["']|["']$/g, '');
