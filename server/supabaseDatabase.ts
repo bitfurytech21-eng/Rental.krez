@@ -234,3 +234,46 @@ export async function getPersistentDashboardSummary(userId: string) {
     recentTransactions: transactions.slice(0, 8).map(toApiTransaction)
   };
 }
+
+export async function getPersistentAdminDashboard() {
+  const client = getSupabaseAdmin();
+  const [users, plans, transactions, pendingKyc, pendingWithdrawals, invested] = await Promise.all([
+    client.from('user_profiles').select('id', { count: 'exact', head: true }),
+    client.from('investment_plans').select('id', { count: 'exact', head: true }),
+    client.from('payment_transactions').select('id', { count: 'exact', head: true }),
+    client.from('user_profiles').select('id', { count: 'exact', head: true }).in('kyc_status', ['pending','unverified']),
+    client.from('payment_transactions').select('id', { count: 'exact', head: true }).eq('type','withdrawal').eq('status','pending'),
+    client.from('user_profiles').select('invested_balance')
+  ]);
+  const error = users.error || plans.error || transactions.error || pendingKyc.error || pendingWithdrawals.error || invested.error;
+  if (error) throw error;
+  const totalAssetsUnderManagement = (invested.data || []).reduce((sum: number, row: any) => sum + Number(row.invested_balance || 0), 0);
+  return {
+    totalUsers: users.count || 0,
+    totalProperties: plans.count || 0,
+    totalTransactions: transactions.count || 0,
+    totalAssetsUnderManagement,
+    pendingKYC: pendingKyc.count || 0,
+    pendingWithdrawalsCount: pendingWithdrawals.count || 0
+  };
+}
+
+export async function listPersistentInvestments(limit = 500) {
+  const { data, error } = await getSupabaseAdmin().from('investments')
+    .select('*, user_profiles(email,full_name), investment_plans(title,location)')
+    .order('purchased_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 1000));
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    userId: row.user_id,
+    userEmail: row.user_profiles?.email || '',
+    userName: row.user_profiles?.full_name || '',
+    propertyId: row.plan_id,
+    propertyTitle: row.investment_plans?.title || row.plan_id,
+    tokensPurchased: Number(row.tokens_purchased),
+    totalCost: Number(row.total_amount_invested),
+    purchaseDate: row.purchased_at,
+    status: row.status,
+    certificateId: row.certificate_id
+  }));
+}
