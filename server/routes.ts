@@ -70,7 +70,7 @@ import { BLOG_POSTS } from '../src/data/blogPosts';
 import { dailyPaymentService } from './dailyPaymentService';
 import { generatePropertyPaymentsCsv } from '../src/lib/distributionService';
 import {
-  isSupabaseServerConfigured, isSupabaseAuthConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
+  isSupabaseServerConfigured, isSupabaseAuthConfigured, getSupabaseAdmin, databaseHealth, listUserTransactions, listAdminTransactions,
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
   getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs, getAdminIdentityByEmail,
@@ -1711,7 +1711,7 @@ router.get('/admin/users/:id', requireAdmin, async (req: AuthenticatedRequest, r
   try {
     const profile = await getUserProfile(req.params.id);
     if (!profile) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-    const { data: roles, error: rolesError } = await (await import('./supabaseDatabase')).getSupabaseAdmin()
+    const { data: roles, error: rolesError } = await getSupabaseAdmin()
       .from('user_roles').select('role,granted_at,granted_by').eq('user_id', req.params.id);
     if (rolesError) throw rolesError;
     return res.json({ success: true, data: {
