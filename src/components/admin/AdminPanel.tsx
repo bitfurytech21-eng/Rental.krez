@@ -213,6 +213,8 @@ export const AdminPanel: React.FC = () => {
   const [transactions, setTransactions] = useState(ledger.getTransactions());
   const [properties, setProperties] = useState(ledger.getProperties());
   const [users, setUsers] = useState<PlatformUser[]>([]);
+  const [adminRegistryInvestments, setAdminRegistryInvestments] = useState<any[]>([]);
+  const [adminRegistryTransactions, setAdminRegistryTransactions] = useState<any[]>([]);
   const [verificationDocs, setVerificationDocs] = useState<VerificationDocument[]>(ledger.getVerificationDocuments());
   const [auditLogs, setAuditLogs] = useState(ledger.getAuditLogs());
   const [paymentConfig, setPaymentConfig] = useState(ledger.getPaymentConfig());
@@ -323,11 +325,18 @@ export const AdminPanel: React.FC = () => {
 
   const loadUsers = async () => {
     const token = getAuthToken();
-    const response = await fetch(getApiUrl('/admin/users'), {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const [response, investmentsResponse, transactionsResponse] = await Promise.all([
+      fetch(getApiUrl('/admin/users'), { headers }),
+      fetch(getApiUrl('/admin/investments'), { headers }),
+      fetch(getApiUrl('/admin/transactions'), { headers })
+    ]);
     if (!response.ok) throw new Error('Unable to load the Supabase investor registry.');
     const payload = await response.json();
+    const investmentPayload = investmentsResponse.ok ? await investmentsResponse.json() : { data: [] };
+    const transactionPayload = transactionsResponse.ok ? await transactionsResponse.json() : { data: [] };
+    setAdminRegistryInvestments(Array.isArray(investmentPayload?.data) ? investmentPayload.data : []);
+    setAdminRegistryTransactions(Array.isArray(transactionPayload?.data) ? transactionPayload.data : []);
     const rows = Array.isArray(payload?.data) ? payload.data : [];
     setUsers(rows.map((row: any): PlatformUser => ({
       id: String(row.id), email: String(row.email || ''), fullName: String(row.fullName || ''),
@@ -1268,6 +1277,8 @@ export const AdminPanel: React.FC = () => {
         {activeTab === 'users' && (
           <AdminUserManagement
             users={users}
+            investments={adminRegistryInvestments}
+            transactions={adminRegistryTransactions}
             currentAdminEmail={activeUser.email}
             onRefreshAll={refreshAll}
             onQuickSuccess={(msg) => {
