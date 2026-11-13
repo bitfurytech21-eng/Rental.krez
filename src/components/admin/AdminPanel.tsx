@@ -535,7 +535,7 @@ export const AdminPanel: React.FC = () => {
       ledger.updateKYCStatus(userId, approved ? 'verified' : 'rejected');
       try {
         const token = getAuthToken();
-        await fetch(getApiUrl(`/admin/users/${userId}/kyc`, {
+        await fetch(getApiUrl(`/admin/users/${userId}/kyc`), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
