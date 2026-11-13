@@ -77,7 +77,8 @@ import {
   createPersistentInvestmentPlan, updatePersistentInvestmentPlan,
   listUserNotifications, markUserNotificationRead, markAllUserNotificationsRead,
   listUserFavorites, saveUserFavorite, removeUserFavorite, getUserPreferences, saveUserPreferences,
-  getPersistentAccountStatement, getPersistentPerformance
+  getPersistentAccountStatement, getPersistentPerformance,
+  signInCustomer, registerCustomer, requestCustomerPasswordReset, updateCustomerPassword, signOutCustomer
 } from './supabaseDatabase';
 
 const router = Router();
@@ -497,202 +498,25 @@ const authLimiter = rateLimiter({
  * Production-grade customer authentication with bcrypt validation, brute-force lockout, and HttpOnly session cookie
  */
 router.post('/auth/login', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
-  const { email, password, pass } = req.body || {};
-  const normalizedEmail = (email || '').toLowerCase().trim();
-  const inputPass = password || pass;
-
-  const rawHeader = req.headers['x-forwarded-for'];
-  const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
-  const lockoutKey = `${ip}:${normalizedEmail}`;
-
-  // 1. Check Brute-Force Rate Limiting & Lockout
-  const lockoutStatus = checkBruteForceLimit(lockoutKey);
-  if (lockoutStatus.isLocked) {
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-login-locked',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 429,
-      eventType: 'AUTH_LOCKOUT_TRIGGERED',
-      outcome: 'failure',
-      message: `Login temporarily locked for ${normalizedEmail} from ${ip} (${lockoutStatus.remainingSeconds}s remaining).`,
-      metadata: { ip, email: normalizedEmail, remainingSeconds: lockoutStatus.remainingSeconds }
-    });
-
-    return res.status(429).json({
-      success: false,
-      error: `Too many failed login attempts. Access is temporarily locked for ${lockoutStatus.remainingSeconds} seconds.`,
-      code: 'RATE_LIMIT_EXCEEDED',
-      remainingSeconds: lockoutStatus.remainingSeconds,
-      requestId: req.id
-    });
-  }
-
-  // 2. Validate input fields
-  if (!normalizedEmail || !inputPass) {
-    logger.log({
-      level: 'warn',
-      category: 'auth',
-      requestId: req.id || 'req-login-err',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 400,
-      eventType: 'AUTH_VALIDATION_FAILURE',
-      outcome: 'failure',
-      message: 'Login attempted without required email or password fields.',
-      errorCode: 'MISSING_CREDENTIALS'
-    });
-
-    return res.status(400).json({
-      success: false,
-      error: 'Please provide both email address and password.',
-      code: 'MISSING_FIELDS',
-      requestId: req.id
-    });
-  }
-
-  // Production customer accounts are owned by Supabase Auth. Never authenticate against
-  // the development-only in-memory mockUsers collection on the API Worker.
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(503).json({
-      success: false,
-      error: 'Customer authentication must use the configured Supabase Auth client.',
-      code: 'SUPABASE_AUTH_REQUIRED',
-      requestId: req.id
-    });
-  }
-
-  // 3. Authenticate credentials against verified database store
-  let found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-
-  // Login must only authenticate an account created through registration or an approved provisioning flow.
-  // Unknown email addresses are rejected; a login request must never create an account.
-
-
-  const userToVerify = found;
-  const isPasswordValid = Boolean(
-    userToVerify && (
-      !userToVerify.passwordHash || verifyPassword(inputPass, userToVerify.passwordHash)
-    )
-  );
-
-  // If passwordHash was missing, set it now
-  if (userToVerify && !userToVerify.passwordHash && inputPass) {
-    userToVerify.passwordHash = hashPassword(inputPass);
-  }
-
-  if (!found || !isPasswordValid) {
-    const failureRecord = recordFailedLogin(lockoutKey);
-    logger.log({
-      level: 'warn',
-      category: 'auth',
-      requestId: req.id || 'req-login-err',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 401,
-      eventType: 'LOGIN_FAILED',
-      outcome: 'failure',
-      message: `Failed login attempt for ${normalizedEmail}. Failures: ${failureRecord.attempts}`,
-      errorCode: 'INVALID_CREDENTIALS',
-      metadata: { attemptedEmail: normalizedEmail, isLocked: failureRecord.isLocked }
-    });
-
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid email address or password.',
-      code: 'INVALID_CREDENTIALS',
-      remainingAttempts: Math.max(0, 10 - failureRecord.attempts),
-      requestId: req.id
-    });
-  }
-
-  // 4. Account Status Check (Suspended accounts denied immediately)
-  if (found.status === 'suspended') {
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-login-suspended',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 403,
-      userId: found.id,
-      eventType: 'SUSPENDED_USER_LOGIN_DENIED',
-      outcome: 'failure',
-      message: `Login denied for suspended account: ${found.email}`,
-      errorCode: 'ACCOUNT_SUSPENDED'
-    });
-
-    return res.status(403).json({
-      success: false,
-      error: found.suspendedReason || 'Your account has been suspended by compliance. Please contact support.',
-      code: 'ACCOUNT_SUSPENDED',
-      requestId: req.id
-    });
-  }
-
-  // 5. Successful authentication: reset failed attempts & regenerate session ID
-  resetFailedLogin(lockoutKey);
-
-  let session: ServerSession;
+  const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || req.body?.pass || '');
+  if (!normalizedEmail || !password) return res.status(400).json({ success: false, error: 'Please provide both email address and password.', code: 'MISSING_FIELDS', requestId: req.id });
+  if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Customer authentication is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
   try {
-    session = await createSession({
-    userId: found.id,
-    email: found.email,
-    role: found.role as any,
-    fullName: found.fullName,
-    ip,
-    userAgent: (req.headers['user-agent'] as string) || 'unknown'
+    const result = await signInCustomer(normalizedEmail, password);
+    return res.json({
+      success: true,
+      data: { user: result.user, token: result.session.access_token, refreshToken: result.session.refresh_token, expiresAt: new Date(result.session.expires_at ? result.session.expires_at * 1000 : Date.now() + result.session.expires_in * 1000).toISOString() },
+      user: result.user, token: result.session.access_token, refreshToken: result.session.refresh_token,
+      message: 'Authentication successful.', requestId: req.id
     });
-  } catch (error) {
-    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-login-session', eventType: 'SESSION_STORE_UNAVAILABLE', outcome: 'failure', message: 'Unable to create a durable customer session.' });
-    return res.status(503).json({ success: false, error: 'Authentication service is temporarily unavailable. Please try again shortly.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if (message === 'ACCOUNT_SUSPENDED') return res.status(403).json({ success: false, error: 'Your account has been suspended by compliance. Please contact support.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+    if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
+    logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
+    return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
   }
-
-  // 6. Set Secure, HttpOnly, SameSite session cookie
-  res.cookie('kretz_session', session.id, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  });
-
-  // Expose fresh CSRF token in response header
-  res.setHeader('X-CSRF-Token', session.csrfToken);
-
-  const safeUser = sanitizeUser(found);
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-login',
-    method: 'POST',
-    route: '/api/v1/auth/login',
-    statusCode: 200,
-    userId: found.id,
-    userRole: found.role,
-    eventType: 'USER_LOGIN_SUCCESS',
-    outcome: 'success',
-    message: `User ${found.email} authenticated successfully with role ${found.role}`,
-    metadata: { role: found.role, kycStatus: found.kycStatus }
-  });
-
-  return res.json({
-    success: true,
-    data: {
-      user: safeUser,
-      token: session.id,
-      csrfToken: session.csrfToken,
-      expiresAt: new Date(session.expiresAt).toISOString()
-    },
-    token: session.id,
-    csrfToken: session.csrfToken,
-    user: safeUser,
-    message: 'Authentication successful.',
-    requestId: req.id
-  });
 });
 
 /**
@@ -1301,185 +1125,40 @@ router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest
  * duplicate prevention, bcrypt password hashing, and HttpOnly session establishment.
  */
 router.post('/auth/register', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
-  const { email, fullName, password, pass, country, phoneNumber, countryCode } = req.body || {};
-  const normalizedEmail = (email || '').toLowerCase().trim();
-  const inputPass = password || pass;
-
-  // 1. Validate required fields presence
-  if (!normalizedEmail || !inputPass || !fullName || !country || !phoneNumber) {
-    return res.status(400).json({
-      success: false,
-      error: 'Full legal name, valid email, password, country of residence, and phone number are required.',
-      code: 'VALIDATION_ERROR',
-      requestId: req.id
-    });
-  }
-
-  // 2. Validate email format
-  if (!validateEmail(normalizedEmail)) {
-    return res.status(400).json({
-      success: false,
-      error: 'Please provide a valid, well-formed email address.',
-      code: 'INVALID_EMAIL_FORMAT',
-      requestId: req.id
-    });
-  }
-
-  // 3. Enforce strong password policy
-  const passwordCheck = validatePasswordStrength(inputPass);
-  if (!passwordCheck.valid) {
-    return res.status(400).json({
-      success: false,
-      error: passwordCheck.error || 'Password does not meet institutional security requirements.',
-      code: 'WEAK_PASSWORD',
-      requestId: req.id
-    });
-  }
-
-  // Supabase Auth creates the durable auth.users record and the database trigger
-  // provisions user_profiles + the least-privilege investor role. Do not create Worker-local accounts.
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(503).json({
-      success: false,
-      error: 'Customer registration must use the configured Supabase Auth client.',
-      code: 'SUPABASE_AUTH_REQUIRED',
-      requestId: req.id
-    });
-  }
-
-  // 4. Prevent duplicate email registrations (Strict 409 Conflict)
-  const existing = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-  if (existing) {
-    logger.log({
-      level: 'warn',
-      category: 'auth',
-      requestId: req.id || 'req-reg-dup',
-      method: 'POST',
-      route: '/api/v1/auth/register',
-      statusCode: 409,
-      eventType: 'DUPLICATE_REGISTRATION_REJECTED',
-      outcome: 'failure',
-      message: `Registration rejected: email ${normalizedEmail} already exists.`,
-      errorCode: 'EMAIL_ALREADY_EXISTS'
-    });
-
-    return res.status(409).json({
-      success: false,
-      error: 'An account with this email address already exists. Please sign in.',
-      code: 'EMAIL_ALREADY_EXISTS',
-      requestId: req.id
-    });
-  }
-
-  // 5. Securely hash password with cost factor 12
-  const passwordHash = hashPassword(inputPass);
-
-  const rawHeader = req.headers['x-forwarded-for'];
-  const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
-
-  // 6. Persist user account with active status and unverified email flag
-  const newUser: MockUser = {
-    id: `usr-${crypto.randomBytes(4).toString('hex')}`,
-    email: normalizedEmail,
-    fullName: String(fullName).trim(),
-    passwordHash,
-    role: 'investor', // Public registration is strictly restricted to investor accounts
-    country: typeof country === 'string' ? country.trim() : 'France',
-    phoneNumber: typeof phoneNumber === 'string' ? phoneNumber.trim() : '',
-    countryCode: typeof countryCode === 'string' ? countryCode.trim() : '',
-    kycStatus: 'pending',
-    balance: 0,
-    currency: 'EUR',
-    isEmailVerified: false,
-    status: 'active',
-    createdAt: new Date().toISOString()
-  };
-
-  mockUsers.push(newUser);
-
-  // 7. Establish secure server session
-  let session;
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || req.body?.pass || '');
+  const fullName = String(req.body?.fullName || '').trim();
+  const country = String(req.body?.country || 'France').trim();
+  const phoneNumber = String(req.body?.phoneNumber || '').trim();
+  const countryCode = String(req.body?.countryCode || '').trim();
+  if (!email || !password || !fullName || !country || !phoneNumber) return res.status(400).json({ success: false, error: 'Full legal name, valid email, password, country of residence, and phone number are required.', code: 'VALIDATION_ERROR', requestId: req.id });
+  if (!validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL_FORMAT', requestId: req.id });
+  const strength = validatePasswordStrength(password);
+  if (!strength.valid) return res.status(400).json({ success: false, error: strength.error || 'Password does not meet institutional security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
+  if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Customer registration is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
   try {
-    session = await createSession({
-    userId: newUser.id,
-    email: newUser.email,
-    role: 'investor',
-    fullName: newUser.fullName,
-    ip,
-    userAgent: (req.headers['user-agent'] as string) || 'unknown'
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : 'https://kretzdespain.com';
+    const result = await registerCustomer({ email, password, fullName, country, countryCode, phoneNumber, redirectTo: `${origin}/#login` });
+    const user = result.user || {
+      id: result.authUser.id, email: result.authUser.email || email,
+      fullName, role: 'investor', accountType: 'individual_investor',
+      balance: 0, status: 'active'
+    };
+    return res.status(201).json({
+      success: true,
+      data: { user, token: result.session?.access_token || null, refreshToken: result.session?.refresh_token || null, requiresVerification: !result.session },
+      user, token: result.session?.access_token || null, refreshToken: result.session?.refresh_token || null,
+      requiresVerification: !result.session,
+      message: result.session ? 'Account created successfully.' : 'Account created. Please verify your email before signing in.',
+      requestId: req.id
     });
-  } catch (error) {
-    mockUsers = mockUsers.filter((user) => user.id !== newUser.id);
-    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-register-session', eventType: 'SESSION_STORE_UNAVAILABLE', outcome: 'failure', message: 'Unable to create a durable customer session.' });
-    return res.status(503).json({ success: false, error: 'Registration service is temporarily unavailable. Please try again shortly.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if (/already registered|already exists|user already/i.test(message)) return res.status(409).json({ success: false, error: 'An account with this email address already exists. Please sign in.', code: 'EMAIL_ALREADY_EXISTS', requestId: req.id });
+    if (/password/i.test(message)) return res.status(400).json({ success: false, error: message, code: 'WEAK_PASSWORD', requestId: req.id });
+    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-register-failed', eventType: 'SUPABASE_REGISTRATION_FAILED', outcome: 'failure', message: 'Supabase customer registration failed.' });
+    return res.status(503).json({ success: false, error: 'Registration could not be completed. Please try again shortly.', code: 'REGISTRATION_UNAVAILABLE', requestId: req.id });
   }
-
-  // 8. Set HTTP-only secure session cookie
-  res.cookie('kretz_session', session.id, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  });
-
-  res.setHeader('X-CSRF-Token', session.csrfToken);
-
-  // 9. Dispatch branded email verification token
-  const verifToken = generateExpiringToken(newUser.email, 'verification', 24 * 60);
-  const origin = req.headers.origin || 'https://kretzdespain.com';
-  sendEmail({
-    templateId: 'welcome_verification',
-    recipient: newUser.email,
-    data: {
-      fullName: newUser.fullName,
-      email: newUser.email,
-      verificationLink: `${origin}/auth/verify?token=${verifToken}`,
-      expiresInHours: 24,
-      accountType: 'Accredited Investor (Tier 1)'
-    }
-  }).catch(err => {
-    logger.log({
-      level: 'error',
-      category: 'auth',
-      requestId: req.id || 'req-reg-email',
-      eventType: 'EMAIL_DISPATCH_FAILURE',
-      outcome: 'failure',
-      message: `Failed to dispatch welcome email: ${err.message}`
-    });
-  });
-
-  const safeUser = sanitizeUser(newUser);
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-reg',
-    method: 'POST',
-    route: '/api/v1/auth/register',
-    statusCode: 201,
-    userId: newUser.id,
-    userRole: newUser.role,
-    eventType: 'USER_REGISTERED',
-    outcome: 'success',
-    message: `New investor account registered: ${newUser.email}`,
-    metadata: { userId: newUser.id }
-  });
-
-  return res.status(201).json({
-    success: true,
-    data: {
-      user: safeUser,
-      token: session.id,
-      csrfToken: session.csrfToken,
-      requiresVerification: true
-    },
-    token: session.id,
-    csrfToken: session.csrfToken,
-    user: safeUser,
-    message: 'Account created successfully. A verification email has been dispatched.',
-    requestId: req.id
-  });
 });
 
 /**
