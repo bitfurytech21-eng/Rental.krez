@@ -70,7 +70,8 @@ import { generatePropertyPaymentsCsv } from '../src/lib/distributionService';
 import {
   isSupabaseServerConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
-  getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary
+  getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
+  getPersistentAdminDashboard, listPersistentInvestments
 } from './supabaseDatabase';
 
 const router = Router();
@@ -2115,7 +2116,16 @@ router.get('/auth/session', (req: AuthenticatedRequest, res: Response) => {
 /**
  * GET /api/v1/admin/users
  */
-router.get('/admin/users', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const users = await listAdminUsers();
+      return res.json({ success: true, data: users.map((u: any) => ({ id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number, role: 'investor', accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0), kycStatus: u.kyc_status, status: 'active', createdAt: u.created_at })), total: users.length, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-users-db', eventType: 'ADMIN_USERS_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load users.' });
+      return res.status(503).json({ success: false, error: 'The investor registry is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   logger.log({
     level: 'info',
     category: 'admin',
@@ -3750,7 +3760,21 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
  * GET /api/v1/admin/database/health
  * Returns database health and diagnostics report
  */
-router.get('/admin/database/health', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/database/health', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const health = await databaseHealth();
+      return res.status(health.status === 'healthy' ? 200 : 503).json({ success: health.status === 'healthy', data: { ...health, timestamp: new Date().toISOString() }, message: health.status === 'healthy' ? 'Supabase database connection verified.' : 'Database connection is degraded.', requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Database health check failed.', code: 'DATABASE_HEALTH_FAILED', detail: error?.message, requestId: req.id });
+    }
+  }
+  return res.status(process.env.NODE_ENV === 'production' ? 503 : 200).json({
+    success: process.env.NODE_ENV !== 'production',
+    data: { status: 'not_configured', usersCount: mockUsers.length, listingsCount: mockListings.length, transactionsCount: mockTransactions.length, timestamp: new Date().toISOString() },
+    message: 'Supabase server credentials are not configured.', requestId: req.id
+  });
+  /* legacy mock health response retained below for local test fixtures */
   res.json({
     success: true,
     data: {
@@ -4181,7 +4205,17 @@ router.get('/investment-plans/:planId', (req: AuthenticatedRequest, res: Respons
 });
 
 // Admin Control Contract Endpoints
-router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const stats = await getPersistentAdminDashboard();
+      return res.json({ success: true, data: { ...stats, systemUptimePercent: 99.9 }, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-dashboard-db', eventType: 'ADMIN_DASHBOARD_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load admin dashboard.' });
+      return res.status(503).json({ success: false, error: 'The administrator dashboard is temporarily unavailable.', code: 'ADMIN_DASHBOARD_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: {
@@ -4196,7 +4230,12 @@ router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, (req: Authenticat
   });
 });
 
-router.get('/admin/investments', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { return res.json({ success: true, data: await listPersistentInvestments(), requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Investment records are temporarily unavailable.', code: 'INVESTMENT_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: [
@@ -4206,7 +4245,11 @@ router.get('/admin/investments', requireAdmin, (req: AuthenticatedRequest, res: 
   });
 });
 
-router.get('/admin/transactions', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { const rows = await listAdminTransactions(); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Financial transactions are temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
   res.json({
     success: true,
     data: mockTransactions,
@@ -4214,7 +4257,11 @@ router.get('/admin/transactions', requireAdmin, (req: AuthenticatedRequest, res:
   });
 });
 
-router.get('/admin/deposits', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { const rows = await listAdminTransactions('deposit'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Deposit requests are temporarily unavailable.', code: 'DEPOSIT_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
   const deposits = mockTransactions.filter(t => t.type === 'deposit');
   res.json({
     success: true,
@@ -4223,7 +4270,11 @@ router.get('/admin/deposits', requireAdmin, (req: AuthenticatedRequest, res: Res
   });
 });
 
-router.get('/admin/withdrawals', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { const rows = await listAdminTransactions('withdrawal'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Withdrawal requests are temporarily unavailable.', code: 'WITHDRAWAL_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
   const withdrawals = mockTransactions.filter(t => t.type === 'withdrawal');
   res.json({
     success: true,
