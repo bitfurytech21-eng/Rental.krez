@@ -325,7 +325,7 @@ export const AdminPanel: React.FC = () => {
 
   const loadUsers = async () => {
     const token = getAuthToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
     const [response, investmentsResponse, transactionsResponse] = await Promise.all([
       fetch(getApiUrl('/admin/users'), { headers }),
       fetch(getApiUrl('/admin/investments'), { headers }),
