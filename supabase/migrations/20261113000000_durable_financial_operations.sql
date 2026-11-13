@@ -223,7 +223,7 @@ begin
     select * into v_tx from public.payment_transactions
       where user_id = p_user_id and idempotency_key = p_idempotency_key;
     if found then
-      select * into v_investment from public.investments where user_id = p_user_id and certificate_id = p_certificate_id;
+      select * into v_investment from public.investments where user_id = p_user_id and id = v_tx.metadata->>'investment_id';
       return jsonb_build_object('transaction',to_jsonb(v_tx),'investment',case when found then to_jsonb(v_investment) else null end);
     end if;
   end if;
