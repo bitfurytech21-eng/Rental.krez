@@ -535,10 +535,10 @@ export const treasuryApi = {
  * Investment & Financial Endpoints
  */
 export const financialApi = {
-  deposit: (payload: { amount: number; currency?: string; method?: string; txHash?: string }) =>
+  deposit: (payload: { amount: number; currency?: string; method?: string; txHash?: string; idempotencyKey?: string }) =>
     api.post<any>('/deposits', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
-  withdraw: (payload: { amount: number; destination: string; method?: string }) =>
+  withdraw: (payload: { amount: number; destination: string; method?: string; idempotencyKey?: string }) =>
     api.post<any>('/withdrawals', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string }) =>
@@ -550,7 +550,7 @@ export const investmentsApi = {
     api.get<any>('/portfolio'),
 
   executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', payload),
+    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
     api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
@@ -566,10 +566,10 @@ export const walletApi = {
   getTransactions: (params?: { limit?: number; offset?: number }) =>
     api.get<any[]>('/transactions', { params }),
 
-  createDepositRequest: (payload: { amount: number; currency: string; method: string; txHash?: string }) =>
+  createDepositRequest: (payload: { amount: number; currency: string; method: string; txHash?: string; idempotencyKey?: string }) =>
     api.post<any>('/deposits', { ...payload, idempotencyKey: createIdempotencyKey() }),
 
-  createWithdrawalRequest: (payload: { amount: number; destination: string; method: string }) =>
+  createWithdrawalRequest: (payload: { amount: number; destination: string; method: string; idempotencyKey?: string }) =>
     api.post<any>('/withdrawals', { ...payload, idempotencyKey: createIdempotencyKey() }),
 };
 
