@@ -62,7 +62,7 @@ Apply `supabase/migrations/20261113000003_durable_admin_auth.sql` before deployi
 
 Production requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `ADMIN_EMAIL`, and a valid bcrypt `ADMIN_PASSWORD_HASH` for the initial administrator credential. The configured administrator email must already map to an authorized row in `user_roles`. After the first successful login, the Admin Security Console can store rotated credentials in Supabase. Logout and credential rotation revoke sessions in the database across Worker isolates. Do not set `ADMIN_PASSWORD` in production.
 
-The migration does not seed an administrator password or grant an administrator role. Provision the administrator identity and role through the existing trusted Supabase Auth/user_roles process before attempting production login. Do not copy a password or service-role key into source control.
+The migration does not seed an administrator password or grant an administrator role. Provision the administrator identity and role through the existing trusted Supabase Auth/user_roles process before attempting production login. Do not copy a password or service-role key into source control. The former `.admin-credentials.json` file is not automatically imported: it was a local filesystem artifact from the previous server runtime and is not available to the Cloudflare Worker. Before switching production traffic, either securely migrate the existing bcrypt credential record into `kretz_admin_credentials` using an authorized server-side process, or configure a known initial `ADMIN_EMAIL` + `ADMIN_PASSWORD_HASH` fallback and confirm that email is provisioned with an admin role. Do not deploy until the administrator login has been tested in staging.
 
 
 ## Durable customer accounts
