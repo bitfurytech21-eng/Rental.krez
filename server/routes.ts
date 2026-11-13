@@ -64,6 +64,7 @@ import {
   recordAdminFailedAttempt,
   resetAdminFailedAttempts
 } from './adminAuth';
+import { getPersistentAdminConfig, verifyPersistentAdminCredentials, updatePersistentAdminCredentials, resetPersistentAdminCredentials, createPersistentAdminSession, revokePersistentAdminSession, checkPersistentAdminRateLimit, recordPersistentAdminFailure, resetPersistentAdminFailures } from './persistentAdminAuth';
 import { ALL_KRETZ_MEMBERS } from '../src/data/kretzTeam';
 import { BLOG_POSTS } from '../src/data/blogPosts';
 import { dailyPaymentService } from './dailyPaymentService';
@@ -696,7 +697,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
 
   // 1. Check Rate Limiter & Lockout
-  const rateLimitStatus = checkAdminRateLimit(ip);
+  const rateLimitStatus = process.env.NODE_ENV === 'production' ? await checkPersistentAdminRateLimit(ip) : checkAdminRateLimit(ip);
   if (rateLimitStatus.isLocked) {
     logger.log({
       level: 'warn',
@@ -731,14 +732,14 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // 3. Load administrator configuration from environment
-  const config = getAdminConfig();
+  const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
 
   // 4. Validate credentials
   const emailMatches = normalizedEmail === config.adminEmail;
-  const passwordMatches = await verifyAdminCredentials(inputPass);
+  const passwordMatches = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(normalizedEmail, inputPass) : await verifyAdminCredentials(inputPass);
 
   if (!emailMatches || !passwordMatches) {
-    const failureRecord = recordAdminFailedAttempt(ip);
+    const failureRecord = process.env.NODE_ENV === 'production' ? await recordPersistentAdminFailure(ip) : recordAdminFailedAttempt(ip);
 
     logger.log({
       level: 'warn',
@@ -779,10 +780,10 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // 5. Success: reset failed attempts
-  resetAdminFailedAttempts(ip);
+  if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
 
   // 6. Establish secure server session
-  const session = createAdminSession(config.adminEmail, config.fullName);
+  const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(config.adminEmail, config.fullName) : createAdminSession(config.adminEmail, config.fullName);
 
   // 7. Set HTTP-only secure SameSite cookie
   res.cookie('kretz_admin_session', session.token, {
@@ -875,7 +876,7 @@ router.post(
 
     const config = getAdminConfig();
     const emailMatches = normalizedCurrentEmail === config.adminEmail;
-    const passwordMatches = await verifyAdminCredentials(inputCurrPass);
+    const passwordMatches = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(normalizedCurrentEmail, inputCurrPass) : await verifyAdminCredentials(inputCurrPass);
 
     if (!emailMatches || !passwordMatches) {
       const failureRecord = recordAdminFailedAttempt(ip);
@@ -937,11 +938,9 @@ router.post(
     const targetFullName =
       typeof fullName === 'string' && fullName.trim() ? fullName.trim() : config.fullName;
 
-    const updated = await updateCustomAdminCredentials({
-      email: targetEmail,
-      fullName: targetFullName,
-      passwordToHash: targetPassword
-    });
+    const updated = process.env.NODE_ENV === 'production'
+      ? await updatePersistentAdminCredentials({ email: targetEmail, fullName: targetFullName, password: targetPassword, updatedBy: req.user?.id || 'system' })
+      : await updateCustomAdminCredentials({ email: targetEmail, fullName: targetFullName, passwordToHash: targetPassword });
 
     const adminMock = mockUsers.find((u) => u.role === 'admin');
     if (adminMock) {
@@ -949,7 +948,7 @@ router.post(
       adminMock.fullName = updated.fullName;
     }
 
-    const session = createAdminSession(updated.adminEmail, updated.fullName);
+    const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -1012,7 +1011,7 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req:
   }
 
   if (token) {
-    revokeAdminSession(token);
+    if (process.env.NODE_ENV === 'production') await revokePersistentAdminSession(token); else revokeAdminSession(token);
   }
 
   res.clearCookie('kretz_admin_session', {
@@ -1044,9 +1043,9 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req:
  * GET /api/v1/admin/security/credentials
  * Returns the active administrator login email, display name, and credential mode (never exposes hashes or passwords).
  */
-router.get('/admin/security/credentials', requireAuth, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/security/credentials', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const config = getAdminConfig();
-  const envState = validateAdminEnvironment();
+  const envState = process.env.NODE_ENV === 'production' ? { mode: config.mode } : validateAdminEnvironment();
 
   return res.json({
     success: true,
@@ -1083,7 +1082,7 @@ router.put(
       });
     }
 
-    const isCurrentValid = await verifyAdminCredentials(currentPassword);
+    const isCurrentValid = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(req.user?.email || '', currentPassword) : await verifyAdminCredentials(currentPassword);
     if (!isCurrentValid) {
       logger.log({
         level: 'warn',
@@ -1134,11 +1133,9 @@ router.put(
     const targetFullName =
       typeof fullName === 'string' && fullName.trim() ? fullName.trim() : config.fullName;
 
-    const updated = await updateCustomAdminCredentials({
-      email: targetEmail,
-      fullName: targetFullName,
-      passwordToHash: passwordToPersist
-    });
+    const updated = process.env.NODE_ENV === 'production'
+      ? await updatePersistentAdminCredentials({ email: targetEmail, fullName: targetFullName, password: passwordToPersist, updatedBy: req.user?.id || 'system' })
+      : await updateCustomAdminCredentials({ email: targetEmail, fullName: targetFullName, passwordToHash: passwordToPersist });
 
     const adminMock = mockUsers.find((u) => u.role === 'admin');
     if (adminMock) {
@@ -1214,7 +1211,7 @@ router.post(
       });
     }
 
-    const isCurrentValid = await verifyAdminCredentials(currentPassword);
+    const isCurrentValid = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(req.user?.email || '', currentPassword) : await verifyAdminCredentials(currentPassword);
     if (!isCurrentValid) {
       return res.status(401).json({
         success: false,
@@ -1224,10 +1221,10 @@ router.post(
       });
     }
 
-    resetCustomAdminCredentials();
-    const restoredConfig = getAdminConfig();
+    if (process.env.NODE_ENV === 'production') await resetPersistentAdminCredentials(); else resetCustomAdminCredentials();
+    const restoredConfig = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
     const envState = validateAdminEnvironment();
-    const session = createAdminSession(restoredConfig.adminEmail, restoredConfig.fullName);
+    const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(restoredConfig.adminEmail, restoredConfig.fullName) : createAdminSession(restoredConfig.adminEmail, restoredConfig.fullName);
 
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
