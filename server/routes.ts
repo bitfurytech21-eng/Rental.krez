@@ -780,7 +780,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // 5. Success: reset failed attempts
-  if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
+  if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
 
   // 6. Establish secure server session
   const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(config.adminEmail, config.fullName) : createAdminSession(config.adminEmail, config.fullName);
@@ -933,7 +933,7 @@ router.post(
       });
     }
 
-    resetAdminFailedAttempts(ip);
+    if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
 
     const targetFullName =
       typeof fullName === 'string' && fullName.trim() ? fullName.trim() : config.fullName;
