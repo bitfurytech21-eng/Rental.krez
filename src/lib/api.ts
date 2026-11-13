@@ -111,6 +111,13 @@ export const getBaseUrl = (): string => {
   return '/api/v1';
 };
 
+/** Resolve an API-relative path against the configured API origin. */
+export const getApiUrl = (endpoint: string): string => {
+  if (/^https?:\\/\\//i.test(endpoint)) return endpoint;
+  const base = getBaseUrl();
+  return `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+};
+
 /**
  * Core HTTP Request Wrapper
  */
@@ -130,7 +137,7 @@ export async function apiRequest<T = any>(
   // Build query string
   let url = endpoint.startsWith('http://') || endpoint.startsWith('https://')
     ? endpoint
-    : `${getBaseUrl()}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    : getApiUrl(endpoint);
 
   if (params) {
     const searchParams = new URLSearchParams();
