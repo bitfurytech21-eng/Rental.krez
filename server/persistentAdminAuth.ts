@@ -79,6 +79,12 @@ export async function updatePersistentAdminCredentials(input: {
 
 export async function resetPersistentAdminCredentials() {
   const db = requireStore();
+  // Never delete the active database credential unless a valid environment fallback exists.
+  const fallbackEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const fallbackHash = (process.env.ADMIN_PASSWORD_HASH || '').trim();
+  if (!fallbackEmail || !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(fallbackHash)) {
+    throw new Error('ADMIN_ENV_CREDENTIALS_NOT_CONFIGURED');
+  }
   const now = new Date().toISOString();
   const { error } = await db.from('kretz_admin_credentials').delete().eq('id', 'primary');
   if (error) throw error;
