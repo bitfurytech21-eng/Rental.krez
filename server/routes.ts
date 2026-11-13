@@ -1942,13 +1942,17 @@ router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedReque
   const { kycStatus = 'approved', notes } = req.body || {};
   try {
     const profile = await runFinancialRpc('kretz_admin_update_kyc', { p_user_id: id, p_admin_id: req.user!.id, p_kyc_status: String(kycStatus), p_notes: notes || null });
-    const updatedProfile = await getUserProfile(id);
-    if (updatedProfile?.email) sendEmail({
-      templateId: String(kycStatus).toLowerCase() === 'rejected' ? 'kyc_rejected' : 'kyc_approved',
-      recipient: updatedProfile.email,
-      data: { fullName: updatedProfile.full_name || 'Valued Investor', event_name: 'Institutional KYC Verification', status: String(kycStatus).toLowerCase() === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified', notes: notes || 'Your KYC status has been updated.' },
-      idempotencyKey: `idemp-kyc-${id}-${String(kycStatus).toLowerCase()}-${Date.now()}`
-    }).catch(() => {});
+    try {
+      const updatedProfile = await getUserProfile(id);
+      if (updatedProfile?.email) sendEmail({
+        templateId: String(kycStatus).toLowerCase() === 'rejected' ? 'kyc_rejected' : 'kyc_approved',
+        recipient: updatedProfile.email,
+        data: { fullName: updatedProfile.full_name || 'Valued Investor', event_name: 'Institutional KYC Verification', status: String(kycStatus).toLowerCase() === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified', notes: notes || 'Your KYC status has been updated.' },
+        idempotencyKey: `idemp-kyc-${id}-${String(kycStatus).toLowerCase()}-${Date.now()}`
+      }).catch(() => {});
+    } catch {
+      logger.log({ level: 'warn', category: 'database', requestId: req.id || 'req-kyc-notify', eventType: 'KYC_NOTIFICATION_PROFILE_LOOKUP_FAILED', outcome: 'failure', message: 'KYC was saved but the notification profile lookup failed.' });
+    }
     return res.json({ success: true, data: profile, message: `User KYC status updated to ${kycStatus}.`, requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
