@@ -1166,113 +1166,31 @@ router.post('/auth/register', authLimiter, requireTurnstile, async (req: Authent
  * Terminates server-authoritative session and clears HttpOnly session cookie
  */
 router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => {
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!token && req.headers.cookie) {
-    const match = req.headers.cookie.match(/(?:^|;\s*)kretz_session=([^;]+)/);
-    if (match) token = decodeURIComponent(match[1]);
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (token && isSupabaseAuthConfigured()) {
+    try { await signOutCustomer(token); }
+    catch { return res.status(503).json({ success: false, error: 'Sign-out could not be completed. Please retry.', code: 'SIGN_OUT_UNAVAILABLE', requestId: req.id }); }
   }
-
-  if (token) {
-    try { await revokeSession(token); } catch {
-      return res.status(503).json({ success: false, error: 'Session service is temporarily unavailable.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
-    }
-  }
-
-  res.clearCookie('kretz_session', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/'
-  });
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-logout',
-    method: 'POST',
-    route: '/api/v1/auth/logout',
-    statusCode: 200,
-    userId: req.user?.id,
-    userRole: req.user?.role,
-    eventType: 'USER_LOGOUT',
-    outcome: 'success',
-    message: req.user ? `User ${req.user.email} terminated session` : 'Anonymous session cleared'
-  });
-
-  return res.json({
-    success: true,
-    message: 'Session closed successfully.',
-    requestId: req.id
-  });
+  res.clearCookie('kretz_session', { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+  return res.json({ success: true, message: 'Session closed successfully.', requestId: req.id });
 });
 
 /**
  * POST /api/v1/auth/password/forgot
  */
-router.post('/auth/password/forgot', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
-  const { email } = req.body || {};
-  const normalizedEmail = (email || '').toLowerCase().trim();
-
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(503).json({
-      success: false,
-      error: 'Customer password recovery must use Supabase Auth.',
-      code: 'SUPABASE_AUTH_REQUIRED',
-      requestId: req.id
-    });
+router.post('/auth/password/forgot', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!email || !validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL', requestId: req.id });
+  if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Password recovery is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : 'https://kretzdespain.com';
+    await requestCustomerPasswordReset(email, `${origin}/#reset-password`);
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-forgot-failed', eventType: 'SUPABASE_PASSWORD_RECOVERY_FAILED', outcome: 'failure', message: 'Supabase password recovery request failed.' });
+    return res.status(503).json({ success: false, error: 'Password recovery could not be started. Please try again shortly.', code: 'PASSWORD_RECOVERY_UNAVAILABLE', requestId: req.id });
   }
-
-  const foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-
-  if (foundUser) {
-    const resetToken = generateExpiringToken(normalizedEmail, 'password_reset', 15);
-    const origin = req.headers.origin || 'https://kretzdespain.com';
-    const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
-    
-    sendEmail({
-      templateId: 'password_reset',
-      recipient: normalizedEmail,
-      data: {
-        fullName: foundUser.fullName,
-        email: normalizedEmail,
-        resetLink: `${origin}/auth/reset?token=${resetToken}`,
-        expiresInMinutes: 15,
-        ipAddress: ip,
-        location: foundUser.country || 'Madrid, Spain'
-      }
-    }).catch(err => {
-      logger.log({
-        level: 'error',
-        category: 'auth',
-        requestId: req.id || 'req-forgot-email',
-        eventType: 'EMAIL_DISPATCH_FAILURE',
-        outcome: 'failure',
-        message: `Failed to dispatch password recovery email: ${err.message}`
-      });
-    });
-  }
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-forgot',
-    method: 'POST',
-    route: '/api/v1/auth/password/forgot',
-    statusCode: 200,
-    eventType: 'PASSWORD_RESET_REQUESTED',
-    outcome: 'success',
-    message: `Password reset dispatched for account ${normalizedEmail}`,
-    metadata: { targetEmail: normalizedEmail }
-  });
-
-  // Always return success to prevent email enumeration attacks
-  res.json({
-    success: true,
-    message: 'If an account exists with this email, recovery instructions have been sent.',
-    requestId: req.id
-  });
+  return res.json({ success: true, message: 'If an account exists with this email, recovery instructions have been sent.', requestId: req.id });
 });
 
 /**
@@ -1708,89 +1626,18 @@ router.post('/security/verify-turnstile', securityLimiter, async (req: Authentic
  * and invalidates all existing sessions for the target user.
  */
 router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Response) => {
-  const { token, newPassword } = req.body || {};
-
-  if (!token || typeof token !== 'string') {
-    return res.status(400).json({
-      success: false,
-      error: 'A valid password reset token is required.',
-      code: 'MISSING_RESET_TOKEN',
-      requestId: req.id
-    });
+  const password = String(req.body?.newPassword || req.body?.password || '');
+  const strength = validatePasswordStrength(password);
+  if (!strength.valid) return res.status(400).json({ success: false, error: strength.error || 'Password does not meet security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
+  const authHeader = req.headers.authorization || '';
+  const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : String(req.body?.accessToken || '');
+  if (!accessToken) return res.status(401).json({ success: false, error: 'A valid Supabase recovery session is required.', code: 'RECOVERY_SESSION_REQUIRED', requestId: req.id });
+  try {
+    await updateCustomerPassword(accessToken, password);
+    return res.json({ success: true, message: 'Password updated successfully. Please sign in again.', requestId: req.id });
+  } catch {
+    return res.status(400).json({ success: false, error: 'The recovery session is invalid or expired. Request a new password reset email.', code: 'INVALID_RECOVERY_SESSION', requestId: req.id });
   }
-
-  // 1. Password policy verification
-  const strengthCheck = validatePasswordStrength(newPassword);
-  if (!strengthCheck.valid) {
-    return res.status(400).json({
-      success: false,
-      error: strengthCheck.error || 'Password does not meet institutional complexity standards.',
-      code: 'WEAK_PASSWORD',
-      requestId: req.id
-    });
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(503).json({
-      success: false,
-      error: 'Customer password recovery must use Supabase Auth.',
-      code: 'SUPABASE_AUTH_REQUIRED',
-      requestId: req.id
-    });
-  }
-
-  // 2. Validate and single-use consume the recovery token
-  const verification = verifyAndConsumeToken(token, 'password_reset');
-  if (!verification.valid) {
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-reset-invalid',
-      method: 'POST',
-      route: '/api/v1/auth/password/reset',
-      statusCode: 400,
-      eventType: 'PASSWORD_RESET_REJECTED',
-      outcome: 'failure',
-      message: `Password reset rejected: ${verification.error}`,
-      errorCode: 'INVALID_RESET_TOKEN'
-    });
-
-    return res.status(400).json({
-      success: false,
-      error: verification.error || 'Invalid or expired password reset token.',
-      code: 'INVALID_RESET_TOKEN',
-      requestId: req.id
-    });
-  }
-
-  // 3. Atomically update password hash in persistent store
-  const targetEmail = (verification.email || '').toLowerCase();
-  const targetUser = targetEmail ? mockUsers.find(u => u.email.toLowerCase() === targetEmail) : undefined;
-  if (targetUser) {
-    // Revoke all active sessions before changing credentials; fail closed if revocation is unavailable.
-    try { await revokeAllUserSessions(targetUser.id); } catch {
-      return res.status(503).json({ success: false, error: 'Session service is temporarily unavailable. Please retry the password reset.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
-    }
-    targetUser.passwordHash = hashPassword(newPassword);
-  }
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-reset',
-    method: 'POST',
-    route: '/api/v1/auth/password/reset',
-    statusCode: 200,
-    eventType: 'PASSWORD_RESET_COMPLETED',
-    outcome: 'success',
-    message: `Password successfully updated via recovery authorization for ${verification.email}. All prior sessions revoked.`
-  });
-
-  return res.json({
-    success: true,
-    message: 'Password updated successfully. All previous sessions have been terminated. You may now log in.',
-    requestId: req.id
-  });
 });
 
 /**
