@@ -67,7 +67,7 @@ export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
   const { currentPath, navigateTo } = useNavigation();
 
-  if (!user || user.role !== 'admin') {
+  if (!user || !['admin', 'super_admin', 'finance_admin', 'operations_admin', 'support', 'auditor'].includes(user.role)) {
     return (
       <div className="min-h-screen bg-[#080d11] text-white flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-[#0d161d] border border-red-500/30 rounded-2xl p-8 text-center shadow-2xl">
