@@ -1407,7 +1407,7 @@ router.get('/user/referrals', requireAuth, (req: AuthenticatedRequest, res: Resp
  * POST /api/v1/user/referrals/invite
  * Dispatches and logs an investor referral invitation with duplicate and self-referral checks
  */
-router.post('/user/referrals/invite', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/user/referrals/invite', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   const normalizedEmail = String(req.body?.email || '').toLowerCase().trim();
   const referralCode = String(req.body?.referralCode || '').trim();
