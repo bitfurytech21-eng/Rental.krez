@@ -3110,7 +3110,9 @@ router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: 
 /**
  * GET /api/v1/notifications
  */
-router.get('/notifications', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/notifications', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const rows = await listUserNotifications(req.user!.id); const data = rows.map((n: any) => ({ id: n.id, title: n.title, message: n.message, type: n.type, read: n.read, createdAt: n.created_at, metadata: n.metadata })); return res.json({ success: true, data, unreadCount: data.filter((n: any) => !n.read).length, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'NOTIFICATION_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   res.json({
     success: true,
@@ -3120,7 +3122,9 @@ router.get('/notifications', requireAuth, (req: AuthenticatedRequest, res: Respo
   });
 });
 
-router.patch('/notifications/:id/read', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.patch('/notifications/:id/read', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const row = await markUserNotificationRead(req.user!.id, req.params.id); return res.json({ success: true, data: row, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notification could not be updated.', code: 'NOTIFICATION_UPDATE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   const target = list.find(n => n.id === req.params.id);
   if (target) {
@@ -3133,7 +3137,9 @@ router.patch('/notifications/:id/read', requireAuth, (req: AuthenticatedRequest,
   });
 });
 
-router.post('/notifications/read-all', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/notifications/read-all', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const markedRead = await markAllUserNotificationsRead(req.user!.id); return res.json({ success: true, data: { markedRead }, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications could not be updated.', code: 'NOTIFICATION_UPDATE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   list.forEach(n => { n.read = true; });
   res.json({
@@ -3146,7 +3152,9 @@ router.post('/notifications/read-all', requireAuth, (req: AuthenticatedRequest, 
 /**
  * User Favorites & Preferences Persistence (/api/v1/user/favorites & /api/v1/user/preferences)
  */
-router.get('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/user/favorites', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { return res.json({ success: true, data: { favorites: await listUserFavorites(req.user!.id) }, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Your watchlist is temporarily unavailable.', code: 'FAVORITES_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent watchlist storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
   res.json({
     success: true,
@@ -3155,7 +3163,7 @@ router.get('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Resp
   });
 });
 
-router.post('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/user/favorites', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { propertyId } = req.body || {};
   if (!propertyId || typeof propertyId !== 'string') {
     return res.status(400).json({
@@ -3165,6 +3173,8 @@ router.post('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Res
       requestId: req.id
     });
   }
+  if (isSupabaseServerConfigured()) { try { const favorites = await saveUserFavorite(req.user!.id, propertyId); return res.json({ success: true, data: { favorites, propertyId, saved: true }, message: 'Property saved to your watchlist.', requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Property could not be saved to your watchlist.', code: 'FAVORITES_DATABASE_WRITE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent watchlist storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
   favSet.add(propertyId);
   userFavoritesStore.set(req.user!.id, favSet);
@@ -3176,8 +3186,10 @@ router.post('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Res
   });
 });
 
-router.delete('/user/favorites/:propertyId', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.delete('/user/favorites/:propertyId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { propertyId } = req.params;
+  if (isSupabaseServerConfigured()) { try { const favorites = await removeUserFavorite(req.user!.id, propertyId); return res.json({ success: true, data: { favorites, propertyId, saved: false }, message: 'Property removed from your watchlist.', requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Property could not be removed from your watchlist.', code: 'FAVORITES_DATABASE_WRITE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent watchlist storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
   favSet.delete(propertyId);
   userFavoritesStore.set(req.user!.id, favSet);
@@ -3189,7 +3201,9 @@ router.delete('/user/favorites/:propertyId', requireAuth, (req: AuthenticatedReq
   });
 });
 
-router.get('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/user/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { return res.json({ success: true, data: await getUserPreferences(req.user!.id), requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Your preferences are temporarily unavailable.', code: 'PREFERENCES_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent preference storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const prefs = userPreferencesStore.get(req.user!.id) || {
     defaultSort: 'yield-desc',
     itemsPerPage: 6,
@@ -3203,7 +3217,9 @@ router.get('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Re
   });
 });
 
-router.put('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.put('/user/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const data = await saveUserPreferences(req.user!.id, req.body || {}); return res.json({ success: true, data, message: 'Preferences saved.', requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Your preferences could not be saved.', code: 'PREFERENCES_DATABASE_WRITE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent preference storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const current = userPreferencesStore.get(req.user!.id) || {};
   const next = { ...current, ...(req.body || {}), updatedAt: new Date().toISOString() };
   userPreferencesStore.set(req.user!.id, next);
