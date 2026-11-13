@@ -4097,6 +4097,9 @@ router.post('/admin/database/repair', requireAdmin, async (req: AuthenticatedReq
  * Secure payment provider webhook processing with signature verification & idempotency
  */
 router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Payment-provider webhook signature verification is not configured. No payment event was accepted.', code: 'PAYMENT_WEBHOOK_NOT_CONFIGURED', requestId: req.id });
+  }
   const providerSignature = req.headers['x-signature'] || req.headers['stripe-signature'];
   const event = req.body || {};
   const eventId = event.id || req.headers['x-event-id'];
