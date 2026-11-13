@@ -73,6 +73,8 @@ import {
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
   getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs,
   createPersistentInvestmentPlan, updatePersistentInvestmentPlan,
+  listUserNotifications, markUserNotificationRead, markAllUserNotificationsRead,
+  listUserFavorites, saveUserFavorite, removeUserFavorite, getUserPreferences, saveUserPreferences,
   getPersistentAccountStatement, getPersistentPerformance
 } from './supabaseDatabase';
 
