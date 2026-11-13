@@ -71,7 +71,7 @@ import {
   isSupabaseServerConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
-  getPersistentAdminDashboard, listPersistentInvestments
+  getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs
 } from './supabaseDatabase';
 
 const router = Router();
@@ -2120,7 +2120,7 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
   if (isSupabaseServerConfigured()) {
     try {
       const users = await listAdminUsers();
-      return res.json({ success: true, data: users.map((u: any) => ({ id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number, role: 'investor', accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0), kycStatus: u.kyc_status, status: 'active', createdAt: u.created_at })), total: users.length, requestId: req.id });
+      return res.json({ success: true, data: users.map((u: any) => ({ id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number, role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','support','auditor'].includes(role)) || 'investor', accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0), kycStatus: u.kyc_status, status: 'active', createdAt: u.created_at })), total: users.length, requestId: req.id });
     } catch (error: any) {
       logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-users-db', eventType: 'ADMIN_USERS_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load users.' });
       return res.status(503).json({ success: false, error: 'The investor registry is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
@@ -2150,7 +2150,15 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
 /**
  * GET /api/v1/admin/audit-logs
  */
-router.get('/admin/audit-logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/audit-logs', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const logs = await listPersistentAuditLogs();
+      return res.json({ success: true, data: logs, total: logs.length, requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Audit records are temporarily unavailable.', code: 'AUDIT_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   res.json({
     success: true,
     data: mockAuditLogs,
