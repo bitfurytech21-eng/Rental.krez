@@ -1703,6 +1703,66 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
 });
 
 /**
+ * GET /api/v1/admin/users/:id
+ * Read one authoritative Supabase customer profile for the admin user drawer.
+ */
+router.get('/admin/users/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const profile = await getUserProfile(req.params.id);
+    if (!profile) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    const { data: roles, error: rolesError } = await (await import('./supabaseDatabase')).getSupabaseAdmin()
+      .from('user_roles').select('role,granted_at,granted_by').eq('user_id', req.params.id);
+    if (rolesError) throw rolesError;
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
+      countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
+      balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0),
+      totalEarned: Number(profile.total_dividends_earned || 0), kycStatus: profile.kyc_status,
+      status: profile.account_status || 'active', suspendedReason: profile.suspended_reason,
+      address: profile.address, city: profile.city, postalCode: profile.postal_code,
+      createdAt: profile.created_at, updatedAt: profile.updated_at, roles: roles || []
+    }, requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-user-detail', eventType: 'ADMIN_USER_DETAIL_FAILED', outcome: 'failure', message: error?.message || 'Unable to load customer profile.' });
+    return res.status(503).json({ success: false, error: 'The customer record is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
+  }
+});
+
+/**
+ * PATCH /api/v1/admin/users/:id/profile
+ * Administrators may correct contact/profile fields only. Roles, balances, KYC and
+ * account status are deliberately managed by their dedicated protected workflows.
+ */
+router.patch('/admin/users/:id/profile', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const input = req.body || {};
+  const patch: Record<string, unknown> = {
+    full_name: input.fullName, country: input.country, country_code: input.countryCode,
+    phone_number: input.phoneNumber, address: input.address, city: input.city,
+    postal_code: input.postalCode, avatar_url: input.avatarUrl
+  };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined && typeof value !== 'string') return res.status(400).json({ success: false, error: 'Profile fields must be text values.', code: 'INVALID_PROFILE_FIELD', requestId: req.id });
+    if (typeof value === 'string' && value.length > 500) return res.status(400).json({ success: false, error: 'A profile field exceeds the allowed length.', code: 'PROFILE_FIELD_TOO_LONG', requestId: req.id });
+  }
+  try {
+    const updated = await updateUserProfile(req.params.id, patch);
+    if (!updated) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    logger.log({ level: 'info', category: 'admin', requestId: req.id || 'req-admin-user-profile', userId: req.user?.id, eventType: 'ADMIN_USER_PROFILE_UPDATED', outcome: 'success', message: 'Administrator updated customer contact/profile fields.', metadata: { targetUserId: req.params.id, fields: Object.keys(patch).filter(key => patch[key] !== undefined) } });
+    return res.json({ success: true, data: {
+      id: updated.id, email: updated.email, fullName: updated.full_name, country: updated.country,
+      countryCode: updated.country_code, phoneNumber: updated.phone_number, address: updated.address,
+      city: updated.city, postalCode: updated.postal_code, avatarUrl: updated.avatar_url,
+      status: updated.account_status || 'active', kycStatus: updated.kyc_status
+    }, message: 'Customer profile updated.', requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-user-profile-failed', eventType: 'ADMIN_USER_PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Customer profile update failed.' });
+    return res.status(503).json({ success: false, error: 'Customer profile changes could not be saved.', code: 'USER_PROFILE_UPDATE_FAILED', requestId: req.id });
+  }
+});
+
+/**
  * GET /api/v1/admin/audit-logs
  */
 router.get('/admin/audit-logs', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
@@ -2276,6 +2336,44 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
     return res.status(503).json({ success: false, error: 'Your profile is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
   }
 });
+
+/**
+ * PATCH/PUT /api/v1/user/profile
+ * Persist customer-editable profile data against the authenticated Supabase user ID.
+ */
+const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const input = req.body || {};
+  const patch: Record<string, unknown> = {
+    full_name: input.fullName, phone_number: input.phoneNumber, country: input.country,
+    country_code: input.countryCode, address: input.address, city: input.city,
+    postal_code: input.postalCode, avatar_url: input.avatarUrl, bank_iban: input.bankIban,
+    crypto_deposit_address: input.cryptoDepositAddress, tax_id: input.taxId,
+    date_of_birth: input.dateOfBirth
+  };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined && typeof value !== 'string') return res.status(400).json({ success: false, error: 'Profile fields must be text values.', code: 'INVALID_PROFILE_FIELD', requestId: req.id });
+    if (typeof value === 'string' && value.length > 500) return res.status(400).json({ success: false, error: 'A profile field exceeds the allowed length.', code: 'PROFILE_FIELD_TOO_LONG', requestId: req.id });
+  }
+  try {
+    const profile = await updateUserProfile(req.user!.id, patch);
+    if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
+      countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
+      address: profile.address, city: profile.city, postalCode: profile.postal_code,
+      avatarUrl: profile.avatar_url, bankIban: profile.bank_iban,
+      cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
+      dateOfBirth: profile.date_of_birth, balance: Number(profile.wallet_balance || 0),
+      kycStatus: profile.kyc_status, status: profile.account_status || 'active'
+    }, message: 'User profile updated successfully.', requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-update-db', eventType: 'PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Profile update failed.' });
+    return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
+  }
+};
+router.patch('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
+router.put('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
 
 /**
  * GET /api/v1/portfolio
