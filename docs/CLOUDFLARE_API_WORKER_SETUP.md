@@ -63,3 +63,17 @@ Apply `supabase/migrations/20261113000003_durable_admin_auth.sql` before deployi
 Production requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `ADMIN_EMAIL`, and a valid bcrypt `ADMIN_PASSWORD_HASH` for the initial administrator credential. The configured administrator email must already map to an authorized row in `user_roles`. After the first successful login, the Admin Security Console can store rotated credentials in Supabase. Logout and credential rotation revoke sessions in the database across Worker isolates. Do not set `ADMIN_PASSWORD` in production.
 
 The migration does not seed an administrator password or grant an administrator role. Provision the administrator identity and role through the existing trusted Supabase Auth/user_roles process before attempting production login. Do not copy a password or service-role key into source control.
+
+
+## Durable customer accounts
+
+The production customer account authority is Supabase Auth (`auth.users`), with the existing `handle_new_user` database trigger provisioning `public.user_profiles` and the least-privilege `investor` role in `public.user_roles`. The production frontend must have these Cloudflare Pages build variables configured:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY` (or the supported publishable-key variable used by the app)
+
+The API Worker separately requires encrypted `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` secrets for server-side identity verification and protected database operations. The service-role key must never be exposed to the browser or prefixed with `VITE_`.
+
+The old API endpoints that authenticated or registered against the Worker-local `mockUsers` collection now fail closed in production with `SUPABASE_AUTH_REQUIRED`. This is intentional: configured production clients use Supabase Auth directly, and the Worker must not create a second, non-durable customer-account system. Development-only mock accounts remain available outside production. Profile, investor registry, KYC, suspension, and financial operations use the existing Supabase-backed tables/RPCs when the database is configured.
+
+Before routing production traffic, verify that the existing enterprise schema migration has been applied and that the `on_auth_user_created` trigger exists and provisions both a profile and the investor role. Confirm the Pages build variables are present; otherwise customer registration/login will not be available and the API will correctly reject the legacy fallback.
