@@ -49,7 +49,8 @@ alter table public.user_profiles
   add column if not exists bank_iban text,
   add column if not exists crypto_deposit_address text,
   add column if not exists tax_id text,
-  add column if not exists date_of_birth date;
+  add column if not exists date_of_birth date,
+  add column if not exists mfa_enabled boolean not null default false;
 
 -- Prevent authenticated clients from editing balances, KYC decisions, account types,
 -- investment totals, or any other server-owned fields through direct table updates.
