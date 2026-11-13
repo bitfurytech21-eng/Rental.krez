@@ -2031,7 +2031,28 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
  * Validates active session, verifies account non-suspended status, and returns sanitized profile.
  * Gracefully handles unauthenticated probes with 200 OK { authenticated: false }.
  */
-router.get('/auth/session', (req: AuthenticatedRequest, res: Response) => {
+router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user) {
+    try {
+      const profile = isSupabaseServerConfigured() ? await getUserProfile(req.user.id) : findUserRecordForRequest(req);
+      const status = profile?.status || req.user.status || 'active';
+      if (status === 'suspended') {
+        return res.status(403).json({ success: false, error: profile?.suspended_reason || req.user.suspendedReason || 'Your account has been suspended by compliance.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+      }
+      const safeUser = profile ? {
+        id: req.user.id, email: profile.email || req.user.email,
+        fullName: profile.full_name || req.user.fullName,
+        role: req.user.role, accountType: profile.account_type || req.user.accountType,
+        country: profile.country, phoneNumber: profile.phone_number,
+        balance: Number(profile.wallet_balance ?? req.user.balance ?? 0),
+        kycStatus: profile.kyc_status || 'pending', status
+      } : req.user;
+      const csrfToken = req.session?.csrfToken || '';
+      return res.json({ success: true, data: { authenticated: true, user: safeUser, csrfToken }, authenticated: true, user: safeUser, csrfToken, requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Session verification is temporarily unavailable.', code: 'SESSION_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const authHeader = req.headers.authorization;
   let token: string | undefined;
   if (authHeader && authHeader.startsWith('Bearer ')) {
