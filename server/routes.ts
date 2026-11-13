@@ -780,7 +780,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // 5. Success: reset failed attempts
-  if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
+  if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
 
   // 6. Establish secure server session
   const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(config.adminEmail, config.fullName) : createAdminSession(config.adminEmail, config.fullName);
@@ -849,7 +849,7 @@ router.post(
       req.socket.remoteAddress ||
       '127.0.0.1';
 
-    const rateLimitStatus = checkAdminRateLimit(ip);
+    const rateLimitStatus = process.env.NODE_ENV === 'production' ? await checkPersistentAdminRateLimit(ip) : checkAdminRateLimit(ip);
     if (rateLimitStatus.isLocked) {
       return res.status(429).json({
         success: false,
@@ -874,12 +874,12 @@ router.post(
       });
     }
 
-    const config = getAdminConfig();
+    const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
     const emailMatches = normalizedCurrentEmail === config.adminEmail;
     const passwordMatches = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(normalizedCurrentEmail, inputCurrPass) : await verifyAdminCredentials(inputCurrPass);
 
     if (!emailMatches || !passwordMatches) {
-      const failureRecord = recordAdminFailedAttempt(ip);
+      const failureRecord = process.env.NODE_ENV === 'production' ? await recordPersistentAdminFailure(ip) : recordAdminFailedAttempt(ip);
       logger.log({
         level: 'warn',
         category: 'security',
@@ -1044,7 +1044,7 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req:
  * Returns the active administrator login email, display name, and credential mode (never exposes hashes or passwords).
  */
 router.get('/admin/security/credentials', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const config = getAdminConfig();
+  const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
   const envState = process.env.NODE_ENV === 'production' ? { mode: config.mode } : validateAdminEnvironment();
 
   return res.json({
@@ -1071,7 +1071,7 @@ router.put(
   requireAdmin,
   async (req: AuthenticatedRequest, res: Response) => {
     const { currentPassword, newEmail, newPassword, fullName } = req.body || {};
-    const config = getAdminConfig();
+    const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
 
     if (!currentPassword || typeof currentPassword !== 'string') {
       return res.status(400).json({
@@ -1143,7 +1143,7 @@ router.put(
       adminMock.fullName = updated.fullName;
     }
 
-    const session = createAdminSession(updated.adminEmail, updated.fullName);
+    const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -1223,7 +1223,7 @@ router.post(
 
     if (process.env.NODE_ENV === 'production') await resetPersistentAdminCredentials(); else resetCustomAdminCredentials();
     const restoredConfig = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
-    const envState = validateAdminEnvironment();
+    const envState = process.env.NODE_ENV === 'production' ? { mode: restoredConfig.mode } : validateAdminEnvironment();
     const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(restoredConfig.adminEmail, restoredConfig.fullName) : createAdminSession(restoredConfig.adminEmail, restoredConfig.fullName);
 
     res.cookie('kretz_admin_session', session.token, {
