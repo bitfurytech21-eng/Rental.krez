@@ -57,26 +57,17 @@ export const ABSOLUTE_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days absolute e
 const MAX_LOGIN_ATTEMPTS = 5;                              // Lockout after 5 failed attempts
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;                // 15 minutes lockout
 
-/**
- * Periodically purge expired and revoked sessions to prevent memory leaks
- */
-setInterval(() => {
-  const now = Date.now();
+function pruneLegacyAuthState(now = Date.now()) {
+  // Lazy cleanup avoids background timers in Cloudflare Workers isolates.
   for (const [tokenId, session] of serverSessions.entries()) {
-    const isExpiredAbsolute = now > session.expiresAt;
-    const isExpiredIdle = now - session.lastActivityAt > session.idleTimeoutMs;
-    if (session.isRevoked || isExpiredAbsolute || isExpiredIdle) {
+    if (session.isRevoked || now > session.expiresAt || now - session.lastActivityAt > session.idleTimeoutMs) {
       serverSessions.delete(tokenId);
     }
   }
-
-  // Purge old lockout records
   for (const [key, record] of failedLoginAttempts.entries()) {
-    if (now > record.lockoutUntil && record.count >= MAX_LOGIN_ATTEMPTS) {
-      failedLoginAttempts.delete(key);
-    }
+    if (now > record.lockoutUntil && record.count >= MAX_LOGIN_ATTEMPTS) failedLoginAttempts.delete(key);
   }
-}, 60 * 1000);
+}
 
 /**
  * Validates email format according to RFC 5322 standard principles
@@ -150,6 +141,7 @@ export async function createSession(params: {
   userAgent: string;
 }): Promise<ServerSession> {
   const now = Date.now();
+  pruneLegacyAuthState(now);
   // Generate high-entropy 256-bit cryptographically secure session token
   const sessionId = `kz_sess_${crypto.randomBytes(32).toString('hex')}`;
   // Generate high-entropy CSRF token tied to this session
@@ -191,6 +183,7 @@ export async function createSession(params: {
  * Checks for idle and absolute expiration and revocation status.
  */
 export async function getSession(token: string): Promise<ServerSession | null> {
+  pruneLegacyAuthState();
   if (!token || typeof token !== 'string') return null;
 
   let session: ServerSession | undefined;
@@ -293,6 +286,7 @@ export async function revokeAllUserSessions(userId: string): Promise<number> {
  * Checks if an IP + email combination is locked due to brute-force attempts
  */
 export function checkBruteForceLimit(identifier: string): { isLocked: boolean; remainingSeconds: number } {
+  pruneLegacyAuthState();
   const record = failedLoginAttempts.get(identifier);
   if (!record) return { isLocked: false, remainingSeconds: 0 };
 
