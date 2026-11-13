@@ -461,6 +461,15 @@ export function requireAdmin(
     });
   }
 
+  if (req.user.status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      error: req.user.suspendedReason || 'Administrator account is suspended.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
   const ADMIN_ROLES: UserRoleType[] = ['admin', 'super_admin', 'finance_admin', 'operations_admin', 'support', 'auditor'];
   if (!ADMIN_ROLES.includes(req.user.role)) {
     logger.log({
