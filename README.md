@@ -66,7 +66,15 @@ To deploy Rental-log in a live commercial production environment, the following 
 
 ---
 
-## 4. Running the Application
+## 4. Supabase persistence & production hardening
+
+The API can use Supabase as its persistent source of truth for investor profiles and roles, property offerings, investments, wallet balances, payment transactions, the append-only ledger, finance approvals, KYC/account status, audit logs, notifications, watchlists and investor preferences. Financial mutations are performed by database RPCs so wallet and property inventory updates commit atomically.
+
+See [Supabase production setup](docs/SUPABASE_PRODUCTION_SETUP.md) for migration order, environment variables, administrator role provisioning and staging verification. The service-role key must remain server-only and must never be exposed through a `VITE_` variable.
+
+Production financial and account endpoints fail closed when the server-side Supabase configuration is missing; development-only in-memory fixtures remain available for local tests.
+
+## 5. Running the Application
 
 ```bash
 # Install dependencies
