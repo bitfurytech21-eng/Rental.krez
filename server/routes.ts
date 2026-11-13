@@ -45,6 +45,7 @@ import {
   validateEmail,
   createSession,
   getSession,
+  ServerSession,
   revokeSession,
   revokeAllUserSessions,
   checkBruteForceLimit,
@@ -622,7 +623,7 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
   // 5. Successful authentication: reset failed attempts & regenerate session ID
   resetFailedLogin(lockoutKey);
 
-  let session;
+  let session: ServerSession;
   try {
     session = await createSession({
     userId: found.id,
