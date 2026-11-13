@@ -113,9 +113,13 @@ begin
     (p_transaction_id,p_user_id,'deposit',p_amount,'EUR','pending',trim(p_method),p_reference,p_tx_hash,
      'Deposit request awaiting independent settlement verification.',p_idempotency_key)
   returning * into v_tx;
+  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
+  select p_user_id,email,'investor','DEPOSIT_REQUESTED','payment_transaction',v_tx.id,
+    'Deposit request submitted for ' || p_amount::text || ' EUR.'
+    from public.user_profiles where id = p_user_id;
   return to_jsonb(v_tx);
 end;
-$$;
+$;
 
 -- Withdrawals reserve wallet funds atomically before the request is exposed to admins.
 create or replace function public.kretz_request_withdrawal(
@@ -158,6 +162,10 @@ begin
   values
     (p_user_id,p_transaction_id,'withdrawal',-p_amount,'EUR',v_profile.wallet_balance,
      'Funds reserved for withdrawal ' || p_reference,p_idempotency_key);
+  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
+  select p_user_id,email,'investor','WITHDRAWAL_REQUESTED','payment_transaction',v_tx.id,
+    'Withdrawal request submitted for ' || p_amount::text || ' EUR.'
+    from public.user_profiles where id = p_user_id;
   return to_jsonb(v_tx);
 end;
 $$;
@@ -301,6 +309,10 @@ begin
     (user_id,transaction_id,entry_type,amount,currency,balance_after,description,idempotency_key)
   values (p_user_id,p_transaction_id,'investment',-v_total,'EUR',v_balance,
     'Investment purchase ' || p_reference,'investment:' || p_transaction_id);
+  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
+  select p_user_id,email,'investor','INVESTMENT_EXECUTED','investment',v_investment.id,
+    'Purchased ' || p_tokens::text || ' tokens in ' || p_plan_id || ' for ' || v_total::text || ' EUR.'
+    from public.user_profiles where id = p_user_id;
   return jsonb_build_object('transaction',to_jsonb(v_tx),'investment',to_jsonb(v_investment),
     'remaining_tokens',v_plan.available_tokens - p_tokens,'principal',v_principal,'fee',v_fee,'total',v_total);
 end;
