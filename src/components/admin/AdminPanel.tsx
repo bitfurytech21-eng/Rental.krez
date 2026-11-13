@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
 import { ledger, CryptoNetworkConfig, VerificationDocument } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
-import { getAuthToken } from '../../lib/api';
+import { User as PlatformUser, UserRole, AccountType } from '../../types/user';
+import { getAuthToken, getApiUrl } from '../../lib/api';
 import {
   Shield,
   Plus,
@@ -67,7 +68,7 @@ export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
   const { currentPath, navigateTo } = useNavigation();
 
-  if (!user || user.role !== 'admin') {
+  if (!user || !['admin', 'super_admin', 'finance_admin', 'operations_admin', 'support', 'auditor'].includes(user.role)) {
     return (
       <div className="min-h-screen bg-[#080d11] text-white flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-[#0d161d] border border-red-500/30 rounded-2xl p-8 text-center shadow-2xl">
@@ -211,7 +212,9 @@ export const AdminPanel: React.FC = () => {
 
   const [transactions, setTransactions] = useState(ledger.getTransactions());
   const [properties, setProperties] = useState(ledger.getProperties());
-  const [users, setUsers] = useState(ledger.getUsers());
+  const [users, setUsers] = useState<PlatformUser[]>([]);
+  const [adminRegistryInvestments, setAdminRegistryInvestments] = useState<any[]>([]);
+  const [adminRegistryTransactions, setAdminRegistryTransactions] = useState<any[]>([]);
   const [verificationDocs, setVerificationDocs] = useState<VerificationDocument[]>(ledger.getVerificationDocuments());
   const [auditLogs, setAuditLogs] = useState(ledger.getAuditLogs());
   const [paymentConfig, setPaymentConfig] = useState(ledger.getPaymentConfig());
@@ -320,10 +323,49 @@ export const AdminPanel: React.FC = () => {
   const pendingKYCUsers = users.filter(u => u.kycStatus === 'pending');
   const pendingVerificationDocs = verificationDocs.filter(d => d.status === 'pending');
 
+  const loadUsers = async () => {
+    const token = getAuthToken();
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    const [response, investmentsResponse, transactionsResponse] = await Promise.all([
+      fetch(getApiUrl('/admin/users'), { headers }),
+      fetch(getApiUrl('/admin/investments'), { headers }),
+      fetch(getApiUrl('/admin/transactions'), { headers })
+    ]);
+    if (!response.ok) throw new Error('Unable to load the Supabase investor registry.');
+    const payload = await response.json();
+    const investmentPayload = investmentsResponse.ok ? await investmentsResponse.json() : { data: [] };
+    const transactionPayload = transactionsResponse.ok ? await transactionsResponse.json() : { data: [] };
+    setAdminRegistryInvestments(Array.isArray(investmentPayload?.data) ? investmentPayload.data : []);
+    setAdminRegistryTransactions(Array.isArray(transactionPayload?.data) ? transactionPayload.data : []);
+    const rows = Array.isArray(payload?.data) ? payload.data : [];
+    setUsers(rows.map((row: any): PlatformUser => ({
+      id: String(row.id), email: String(row.email || ''), fullName: String(row.fullName || ''),
+      role: (row.role || 'investor') as UserRole, accountType: row.accountType as AccountType,
+      kycStatus: row.kycStatus === 'approved' ? 'verified' : (row.kycStatus || 'pending'),
+      walletBalance: Number(row.balance || 0), investedBalance: Number(row.investedBalance || 0),
+      totalEarned: Number(row.totalEarned || 0), createdAt: row.createdAt || new Date().toISOString(),
+      phoneNumber: row.phoneNumber || undefined, country: row.country || undefined,
+      status: row.status === 'suspended' ? 'suspended' : 'active', suspendedReason: row.suspendedReason || undefined,
+      bankIban: row.bankIban || undefined, cryptoDepositAddress: row.cryptoDepositAddress || undefined
+    })));
+    setSelectedUserId((current) => current || rows[0]?.id || '');
+    setEditUserPaymentId((current) => current || rows[0]?.id || '');
+  };
+
+  useEffect(() => {
+    loadUsers().catch((error) => setActionError(error.message || 'Unable to load investor registry.'));
+  }, []);
+
+  useEffect(() => {
+    const selected = users.find((item) => item.id === editUserPaymentId);
+    setUserCustomIban(selected?.bankIban || '');
+    setUserCustomCryptoAddress(selected?.cryptoDepositAddress || '');
+  }, [editUserPaymentId, users]);
+
   const refreshAll = () => {
     setTransactions(ledger.getTransactions());
     setProperties(ledger.getProperties());
-    setUsers(ledger.getUsers());
+    loadUsers().catch((error) => setActionError(error.message || 'Unable to refresh investor registry.'));
     setVerificationDocs(ledger.getVerificationDocuments());
     setAuditLogs(ledger.getAuditLogs());
     setPaymentConfig(ledger.getPaymentConfig());
@@ -399,7 +441,7 @@ export const AdminPanel: React.FC = () => {
     refreshAll();
   };
 
-  const handleExecuteManualCredit = (e: React.FormEvent) => {
+  const handleExecuteManualCredit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
       setActionError('Please select a target investor account.');
@@ -412,20 +454,19 @@ export const AdminPanel: React.FC = () => {
 
     setIsSubmittingCredit(true);
     try {
-      const creditedTx = ledger.recordManualCredit(
-        activeUser.email,
-        selectedUserId,
-        manualAmount,
-        manualCurrency,
-        manualMethod,
-        manualReference.trim() || undefined,
-        manualNotes.trim() || undefined
-      );
-
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${selectedUserId}/credit`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          amount: manualAmount, currency: manualCurrency, method: manualMethod,
+          reference: manualReference.trim() || undefined, notes: manualNotes.trim() || undefined
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'The wallet credit could not be saved.');
       const targetInvestor = users.find(u => u.id === selectedUserId);
-      setActionSuccess(
-        `Successfully integrated payment! Credited ${formatCurrency(manualAmount)} (${manualCurrency}) to ${targetInvestor?.fullName || 'investor'}. Ref: ${creditedTx.reference}`
-      );
+      setActionSuccess(`Credited ${formatCurrency(manualAmount)} (${manualCurrency}) to ${targetInvestor?.fullName || 'investor'} in the database. Ref: ${payload.data?.transaction?.reference || manualReference || 'recorded'}`);
       setActionError(null);
       setManualReference('');
       refreshAll();
@@ -437,17 +478,24 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleSaveUserPaymentDetails = (e: React.FormEvent) => {
+  const handleSaveUserPaymentDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editUserPaymentId) return;
-
     try {
-      ledger.updateUserPaymentDetails(editUserPaymentId, {
-        cryptoDepositAddress: userCustomCryptoAddress.trim() || undefined,
-        bankIban: userCustomIban.trim() || undefined
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${editUserPaymentId}/profile`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          cryptoDepositAddress: userCustomCryptoAddress.trim(),
+          bankIban: userCustomIban.trim()
+        })
       });
-      refreshAll();
-      setActionSuccess('Investor-specific payment details updated successfully!');
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Investor payment details could not be saved.');
+      await loadUsers();
+      setActionSuccess('Investor-specific payment details saved to Supabase.');
+      setActionError(null);
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
       setActionError(err.message || 'Failed to update user payment details.');
@@ -532,21 +580,19 @@ export const AdminPanel: React.FC = () => {
 
   const handleReviewKYC = async (userId: string, approved: boolean) => {
     try {
-      ledger.updateKYCStatus(userId, approved ? 'verified' : 'rejected');
-      try {
-        const token = getAuthToken();
-        await fetch(`/api/v1/admin/users/${userId}/kyc`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({ status: approved ? 'verified' : 'rejected' })
-        });
-      } catch (e) {}
-      setActionSuccess(`User KYC ${approved ? 'verified' : 'rejected'}.`);
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${userId}/kyc`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ kycStatus: approved ? 'approved' : 'rejected' })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'The KYC decision could not be saved.');
+      }
+      await loadUsers();
+      setActionSuccess(`User KYC ${approved ? 'approved' : 'rejected'} and saved to the database.`);
       setActionError(null);
-      refreshAll();
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (e: any) {
       setActionError(e.message || 'Action failed');
@@ -1246,6 +1292,8 @@ export const AdminPanel: React.FC = () => {
         {activeTab === 'users' && (
           <AdminUserManagement
             users={users}
+            investments={adminRegistryInvestments}
+            transactions={adminRegistryTransactions}
             currentAdminEmail={activeUser.email}
             onRefreshAll={refreshAll}
             onQuickSuccess={(msg) => {

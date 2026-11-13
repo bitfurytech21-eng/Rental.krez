@@ -1,3 +1,5 @@
+const createIdempotencyKey = () => globalThis.crypto?.randomUUID?.() || `op-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 /**
  * Centralized API Client Wrapper for L'Agence Real Estate Platform
  * 
@@ -109,6 +111,13 @@ export const getBaseUrl = (): string => {
   return '/api/v1';
 };
 
+/** Resolve an API-relative path against the configured API origin. */
+export const getApiUrl = (endpoint: string): string => {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
+  const base = getBaseUrl();
+  return `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+};
+
 /**
  * Core HTTP Request Wrapper
  */
@@ -128,7 +137,7 @@ export async function apiRequest<T = any>(
   // Build query string
   let url = endpoint.startsWith('http://') || endpoint.startsWith('https://')
     ? endpoint
-    : `${getBaseUrl()}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    : getApiUrl(endpoint);
 
   if (params) {
     const searchParams = new URLSearchParams();
@@ -309,7 +318,7 @@ export const authApi = {
     phoneNumber?: string;
     countryCode?: string;
   }) =>
-    api.post<{ user: any; token: string }>('/auth/register', payload, { skipAuth: true }),
+    api.post<{ user: any; token?: string | null; refreshToken?: string | null; requiresVerification?: boolean }>('/auth/register', payload, { skipAuth: true }),
 
   getMe: () =>
     api.get<{ user: any }>('/auth/me'),
@@ -533,14 +542,14 @@ export const treasuryApi = {
  * Investment & Financial Endpoints
  */
 export const financialApi = {
-  deposit: (payload: { amount: number; currency?: string; method?: string; txHash?: string }) =>
-    api.post<any>('/deposits', payload),
+  deposit: (payload: { amount: number; currency?: string; method?: string; txHash?: string; idempotencyKey?: string }) =>
+    api.post<any>('/deposits', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
-  withdraw: (payload: { amount: number; destination: string; method?: string }) =>
-    api.post<any>('/withdrawals', payload),
+  withdraw: (payload: { amount: number; destination: string; method?: string; idempotencyKey?: string }) =>
+    api.post<any>('/withdrawals', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', payload),
+    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 };
 
 export const investmentsApi = {
@@ -548,10 +557,10 @@ export const investmentsApi = {
     api.get<any>('/portfolio'),
 
   executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', payload),
+    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
+    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
 };
 
 /**
@@ -564,11 +573,11 @@ export const walletApi = {
   getTransactions: (params?: { limit?: number; offset?: number }) =>
     api.get<any[]>('/transactions', { params }),
 
-  createDepositRequest: (payload: { amount: number; currency: string; method: string; txHash?: string }) =>
-    api.post<any>('/deposits', payload),
+  createDepositRequest: (payload: { amount: number; currency: string; method: string; txHash?: string; idempotencyKey?: string }) =>
+    api.post<any>('/deposits', { ...payload, idempotencyKey: createIdempotencyKey() }),
 
-  createWithdrawalRequest: (payload: { amount: number; destination: string; method: string }) =>
-    api.post<any>('/withdrawals', payload),
+  createWithdrawalRequest: (payload: { amount: number; destination: string; method: string; idempotencyKey?: string }) =>
+    api.post<any>('/withdrawals', { ...payload, idempotencyKey: createIdempotencyKey() }),
 };
 
 /**

@@ -2885,3 +2885,358 @@ body.desktop-mode-active .max-w-\[1400px\] {
 
 
 
+
+
+/* ==========================================================================
+   KREZ VISUAL POLISH — architectural warmth, quieter surfaces, clearer depth
+   Additive presentation layer: preserves existing components, routes and flows.
+   ========================================================================== */
+
+:root {
+  --krez-paper: #f7f4ee;
+  --krez-limestone: #eee8dd;
+  --krez-stone: #e4dbce;
+  --krez-ink: #17262b;
+  --krez-ink-soft: #263b40;
+  --krez-forest: #315b4b;
+  --krez-champagne: #c4a36a;
+  --krez-champagne-light: #e3cfaa;
+  --krez-line: rgba(34, 48, 48, 0.12);
+  --krez-shadow-soft: 0 16px 42px rgba(29, 39, 37, 0.07);
+  --krez-shadow-lift: 0 24px 58px rgba(29, 39, 37, 0.13);
+}
+
+html {
+  background: var(--krez-paper);
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 12% 4%, rgba(196, 163, 106, 0.075), transparent 34rem),
+    linear-gradient(180deg, #faf8f3 0%, var(--krez-paper) 48%, #f1ece3 100%);
+}
+
+.site-header {
+  background: rgba(250, 248, 243, 0.9);
+  border-bottom-color: rgba(35, 49, 48, 0.1);
+  box-shadow: 0 8px 28px rgba(26, 37, 35, 0.045);
+  backdrop-filter: blur(22px) saturate(145%);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+}
+
+.site-header-inner,
+.site-header .container,
+.header-inner {
+  min-height: 78px;
+}
+
+.main-nav {
+  gap: clamp(14px, 1.65vw, 27px);
+}
+
+.main-nav a,
+.main-nav button {
+  position: relative;
+  transition: color 180ms ease, opacity 180ms ease;
+}
+
+.main-nav a::after,
+.main-nav button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: -9px;
+  height: 1px;
+  background: var(--krez-champagne);
+  transition: right 220ms ease;
+}
+
+.main-nav a:hover::after,
+.main-nav button:hover::after,
+.main-nav a.active::after,
+.main-nav button.active::after {
+  right: 0;
+}
+
+.btn-primary,
+.btn-accent {
+  background: linear-gradient(135deg, #315b4b 0%, #244638 100%);
+  border-color: #315b4b;
+  box-shadow: 0 8px 20px rgba(37, 75, 58, 0.16);
+}
+
+.btn-primary:hover,
+.btn-accent:hover {
+  background: linear-gradient(135deg, #3b6a57 0%, #2a5140 100%);
+  box-shadow: 0 12px 26px rgba(37, 75, 58, 0.22);
+}
+
+.hero {
+  background:
+    radial-gradient(ellipse at 78% 12%, rgba(196, 163, 106, 0.16), transparent 34rem),
+    linear-gradient(145deg, #f7f4ee 0%, #eee8dd 100%);
+}
+
+.property-card,
+.benefit-card,
+.step-card {
+  border-color: rgba(42, 57, 53, 0.11);
+  box-shadow: 0 10px 30px rgba(34, 45, 41, 0.055);
+  transition: transform 260ms cubic-bezier(.2,.7,.2,1),
+              box-shadow 260ms ease,
+              border-color 260ms ease;
+}
+
+.property-card:hover,
+.benefit-card:hover,
+.step-card:hover {
+  border-color: rgba(173, 139, 82, 0.34);
+  box-shadow: var(--krez-shadow-lift);
+}
+
+.property-image {
+  background: linear-gradient(135deg, #e9e1d5, #d9d0c2);
+}
+
+.property-image img {
+  filter: saturate(.94) contrast(1.025);
+}
+
+.property-content {
+  padding: clamp(18px, 2vw, 25px);
+}
+
+.property-title,
+.section-heading h2 {
+  letter-spacing: -0.035em;
+}
+
+.status-badge {
+  border: 1px solid rgba(40, 60, 51, 0.08);
+}
+
+.filter-chip {
+  box-shadow: 0 2px 8px rgba(30, 42, 38, 0.035);
+}
+
+.filter-chip[aria-pressed="true"] {
+  background: linear-gradient(135deg, #263f3d, #172b30);
+  border-color: #263f3d;
+}
+
+/* Home page editorial sections: warm mineral surfaces and calm transitions. */
+.s2-section {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(196, 163, 106, 0.10), transparent 32rem),
+    linear-gradient(180deg, #f7f4ee 0%, #f0ebe2 100%);
+}
+
+.s2-section::before,
+.s3-gallery-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .42;
+  background-image: radial-gradient(rgba(44, 57, 51, .10) .55px, transparent .55px);
+  background-size: 7px 7px;
+  mask-image: linear-gradient(135deg, rgba(0,0,0,.28), transparent 58%);
+}
+
+.s3-gallery-section {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, #eae3d8 0%, #f5f1e9 100%);
+}
+
+.s2-stat {
+  border: 1px solid rgba(42, 57, 53, .10);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .58);
+  box-shadow: 0 12px 30px rgba(36, 48, 43, .055);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.s2-stat-value {
+  color: var(--krez-ink);
+  letter-spacing: -.045em;
+}
+
+.s2-stat-label {
+  color: #68736d;
+}
+
+/* Dark editorial bands retain their existing content and become more dimensional. */
+section[class*="bg-[#0B1B30]"] {
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(196, 163, 106, .15), transparent 34rem),
+    linear-gradient(135deg, #0d202a 0%, #142d35 52%, #0b1b30 100%);
+}
+
+section[class*="bg-[#0B1B30]"] h1,
+section[class*="bg-[#0B1B30]"] h2,
+section[class*="bg-[#0B1B30]"] h3 {
+  text-wrap: balance;
+}
+
+/* Investor workspace: restrained graphite with a soft atmospheric wash. */
+.dashboard-layout,
+.app-shell {
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(70, 119, 112, .13), transparent 34rem),
+    radial-gradient(ellipse at 92% 14%, rgba(196, 163, 106, .07), transparent 30rem),
+    linear-gradient(180deg, #0d1214 0%, #101719 52%, #0a1012 100%);
+}
+
+.dashboard-content {
+  padding-top: clamp(24px, 3vw, 42px);
+}
+
+.dash-card,
+.cinematic-card {
+  border-radius: 18px;
+  border-color: rgba(223, 231, 225, .105);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.dash-card:hover,
+.cinematic-card:hover {
+  border-color: rgba(196, 163, 106, .28);
+}
+
+.dash-inner {
+  border-radius: 14px;
+}
+
+.dash-header {
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+.dashboard-light {
+  --dash-bg: #f4f1eb;
+  --dash-bg-gradient: linear-gradient(145deg, #faf8f3 0%, #eee8dd 100%);
+  --dash-sidebar: #f9f7f2;
+  --dash-sidebar-border: #e4ddd1;
+  --dash-sidebar-card: #eee8dd;
+  --dash-sidebar-active-bg: #213a36;
+  --dash-sidebar-active-text: #ffffff;
+  --dash-sidebar-hover-bg: #eee8dd;
+  --dash-header: rgba(250, 248, 243, .92);
+  --dash-header-border: #e4ddd1;
+  --dash-header-controls: #f0ebe2;
+  --dash-header-controls-border: #e2d9cc;
+  --dash-card: rgba(255, 255, 255, .94);
+  --dash-card-border: #e6dfd4;
+  --dash-card-hover: #fff;
+  --dash-card-shadow: 0 12px 32px rgba(37, 48, 43, .07);
+  --dash-inner: #f6f3ed;
+  --dash-inner-border: #e8e1d6;
+  --dash-elevated: #fff;
+  --dash-text: #1d2d2e;
+  --dash-text-secondary: #68736d;
+  --dash-text-muted: #89918a;
+  --dash-hover: rgba(33, 58, 54, .055);
+  --dash-accent: #a8844b;
+  --dash-cyan: #568d89;
+  --dash-verification: #34785b;
+  --dash-positive: #34785b;
+  --dash-info: #568d89;
+  --dash-chart-secondary: #9b82b2;
+  --dash-warm: #b58c52;
+  --dash-negative: #bd6864;
+  --dash-accent-gold: #b58c52;
+  --dash-highlight: #eee8dd;
+}
+
+.kretz-admin-scope {
+  --admin-bg: #f4f1eb;
+  --admin-card: rgba(255, 255, 255, .94);
+  --admin-tx: #1d2d2e;
+  --admin-mu: #69756f;
+  --admin-bd: #e3ddd2;
+  --admin-dk: #172d31;
+  --admin-gr: #47765e;
+  --admin-lt: #d2c09a;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(196, 163, 106, .10), transparent 30rem),
+    linear-gradient(180deg, #f8f6f1 0%, #f0ece4 100%);
+}
+
+.kretz-admin-top {
+  background: rgba(255, 255, 255, .88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 6px 22px rgba(35, 47, 42, .045);
+}
+
+.kretz-admin-hero {
+  background:
+    radial-gradient(ellipse at 88% 0%, rgba(196, 163, 106, .20), transparent 22rem),
+    linear-gradient(135deg, #172d31 0%, #25443f 100%);
+  box-shadow: 0 18px 42px rgba(23, 45, 49, .16);
+}
+
+.kretz-admin-card {
+  border-color: rgba(37, 57, 48, .10);
+  box-shadow: 0 10px 28px rgba(31, 45, 38, .045);
+  transition: box-shadow 220ms ease, transform 220ms ease, border-color 220ms ease;
+}
+
+.kretz-admin-card:hover {
+  border-color: rgba(173, 139, 82, .30);
+  box-shadow: 0 16px 38px rgba(31, 45, 38, .075);
+}
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid rgba(196, 163, 106, .9);
+  outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+  .site-header-inner,
+  .site-header .container,
+  .header-inner {
+    min-height: 68px;
+  }
+
+  .main-nav a::after,
+  .main-nav button::after {
+    display: none;
+  }
+
+  .dashboard-content {
+    width: min(calc(100% - 24px), 1280px);
+    padding-block: 22px 42px;
+  }
+
+  .property-grid,
+  .benefits-grid {
+    gap: 16px;
+  }
+
+  .property-card,
+  .benefit-card,
+  .step-card {
+    border-radius: 16px;
+  }
+
+  .s2-stat {
+    border-radius: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .property-card,
+  .benefit-card,
+  .step-card,
+  .kretz-admin-card {
+    transition: none;
+  }
+}

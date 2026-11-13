@@ -31,26 +31,12 @@ import {
   updateEmailSettings,
   getAutomationRules,
   updateAutomationRule,
-  generateExpiringToken,
-  verifyAndConsumeToken,
   verifySmtpConnection,
   getSmtpCredentials,
   getProviderConfig
 } from './emailService';
 import crypto from 'crypto';
-import {
-  hashPassword,
-  verifyPassword,
-  validatePasswordStrength,
-  validateEmail,
-  createSession,
-  getSession,
-  revokeSession,
-  revokeAllUserSessions,
-  checkBruteForceLimit,
-  recordFailedLogin,
-  resetFailedLogin
-} from './authService';
+import { validatePasswordStrength, validateEmail, getSession } from './authService';
 import {
   getAdminConfig,
   validateAdminEnvironment,
@@ -63,10 +49,22 @@ import {
   recordAdminFailedAttempt,
   resetAdminFailedAttempts
 } from './adminAuth';
+import { getPersistentAdminConfig, verifyPersistentAdminCredentials, updatePersistentAdminCredentials, resetPersistentAdminCredentials, createPersistentAdminSession, revokePersistentAdminSession, checkPersistentAdminRateLimit, recordPersistentAdminFailure, resetPersistentAdminFailures } from './persistentAdminAuth';
 import { ALL_KRETZ_MEMBERS } from '../src/data/kretzTeam';
 import { BLOG_POSTS } from '../src/data/blogPosts';
 import { dailyPaymentService } from './dailyPaymentService';
 import { generatePropertyPaymentsCsv } from '../src/lib/distributionService';
+import {
+  isSupabaseServerConfigured, isSupabaseAuthConfigured, getSupabaseAdmin, databaseHealth, listUserTransactions, listAdminTransactions,
+  getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
+  getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
+  getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs, getAdminIdentityByEmail,
+  createPersistentInvestmentPlan, updatePersistentInvestmentPlan,
+  listUserNotifications, markUserNotificationRead, markAllUserNotificationsRead,
+  listUserFavorites, saveUserFavorite, removeUserFavorite, getUserPreferences, saveUserPreferences,
+  getPersistentAccountStatement, getPersistentPerformance,
+  signInCustomer, registerCustomer, requestCustomerPasswordReset, updateCustomerPassword, signOutCustomer
+} from './supabaseDatabase';
 
 const router = Router();
 
@@ -179,11 +177,10 @@ const securityLimiter = rateLimiter({
   message: 'Too many security checks. Please wait 1 minute.'
 });
 
-export interface MockUser {
+export interface UserRecord {
   id: string;
   email: string;
   fullName: string;
-  passwordHash: string;
   role: string;
   kycStatus: string;
   balance: number;
@@ -197,73 +194,11 @@ export interface MockUser {
   suspendedReason?: string;
 }
 
-export function sanitizeUser(user: MockUser): Omit<MockUser, 'passwordHash'> {
-  const { passwordHash, ...safe } = user;
-  return safe;
+export function sanitizeUser(user: UserRecord): UserRecord {
+  return user;
 }
 
-// In-memory data store for server-authoritative state
-// Seed accounts with industry-standard bcrypt hashes and 0 balance
-let mockUsers: MockUser[] = [
-  {
-    id: 'usr-admin-kretz-site',
-    email: 'info@kretz.site',
-    fullName: 'Kretz Executive Admin',
-    passwordHash: hashPassword('AdminSecret2026!'),
-    role: 'admin',
-    kycStatus: 'approved',
-    balance: 0,
-    currency: 'EUR',
-    country: 'Spain',
-    countryCode: 'ES',
-    phoneNumber: '+34 912 345 678',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-01-01T09:00:00Z'
-  },
-  {
-    id: 'usr-admin-01',
-    email: 'admin@kretz.com',
-    fullName: 'Chief Compliance Officer',
-    passwordHash: hashPassword('AdminSecret2026!'),
-    role: 'admin',
-    kycStatus: 'approved',
-    balance: 0,
-    currency: 'EUR',
-    country: 'Spain',
-    countryCode: 'ES',
-    phoneNumber: '+34 912 345 678',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-01-15T09:00:00Z'
-  },
-  {
-    id: 'usr-investor-01',
-    email: 'investor@kretz.com',
-    fullName: 'European Angel Partner',
-    passwordHash: hashPassword('InvestorPass123!'),
-    role: 'investor',
-    kycStatus: 'approved',
-    balance: 0,
-    currency: 'EUR',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-02-10T11:30:00Z'
-  },
-  {
-    id: 'usr-investor-02',
-    email: 'sophie.martin@luxcapital.fr',
-    fullName: 'Sophie Martin',
-    passwordHash: hashPassword('InvestorPass123!'),
-    role: 'investor',
-    kycStatus: 'pending',
-    balance: 0,
-    currency: 'EUR',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-03-01T14:20:00Z'
-  }
-];
+// Customer identities and profiles are authoritative in Supabase Auth and public.user_profiles.
 
 let mockListings = [
   {
@@ -401,29 +336,7 @@ const contactInquiriesStore: Array<Record<string, any>> = [];
 const newsletterSubscribersStore = new Map<string, { email: string; source: string; subscribedAt: string; reference: string }>();
 const membershipApplicationsStore: Array<Record<string, any>> = [];
 const userReferralsStore = new Map<string, Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number; referralCode?: string }>>();
-const userNotificationsStore = new Map<string, any[]>([
-  [
-    'usr-investor-01',
-    [
-      {
-        id: 'notif-1',
-        title: 'Monthly Distribution Credited',
-        message: 'Your €320 rental yield for Villa El Mirador has been credited to your available balance.',
-        type: 'financial',
-        read: false,
-        createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
-      },
-      {
-        id: 'notif-2',
-        title: 'KYC Document Verified',
-        message: 'Your European investor accredited identity verification has been confirmed.',
-        type: 'success',
-        read: true,
-        createdAt: new Date(Date.now() - 86400000 * 10).toISOString()
-      }
-    ]
-  ]
-]);
+const userNotificationsStore = new Map<string, any[]>();
 
 const TREASURY_FX_RATES_TO_EUR: Record<string, number> = {
   EUR: 1.0,
@@ -484,205 +397,28 @@ const authLimiter = rateLimiter({
  * POST /api/v1/auth/login
  * Production-grade customer authentication with bcrypt validation, brute-force lockout, and HttpOnly session cookie
  */
-router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
-  const { email, password, pass } = req.body || {};
-  const normalizedEmail = (email || '').toLowerCase().trim();
-  const inputPass = password || pass;
-
-  const rawHeader = req.headers['x-forwarded-for'];
-  const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
-  const lockoutKey = `${ip}:${normalizedEmail}`;
-
-  // 1. Check Brute-Force Rate Limiting & Lockout
-  const lockoutStatus = checkBruteForceLimit(lockoutKey);
-  if (lockoutStatus.isLocked) {
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-login-locked',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 429,
-      eventType: 'AUTH_LOCKOUT_TRIGGERED',
-      outcome: 'failure',
-      message: `Login temporarily locked for ${normalizedEmail} from ${ip} (${lockoutStatus.remainingSeconds}s remaining).`,
-      metadata: { ip, email: normalizedEmail, remainingSeconds: lockoutStatus.remainingSeconds }
+router.post('/auth/login', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+  const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || req.body?.pass || '');
+  if (!normalizedEmail || !password) return res.status(400).json({ success: false, error: 'Please provide both email address and password.', code: 'MISSING_FIELDS', requestId: req.id });
+  if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Customer authentication is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const result = await signInCustomer(normalizedEmail, password);
+    return res.json({
+      success: true,
+      data: { user: result.user, token: result.session.access_token, refreshToken: result.session.refresh_token, expiresAt: new Date(result.session.expires_at ? result.session.expires_at * 1000 : Date.now() + result.session.expires_in * 1000).toISOString() },
+      user: result.user, token: result.session.access_token, refreshToken: result.session.refresh_token,
+      message: 'Authentication successful.', requestId: req.id
     });
-
-    return res.status(429).json({
-      success: false,
-      error: `Too many failed login attempts. Access is temporarily locked for ${lockoutStatus.remainingSeconds} seconds.`,
-      code: 'RATE_LIMIT_EXCEEDED',
-      remainingSeconds: lockoutStatus.remainingSeconds,
-      requestId: req.id
-    });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if (message === 'ACCOUNT_SUSPENDED') return res.status(403).json({ success: false, error: 'Your account has been suspended by compliance. Please contact support.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+    if (message === 'ADMIN_LOGIN_REQUIRED') return res.status(403).json({ success: false, error: 'Administrator accounts must sign in through the Administrator Gateway.', code: 'ADMIN_LOGIN_REQUIRED', requestId: req.id });
+    if (/email not confirmed/i.test(message)) return res.status(403).json({ success: false, error: 'Email not confirmed yet. Please verify your email before signing in.', code: 'EMAIL_NOT_CONFIRMED', requestId: req.id });
+    if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
+    logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
+    return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
   }
-
-  // 2. Validate input fields
-  if (!normalizedEmail || !inputPass) {
-    logger.log({
-      level: 'warn',
-      category: 'auth',
-      requestId: req.id || 'req-login-err',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 400,
-      eventType: 'AUTH_VALIDATION_FAILURE',
-      outcome: 'failure',
-      message: 'Login attempted without required email or password fields.',
-      errorCode: 'MISSING_CREDENTIALS'
-    });
-
-    return res.status(400).json({
-      success: false,
-      error: 'Please provide both email address and password.',
-      code: 'MISSING_FIELDS',
-      requestId: req.id
-    });
-  }
-
-  // 3. Authenticate credentials against verified database store
-  let found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-
-  // If user does not exist yet, auto-create investor account on first login
-  if (!found && inputPass && inputPass.length >= 4 && validateEmail(normalizedEmail)) {
-    const passwordHash = hashPassword(inputPass);
-    const newId = `usr-${crypto.randomBytes(4).toString('hex')}`;
-    const namePart = normalizedEmail.split('@')[0] || 'Investor';
-    const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-    const newUserObj: MockUser = {
-      id: newId,
-      email: normalizedEmail,
-      fullName: formattedName,
-      passwordHash,
-      role: 'investor',
-      country: 'France',
-      phoneNumber: '',
-      kycStatus: 'pending',
-      balance: 0,
-      currency: 'EUR',
-      createdAt: new Date().toISOString()
-    };
-    found = newUserObj;
-    mockUsers.push(newUserObj);
-  }
-
-  const userToVerify = found;
-  const isPasswordValid = Boolean(
-    userToVerify && (
-      !userToVerify.passwordHash || verifyPassword(inputPass, userToVerify.passwordHash)
-    )
-  );
-
-  // If passwordHash was missing, set it now
-  if (userToVerify && !userToVerify.passwordHash && inputPass) {
-    userToVerify.passwordHash = hashPassword(inputPass);
-  }
-
-  if (!found || !isPasswordValid) {
-    const failureRecord = recordFailedLogin(lockoutKey);
-    logger.log({
-      level: 'warn',
-      category: 'auth',
-      requestId: req.id || 'req-login-err',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 401,
-      eventType: 'LOGIN_FAILED',
-      outcome: 'failure',
-      message: `Failed login attempt for ${normalizedEmail}. Failures: ${failureRecord.attempts}`,
-      errorCode: 'INVALID_CREDENTIALS',
-      metadata: { attemptedEmail: normalizedEmail, isLocked: failureRecord.isLocked }
-    });
-
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid email address or password.',
-      code: 'INVALID_CREDENTIALS',
-      remainingAttempts: Math.max(0, 5 - failureRecord.attempts),
-      requestId: req.id
-    });
-  }
-
-  // 4. Account Status Check (Suspended accounts denied immediately)
-  if (found.status === 'suspended') {
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-login-suspended',
-      method: 'POST',
-      route: '/api/v1/auth/login',
-      statusCode: 403,
-      userId: found.id,
-      eventType: 'SUSPENDED_USER_LOGIN_DENIED',
-      outcome: 'failure',
-      message: `Login denied for suspended account: ${found.email}`,
-      errorCode: 'ACCOUNT_SUSPENDED'
-    });
-
-    return res.status(403).json({
-      success: false,
-      error: found.suspendedReason || 'Your account has been suspended by compliance. Please contact support.',
-      code: 'ACCOUNT_SUSPENDED',
-      requestId: req.id
-    });
-  }
-
-  // 5. Successful authentication: reset failed attempts & regenerate session ID
-  resetFailedLogin(lockoutKey);
-
-  const session = createSession({
-    userId: found.id,
-    email: found.email,
-    role: found.role as any,
-    fullName: found.fullName,
-    ip,
-    userAgent: (req.headers['user-agent'] as string) || 'unknown'
-  });
-
-  // 6. Set Secure, HttpOnly, SameSite session cookie
-  res.cookie('kretz_session', session.id, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  });
-
-  // Expose fresh CSRF token in response header
-  res.setHeader('X-CSRF-Token', session.csrfToken);
-
-  const safeUser = sanitizeUser(found);
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-login',
-    method: 'POST',
-    route: '/api/v1/auth/login',
-    statusCode: 200,
-    userId: found.id,
-    userRole: found.role,
-    eventType: 'USER_LOGIN_SUCCESS',
-    outcome: 'success',
-    message: `User ${found.email} authenticated successfully with role ${found.role}`,
-    metadata: { role: found.role, kycStatus: found.kycStatus }
-  });
-
-  return res.json({
-    success: true,
-    data: {
-      user: safeUser,
-      token: session.id,
-      csrfToken: session.csrfToken,
-      expiresAt: new Date(session.expiresAt).toISOString()
-    },
-    token: session.id,
-    csrfToken: session.csrfToken,
-    user: safeUser,
-    message: 'Authentication successful.',
-    requestId: req.id
-  });
 });
 
 /**
@@ -698,7 +434,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
 
   // 1. Check Rate Limiter & Lockout
-  const rateLimitStatus = checkAdminRateLimit(ip);
+  const rateLimitStatus = process.env.NODE_ENV === 'production' ? await checkPersistentAdminRateLimit(ip) : checkAdminRateLimit(ip);
   if (rateLimitStatus.isLocked) {
     logger.log({
       level: 'warn',
@@ -733,14 +469,14 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   // 3. Load administrator configuration from environment
-  const config = getAdminConfig();
+  const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
 
   // 4. Validate credentials
   const emailMatches = normalizedEmail === config.adminEmail;
-  const passwordMatches = await verifyAdminCredentials(inputPass);
+  const passwordMatches = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(normalizedEmail, inputPass) : await verifyAdminCredentials(inputPass);
 
   if (!emailMatches || !passwordMatches) {
-    const failureRecord = recordAdminFailedAttempt(ip);
+    const failureRecord = process.env.NODE_ENV === 'production' ? await recordPersistentAdminFailure(ip) : recordAdminFailedAttempt(ip);
 
     logger.log({
       level: 'warn',
@@ -765,11 +501,26 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
     });
   }
 
+  // Production administrator credentials must map to an explicitly provisioned database role.
+  if (process.env.NODE_ENV === 'production') {
+    if (!isSupabaseServerConfigured()) {
+      return res.status(503).json({ success: false, error: 'Administrator database authorization is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    try {
+      const identity = await getAdminIdentityByEmail(normalizedEmail);
+      if (!identity) {
+        return res.status(403).json({ success: false, error: 'This administrator email has not been provisioned with an authorized role in the platform database.', code: 'ADMIN_ROLE_NOT_PROVISIONED', requestId: req.id });
+      }
+    } catch {
+      return res.status(503).json({ success: false, error: 'Administrator authorization could not be verified.', code: 'ADMIN_AUTHORIZATION_UNAVAILABLE', requestId: req.id });
+    }
+  }
+
   // 5. Success: reset failed attempts
-  resetAdminFailedAttempts(ip);
+  if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
 
   // 6. Establish secure server session
-  const session = createAdminSession(config.adminEmail, config.fullName);
+  const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(config.adminEmail, config.fullName) : createAdminSession(config.adminEmail, config.fullName);
 
   // 7. Set HTTP-only secure SameSite cookie
   res.cookie('kretz_admin_session', session.token, {
@@ -835,7 +586,7 @@ router.post(
       req.socket.remoteAddress ||
       '127.0.0.1';
 
-    const rateLimitStatus = checkAdminRateLimit(ip);
+    const rateLimitStatus = process.env.NODE_ENV === 'production' ? await checkPersistentAdminRateLimit(ip) : checkAdminRateLimit(ip);
     if (rateLimitStatus.isLocked) {
       return res.status(429).json({
         success: false,
@@ -860,12 +611,12 @@ router.post(
       });
     }
 
-    const config = getAdminConfig();
+    const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
     const emailMatches = normalizedCurrentEmail === config.adminEmail;
-    const passwordMatches = await verifyAdminCredentials(inputCurrPass);
+    const passwordMatches = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(normalizedCurrentEmail, inputCurrPass) : await verifyAdminCredentials(inputCurrPass);
 
     if (!emailMatches || !passwordMatches) {
-      const failureRecord = recordAdminFailedAttempt(ip);
+      const failureRecord = process.env.NODE_ENV === 'production' ? await recordPersistentAdminFailure(ip) : recordAdminFailedAttempt(ip);
       logger.log({
         level: 'warn',
         category: 'security',
@@ -899,6 +650,15 @@ router.post(
         requestId: req.id
       });
     }
+    if (process.env.NODE_ENV === 'production') {
+      if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Administrator database authorization is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+      try {
+        const identity = await getAdminIdentityByEmail(targetEmail);
+        if (!identity) return res.status(403).json({ success: false, error: 'The new administrator email must already belong to a provisioned platform administrator.', code: 'ADMIN_ROLE_NOT_PROVISIONED', requestId: req.id });
+      } catch {
+        return res.status(503).json({ success: false, error: 'Administrator authorization could not be verified.', code: 'ADMIN_AUTHORIZATION_UNAVAILABLE', requestId: req.id });
+      }
+    }
 
     const targetPassword = typeof newPassword === 'string' ? newPassword : '';
     if (!targetPassword || targetPassword.length < 8) {
@@ -910,24 +670,16 @@ router.post(
       });
     }
 
-    resetAdminFailedAttempts(ip);
+    if (process.env.NODE_ENV === 'production') await resetPersistentAdminFailures(ip); else resetAdminFailedAttempts(ip);
 
     const targetFullName =
       typeof fullName === 'string' && fullName.trim() ? fullName.trim() : config.fullName;
 
-    const updated = await updateCustomAdminCredentials({
-      email: targetEmail,
-      fullName: targetFullName,
-      passwordToHash: targetPassword
-    });
+    const updated = process.env.NODE_ENV === 'production'
+      ? await updatePersistentAdminCredentials({ email: targetEmail, fullName: targetFullName, password: targetPassword, updatedBy: req.user?.id || 'system' })
+      : await updateCustomAdminCredentials({ email: targetEmail, fullName: targetFullName, passwordToHash: targetPassword });
 
-    const adminMock = mockUsers.find((u) => u.role === 'admin');
-    if (adminMock) {
-      adminMock.email = updated.adminEmail;
-      adminMock.fullName = updated.fullName;
-    }
-
-    const session = createAdminSession(updated.adminEmail, updated.fullName);
+        const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -981,7 +733,7 @@ router.post(
 /**
  * POST /api/v1/admin/logout & /api/v1/auth/admin-logout
  */
-router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req: AuthenticatedRequest, res: Response) => {
+router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], async (req: AuthenticatedRequest, res: Response) => {
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token && req.headers.cookie) {
@@ -990,7 +742,7 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req:
   }
 
   if (token) {
-    revokeAdminSession(token);
+    if (process.env.NODE_ENV === 'production') await revokePersistentAdminSession(token); else revokeAdminSession(token);
   }
 
   res.clearCookie('kretz_admin_session', {
@@ -1022,9 +774,9 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req:
  * GET /api/v1/admin/security/credentials
  * Returns the active administrator login email, display name, and credential mode (never exposes hashes or passwords).
  */
-router.get('/admin/security/credentials', requireAuth, requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const config = getAdminConfig();
-  const envState = validateAdminEnvironment();
+router.get('/admin/security/credentials', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
+  const envState = process.env.NODE_ENV === 'production' ? { mode: config.isCustomConfigured ? 'custom_bcrypt' as const : 'bcrypt_hash' as const } : validateAdminEnvironment();
 
   return res.json({
     success: true,
@@ -1050,7 +802,7 @@ router.put(
   requireAdmin,
   async (req: AuthenticatedRequest, res: Response) => {
     const { currentPassword, newEmail, newPassword, fullName } = req.body || {};
-    const config = getAdminConfig();
+    const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
 
     if (!currentPassword || typeof currentPassword !== 'string') {
       return res.status(400).json({
@@ -1061,7 +813,7 @@ router.put(
       });
     }
 
-    const isCurrentValid = await verifyAdminCredentials(currentPassword);
+    const isCurrentValid = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(req.user?.email || '', currentPassword) : await verifyAdminCredentials(currentPassword);
     if (!isCurrentValid) {
       logger.log({
         level: 'warn',
@@ -1097,6 +849,14 @@ router.put(
         requestId: req.id
       });
     }
+    if (process.env.NODE_ENV === 'production' && targetEmail !== config.adminEmail) {
+      try {
+        const targetIdentity = await getAdminIdentityByEmail(targetEmail);
+        if (!targetIdentity) return res.status(403).json({ success: false, error: 'The new administrator email must already be provisioned with an authorized administrator role.', code: 'ADMIN_ROLE_NOT_PROVISIONED', requestId: req.id });
+      } catch {
+        return res.status(503).json({ success: false, error: 'Administrator authorization could not be verified.', code: 'ADMIN_AUTHORIZATION_UNAVAILABLE', requestId: req.id });
+      }
+    }
 
     const trimmedNewPass = typeof newPassword === 'string' ? newPassword : '';
     if (trimmedNewPass && trimmedNewPass.length < 8) {
@@ -1112,19 +872,11 @@ router.put(
     const targetFullName =
       typeof fullName === 'string' && fullName.trim() ? fullName.trim() : config.fullName;
 
-    const updated = await updateCustomAdminCredentials({
-      email: targetEmail,
-      fullName: targetFullName,
-      passwordToHash: passwordToPersist
-    });
+    const updated = process.env.NODE_ENV === 'production'
+      ? await updatePersistentAdminCredentials({ email: targetEmail, fullName: targetFullName, password: passwordToPersist, updatedBy: req.user?.id || 'system' })
+      : await updateCustomAdminCredentials({ email: targetEmail, fullName: targetFullName, passwordToHash: passwordToPersist });
 
-    const adminMock = mockUsers.find((u) => u.role === 'admin');
-    if (adminMock) {
-      adminMock.email = updated.adminEmail;
-      adminMock.fullName = updated.fullName;
-    }
-
-    const session = createAdminSession(updated.adminEmail, updated.fullName);
+        const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -1192,7 +944,7 @@ router.post(
       });
     }
 
-    const isCurrentValid = await verifyAdminCredentials(currentPassword);
+    const isCurrentValid = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(req.user?.email || '', currentPassword) : await verifyAdminCredentials(currentPassword);
     if (!isCurrentValid) {
       return res.status(401).json({
         success: false,
@@ -1202,10 +954,10 @@ router.post(
       });
     }
 
-    resetCustomAdminCredentials();
-    const restoredConfig = getAdminConfig();
-    const envState = validateAdminEnvironment();
-    const session = createAdminSession(restoredConfig.adminEmail, restoredConfig.fullName);
+    if (process.env.NODE_ENV === 'production') await resetPersistentAdminCredentials(); else resetCustomAdminCredentials();
+    const restoredConfig = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
+    const envState = process.env.NODE_ENV === 'production' ? { mode: restoredConfig.isCustomConfigured ? 'custom_bcrypt' as const : 'bcrypt_hash' as const } : validateAdminEnvironment();
+    const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(restoredConfig.adminEmail, restoredConfig.fullName) : createAdminSession(restoredConfig.adminEmail, restoredConfig.fullName);
 
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
@@ -1240,10 +992,11 @@ router.post(
  * GET /api/v1/admin/session & /api/v1/auth/admin-session
  */
 router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest, res: Response) => {
-  if (req.user && req.user.role === 'admin') {
+  const adminRoles = ['admin','super_admin','finance_admin','operations_admin','support','auditor'];
+  if (req.user && adminRoles.includes(req.user.role)) {
     return res.json({
       success: true,
-      data: req.user,
+      data: { ...req.user, permissionsRole: req.user.role, role: 'admin' },
       requestId: req.id
     });
   }
@@ -1261,271 +1014,73 @@ router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest
  * Production-grade registration with email validation, password strength enforcement,
  * duplicate prevention, bcrypt password hashing, and HttpOnly session establishment.
  */
-router.post('/auth/register', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
-  const { email, fullName, password, pass, country, phoneNumber, countryCode } = req.body || {};
-  const normalizedEmail = (email || '').toLowerCase().trim();
-  const inputPass = password || pass;
-
-  // 1. Validate required fields presence
-  if (!normalizedEmail || !inputPass || !fullName || !country || !phoneNumber) {
-    return res.status(400).json({
-      success: false,
-      error: 'Full legal name, valid email, password, country of residence, and phone number are required.',
-      code: 'VALIDATION_ERROR',
+router.post('/auth/register', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || req.body?.pass || '');
+  const fullName = String(req.body?.fullName || '').trim();
+  const country = String(req.body?.country || 'France').trim();
+  const phoneNumber = String(req.body?.phoneNumber || '').trim();
+  const countryCode = String(req.body?.countryCode || '').trim();
+  if (!email || !password || !fullName) return res.status(400).json({ success: false, error: 'Full legal name, valid email address, and password are required.', code: 'VALIDATION_ERROR', requestId: req.id });
+  if (!validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL_FORMAT', requestId: req.id });
+  const strength = validatePasswordStrength(password);
+  if (!strength.valid) return res.status(400).json({ success: false, error: strength.error || 'Password does not meet institutional security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
+  if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Customer registration is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : 'https://kretzdespain.com';
+    const result = await registerCustomer({ email, password, fullName, country, countryCode, phoneNumber, redirectTo: `${origin}/#login` });
+    const user = result.user || {
+      id: result.authUser.id, email: result.authUser.email || email,
+      fullName, role: 'investor', accountType: 'individual_investor',
+      balance: 0, status: 'active'
+    };
+    return res.status(201).json({
+      success: true,
+      data: { user, token: result.session?.access_token || null, refreshToken: result.session?.refresh_token || null, requiresVerification: !result.session },
+      user, token: result.session?.access_token || null, refreshToken: result.session?.refresh_token || null,
+      requiresVerification: !result.session,
+      message: result.session ? 'Account created successfully.' : 'Account created. Please verify your email before signing in.',
       requestId: req.id
     });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    if (/already registered|already exists|user already/i.test(message)) return res.status(409).json({ success: false, error: 'An account with this email address already exists. Please sign in.', code: 'EMAIL_ALREADY_EXISTS', requestId: req.id });
+    if (/password/i.test(message)) return res.status(400).json({ success: false, error: message, code: 'WEAK_PASSWORD', requestId: req.id });
+    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-register-failed', eventType: 'SUPABASE_REGISTRATION_FAILED', outcome: 'failure', message: 'Supabase customer registration failed.' });
+    return res.status(503).json({ success: false, error: 'Registration could not be completed. Please try again shortly.', code: 'REGISTRATION_UNAVAILABLE', requestId: req.id });
   }
-
-  // 2. Validate email format
-  if (!validateEmail(normalizedEmail)) {
-    return res.status(400).json({
-      success: false,
-      error: 'Please provide a valid, well-formed email address.',
-      code: 'INVALID_EMAIL_FORMAT',
-      requestId: req.id
-    });
-  }
-
-  // 3. Enforce strong password policy
-  const passwordCheck = validatePasswordStrength(inputPass);
-  if (!passwordCheck.valid) {
-    return res.status(400).json({
-      success: false,
-      error: passwordCheck.error || 'Password does not meet institutional security requirements.',
-      code: 'WEAK_PASSWORD',
-      requestId: req.id
-    });
-  }
-
-  // 4. Prevent duplicate email registrations (Strict 409 Conflict)
-  const existing = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-  if (existing) {
-    logger.log({
-      level: 'warn',
-      category: 'auth',
-      requestId: req.id || 'req-reg-dup',
-      method: 'POST',
-      route: '/api/v1/auth/register',
-      statusCode: 409,
-      eventType: 'DUPLICATE_REGISTRATION_REJECTED',
-      outcome: 'failure',
-      message: `Registration rejected: email ${normalizedEmail} already exists.`,
-      errorCode: 'EMAIL_ALREADY_EXISTS'
-    });
-
-    return res.status(409).json({
-      success: false,
-      error: 'An account with this email address already exists. Please sign in.',
-      code: 'EMAIL_ALREADY_EXISTS',
-      requestId: req.id
-    });
-  }
-
-  // 5. Securely hash password with cost factor 12
-  const passwordHash = hashPassword(inputPass);
-
-  const rawHeader = req.headers['x-forwarded-for'];
-  const ip = (Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined)) || req.socket.remoteAddress || '127.0.0.1';
-
-  // 6. Persist user account with active status and unverified email flag
-  const newUser: MockUser = {
-    id: `usr-${crypto.randomBytes(4).toString('hex')}`,
-    email: normalizedEmail,
-    fullName: String(fullName).trim(),
-    passwordHash,
-    role: 'investor', // Public registration is strictly restricted to investor accounts
-    country: typeof country === 'string' ? country.trim() : 'France',
-    phoneNumber: typeof phoneNumber === 'string' ? phoneNumber.trim() : '',
-    countryCode: typeof countryCode === 'string' ? countryCode.trim() : '',
-    kycStatus: 'pending',
-    balance: 0,
-    currency: 'EUR',
-    isEmailVerified: false,
-    status: 'active',
-    createdAt: new Date().toISOString()
-  };
-
-  mockUsers.push(newUser);
-
-  // 7. Establish secure server session
-  const session = createSession({
-    userId: newUser.id,
-    email: newUser.email,
-    role: 'investor',
-    fullName: newUser.fullName,
-    ip,
-    userAgent: (req.headers['user-agent'] as string) || 'unknown'
-  });
-
-  // 8. Set HTTP-only secure session cookie
-  res.cookie('kretz_session', session.id, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  });
-
-  res.setHeader('X-CSRF-Token', session.csrfToken);
-
-  // 9. Dispatch branded email verification token
-  const verifToken = generateExpiringToken(newUser.email, 'verification', 24 * 60);
-  const origin = req.headers.origin || 'https://kretzdespain.com';
-  sendEmail({
-    templateId: 'welcome_verification',
-    recipient: newUser.email,
-    data: {
-      fullName: newUser.fullName,
-      email: newUser.email,
-      verificationLink: `${origin}/auth/verify?token=${verifToken}`,
-      expiresInHours: 24,
-      accountType: 'Accredited Investor (Tier 1)'
-    }
-  }).catch(err => {
-    logger.log({
-      level: 'error',
-      category: 'auth',
-      requestId: req.id || 'req-reg-email',
-      eventType: 'EMAIL_DISPATCH_FAILURE',
-      outcome: 'failure',
-      message: `Failed to dispatch welcome email: ${err.message}`
-    });
-  });
-
-  const safeUser = sanitizeUser(newUser);
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-reg',
-    method: 'POST',
-    route: '/api/v1/auth/register',
-    statusCode: 201,
-    userId: newUser.id,
-    userRole: newUser.role,
-    eventType: 'USER_REGISTERED',
-    outcome: 'success',
-    message: `New investor account registered: ${newUser.email}`,
-    metadata: { userId: newUser.id }
-  });
-
-  return res.status(201).json({
-    success: true,
-    data: {
-      user: safeUser,
-      token: session.id,
-      csrfToken: session.csrfToken,
-      requiresVerification: true
-    },
-    token: session.id,
-    csrfToken: session.csrfToken,
-    user: safeUser,
-    message: 'Account created successfully. A verification email has been dispatched.',
-    requestId: req.id
-  });
 });
 
 /**
  * POST /api/v1/auth/logout
  * Terminates server-authoritative session and clears HttpOnly session cookie
  */
-router.post('/auth/logout', (req: AuthenticatedRequest, res: Response) => {
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!token && req.headers.cookie) {
-    const match = req.headers.cookie.match(/(?:^|;\s*)kretz_session=([^;]+)/);
-    if (match) token = decodeURIComponent(match[1]);
+router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (token && isSupabaseAuthConfigured()) {
+    try { await signOutCustomer(token); }
+    catch { return res.status(503).json({ success: false, error: 'Sign-out could not be completed. Please retry.', code: 'SIGN_OUT_UNAVAILABLE', requestId: req.id }); }
   }
-
-  if (token) {
-    revokeSession(token);
-  }
-
-  res.clearCookie('kretz_session', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/'
-  });
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-logout',
-    method: 'POST',
-    route: '/api/v1/auth/logout',
-    statusCode: 200,
-    userId: req.user?.id,
-    userRole: req.user?.role,
-    eventType: 'USER_LOGOUT',
-    outcome: 'success',
-    message: req.user ? `User ${req.user.email} terminated session` : 'Anonymous session cleared'
-  });
-
-  return res.json({
-    success: true,
-    message: 'Session closed successfully.',
-    requestId: req.id
-  });
+  res.clearCookie('kretz_session', { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+  return res.json({ success: true, message: 'Session closed successfully.', requestId: req.id });
 });
 
 /**
  * POST /api/v1/auth/password/forgot
  */
-router.post('/auth/password/forgot', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
-  const { email } = req.body || {};
-  const normalizedEmail = (email || '').toLowerCase().trim();
-
-  const foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-
-  if (foundUser) {
-    const resetToken = generateExpiringToken(normalizedEmail, 'password_reset', 15);
-    const origin = req.headers.origin || 'https://kretzdespain.com';
-    const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
-    
-    sendEmail({
-      templateId: 'password_reset',
-      recipient: normalizedEmail,
-      data: {
-        fullName: foundUser.fullName,
-        email: normalizedEmail,
-        resetLink: `${origin}/auth/reset?token=${resetToken}`,
-        expiresInMinutes: 15,
-        ipAddress: ip,
-        location: foundUser.country || 'Madrid, Spain'
-      }
-    }).catch(err => {
-      logger.log({
-        level: 'error',
-        category: 'auth',
-        requestId: req.id || 'req-forgot-email',
-        eventType: 'EMAIL_DISPATCH_FAILURE',
-        outcome: 'failure',
-        message: `Failed to dispatch password recovery email: ${err.message}`
-      });
-    });
+router.post('/auth/password/forgot', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  if (!email || !validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL', requestId: req.id });
+  if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Password recovery is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : 'https://kretzdespain.com';
+    await requestCustomerPasswordReset(email, `${origin}/#reset-password`);
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-forgot-failed', eventType: 'SUPABASE_PASSWORD_RECOVERY_FAILED', outcome: 'failure', message: 'Supabase password recovery request failed.' });
+    return res.status(503).json({ success: false, error: 'Password recovery could not be started. Please try again shortly.', code: 'PASSWORD_RECOVERY_UNAVAILABLE', requestId: req.id });
   }
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-forgot',
-    method: 'POST',
-    route: '/api/v1/auth/password/forgot',
-    statusCode: 200,
-    eventType: 'PASSWORD_RESET_REQUESTED',
-    outcome: 'success',
-    message: `Password reset dispatched for account ${normalizedEmail}`,
-    metadata: { targetEmail: normalizedEmail }
-  });
-
-  // Always return success to prevent email enumeration attacks
-  res.json({
-    success: true,
-    message: 'If an account exists with this email, recovery instructions have been sent.',
-    requestId: req.id
-  });
+  return res.json({ success: true, message: 'If an account exists with this email, recovery instructions have been sent.', requestId: req.id });
 });
 
 /**
@@ -1836,11 +1391,11 @@ router.get('/user/referrals', requireAuth, (req: AuthenticatedRequest, res: Resp
  * POST /api/v1/user/referrals/invite
  * Dispatches and logs an investor referral invitation with duplicate and self-referral checks
  */
-router.post('/user/referrals/invite', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/user/referrals/invite', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   const normalizedEmail = String(req.body?.email || '').toLowerCase().trim();
   const referralCode = String(req.body?.referralCode || '').trim();
-  const serverUser = mockUsers.find((u) => u.id === userId);
+  const serverUser = isSupabaseServerConfigured() ? await getUserProfile(userId) : null;
   const ownEmails = new Set(
     [serverUser?.email, req.user?.email, req.body?.inviterEmail]
       .map((e) => String(e || '').toLowerCase().trim())
@@ -1960,79 +1515,19 @@ router.post('/security/verify-turnstile', securityLimiter, async (req: Authentic
  * Verifies single-use reset token, validates password strength, updates bcrypt password hash,
  * and invalidates all existing sessions for the target user.
  */
-router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) => {
-  const { token, newPassword } = req.body || {};
-
-  if (!token || typeof token !== 'string') {
-    return res.status(400).json({
-      success: false,
-      error: 'A valid password reset token is required.',
-      code: 'MISSING_RESET_TOKEN',
-      requestId: req.id
-    });
+router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Response) => {
+  const password = String(req.body?.newPassword || req.body?.password || '');
+  const strength = validatePasswordStrength(password);
+  if (!strength.valid) return res.status(400).json({ success: false, error: strength.error || 'Password does not meet security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
+  const authHeader = req.headers.authorization || '';
+  const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : String(req.body?.accessToken || req.body?.token || '');
+  if (!accessToken) return res.status(401).json({ success: false, error: 'A valid Supabase recovery session is required.', code: 'RECOVERY_SESSION_REQUIRED', requestId: req.id });
+  try {
+    await updateCustomerPassword(accessToken, password);
+    return res.json({ success: true, message: 'Password updated successfully. Please sign in again.', requestId: req.id });
+  } catch {
+    return res.status(400).json({ success: false, error: 'The recovery session is invalid or expired. Request a new password reset email.', code: 'INVALID_RECOVERY_SESSION', requestId: req.id });
   }
-
-  // 1. Password policy verification
-  const strengthCheck = validatePasswordStrength(newPassword);
-  if (!strengthCheck.valid) {
-    return res.status(400).json({
-      success: false,
-      error: strengthCheck.error || 'Password does not meet institutional complexity standards.',
-      code: 'WEAK_PASSWORD',
-      requestId: req.id
-    });
-  }
-
-  // 2. Validate and single-use consume the recovery token
-  const verification = verifyAndConsumeToken(token, 'password_reset');
-  if (!verification.valid) {
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-reset-invalid',
-      method: 'POST',
-      route: '/api/v1/auth/password/reset',
-      statusCode: 400,
-      eventType: 'PASSWORD_RESET_REJECTED',
-      outcome: 'failure',
-      message: `Password reset rejected: ${verification.error}`,
-      errorCode: 'INVALID_RESET_TOKEN'
-    });
-
-    return res.status(400).json({
-      success: false,
-      error: verification.error || 'Invalid or expired password reset token.',
-      code: 'INVALID_RESET_TOKEN',
-      requestId: req.id
-    });
-  }
-
-  // 3. Atomically update password hash in persistent store
-  const targetEmail = (verification.email || '').toLowerCase();
-  const targetUser = targetEmail ? mockUsers.find(u => u.email.toLowerCase() === targetEmail) : undefined;
-  if (targetUser) {
-    targetUser.passwordHash = hashPassword(newPassword);
-    // Invalidate all active sessions across all devices for this user
-    revokeAllUserSessions(targetUser.id);
-  }
-
-  logger.log({
-    level: 'info',
-    category: 'auth',
-    requestId: req.id || 'req-reset',
-    method: 'POST',
-    route: '/api/v1/auth/password/reset',
-    statusCode: 200,
-    eventType: 'PASSWORD_RESET_COMPLETED',
-    outcome: 'success',
-    message: `Password successfully updated via recovery authorization for ${verification.email}. All prior sessions revoked.`
-  });
-
-  return res.json({
-    success: true,
-    message: 'Password updated successfully. All previous sessions have been terminated. You may now log in.',
-    requestId: req.id
-  });
 });
 
 /**
@@ -2040,7 +1535,28 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
  * Validates active session, verifies account non-suspended status, and returns sanitized profile.
  * Gracefully handles unauthenticated probes with 200 OK { authenticated: false }.
  */
-router.get('/auth/session', (req: AuthenticatedRequest, res: Response) => {
+router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => {
+  if (req.user) {
+    try {
+      const profile = isSupabaseServerConfigured() ? await getUserProfile(req.user.id) : null;
+      const status = profile?.account_status === 'suspended' ? 'suspended' : (req.user.status || 'active');
+      if (status === 'suspended') {
+        return res.status(403).json({ success: false, error: profile?.suspended_reason || req.user.suspendedReason || 'Your account has been suspended by compliance.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+      }
+      const safeUser = profile ? {
+        id: req.user.id, email: profile.email || req.user.email,
+        fullName: profile.full_name || req.user.fullName,
+        role: req.user.role, accountType: profile.account_type || req.user.accountType,
+        country: profile.country, phoneNumber: profile.phone_number,
+        balance: Number(profile.wallet_balance ?? req.user.balance ?? 0),
+        kycStatus: profile.kyc_status || 'pending', status
+      } : req.user;
+      const csrfToken = req.session?.csrfToken || '';
+      return res.json({ success: true, data: { authenticated: true, user: safeUser, csrfToken }, authenticated: true, user: safeUser, csrfToken, requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Session verification is temporarily unavailable.', code: 'SESSION_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const authHeader = req.headers.authorization;
   let token: string | undefined;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -2063,7 +1579,10 @@ router.get('/auth/session', (req: AuthenticatedRequest, res: Response) => {
     });
   }
 
-  const session = getSession(token);
+  let session;
+  try { session = await getSession(token); } catch {
+    return res.status(503).json({ success: false, error: 'Session verification is temporarily unavailable.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+  }
   if (!session) {
     return res.json({
       success: true,
@@ -2080,7 +1599,7 @@ router.get('/auth/session', (req: AuthenticatedRequest, res: Response) => {
   req.user = { id: session.userId, email: session.email, role: session.role, fullName: session.fullName } as any;
   req.session = session;
 
-  const currentUser = findUserRecordForRequest(req);
+  const currentUser = await findUserRecordForRequest(req);
 
   if (!currentUser) {
     return res.json({
@@ -2129,32 +1648,96 @@ router.get('/auth/session', (req: AuthenticatedRequest, res: Response) => {
 /**
  * GET /api/v1/admin/users
  */
-router.get('/admin/users', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  logger.log({
-    level: 'info',
-    category: 'admin',
-    requestId: req.id || 'req-admin-users',
-    method: 'GET',
-    route: '/api/v1/admin/users',
-    statusCode: 200,
-    userId: req.user?.id,
-    eventType: 'ADMIN_USERS_VIEWED',
-    outcome: 'success',
-    message: `Admin ${req.user?.email} retrieved user registry (${mockUsers.length} records)`
-  });
+router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const users = await listAdminUsers();
+    const data = users.map((u: any) => ({
+      id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number,
+      role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','support','auditor'].includes(role)) || 'investor',
+      accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0),
+      kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), bankIban: u.bank_iban || undefined, cryptoDepositAddress: u.crypto_deposit_address || undefined, status: u.account_status || 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
+    }));
+    return res.json({ success: true, data, total: data.length, requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-users-db', eventType: 'ADMIN_USERS_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load users.' });
+    return res.status(503).json({ success: false, error: 'The investor registry is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
+  }
+});
 
-  res.json({
-    success: true,
-    data: mockUsers.map(sanitizeUser),
-    total: mockUsers.length,
-    requestId: req.id
-  });
+/**
+ * GET /api/v1/admin/users/:id
+ * Read one authoritative Supabase customer profile for the admin user drawer.
+ */
+router.get('/admin/users/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const profile = await getUserProfile(req.params.id);
+    if (!profile) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    const { data: roles, error: rolesError } = await getSupabaseAdmin()
+      .from('user_roles').select('role,granted_at,granted_by').eq('user_id', req.params.id);
+    if (rolesError) throw rolesError;
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
+      countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
+      balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0),
+      totalEarned: Number(profile.total_dividends_earned || 0), kycStatus: profile.kyc_status,
+      status: profile.account_status || 'active', suspendedReason: profile.suspended_reason,
+      address: profile.address, city: profile.city, postalCode: profile.postal_code,
+      createdAt: profile.created_at, updatedAt: profile.updated_at, roles: roles || []
+    }, requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-user-detail', eventType: 'ADMIN_USER_DETAIL_FAILED', outcome: 'failure', message: error?.message || 'Unable to load customer profile.' });
+    return res.status(503).json({ success: false, error: 'The customer record is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
+  }
+});
+
+/**
+ * PATCH /api/v1/admin/users/:id/profile
+ * Administrators may correct contact/profile fields only. Roles, balances, KYC and
+ * account status are deliberately managed by their dedicated protected workflows.
+ */
+router.patch('/admin/users/:id/profile', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const input = req.body || {};
+  const patch: Record<string, unknown> = {
+    full_name: input.fullName, country: input.country, country_code: input.countryCode,
+    phone_number: input.phoneNumber, address: input.address, city: input.city,
+    postal_code: input.postalCode, avatar_url: input.avatarUrl
+  };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined && typeof value !== 'string') return res.status(400).json({ success: false, error: 'Profile fields must be text values.', code: 'INVALID_PROFILE_FIELD', requestId: req.id });
+    if (typeof value === 'string' && value.length > 500) return res.status(400).json({ success: false, error: 'A profile field exceeds the allowed length.', code: 'PROFILE_FIELD_TOO_LONG', requestId: req.id });
+  }
+  try {
+    const updated = await updateUserProfile(req.params.id, patch);
+    if (!updated) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    logger.log({ level: 'info', category: 'admin', requestId: req.id || 'req-admin-user-profile', userId: req.user?.id, eventType: 'ADMIN_USER_PROFILE_UPDATED', outcome: 'success', message: 'Administrator updated customer contact/profile fields.', metadata: { targetUserId: req.params.id, fields: Object.keys(patch).filter(key => patch[key] !== undefined) } });
+    return res.json({ success: true, data: {
+      id: updated.id, email: updated.email, fullName: updated.full_name, country: updated.country,
+      countryCode: updated.country_code, phoneNumber: updated.phone_number, address: updated.address,
+      city: updated.city, postalCode: updated.postal_code, avatarUrl: updated.avatar_url,
+      status: updated.account_status || 'active', kycStatus: updated.kyc_status
+    }, message: 'Customer profile updated.', requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-user-profile-failed', eventType: 'ADMIN_USER_PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Customer profile update failed.' });
+    return res.status(503).json({ success: false, error: 'Customer profile changes could not be saved.', code: 'USER_PROFILE_UPDATE_FAILED', requestId: req.id });
+  }
 });
 
 /**
  * GET /api/v1/admin/audit-logs
  */
-router.get('/admin/audit-logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/audit-logs', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const logs = await listPersistentAuditLogs();
+      return res.json({ success: true, data: logs, total: logs.length, requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Audit records are temporarily unavailable.', code: 'AUDIT_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent audit log storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: mockAuditLogs,
@@ -2353,63 +1936,45 @@ router.get('/admin/logs/export', requireAdminOrLogSecret, (req: AuthenticatedReq
 /**
  * POST /api/v1/admin/users/:id/kyc
  */
-router.post('/admin/users/:id/kyc', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
-  const { kycStatus, notes } = req.body || {};
-
-  const target = mockUsers.find(u => u.id === id);
-  if (!target) {
-    return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+router.patch('/admin/users/:id/profile', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const bankIban = typeof req.body?.bankIban === 'string' ? req.body.bankIban.trim() : undefined;
+  const cryptoDepositAddress = typeof req.body?.cryptoDepositAddress === 'string' ? req.body.cryptoDepositAddress.trim() : undefined;
+  if (bankIban === undefined && cryptoDepositAddress === undefined) return res.status(400).json({ success: false, error: 'At least one payment detail must be supplied.', code: 'NO_PROFILE_CHANGES', requestId: req.id });
+  try {
+    const profile = await updateUserProfile(req.params.id, { bank_iban: bankIban, crypto_deposit_address: cryptoDepositAddress });
+    if (!profile) return res.status(404).json({ success: false, error: 'Investor account not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    return res.json({ success: true, data: { id: profile.id, email: profile.email, bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address }, message: 'Investor payment details saved.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const notFound = message.toLowerCase().includes('0 rows') || message.toLowerCase().includes('not found');
+    return res.status(notFound ? 404 : 503).json({ success: false, error: notFound ? 'Investor account not found.' : 'Investor payment details could not be saved.', code: notFound ? 'USER_NOT_FOUND' : 'PROFILE_UPDATE_FAILED', requestId: req.id });
   }
+});
 
-  target.kycStatus = kycStatus || 'approved';
-
-  mockAuditLogs.unshift({
-    id: `audit-${Date.now()}`,
-    adminId: req.user!.id,
-    adminEmail: req.user!.email,
-    action: 'KYC_STATUS_UPDATE',
-    details: `Updated KYC status for ${target.email} to ${target.kycStatus}. Notes: ${notes || 'Verified identity documents'}`,
-    timestamp: new Date().toISOString()
-  });
-
-  logger.log({
-    level: 'info',
-    category: 'admin',
-    requestId: req.id || 'req-kyc',
-    method: 'POST',
-    route: `/api/v1/admin/users/${id}/kyc`,
-    statusCode: 200,
-    userId: req.user?.id,
-    eventType: 'KYC_STATUS_UPDATED',
-    outcome: 'success',
-    message: `KYC status of user ${target.email} updated to ${target.kycStatus}`,
-    metadata: { targetUserId: id, status: target.kycStatus }
-  });
-
-  const normalizedKyc = String(target.kycStatus).toLowerCase();
-  sendEmail({
-    templateId: normalizedKyc === 'rejected' ? 'kyc_rejected' : 'kyc_approved',
-    recipient: target.email,
-    data: {
-      fullName: target.fullName || 'Valued Investor',
-      event_name: 'Institutional KYC Verification',
-      status: normalizedKyc === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified',
-      notes:
-        notes ||
-        (normalizedKyc === 'rejected'
-          ? 'Please review your identity documentation in your Investor Portal and resubmit.'
-          : 'Your European identity verification has cleared AML screening.')
-    },
-    idempotencyKey: `idemp-kyc-${target.id}-${normalizedKyc}-${Date.now()}`
-  }).catch(() => {});
-
-  res.json({
-    success: true,
-    data: target,
-    message: `User KYC status updated to ${target.kycStatus}`,
-    requestId: req.id
-  });
+router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const { id } = req.params;
+  const { kycStatus = 'approved', notes } = req.body || {};
+  try {
+    const profile = await runFinancialRpc('kretz_admin_update_kyc', { p_user_id: id, p_admin_id: req.user!.id, p_kyc_status: String(kycStatus), p_notes: notes || null });
+    try {
+      const updatedProfile = await getUserProfile(id);
+      if (updatedProfile?.email) sendEmail({
+        templateId: String(kycStatus).toLowerCase() === 'rejected' ? 'kyc_rejected' : 'kyc_approved',
+        recipient: updatedProfile.email,
+        data: { fullName: updatedProfile.full_name || 'Valued Investor', event_name: 'Institutional KYC Verification', status: String(kycStatus).toLowerCase() === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified', notes: notes || 'Your KYC status has been updated.' },
+        idempotencyKey: `idemp-kyc-${id}-${String(kycStatus).toLowerCase()}-${Date.now()}`
+      }).catch(() => {});
+    } catch {
+      logger.log({ level: 'warn', category: 'database', requestId: req.id || 'req-kyc-notify', eventType: 'KYC_NOTIFICATION_PROFILE_LOOKUP_FAILED', outcome: 'failure', message: 'KYC was saved but the notification profile lookup failed.' });
+    }
+    return res.json({ success: true, data: profile, message: `User KYC status updated to ${kycStatus}.`, requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('USER_NOT_FOUND') ? 404 : message.includes('INVALID_KYC_STATUS') ? 400 : message.includes('REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'KYC decision could not be saved. Please retry.' : message, code: status === 503 ? 'KYC_DATABASE_UNAVAILABLE' : 'KYC_UPDATE_REJECTED', requestId: req.id });
+  }
 });
 
 /**
@@ -2417,80 +1982,19 @@ router.post('/admin/users/:id/kyc', requireAdmin, (req: AuthenticatedRequest, re
  * POST /api/v1/admin/users/:id/status
  * Toggle user account status (active / suspended) with audit logging
  */
-const handleUserStatusUpdate = (req: AuthenticatedRequest, res: Response) => {
+const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { status, reason } = req.body || {};
-
-  if (!status || (status !== 'active' && status !== 'suspended')) {
-    return res.status(400).json({
-      success: false,
-      error: 'Status must be either "active" or "suspended".',
-      code: 'INVALID_STATUS',
-      requestId: req.id
-    });
+  if (status !== 'active' && status !== 'suspended') return res.status(400).json({ success: false, error: 'Status must be either active or suspended.', code: 'INVALID_STATUS', requestId: req.id });
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const profile = await runFinancialRpc('kretz_admin_set_user_status', { p_user_id: id, p_admin_id: req.user!.id, p_status: status, p_reason: reason || null });
+    return res.json({ success: true, data: profile, message: `User status successfully updated to ${status.toUpperCase()}.`, requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const statusCode = message.includes('USER_NOT_FOUND') ? 404 : message.includes('INVALID_STATUS') ? 400 : message.includes('SELF_SUSPENSION_FORBIDDEN') || message.includes('REQUIRED') ? 403 : 503;
+    return res.status(statusCode).json({ success: false, error: statusCode === 503 ? 'Account status change could not be saved. Please retry.' : message, code: statusCode === 503 ? 'USER_STATUS_DATABASE_UNAVAILABLE' : 'USER_STATUS_UPDATE_REJECTED', requestId: req.id });
   }
-
-  const target = mockUsers.find(u => u.id === id);
-  if (!target) {
-    return res.status(404).json({
-      success: false,
-      error: 'User not found.',
-      code: 'USER_NOT_FOUND',
-      requestId: req.id
-    });
-  }
-
-  // Prevent self-suspension of administrator
-  if (req.user?.id === id && status === 'suspended') {
-    return res.status(403).json({
-      success: false,
-      error: 'Administrators cannot suspend their own active credentials.',
-      code: 'SELF_SUSPENSION_FORBIDDEN',
-      requestId: req.id
-    });
-  }
-
-  const previousStatus = target.status || 'active';
-  target.status = status;
-  target.suspendedReason = status === 'suspended' ? (reason || 'Administrative Compliance Suspension') : undefined;
-
-  const auditEntry = {
-    id: `audit-${Date.now()}`,
-    adminId: req.user?.id || 'usr-admin-01',
-    adminEmail: req.user?.email || 'admin@kretz.com',
-    action: status === 'suspended' ? 'USER_SUSPENDED' : 'USER_ACTIVATED',
-    details: `User ${target.email} (${target.fullName}) status updated from ${previousStatus.toUpperCase()} to ${status.toUpperCase()} by ${req.user?.email || 'admin@kretz.com'}.${reason ? ` Reason: ${reason}` : ''}`,
-    timestamp: new Date().toISOString()
-  };
-  mockAuditLogs.unshift(auditEntry);
-
-  logger.log({
-    level: 'info',
-    category: 'admin',
-    requestId: req.id || 'req-user-status',
-    method: req.method,
-    route: `/api/v1/admin/users/${id}/status`,
-    statusCode: 200,
-    userId: req.user?.id,
-    eventType: status === 'suspended' ? 'USER_SUSPENDED' : 'USER_ACTIVATED',
-    outcome: 'success',
-    message: `Account ${target.email} status changed to ${status.toUpperCase()}`,
-    metadata: {
-      targetUserId: id,
-      targetEmail: target.email,
-      newStatus: status,
-      previousStatus,
-      reason
-    }
-  });
-
-  return res.json({
-    success: true,
-    data: target,
-    auditLog: auditEntry,
-    message: `User status successfully updated to ${status.toUpperCase()}.`,
-    requestId: req.id
-  });
 };
 
 router.patch('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
@@ -2499,69 +2003,47 @@ router.post('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
 /**
  * POST /api/v1/admin/users/:id/credit
  */
-router.post('/admin/users/:id/credit', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/credit', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { amount, currency = 'EUR', method = 'Direct Wire Received', reference, notes } = req.body || {};
-
-  if (!amount || Number(amount) <= 0) {
-    return res.status(400).json({ success: false, error: 'Credit amount must be greater than zero.', code: 'INVALID_AMOUNT', requestId: req.id });
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) return res.status(400).json({ success: false, error: 'Credit amount must be greater than zero.', code: 'INVALID_AMOUNT', requestId: req.id });
+  if (currency !== 'EUR') return res.status(400).json({ success: false, error: 'Manual wallet adjustments currently support EUR only.', code: 'UNSUPPORTED_CURRENCY', requestId: req.id });
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const result: any = await runFinancialRpc('kretz_admin_credit_user', {
+      p_user_id: id, p_admin_id: req.user!.id, p_amount: numericAmount,
+      p_method: String(method), p_reference: String(reference || `KZ-MANUAL-${crypto.randomInt(100000,1000000)}`),
+      p_notes: String(notes || 'Administrator manual wallet credit'), p_transaction_id: crypto.randomUUID()
+    });
+    return res.json({ success: true, data: { transaction: toApiTransaction(result.transaction), walletBalance: Number(result.balance) }, message: `Credited €${numericAmount.toFixed(2)} to the investor wallet.`, requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const statusCode = message.includes('USER_NOT_FOUND') ? 404 : message.includes('REQUIRED') ? 403 : 503;
+    return res.status(statusCode).json({ success: false, error: statusCode === 503 ? 'Wallet adjustment could not be saved. Please retry.' : message, code: statusCode === 503 ? 'WALLET_ADJUSTMENT_FAILED' : 'WALLET_ADJUSTMENT_REJECTED', requestId: req.id });
   }
-
-  const target = mockUsers.find(u => u.id === id);
-  if (!target) {
-    return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-  }
-
-  const numAmount = Number(amount);
-  target.balance = (target.balance || 0) + numAmount;
-
-  const newTx = {
-    id: `tx-cred-${Date.now()}`,
-    userId: target.id,
-    userEmail: target.email,
-    type: 'deposit',
-    amount: numAmount,
-    currency,
-    status: 'completed',
-    method,
-    reference: reference || `KZ-MANUAL-${Math.floor(100000 + Math.random() * 900000)}`,
-    createdAt: new Date().toISOString()
-  };
-
-  mockTransactions.unshift(newTx);
-
-  logger.log({
-    level: 'info',
-    category: 'payments',
-    requestId: req.id || 'req-credit',
-    method: 'POST',
-    route: `/api/v1/admin/users/${id}/credit`,
-    statusCode: 200,
-    userId: req.user?.id,
-    eventType: 'ADMIN_MANUAL_CREDIT',
-    outcome: 'success',
-    message: `Admin credited €${numAmount} to user ${target.email}. Ref: ${newTx.reference}`,
-    metadata: { targetUserId: id, amount: numAmount, reference: newTx.reference }
-  });
-
-  res.json({
-    success: true,
-    data: { user: target, transaction: newTx },
-    message: `Credited €${numAmount} to ${target.fullName}.`,
-    requestId: req.id
-  });
 });
-
-// ============================================================================
-// 3. MARKETPLACE ROUTES (/api/v1/marketplace)
-// ============================================================================
 
 /**
  * GET /api/v1/marketplace/listings
  */
-router.get(['/marketplace/listings', '/properties', '/listings'], (req: AuthenticatedRequest, res: Response) => {
+router.get(['/marketplace/listings', '/properties', '/listings'], async (req: AuthenticatedRequest, res: Response) => {
   const { search, type, status, location, minPrice, maxPrice, sortBy, page, limit } = req.query;
   let items = [...mockListings];
+  if (isSupabaseServerConfigured()) {
+    try {
+      items = await listInvestmentPlans({
+        search: typeof search === 'string' ? search : undefined,
+        type: typeof type === 'string' ? type : undefined,
+        status: typeof status === 'string' ? status : undefined
+      });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-listings-db', eventType: 'PROPERTY_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property catalogue from Supabase.' });
+      return res.status(503).json({ success: false, error: 'The property catalogue is temporarily unavailable. Please try again shortly.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  const canViewUnpublished = Boolean(req.user && ['admin','super_admin','operations_admin'].includes(req.user.role));
+  if (!canViewUnpublished) items = items.filter(p => p.status !== 'hidden' && p.status !== 'draft');
 
   if (search) {
     const s = String(search).toLowerCase().trim();
@@ -2636,10 +2118,21 @@ router.get(['/marketplace/listings', '/properties', '/listings'], (req: Authenti
 /**
  * GET /api/v1/marketplace/listings/:id
  */
-router.get(['/marketplace/listings/:id', '/properties/:id'], (req: AuthenticatedRequest, res: Response) => {
+router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const found = mockListings.find(p => p.id === id || p.slug === id);
+  let found = mockListings.find(p => p.id === id || p.slug === id);
+  if (isSupabaseServerConfigured()) {
+    try {
+      found = await getInvestmentPlan(id) as any;
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-property-db', eventType: 'PROPERTY_DETAIL_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property.' });
+      return res.status(503).json({ success: false, error: 'Property details are temporarily unavailable.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
 
+  if (!req.user || !['admin','super_admin','operations_admin'].includes(req.user.role)) {
+    if (found?.status === 'hidden' || found?.status === 'draft') found = undefined as any;
+  }
   if (!found) {
     return res.status(404).json({
       success: false,
@@ -2659,8 +2152,9 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], (req: Authenticated
 /**
  * POST /api/v1/marketplace/listings & /api/v1/properties & /api/v1/admin/properties (Admin Only)
  */
-router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const body = req.body || {};
+  if (isSupabaseServerConfigured() && !['admin','super_admin','operations_admin'].includes(req.user!.role)) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
   if (!body.title || !body.location || !body.targetAmount) {
     return res.status(400).json({
       success: false,
@@ -2669,6 +2163,17 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
       requestId: req.id
     });
   }
+  if (isSupabaseServerConfigured()) {
+    try {
+      const property = await createPersistentInvestmentPlan(body);
+      return res.status(201).json({ success: true, data: property, message: 'Property listing saved to the database.', requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('INVALID_PROPERTY_DATA') ? 400 : message.includes('duplicate key') ? 409 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Property could not be saved. Please check database availability and try again.' : message, code: status === 503 ? 'PROPERTY_DATABASE_WRITE_FAILED' : 'INVALID_PROPERTY_DATA', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
   const slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   const newProp = {
@@ -2720,8 +2225,21 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
 /**
  * PUT /api/v1/marketplace/listings/:id & /api/v1/properties/:id & /api/v1/admin/properties/:id (Admin Only)
  */
-router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  if (isSupabaseServerConfigured() && !['admin','super_admin','operations_admin'].includes(req.user!.role)) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
+  if (isSupabaseServerConfigured()) {
+    try {
+      const property = await updatePersistentInvestmentPlan(id, req.body || {});
+      if (!property) return res.status(404).json({ success: false, error: `Property listing '${id}' was not found.`, code: 'PROPERTY_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: property, message: 'Property listing updated in the database.', requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('INVALID_PROPERTY_DATA') ? 400 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Property changes could not be saved. Please retry.' : message, code: status === 503 ? 'PROPERTY_DATABASE_WRITE_FAILED' : 'INVALID_PROPERTY_DATA', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const targetIndex = mockListings.findIndex(p => p.id === id || p.slug === id);
 
   if (targetIndex === -1) {
@@ -2764,43 +2282,115 @@ router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:
 // 4. USER DASHBOARD & PORTFOLIO ROUTES (/api/v1/user & /api/v1/portfolio)
 // ============================================================================
 
-function findUserRecordForRequest(req: AuthenticatedRequest) {
-  if (!req.user) return undefined;
-  const byId = mockUsers.find(u => u.id === req.user!.id);
-  if (byId) return byId;
-  if (req.user.email) {
-    return mockUsers.find(u => u.email.toLowerCase() === req.user!.email.toLowerCase());
-  }
-  return undefined;
+async function findUserRecordForRequest(req: AuthenticatedRequest): Promise<UserRecord | undefined> {
+  if (!req.user || !isSupabaseServerConfigured()) return undefined;
+  const profile = await getUserProfile(req.user.id);
+  if (!profile) return undefined;
+  return {
+    id: profile.id, email: profile.email || req.user.email, fullName: profile.full_name || req.user.fullName || 'Investor',
+    role: req.user.role, kycStatus: profile.kyc_status || 'pending',
+    balance: Number(profile.wallet_balance || 0), currency: 'EUR', createdAt: profile.created_at,
+    country: profile.country || undefined, countryCode: profile.country_code || undefined,
+    phoneNumber: profile.phone_number || undefined, isEmailVerified: true,
+    status: profile.account_status === 'suspended' ? 'suspended' : 'active',
+    suspendedReason: profile.suspended_reason || undefined
+  };
 }
 
 /**
  * GET /api/v1/user/profile
  */
-router.get('/user/profile', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const profile = findUserRecordForRequest(req);
-  if (!profile) {
-    return res.status(404).json({
-      success: false,
-      error: 'User profile not found.',
-      code: 'USER_NOT_FOUND',
-      requestId: req.id
-    });
+router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const profile = await getUserProfile(req.user!.id);
+    if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
+      countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
+      balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0),
+      kycStatus: profile.kyc_status, status: profile.account_status || 'active', createdAt: profile.created_at,
+      address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url,
+      bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
+      dateOfBirth: profile.date_of_birth, preferences: profile.preferences
+    }, requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-db', eventType: 'PROFILE_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Profile query failed.' });
+    return res.status(503).json({ success: false, error: 'Your profile is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
   }
-
-  res.json({
-    success: true,
-    data: sanitizeUser(profile),
-    requestId: req.id
-  });
 });
+
+/**
+ * PATCH/PUT /api/v1/user/profile
+ * Persist customer-editable profile data against the authenticated Supabase user ID.
+ */
+const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const input = req.body || {};
+  const patch: Record<string, unknown> = {
+    full_name: input.fullName, phone_number: input.phoneNumber, country: input.country,
+    country_code: input.countryCode, address: input.address, city: input.city,
+    postal_code: input.postalCode, avatar_url: input.avatarUrl, bank_iban: input.bankIban,
+    crypto_deposit_address: input.cryptoDepositAddress, tax_id: input.taxId,
+    date_of_birth: input.dateOfBirth
+  };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined && typeof value !== 'string') return res.status(400).json({ success: false, error: 'Profile fields must be text values.', code: 'INVALID_PROFILE_FIELD', requestId: req.id });
+    if (typeof value === 'string' && value.length > 500) return res.status(400).json({ success: false, error: 'A profile field exceeds the allowed length.', code: 'PROFILE_FIELD_TOO_LONG', requestId: req.id });
+  }
+  try {
+    const profile = await updateUserProfile(req.user!.id, patch);
+    if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
+      countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
+      address: profile.address, city: profile.city, postalCode: profile.postal_code,
+      avatarUrl: profile.avatar_url, bankIban: profile.bank_iban,
+      cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
+      dateOfBirth: profile.date_of_birth, balance: Number(profile.wallet_balance || 0),
+      kycStatus: profile.kyc_status, status: profile.account_status || 'active'
+    }, message: 'User profile updated successfully.', requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-update-db', eventType: 'PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Profile update failed.' });
+    return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
+  }
+};
+router.patch('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
+router.put('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
 
 /**
  * GET /api/v1/portfolio
  */
-router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/portfolio', '/portfolio/summary'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const matchedUser = findUserRecordForRequest(req);
+  if (isSupabaseServerConfigured()) {
+    try {
+      const rows = await listUserInvestments(userId);
+      const holdings = rows.map((row: any) => {
+        const property = row.investment_plans || {};
+        const cost = Number(row.total_amount_invested || 0);
+        const annualYield = Number(property.estimated_annual_yield || 0);
+        return {
+          id: row.id, propertyId: row.plan_id, propertyTitle: property.title || row.plan_id,
+          tokensPurchased: Number(row.tokens_purchased || 0), totalCost: cost,
+          currentValue: Number(row.current_valuation || cost),
+          projectedAnnualDividend: Number((cost * annualYield / 100).toFixed(2)),
+          dividendsReceived: Number(row.total_dividends_received || 0),
+          purchaseDate: row.purchased_at, certificateId: row.certificate_id,
+          status: row.status, maturityDate: row.maturity_date
+        };
+      });
+      const totalPortfolioValue = holdings.reduce((sum: number, item: any) => sum + item.currentValue, 0);
+      const totalTokensHeld = holdings.reduce((sum: number, item: any) => sum + item.tokensPurchased, 0);
+      const totalDividendsReceived = holdings.reduce((sum: number, item: any) => sum + item.dividendsReceived, 0);
+      return res.json({ success: true, data: { holdings, totalHoldingsValue: totalPortfolioValue, totalPortfolioValue, totalTokensHeld, activePropertiesCount: holdings.filter((item: any) => item.status === 'active').length, totalDividendsReceived, currency: 'EUR' }, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-portfolio-db', eventType: 'PORTFOLIO_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Portfolio query failed.' });
+      return res.status(503).json({ success: false, error: 'Your investment portfolio is temporarily unavailable.', code: 'PORTFOLIO_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const matchedUser = await findUserRecordForRequest(req);
   const resolvedEmail = matchedUser?.email || req.user?.email || '';
   const userInvTxs = mockTransactions.filter(
     t =>
@@ -2867,8 +2457,18 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, (req: Authenticate
 /**
  * GET /api/v1/wallet/balance
  */
-router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const user = findUserRecordForRequest(req);
+router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await getUserProfile(req.user!.id);
+      if (!profile) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: { balance: Number(profile.wallet_balance || 0), subBalances: { EUR: Number(profile.wallet_balance || 0) }, currency: 'EUR' }, requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Wallet balance is temporarily unavailable.', code: 'WALLET_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent wallet storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const user = await findUserRecordForRequest(req);
   const userId = req.user!.id;
   const userEmail = req.user?.email?.toLowerCase();
 
@@ -2913,8 +2513,21 @@ router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: Authe
 /**
  * GET /api/v1/transactions
  */
-router.get('/transactions', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const rows = req.user?.role === 'admin' || req.user?.role === 'super_admin' || req.user?.role === 'finance_admin'
+        ? await listAdminTransactions(undefined, undefined, 250)
+        : await listUserTransactions(userId, 250);
+      const formatted = rows.map((row: any) => ({ ...toApiTransaction(row), user_id: row.user_id, userId: row.user_id, created_at: row.created_at, paymentMethod: row.payment_method }));
+      return res.json({ success: true, data: formatted, total: formatted.length, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-transactions-db', eventType: 'TRANSACTION_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Transaction query failed.' });
+      return res.status(503).json({ success: false, error: 'Transaction history is temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent transaction storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const userEmail = req.user?.email?.toLowerCase();
   
   // If user is ordinary investor, filter to their transactions
@@ -2954,7 +2567,9 @@ router.get('/transactions', requireAuth, (req: AuthenticatedRequest, res: Respon
 /**
  * GET /api/v1/notifications
  */
-router.get('/notifications', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/notifications', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const rows = await listUserNotifications(req.user!.id); const data = rows.map((n: any) => ({ id: n.id, title: n.title, message: n.message, type: n.type, read: n.read, createdAt: n.created_at, metadata: n.metadata })); return res.json({ success: true, data, unreadCount: data.filter((n: any) => !n.read).length, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'NOTIFICATION_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   res.json({
     success: true,
@@ -2964,7 +2579,9 @@ router.get('/notifications', requireAuth, (req: AuthenticatedRequest, res: Respo
   });
 });
 
-router.patch('/notifications/:id/read', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.patch('/notifications/:id/read', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const row = await markUserNotificationRead(req.user!.id, req.params.id); return res.json({ success: true, data: row, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notification could not be updated.', code: 'NOTIFICATION_UPDATE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   const target = list.find(n => n.id === req.params.id);
   if (target) {
@@ -2977,7 +2594,9 @@ router.patch('/notifications/:id/read', requireAuth, (req: AuthenticatedRequest,
   });
 });
 
-router.post('/notifications/read-all', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/notifications/read-all', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const markedRead = await markAllUserNotificationsRead(req.user!.id); return res.json({ success: true, data: { markedRead }, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications could not be updated.', code: 'NOTIFICATION_UPDATE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   list.forEach(n => { n.read = true; });
   res.json({
@@ -2990,7 +2609,9 @@ router.post('/notifications/read-all', requireAuth, (req: AuthenticatedRequest, 
 /**
  * User Favorites & Preferences Persistence (/api/v1/user/favorites & /api/v1/user/preferences)
  */
-router.get('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/user/favorites', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { return res.json({ success: true, data: { favorites: await listUserFavorites(req.user!.id) }, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Your watchlist is temporarily unavailable.', code: 'FAVORITES_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent watchlist storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
   res.json({
     success: true,
@@ -2999,7 +2620,7 @@ router.get('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Resp
   });
 });
 
-router.post('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/user/favorites', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { propertyId } = req.body || {};
   if (!propertyId || typeof propertyId !== 'string') {
     return res.status(400).json({
@@ -3009,6 +2630,8 @@ router.post('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Res
       requestId: req.id
     });
   }
+  if (isSupabaseServerConfigured()) { try { const favorites = await saveUserFavorite(req.user!.id, propertyId); return res.json({ success: true, data: { favorites, propertyId, saved: true }, message: 'Property saved to your watchlist.', requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Property could not be saved to your watchlist.', code: 'FAVORITES_DATABASE_WRITE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent watchlist storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
   favSet.add(propertyId);
   userFavoritesStore.set(req.user!.id, favSet);
@@ -3020,8 +2643,10 @@ router.post('/user/favorites', requireAuth, (req: AuthenticatedRequest, res: Res
   });
 });
 
-router.delete('/user/favorites/:propertyId', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.delete('/user/favorites/:propertyId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { propertyId } = req.params;
+  if (isSupabaseServerConfigured()) { try { const favorites = await removeUserFavorite(req.user!.id, propertyId); return res.json({ success: true, data: { favorites, propertyId, saved: false }, message: 'Property removed from your watchlist.', requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Property could not be removed from your watchlist.', code: 'FAVORITES_DATABASE_WRITE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent watchlist storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const favSet = userFavoritesStore.get(req.user!.id) || new Set<string>();
   favSet.delete(propertyId);
   userFavoritesStore.set(req.user!.id, favSet);
@@ -3033,7 +2658,9 @@ router.delete('/user/favorites/:propertyId', requireAuth, (req: AuthenticatedReq
   });
 });
 
-router.get('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/user/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { return res.json({ success: true, data: await getUserPreferences(req.user!.id), requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Your preferences are temporarily unavailable.', code: 'PREFERENCES_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent preference storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const prefs = userPreferencesStore.get(req.user!.id) || {
     defaultSort: 'yield-desc',
     itemsPerPage: 6,
@@ -3047,7 +2674,9 @@ router.get('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Re
   });
 });
 
-router.put('/user/preferences', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.put('/user/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) { try { const data = await saveUserPreferences(req.user!.id, req.body || {}); return res.json({ success: true, data, message: 'Preferences saved.', requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Your preferences could not be saved.', code: 'PREFERENCES_DATABASE_WRITE_FAILED', requestId: req.id }); } }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent preference storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const current = userPreferencesStore.get(req.user!.id) || {};
   const next = { ...current, ...(req.body || {}), updatedAt: new Date().toISOString() };
   userPreferencesStore.set(req.user!.id, next);
@@ -3074,10 +2703,27 @@ router.get('/treasury/rates', (_req: AuthenticatedRequest, res: Response) => {
   });
 });
 
-router.get('/treasury/balances', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const userRecord = findUserRecordForRequest(req);
-  const eurBal = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
-  const subBalances = getOrInitUserSubBalances(req.user!.id, eurBal);
+router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await getUserProfile(req.user!.id);
+      if (!profile) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: { balances: { EUR: Number(profile.wallet_balance || 0) } }, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Treasury balances are temporarily unavailable.', code: 'TREASURY_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent treasury storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const userRecord = await findUserRecordForRequest(req);
+  if (!userRecord) {
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+  const subBalances = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
   res.json({
     success: true,
     data: { balances: subBalances },
@@ -3085,8 +2731,12 @@ router.get('/treasury/balances', requireAuth, (req: AuthenticatedRequest, res: R
   });
 });
 
-router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const { fromCurrency, toCurrency, amount, clientEurBalance } = req.body || {};
+router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    return res.status(501).json({ success: false, error: 'Multi-currency conversion is not enabled on the persistent wallet yet. Your EUR balance is safe and unchanged.', code: 'FX_PERSISTENCE_NOT_ENABLED', requestId: req.id });
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent treasury storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const { fromCurrency, toCurrency, amount } = req.body || {};
   const from = String(fromCurrency || '').toUpperCase();
   const to = String(toCurrency || '').toUpperCase();
   const numericAmount = Number(amount);
@@ -3118,23 +2768,14 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
     });
   }
 
-  let userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
   if (!userRecord) {
-    userRecord = {
-      id: req.user!.id,
-      email: req.user!.email,
-      fullName: req.user!.fullName || 'Verified Investor',
-      passwordHash: '',
-      role: req.user!.role,
-      kycStatus: 'approved',
-      balance: typeof clientEurBalance === 'number' && clientEurBalance >= 0 ? clientEurBalance : 0,
-      currency: 'EUR',
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-    mockUsers.push(userRecord);
-  } else if (typeof clientEurBalance === 'number' && clientEurBalance >= 0 && !userSubBalancesStore.has(userRecord.id)) {
-    userRecord.balance = clientEurBalance;
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger. Client-supplied balances cannot be used for currency conversion.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
   }
 
   const activeUser = userRecord;
@@ -3210,7 +2851,7 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
 /**
  * POST /api/v1/deposits
  */
-router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.depositsEnabled) {
     return res.status(403).json({
       success: false,
@@ -3227,7 +2868,7 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
       requestId: req.id
     });
   }
-  const foundUserRecord = findUserRecordForRequest(req);
+  const foundUserRecord = await findUserRecordForRequest(req);
   if (foundUserRecord && foundUserRecord.status === 'suspended') {
     return res.status(403).json({
       success: false,
@@ -3238,19 +2879,51 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
   }
 
   const { amount, currency = 'EUR', method = 'SEPA Bank Wire', txHash } = req.body || {};
-
-  if (!amount || Number(amount) < 100) {
+  if (currency !== 'EUR') {
     return res.status(400).json({
       success: false,
-      error: 'Minimum deposit amount is €100.',
-      code: 'INVALID_DEPOSIT_AMOUNT',
+      error: 'Deposits are currently accepted in EUR only. Other currencies must be converted and verified before submission.',
+      code: 'UNSUPPORTED_DEPOSIT_CURRENCY',
       requestId: req.id
     });
   }
 
   const numAmount = Number(amount);
+  if (!Number.isFinite(numAmount) || numAmount < 100) {
+    return res.status(400).json({
+      success: false,
+      error: 'Minimum deposit amount is €100. Enter a valid numeric amount.',
+      code: 'INVALID_DEPOSIT_AMOUNT',
+      requestId: req.id
+    });
+  }
+  if (isSupabaseServerConfigured()) {
+    try {
+      const ref = `KZ-DEP-${crypto.randomInt(100000, 1000000)}`;
+      const idempotencyKey = String(req.headers['idempotency-key'] || req.body?.idempotencyKey || crypto.randomUUID()).slice(0, 128);
+      const row = await runFinancialRpc('kretz_request_deposit', {
+        p_user_id: req.user!.id, p_amount: numAmount, p_method: String(method),
+        p_reference: ref, p_transaction_id: crypto.randomUUID(),
+        p_tx_hash: typeof txHash === 'string' ? txHash : null, p_idempotency_key: idempotencyKey
+      });
+      const transaction = toApiTransaction(row);
+      sendEmail({
+        templateId: 'deposit_received', recipient: req.user!.email,
+        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, amount: numAmount.toFixed(2), currency: 'EUR', reference: transaction.reference || ref, method, beneficiary: paymentConfig.traditional.beneficiary, iban: paymentConfig.traditional.iban, bic: paymentConfig.traditional.bic, bankName: paymentConfig.traditional.bankName, address: paymentConfig.traditional.address, country: paymentConfig.traditional.country }
+      }).catch(err => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'req-deposit-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: err.message }));
+      return res.status(201).json({ success: true, data: transaction, message: 'Deposit request saved. Your wallet will only be credited after an administrator verifies settlement.', requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-deposit-db', eventType: 'DEPOSIT_PERSIST_FAILED', outcome: 'failure', message: error?.message || 'Deposit could not be saved.' });
+      const message = String(error?.message || '');
+      const status = message.includes('INVALID_DEPOSIT_AMOUNT') ? 400 : message.includes('ACCOUNT_LEDGER_UNAVAILABLE') ? 409 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'The deposit service is temporarily unavailable. No deposit request was recorded.' : message, code: status === 503 ? 'DEPOSIT_DATABASE_UNAVAILABLE' : 'DEPOSIT_REQUEST_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Deposits are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
   const ref = `KZ-DEP-${Math.floor(100000 + Math.random() * 900000)}`;
-  const foundUser = findUserRecordForRequest(req);
+  const foundUser = await findUserRecordForRequest(req);
   const resolvedRecipient = foundUser?.email || req.user?.email || 'investor@kretz.com';
 
   const depositTx = {
@@ -3304,7 +2977,7 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
   if (numAmount >= 50000) {
     sendEmail({
       templateId: 'admin_alert',
-      recipient: 'info@kretz.site',
+      recipient: process.env.EMAIL_SUPPORT || process.env.EMAIL_FROM || 'info@kretzdespain.com',
       data: {
         adminName: 'Chief Compliance Officer',
         eventType: 'HIGH_VALUE_DEPOSIT_INITIATED',
@@ -3353,7 +3026,7 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
 /**
  * POST /api/v1/withdrawals
  */
-router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.withdrawalsEnabled) {
     return res.status(403).json({
       success: false,
@@ -3370,8 +3043,16 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
       requestId: req.id
     });
   }
-  const userRecordCheck = mockUsers.find(u => u.id === req.user?.id);
-  if (userRecordCheck && userRecordCheck.status === 'suspended') {
+  const userRecord = await findUserRecordForRequest(req);
+  if (!userRecord && !isSupabaseServerConfigured()) {
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger. Please contact support before requesting a withdrawal.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+  if (userRecord?.status === 'suspended') {
     return res.status(403).json({
       success: false,
       error: 'Account access restricted by administrative compliance.',
@@ -3382,16 +3063,17 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
 
   const { amount, destination, method = 'Bank Wire SEPA' } = req.body || {};
 
-  if (!amount || Number(amount) < 250) {
+  const numAmount = Number(amount);
+  if (!Number.isFinite(numAmount) || numAmount < 250) {
     return res.status(400).json({
       success: false,
-      error: 'Minimum withdrawal amount is €250.',
+      error: 'Minimum withdrawal amount is €250. Enter a valid numeric amount.',
       code: 'INVALID_AMOUNT',
       requestId: req.id
     });
   }
 
-  if (!destination) {
+  if (typeof destination !== 'string' || destination.trim().length < 5) {
     return res.status(400).json({
       success: false,
       error: 'Withdrawal destination (IBAN or Crypto Address) is required.',
@@ -3400,10 +3082,35 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const numAmount = Number(amount);
-  const userRecord = mockUsers.find(u => u.id === req.user?.id);
-
-  if (userRecord && userRecord.balance < numAmount) {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const ref = `KZ-WTH-${crypto.randomInt(100000, 1000000)}`;
+      const idempotencyKey = String(req.headers['idempotency-key'] || req.body?.idempotencyKey || crypto.randomUUID()).slice(0, 128);
+      const row = await runFinancialRpc('kretz_request_withdrawal', {
+        p_user_id: req.user!.id, p_amount: numAmount, p_method: String(method),
+        p_destination: destination.trim(), p_reference: ref,
+        p_transaction_id: crypto.randomUUID(), p_idempotency_key: idempotencyKey
+      });
+      const transaction = toApiTransaction(row);
+      sendEmail({
+        templateId: 'withdrawal_requested', recipient: req.user!.email,
+        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, amount: numAmount.toFixed(2), currency: 'EUR', reference: transaction.reference || ref, destination: destination.trim(), estimatedProcessingTime: '24 business hours' }
+      }).catch(err => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'req-withdrawal-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: err.message }));
+      return res.status(201).json({ success: true, data: { ...transaction, destination: destination.trim() }, message: 'Withdrawal request recorded and funds reserved in your wallet. Compliance review is required before payout.', requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-withdrawal-db', eventType: 'WITHDRAWAL_PERSIST_FAILED', outcome: 'failure', message: error?.message || 'Withdrawal could not be saved.' });
+      const message = String(error?.message || '');
+      const status = message.includes('INSUFFICIENT_FUNDS') ? 400 : message.includes('INVALID_WITHDRAWAL_AMOUNT') || message.includes('INVALID_WITHDRAWAL_DESTINATION') ? 400 : message.includes('ACCOUNT_LEDGER_UNAVAILABLE') ? 409 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'The withdrawal service is temporarily unavailable. No request was recorded.' : message, code: status === 503 ? 'WITHDRAWAL_DATABASE_UNAVAILABLE' : 'WITHDRAWAL_REQUEST_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Withdrawals are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  if (!userRecord) {
+    return res.status(409).json({ success: false, error: 'Investor ledger account is unavailable.', code: 'ACCOUNT_LEDGER_UNAVAILABLE', requestId: req.id });
+  }
+  if (userRecord.balance < numAmount) {
     logger.log({
       level: 'warn',
       category: 'payments',
@@ -3427,8 +3134,9 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   // Deduct immediately on server to lock funds
-  if (userRecord) {
-    userRecord.balance -= numAmount;
+  userRecord.balance = Math.round((userRecord.balance - numAmount) * 100) / 100;
+  if (userSubBalancesStore.has(userRecord.id)) {
+    userSubBalancesStore.get(userRecord.id)!.EUR = userRecord.balance;
   }
 
   const ref = `KZ-WTH-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -3449,7 +3157,7 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
   mockTransactions.unshift(withdrawalTx);
 
   const userRecipient = req.user?.email || 'investor@kretz.com';
-  const foundUser = mockUsers.find(u => u.id === req.user?.id);
+  const foundUser = req.user;
   
   sendEmail({
     templateId: 'withdrawal_requested',
@@ -3501,7 +3209,7 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
@@ -3518,8 +3226,8 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
       requestId: req.id
     });
   }
-  const userRecordCheck = mockUsers.find(u => u.id === req.user?.id);
-  if (userRecordCheck && userRecordCheck.status === 'suspended') {
+  const userRecordCheck = req.user?.status === 'suspended' ? req.user : null;
+  if (userRecordCheck) {
     return res.status(403).json({
       success: false,
       error: 'Account access restricted by administrative compliance.',
@@ -3528,9 +3236,10 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const { propertyId, tokensCount, paymentMethod = 'Platform Balance', feePercent, idempotencyKey } = req.body || {};
+  const { propertyId, tokensCount, paymentMethod = 'Platform Balance', idempotencyKey } = req.body || {};
+  const count = Number(tokensCount);
 
-  if (!propertyId || !tokensCount || Number(tokensCount) < 1) {
+  if (!propertyId || !Number.isSafeInteger(count) || count < 1) {
     return res.status(400).json({
       success: false,
       error: 'Valid property ID and token count (min 1) are required.',
@@ -3540,7 +3249,53 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   // Idempotency check to prevent duplicate double-charge
-  const safeKey = idempotencyKey || `${req.user?.id}-${propertyId}-${tokensCount}`;
+  const clientKey = typeof idempotencyKey === 'string' && idempotencyKey.trim()
+    ? idempotencyKey.trim().slice(0, 128)
+    : `${propertyId}-${count}`;
+  const safeKey = `${req.user!.id}:${clientKey}`;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const prop = await getInvestmentPlan(String(propertyId));
+      if (!prop) return res.status(404).json({ success: false, error: 'Target property not found in the persistent offerings catalogue.', code: 'PROPERTY_NOT_FOUND', requestId: req.id });
+      if (prop.status !== 'funding' && prop.status !== 'active') return res.status(409).json({ success: false, error: 'This property is not currently accepting investments.', code: 'OFFERING_NOT_OPEN', requestId: req.id });
+      if (prop.availableTokens < count) return res.status(400).json({ success: false, error: `Only ${prop.availableTokens} tokens remain available in ${prop.title}.`, code: 'INSUFFICIENT_AVAILABLE_TOKENS', requestId: req.id });
+      const principal = count * prop.tokenPrice;
+      if (principal < prop.minimumInvestment) return res.status(400).json({ success: false, error: `Minimum investment for ${prop.title} is €${prop.minimumInvestment}.`, code: 'BELOW_MINIMUM_INVESTMENT', requestId: req.id });
+      const certificateId = `KZ-CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      const investmentId = crypto.randomUUID();
+      const transactionId = crypto.randomUUID();
+      const result: any = await runFinancialRpc('kretz_purchase_tokens', {
+        p_user_id: req.user!.id, p_plan_id: prop.id, p_tokens: count,
+        p_payment_method: String(paymentMethod), p_reference: certificateId,
+        p_investment_id: investmentId, p_transaction_id: transactionId,
+        p_certificate_id: certificateId, p_idempotency_key: clientKey
+      });
+      const transaction = toApiTransaction(result.transaction);
+      const investment = result.investment || {};
+      sendEmail({
+        templateId: 'investment_confirmed', recipient: req.user!.email,
+        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, propertyTitle: prop.title, tokensCount: count, tokenPrice: prop.tokenPrice.toFixed(2), totalCost: Number(result.total || transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), currency: 'EUR', certificateId: investment.certificate_id || certificateId, spvName: `${prop.title} SPV S.L.`, projectedYield: `${prop.projectedYield}% Annualized`, firstDistributionDate: '1st of next month' }
+      }).catch(err => logger.log({ level: 'error', category: 'marketplace', requestId: req.id || 'req-investment-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: err.message }));
+      return res.json({
+        success: true,
+        data: {
+          investment: { id: investment.id || investmentId, propertyId: prop.id, tokensPurchased: count, totalCost: Number(result.total || transaction.amount), certificateId: investment.certificate_id || certificateId },
+          transaction: { ...transaction, propertyId: prop.id, propertyTitle: prop.title, tokensPurchased: count },
+          remainingAvailableTokens: Number(result.remaining_tokens ?? Math.max(0, prop.availableTokens - count))
+        },
+        message: `Congratulations! You have acquired ${count} tokens in ${prop.title}.`,
+        requestId: req.id
+      });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-investment-db', eventType: 'INVESTMENT_PERSIST_FAILED', outcome: 'failure', message: error?.message || 'Investment could not be processed.' });
+      const message = String(error?.message || '');
+      const status = /INSUFFICIENT_FUNDS|INSUFFICIENT_AVAILABLE_TOKENS|BELOW_MINIMUM_INVESTMENT|INVALID_TOKEN_COUNT/.test(message) ? 400 : /PROPERTY_NOT_FOUND|ACCOUNT_LEDGER_UNAVAILABLE/.test(message) ? 404 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'The investment service is temporarily unavailable. No investment was charged or issued.' : message, code: status === 503 ? 'INVESTMENT_DATABASE_UNAVAILABLE' : 'INVESTMENT_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Investments are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
   if (processedWebhooks.has(safeKey)) {
     return res.status(409).json({
       success: false,
@@ -3569,9 +3324,9 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const count = Number(tokensCount);
   const principalCost = count * prop.tokenPrice;
-  const resolvedFeePct = typeof feePercent === 'number' && feePercent >= 0 ? feePercent : 0;
+  // The settlement fee is a server-owned platform setting, never a client-controlled input.
+  const resolvedFeePct = 0.25;
   const feeEur = Math.round(principalCost * (resolvedFeePct / 100) * 100) / 100;
   const totalCost = Math.round((principalCost + feeEur) * 100) / 100;
 
@@ -3594,9 +3349,17 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
+  if (!userRecord) {
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger. No investment can be charged or issued.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
 
-  if (userRecord && userRecord.balance < totalCost) {
+  if (userRecord.balance < totalCost) {
     return res.status(400).json({
       success: false,
       error: `Insufficient balance (€${userRecord.balance.toFixed(2)}) for investment of €${totalCost.toFixed(2)}. Please deposit funds first.`,
@@ -3606,11 +3369,9 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   // Server-authoritative state mutation
-  if (userRecord) {
-    userRecord.balance = Math.round((userRecord.balance - totalCost) * 100) / 100;
-    const subBals = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
-    subBals.EUR = userRecord.balance;
-  }
+  userRecord.balance = Math.round((userRecord.balance - totalCost) * 100) / 100;
+  const subBals = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
+  subBals.EUR = userRecord.balance;
   prop.availableTokens -= count;
   prop.fundedAmount += principalCost;
   processedWebhooks.add(safeKey);
@@ -3700,18 +3461,19 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
  * GET /api/v1/admin/database/health
  * Returns database health and diagnostics report
  */
-router.get('/admin/database/health', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  res.json({
-    success: true,
-    data: {
-      status: 'healthy',
-      usersCount: mockUsers.length,
-      listingsCount: mockListings.length,
-      transactionsCount: mockTransactions.length,
-      timestamp: new Date().toISOString()
-    },
-    message: 'Database structure verified and healthy.',
-    requestId: req.id
+router.get('/admin/database/health', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const health = await databaseHealth();
+      return res.status(health.status === 'healthy' ? 200 : 503).json({ success: health.status === 'healthy', data: { ...health, timestamp: new Date().toISOString() }, message: health.status === 'healthy' ? 'Supabase database connection verified.' : 'Database connection is degraded.', requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Database health check failed.', code: 'DATABASE_HEALTH_FAILED', detail: error?.message, requestId: req.id });
+    }
+  }
+  return res.status(process.env.NODE_ENV === 'production' ? 503 : 200).json({
+    success: process.env.NODE_ENV !== 'production',
+    data: { status: 'not_configured', usersCount: null, listingsCount: mockListings.length, transactionsCount: mockTransactions.length, timestamp: new Date().toISOString() },
+    message: 'Supabase server credentials are not configured.', requestId: req.id
   });
 });
 
@@ -3719,7 +3481,21 @@ router.get('/admin/database/health', requireAdmin, (req: AuthenticatedRequest, r
  * POST /api/v1/admin/database/repair
  * Scans, repairs, and synchronizes database state
  */
-router.post('/admin/database/repair', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/database/repair', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const health = await databaseHealth();
+      return res.status(health.status === 'healthy' ? 200 : 503).json({
+        success: health.status === 'healthy',
+        data: { status: health.status, usersCount: health.usersCount, listingsCount: health.listingsCount, transactionsCount: health.transactionsCount, checkedAt: new Date().toISOString(), repairedItems: [] },
+        message: 'Database integrity connectivity check completed. No records were automatically modified.',
+        requestId: req.id
+      });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Database integrity check failed.', code: 'DATABASE_REPAIR_CHECK_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   logger.log({
     level: 'info',
     category: 'admin',
@@ -3738,11 +3514,11 @@ router.post('/admin/database/repair', requireAdmin, (req: AuthenticatedRequest, 
     data: {
       status: 'repaired',
       repairedItems: [
-        'Verified mockUsers data structures and balance allocations',
+        'Verified Supabase Auth and user_profiles are the customer identity source',
         'Verified mockListings property token counts and image arrays',
         'Validated transaction history integrity'
       ],
-      usersCount: mockUsers.length,
+      usersCount: null,
       listingsCount: mockListings.length,
       transactionsCount: mockTransactions.length,
       repairedAt: new Date().toISOString()
@@ -3757,6 +3533,9 @@ router.post('/admin/database/repair', requireAdmin, (req: AuthenticatedRequest, 
  * Secure payment provider webhook processing with signature verification & idempotency
  */
 router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Payment-provider webhook signature verification is not configured. No payment event was accepted.', code: 'PAYMENT_WEBHOOK_NOT_CONFIGURED', requestId: req.id });
+  }
   const providerSignature = req.headers['x-signature'] || req.headers['stripe-signature'];
   const event = req.body || {};
   const eventId = event.id || req.headers['x-event-id'];
@@ -3886,75 +3665,69 @@ router.put('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, re
  */
 
 // User profile & session contract endpoints
-router.get(['/auth/me', '/users/me'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const stored = findUserRecordForRequest(req);
-  res.json({
-    success: true,
-    data: stored ? { ...req.user, ...stored } : req.user,
-    requestId: req.id
-  });
+router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const profile = await getUserProfile(req.user!.id);
+    if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    return res.json({ success: true, data: {
+      ...req.user, fullName: profile.full_name, country: profile.country,
+      accountType: profile.account_type, balance: Number(profile.wallet_balance || 0),
+      kycStatus: profile.kyc_status, phoneNumber: profile.phone_number,
+      status: profile.account_status || 'active'
+    }, requestId: req.id });
+  } catch {
+    return res.status(503).json({ success: false, error: 'Your account is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
+  }
 });
 
-router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.patch('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const updates = req.body || {};
-  const allowedFields = [
-    'fullName',
-    'phoneNumber',
-    'country',
-    'countryCode',
-    'bankIban',
-    'cryptoDepositAddress',
-    'taxId',
-    'address',
-    'city',
-    'postalCode',
-    'dateOfBirth',
-    'twoFactorEnabled',
-    'avatarUrl'
-  ];
-
-  let target = findUserRecordForRequest(req);
-  if (!target) {
-    target = {
-      id: req.user!.id,
-      email: req.user!.email,
-      fullName: req.user!.fullName || 'Verified Investor',
-      passwordHash: '',
-      role: req.user!.role,
-      kycStatus: 'unverified',
-      balance: req.user!.balance ?? 0,
-      currency: 'EUR',
-      status: 'active',
-      createdAt: new Date().toISOString()
+  try {
+    const patch: Record<string, unknown> = {
+      full_name: updates.fullName, phone_number: updates.phoneNumber, country: updates.country,
+      country_code: updates.countryCode, bank_iban: updates.bankIban,
+      crypto_deposit_address: updates.cryptoDepositAddress, tax_id: updates.taxId,
+      address: updates.address, city: updates.city, postal_code: updates.postalCode,
+      date_of_birth: updates.dateOfBirth, avatar_url: updates.avatarUrl
     };
-    mockUsers.push(target);
+    const profile = await updateUserProfile(req.user!.id, patch);
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, phoneNumber: profile.phone_number,
+      country: profile.country, countryCode: profile.country_code, address: profile.address,
+      city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url,
+      bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address,
+      taxId: profile.tax_id, dateOfBirth: profile.date_of_birth,
+      balance: Number(profile.wallet_balance || 0), kycStatus: profile.kyc_status
+    }, message: 'User profile updated successfully.', requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-update-db', eventType: 'PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Profile update failed.' });
+    return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
   }
-
-  for (const key of allowedFields) {
-    if (updates[key] !== undefined) {
-      (target as any)[key] = typeof updates[key] === 'string' ? updates[key].trim() : updates[key];
-    }
-  }
-
-  res.json({
-    success: true,
-    data: sanitizeUser(target),
-    message: 'User profile updated successfully.',
-    requestId: req.id
-  });
 });
 
 // Dashboard summary & performance endpoints
-router.get('/dashboard/summary', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const userRecord = findUserRecordForRequest(req);
+  if (isSupabaseServerConfigured()) {
+    try {
+      const summary = await getPersistentDashboardSummary(userId);
+      if (!summary) return res.status(404).json({ success: false, error: 'Investor profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: summary, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-dashboard-db', eventType: 'DASHBOARD_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Dashboard query failed.' });
+      return res.status(503).json({ success: false, error: 'Your dashboard is temporarily unavailable.', code: 'DASHBOARD_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  const userRecord = await findUserRecordForRequest(req);
   const availableBalance = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
   const userInvTxs = mockTransactions.filter(
     t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
   );
   const investedTotal = userInvTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const uniqueProps = new Set(userInvTxs.map(t => (t as any).propertyId)).size;
-  const earnedDividends = userId === 'usr-investor-01' ? 320.0 : 0.0;
+  const earnedDividends = 0;
   const projectedMonthlyIncome = Number((investedTotal * 0.061).toFixed(2));
 
   res.json({
@@ -3972,8 +3745,19 @@ router.get('/dashboard/summary', requireAuth, (req: AuthenticatedRequest, res: R
   });
 });
 
-router.get('/dashboard/performance', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/dashboard/performance', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const data = await getPersistentPerformance(userId);
+      if (!data) return res.status(404).json({ success: false, error: 'Investor profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-performance-db', eventType: 'PERFORMANCE_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Performance query failed.' });
+      return res.status(503).json({ success: false, error: 'Investment performance is temporarily unavailable.', code: 'PERFORMANCE_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const userInvTxs = mockTransactions.filter(
     t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
   );
@@ -4010,8 +3794,19 @@ router.get('/dashboard/performance', requireAuth, (req: AuthenticatedRequest, re
 });
 
 // Financial Reports
-router.get('/reports/account-statement', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const userRecord = findUserRecordForRequest(req);
+router.get('/reports/account-statement', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const data = await getPersistentAccountStatement(req.user!.id);
+      if (!data) return res.status(404).json({ success: false, error: 'Investor profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-statement-db', eventType: 'ACCOUNT_STATEMENT_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Account statement query failed.' });
+      return res.status(503).json({ success: false, error: 'Your account statement is temporarily unavailable.', code: 'STATEMENT_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const userRecord = await findUserRecordForRequest(req);
   const userId = req.user!.id;
   const userEmail = req.user?.email?.toLowerCase();
   const userTxs = mockTransactions.filter(
@@ -4096,7 +3891,17 @@ router.get('/investment-plans/:planId', (req: AuthenticatedRequest, res: Respons
 });
 
 // Admin Control Contract Endpoints
-router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const stats = await getPersistentAdminDashboard();
+      return res.json({ success: true, data: { ...stats, systemUptimePercent: 99.9 }, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-dashboard-db', eventType: 'ADMIN_DASHBOARD_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load admin dashboard.' });
+      return res.status(503).json({ success: false, error: 'The administrator dashboard is temporarily unavailable.', code: 'ADMIN_DASHBOARD_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: {
@@ -4111,17 +3916,22 @@ router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, (req: Authenticat
   });
 });
 
-router.get('/admin/investments', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  res.json({
-    success: true,
-    data: [
-      { id: 'inv-001', userId: 'usr-investor-01', userEmail: 'investor@kretz.com', propertyTitle: 'Villa El Mirador', tokensPurchased: 100, totalCost: 10000, purchaseDate: new Date(Date.now() - 86400000 * 30).toISOString() }
-    ],
-    requestId: req.id
-  });
+router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { return res.json({ success: true, data: await listPersistentInvestments(), requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Investment records are temporarily unavailable.', code: 'INVESTMENT_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 });
 
-router.get('/admin/transactions', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { const rows = await listAdminTransactions(); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Financial transactions are temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: mockTransactions,
@@ -4129,7 +3939,12 @@ router.get('/admin/transactions', requireAdmin, (req: AuthenticatedRequest, res:
   });
 });
 
-router.get('/admin/deposits', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { const rows = await listAdminTransactions('deposit'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Deposit requests are temporarily unavailable.', code: 'DEPOSIT_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent deposit storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const deposits = mockTransactions.filter(t => t.type === 'deposit');
   res.json({
     success: true,
@@ -4138,7 +3953,12 @@ router.get('/admin/deposits', requireAdmin, (req: AuthenticatedRequest, res: Res
   });
 });
 
-router.get('/admin/withdrawals', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try { const rows = await listAdminTransactions('withdrawal'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
+    catch (error: any) { return res.status(503).json({ success: false, error: 'Withdrawal requests are temporarily unavailable.', code: 'WITHDRAWAL_DATABASE_UNAVAILABLE', requestId: req.id }); }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent withdrawal storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const withdrawals = mockTransactions.filter(t => t.type === 'withdrawal');
   res.json({
     success: true,
@@ -4147,178 +3967,56 @@ router.get('/admin/withdrawals', requireAdmin, (req: AuthenticatedRequest, res: 
   });
 });
 
-router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { depositId } = req.params;
-  const targetTx = mockTransactions.find(t => t.id === depositId || t.reference === depositId);
-  
-  if (targetTx) {
-    targetTx.status = 'completed';
-    const foundUser =
-      mockUsers.find(u => u.id === targetTx.userId) ||
-      (targetTx.userEmail ? mockUsers.find(u => u.email === targetTx.userEmail) : undefined);
-    const creditAmt = Number(targetTx.amount);
-    if (foundUser) {
-      if (userSubBalancesStore.has(foundUser.id)) {
-        const sub = userSubBalancesStore.get(foundUser.id)!;
-        sub.EUR = Number(((sub.EUR || 0) + creditAmt).toFixed(2));
-        foundUser.balance = sub.EUR;
-      } else {
-        foundUser.balance = Number(((foundUser.balance || 0) + creditAmt).toFixed(2));
-      }
-    }
-    pushUserNotification(targetTx.userId, {
-      title: 'Deposit Approved & Credited',
-      message: `Your deposit of €${creditAmt.toFixed(2)} (${targetTx.reference}) has been credited to your EUR balance.`,
-      type: 'financial'
-    });
-    
-    sendEmail({
-      templateId: 'deposit_confirmed',
-      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-      data: {
-        fullName: foundUser?.fullName || 'Valued Investor',
-        amount: Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        currency: targetTx.currency || 'EUR',
-        reference: targetTx.reference || depositId,
-        creditedBalance: (foundUser?.balance || Number(targetTx.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        settledAt: new Date().toUTCString()
-      }
-    }).catch(err => {
-      logger.log({
-        level: 'error',
-        category: 'admin',
-        requestId: req.id || 'req-dep-appr-email',
-        eventType: 'EMAIL_DISPATCH_FAILURE',
-        outcome: 'failure',
-        message: `Failed to dispatch deposit confirmation email: ${err.message}`
-      });
-    });
+router.post('/admin/deposits/:depositId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit approved and wallet credited.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Deposit approval could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
   }
-
-  res.json({
-    success: true,
-    message: `Deposit ${depositId} approved and cash credited to user balance.`,
-    requestId: req.id
-  });
 });
 
-router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { depositId } = req.params;
-  const { reason } = req.body || {};
-  const targetTx = mockTransactions.find(t => t.id === depositId || t.reference === depositId);
-
-  if (!targetTx) {
-    return res.status(404).json({
-      success: false,
-      error: `Deposit transaction '${depositId}' not found.`,
-      code: 'DEPOSIT_NOT_FOUND',
-      requestId: req.id
-    });
+router.post('/admin/deposits/:depositId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Transfer verification could not be matched.' });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit rejected.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Deposit rejection could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
   }
-
-  targetTx.status = 'rejected';
-  (targetTx as any).rejectionReason = reason || 'Transfer verification could not be matched.';
-  pushUserNotification(targetTx.userId, {
-    title: 'Deposit Request Declined',
-    message: `Your deposit (${targetTx.reference}) was declined: ${(targetTx as any).rejectionReason}`,
-    type: 'warning'
-  });
-
-  const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
-  sendEmail({
-    templateId: 'payment_notification',
-    recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-    data: {
-      fullName: foundUser?.fullName || 'Valued Investor',
-      payment_type: 'Deposit Request Declined',
-      amount: `€${Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      payment_status: 'Declined',
-      reference: targetTx.reference || depositId,
-      notes: (targetTx as any).rejectionReason
-    },
-    idempotencyKey: `idemp-dep-reject-${targetTx.id}`
-  }).catch(() => {});
-
-  res.json({
-    success: true,
-    data: targetTx,
-    message: `Deposit ${depositId} rejected.`,
-    requestId: req.id
-  });
 });
 
-router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { withdrawalId } = req.params;
-  const targetTx = mockTransactions.find(t => t.id === withdrawalId || t.reference === withdrawalId);
-  
-  if (targetTx) {
-    targetTx.status = 'completed';
-    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
-    
-    sendEmail({
-      templateId: 'withdrawal_completed',
-      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-      data: {
-        fullName: foundUser?.fullName || 'Valued Investor',
-        amount: Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        currency: targetTx.currency || 'EUR',
-        reference: targetTx.reference || withdrawalId,
-        destination: (targetTx as any).destination || 'Verified Bank Account',
-        bankTransferId: `SEPA-CX-${Date.now().toString().slice(-6)}`,
-        dispatchedAt: new Date().toUTCString()
-      }
-    }).catch(err => {
-      logger.log({
-        level: 'error',
-        category: 'admin',
-        requestId: req.id || 'req-wth-appr-email',
-        eventType: 'EMAIL_DISPATCH_FAILURE',
-        outcome: 'failure',
-        message: `Failed to dispatch withdrawal completed email: ${err.message}`
-      });
-    });
+router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal approval could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
   }
-
-  res.json({
-    success: true,
-    message: `Withdrawal ${withdrawalId} approved and transfer queued.`,
-    requestId: req.id
-  });
 });
 
-router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
-  const { withdrawalId } = req.params;
-  const targetTx = mockTransactions.find(t => t.id === withdrawalId || t.reference === withdrawalId);
-  if (targetTx) {
-    targetTx.status = 'rejected';
-    // Refund locked balance back to user
-    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
-    if (foundUser) {
-      foundUser.balance = (foundUser.balance || 0) + Number(targetTx.amount);
-    }
-
-    sendEmail({
-      templateId: 'payment_notification',
-      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-      data: {
-        fullName: foundUser?.fullName || 'Valued Investor',
-        payment_type: 'Withdrawal Declined & Refunded',
-        amount: `€${Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        payment_status: 'Refunded to Wallet',
-        reference: targetTx.reference || withdrawalId
-      },
-      idempotencyKey: `idemp-wth-reject-${targetTx.id}`
-    }).catch(() => {});
+router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Withdrawal rejected by finance review.' });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal rejection could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
   }
-
-  res.json({
-    success: true,
-    message: `Withdrawal ${withdrawalId} rejected and funds unlocked.`,
-    requestId: req.id
-  });
 });
 
 /**
+ * ==========================================================================/**
  * ============================================================================
  * REAL ESTATE DOSSIERS & EDITORIAL INSIGHTS API ENDPOINTS
  * ============================================================================
@@ -5093,9 +4791,9 @@ router.get('/trust-center', (_req, res) => {
  * Returns verified property-by-property payment allocations and daily payment history
  * for the authenticated investor.
  */
-router.get('/distributions/my-properties', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/distributions/my-properties', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const matchedUser = findUserRecordForRequest(req);
+  const matchedUser = await findUserRecordForRequest(req);
   const resolvedEmail = matchedUser?.email || req.user?.email || '';
 
   // Filter investor transactions
@@ -5256,6 +4954,7 @@ router.post('/admin/distributions/properties/:id/toggle', requireAdmin, (req: Au
  * Admin: Execute daily payment calculation and processing run with idempotency protection
  */
 router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent distribution processing is not configured. No customer balances were changed.', code: 'DISTRIBUTION_DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const result = dailyPaymentService.processDailyRun(
       req.body || {},
@@ -5270,7 +4969,6 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
 
         const userMap = new Map<string, any>();
         for (const tx of relevantTxs) {
-          const u = mockUsers.find(mu => mu.id === tx.userId || (tx.userEmail && mu.email === tx.userEmail));
           const prev = userMap.get(tx.userId);
           const tokens = Number((tx as any).tokensPurchased || 0);
           const cost = Number(tx.amount || 0);
@@ -5280,8 +4978,8 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
           } else {
             userMap.set(tx.userId, {
               userId: tx.userId,
-              userEmail: tx.userEmail || u?.email || 'investor@kretz.com',
-              userName: u?.fullName || 'Institutional Investor',
+              userEmail: tx.userEmail || '',
+              userName: 'Institutional Investor',
               tokensCount: tokens,
               allocatedEUR: cost,
               investmentId: tx.id
@@ -5291,18 +4989,11 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
         return Array.from(userMap.values());
       },
       (targetUserId, amountEUR, propTitle, ref, date) => {
-        const u = mockUsers.find(mu => mu.id === targetUserId);
-        if (u) {
-          u.balance = Math.round((u.balance + amountEUR) * 100) / 100;
-          const subBals = getOrInitUserSubBalances(u.id, u.balance);
-          subBals.EUR = u.balance;
-        }
-
         const txId = `tx-dist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
         mockTransactions.unshift({
           id: txId,
           userId: targetUserId,
-          userEmail: u?.email || 'investor@kretz.com',
+          userEmail: '',
           type: 'distribution',
           amount: amountEUR,
           currency: 'EUR',

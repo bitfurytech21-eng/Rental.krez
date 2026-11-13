@@ -4,7 +4,7 @@ import { Investment } from '../../types/investment';
 import { Transaction } from '../../types/transaction';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
-import { getAuthToken } from '../../lib/api';
+import { getAuthToken, getApiUrl } from '../../lib/api';
 import { printUserDirectoryReport, UserDirectoryPrintData } from '../../lib/printService';
 import {
   Users,
@@ -43,6 +43,8 @@ import {
 
 interface AdminUserManagementProps {
   users: User[];
+  investments?: any[];
+  transactions?: any[];
   currentAdminEmail: string;
   onRefreshAll: () => void;
   onQuickSuccess: (msg: string) => void;
@@ -52,6 +54,8 @@ interface AdminUserManagementProps {
 
 export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   users,
+  investments = [],
+  transactions = [],
   currentAdminEmail,
   onRefreshAll,
   onQuickSuccess,
@@ -82,12 +86,26 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     const stats: Record<string, { investments: Investment[]; transactions: Transaction[] }> = {};
     users.forEach(u => {
       stats[u.id] = {
-        investments: ledger.getInvestments(u.id),
-        transactions: ledger.getTransactions(u.id)
+        investments: investments.filter((row: any) => row.userId === u.id).map((row: any) => ({
+          id: row.id, userId: row.userId, propertyId: row.propertyId, propertyTitle: row.propertyTitle || row.propertyId,
+          propertyLocation: '', propertyImage: '', tokensPurchased: Number(row.tokensPurchased || 0),
+          tokenPrice: Number(row.tokensPurchased ? row.totalCost / row.tokensPurchased : 0),
+          totalAmountInvested: Number(row.totalCost || 0), purchasedAt: row.purchaseDate || '',
+          startDate: row.purchaseDate || '', maturityDate: '', durationMonths: 0, estimatedAnnualYield: 0,
+          projectedMonthlyIncome: 0, totalDividendsReceived: 0, status: row.status || 'active',
+          transactionHash: '', certificateId: row.certificateId || ''
+        })) as Investment[],
+        transactions: transactions.filter((row: any) => row.userId === u.id).map((row: any) => ({
+          id: row.id, userId: row.userId, type: row.type, amount: Number(row.amount || 0),
+          currency: row.currency || 'EUR', status: row.status || 'pending',
+          description: row.notes || row.type || 'Account transaction', reference: row.reference || row.id,
+          createdAt: row.createdAt || '', paymentMethod: row.method || '', balanceAfter: 0,
+          txHash: row.txHash, metadata: row.metadata || {}
+        })) as Transaction[]
       };
     });
     return stats;
-  }, [users]);
+  }, [users, investments, transactions]);
 
   // Aggregate KPI metrics
   const totalUsersCount = users.length;
@@ -180,35 +198,24 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     setIsSubmittingStatus(true);
     try {
-      // 1. Update in local authoritative ledger & write audit log
-      ledger.toggleUserStatus(
-        statusModalUser.id,
-        targetNewStatus,
-        currentAdminEmail,
-        suspensionReason.trim() || undefined
-      );
-
-      // 2. Call backend API if available
-      try {
-        const token = getAuthToken();
-        await fetch(`/api/v1/admin/users/${statusModalUser.id}/status`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({
-            status: targetNewStatus,
-            reason: suspensionReason.trim()
-          })
-        });
-      } catch (apiErr) {
-        // Fallback gracefully if API is running in static/mock mode
-        console.warn('API sync notice:', apiErr);
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${statusModalUser.id}/status`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          status: targetNewStatus,
+          reason: suspensionReason.trim()
+        })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'The account status change could not be saved.');
       }
-
       onQuickSuccess(
-        `User ${statusModalUser.fullName} (${statusModalUser.email}) status successfully set to ${targetNewStatus.toUpperCase()}. Audit log recorded.`
+        `User ${statusModalUser.fullName} (${statusModalUser.email}) status successfully set to ${targetNewStatus.toUpperCase()} in the database.`
       );
       setStatusModalUser(null);
       onRefreshAll();

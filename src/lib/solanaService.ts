@@ -1,3 +1,5 @@
+import { getApiUrl } from './api';
+
 export type SolanaCluster = 'mainnet-beta' | 'devnet' | 'testnet';
 
 export const SOLANA_USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
@@ -248,7 +250,7 @@ export async function verifyInfrastructureAccountsOnMainnet(): Promise<
 
   // 1. Try server-side proxy endpoint first to avoid browser CORS / rate limits
   try {
-    const apiRes = await fetch('/api/v1/blockchain/infrastructure?verifyRpc=true');
+    const apiRes = await fetch(getApiUrl('/blockchain/infrastructure?verifyRpc=true'));
     if (apiRes.ok) {
       const json = await apiRes.json();
       if (json?.success && json?.data?.rpcVerification) {

@@ -23,8 +23,8 @@ Administrator Gateway (`/admin/login`), session signing, and protected system lo
 | Key | Recommended Value | Scope | Notes |
 | :--- | :--- | :--- | :--- |
 | `ADMIN_EMAIL` | `admin@kretz.com` | Server | Initial admin email (overridden once you save a Custom Login at `/admin/login`). |
-| `ADMIN_PASSWORD` | *(leave blank or set yours)* | Server | Optional plaintext override. Defaults to `AdminSecure2026!#` when blank. |
-| `ADMIN_PASSWORD_HASH` | *(leave blank or 60-char bcrypt)* | Server | Only set if using a real `$2b$12$...` bcrypt hash. Never paste placeholder text. |
+| `ADMIN_PASSWORD` | *(leave blank)* | Server | Development-only legacy setting. Never configure this plaintext secret in production; production authentication requires the bcrypt hash below. |
+| `ADMIN_PASSWORD_HASH` | *(required 60-char bcrypt hash in production)* | Server | Initial production administrator credential before custom credentials are stored in Supabase. Never paste placeholder text or a plaintext password. |
 | `SESSION_SECRET` | *(auto-generated 64-char secret)* | Server | Cryptographically signs `kretz_adm_` administrator tokens. |
 | `JWT_SECRET` | *(auto-generated secret)* | Server | Fallback signing secret for token verification. |
 | `ADMIN_LOG_API_KEY` | *(auto-generated secret)* | Server | Protects external monitoring access to `/api/v1/admin/logs`. |

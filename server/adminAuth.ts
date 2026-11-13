@@ -12,8 +12,6 @@
  */
 
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 import bcrypt from 'bcryptjs';
 
 // Interface for verified session payload
@@ -57,41 +55,13 @@ const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const MAX_FAILED_ATTEMPTS = 10;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
-const CUSTOM_CREDS_FILE = path.resolve(process.cwd(), 'server', '.admin-credentials.json');
-let cachedCustomCreds: CustomAdminCredentials | null | undefined = undefined;
+let cachedCustomCreds: CustomAdminCredentials | null | undefined = null;
 
 function loadCustomCredentials(): CustomAdminCredentials | null {
-  if (cachedCustomCreds !== undefined) {
-    return cachedCustomCreds;
-  }
-  try {
-    if (fs.existsSync(CUSTOM_CREDS_FILE)) {
-      const raw = fs.readFileSync(CUSTOM_CREDS_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (
-        parsed &&
-        typeof parsed.adminEmail === 'string' &&
-        parsed.adminEmail.includes('@') &&
-        typeof parsed.passwordHash === 'string' &&
-        parsed.passwordHash.length > 20
-      ) {
-        cachedCustomCreds = {
-          adminEmail: parsed.adminEmail.trim().toLowerCase(),
-          fullName:
-            typeof parsed.fullName === 'string' && parsed.fullName.trim()
-              ? parsed.fullName.trim()
-              : 'Executive Administrator',
-          passwordHash: parsed.passwordHash,
-          updatedAt: parsed.updatedAt || new Date().toISOString(),
-        };
-        return cachedCustomCreds;
-      }
-    }
-  } catch (err) {
-    console.warn('Unable to read custom admin credentials file, falling back to env:', err);
-  }
-  cachedCustomCreds = null;
-  return null;
+  // Production credentials are stored in Supabase by persistentAdminAuth.ts.
+  // This legacy in-memory implementation is retained for local development only.
+  if (process.env.NODE_ENV === 'production') return null;
+  return cachedCustomCreds || null;
 }
 
 let ephemeralSessionSecret: string | null = null;
@@ -113,7 +83,9 @@ export function getAdminConfig() {
     !rawEnvEmail ||
     rawEnvEmail === 'admin@example.com' ||
     rawEnvEmail.startsWith('replace_with');
-  const envEmail = isPlaceholderEmail ? 'admin@kretz.com' : rawEnvEmail;
+  const envEmail = isPlaceholderEmail
+    ? (process.env.NODE_ENV === 'production' ? '' : 'admin@kretz.com')
+    : rawEnvEmail;
 
   const rawHash = process.env.ADMIN_PASSWORD_HASH?.trim() || '';
   const isValidBcryptHash = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(rawHash);
@@ -132,7 +104,7 @@ export function getAdminConfig() {
   const sessionSecret =
     process.env.SESSION_SECRET ||
     process.env.JWT_SECRET ||
-    getEphemeralSessionSecret();
+    (process.env.NODE_ENV === 'production' ? '' : getEphemeralSessionSecret());
 
   if (custom) {
     return {
@@ -174,7 +146,10 @@ export function validateAdminEnvironment(): {
   if (config.plaintextPassword) {
     return { configured: true, mode: 'environment_password' };
   }
-  return { configured: true, mode: 'development_fallback' };
+  return {
+    configured: process.env.NODE_ENV !== 'production' && Boolean(config.adminEmail && config.sessionSecret),
+    mode: 'development_fallback'
+  };
 }
 
 /**
@@ -183,6 +158,7 @@ export function validateAdminEnvironment(): {
 export async function verifyAdminCredentials(password: string): Promise<boolean> {
   if (!password) return false;
   const config = getAdminConfig();
+  if (!config.adminEmail || !config.sessionSecret) return false;
 
   // 1. If secure bcrypt password hash is configured (Custom Admin Store or Production Env)
   if (config.passwordHash) {
@@ -202,7 +178,8 @@ export async function verifyAdminCredentials(password: string): Promise<boolean>
     return crypto.timingSafeEqual(a, b);
   }
 
-  // 3. Development / Sandbox fallback if unconfigured
+  // 3. Development / Sandbox fallback only. Production must have an explicit secret.
+  if (process.env.NODE_ENV === 'production') return false;
   const devDefault = 'AdminSecure2026!#';
   const a = Buffer.from(password);
   const b = Buffer.from(devDefault);
@@ -230,19 +207,6 @@ export async function updateCustomAdminCredentials(params: {
 
   cachedCustomCreds = updated;
 
-  try {
-    const dir = path.dirname(CUSTOM_CREDS_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(CUSTOM_CREDS_FILE, JSON.stringify(updated, null, 2), {
-      encoding: 'utf-8',
-      mode: 0o600,
-    });
-  } catch (err) {
-    console.warn('Custom admin credentials updated in memory; disk write warning:', err);
-  }
-
   // Invalidate previously issued admin sessions upon credential rotation
   revokeAllIssuedSessions();
   failedAttempts.clear();
@@ -255,13 +219,6 @@ export async function updateCustomAdminCredentials(params: {
  */
 export function resetCustomAdminCredentials(): void {
   cachedCustomCreds = null;
-  try {
-    if (fs.existsSync(CUSTOM_CREDS_FILE)) {
-      fs.unlinkSync(CUSTOM_CREDS_FILE);
-    }
-  } catch (err) {
-    console.warn('Unable to remove custom admin credentials file:', err);
-  }
   revokeAllIssuedSessions();
   failedAttempts.clear();
 }

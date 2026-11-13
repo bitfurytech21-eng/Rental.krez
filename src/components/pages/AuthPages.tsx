@@ -165,7 +165,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         determinedRole,
         accountType,
         currentCountry.name,
-        fullPhoneNumber
+        fullPhoneNumber,
+        currentCountry.code
       );
 
       if (referralCode) {

@@ -38,7 +38,8 @@ interface AuthContextType {
     role?: UserRole,
     accountType?: AccountType,
     country?: string,
-    phoneNumber?: string
+    phoneNumber?: string,
+    countryCode?: string
   ) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   refreshUser: () => void;
@@ -236,7 +237,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             initialSession.user.id,
             initialSession.user.email || '',
             initialSession.user.user_metadata?.full_name || initialSession.user.email?.split('@')[0] || 'Investor',
-            (initialSession.user.user_metadata?.role as UserRole) || 'investor',
+            'investor',
             (initialSession.user.user_metadata?.account_type as AccountType) || undefined
           );
           setUser(synced);
@@ -287,7 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           currentSession.user.id,
           currentSession.user.email || '',
           currentSession.user.user_metadata?.full_name || currentSession.user.email?.split('@')[0] || 'Investor',
-          (currentSession.user.user_metadata?.role as UserRole) || 'investor',
+          'investor',
           (currentSession.user.user_metadata?.account_type as AccountType) || undefined
         );
         setUser(synced);
@@ -319,7 +320,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         res = await authApi.login(cleanEmail, pass);
       } catch (err: any) {
-        // Handle static host 405 Method Not Allowed / 404 / network connection fallback
+        if (import.meta.env.PROD) {
+          throw new Error('Authentication service is unavailable. Please try again shortly.');
+        }
+        // Development preview fallback only for static hosts without the API.
         if (
           err?.status === 405 ||
           err?.status === 404 ||
@@ -411,6 +415,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data = res.data;
       error = res.error;
     } catch (networkErr: any) {
+      if (import.meta.env.PROD) {
+        throw new Error('Authentication service is unavailable. Please try again shortly.');
+      }
       console.warn('[auth] Supabase sign-in network error, falling back to local ledger:', networkErr?.message || networkErr);
       let found = ledger.getUserByEmail(cleanEmail);
       if (!found) {
@@ -442,19 +449,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e) {}
 
       if (error.message.toLowerCase().includes('email not confirmed')) {
-        const cleanEmail = email.trim().toLowerCase();
-        let existing = ledger.getUserByEmail(cleanEmail);
-        if (existing) {
-          setUser(existing);
-          const standardToken = existing.role === 'admin' ? 'admin_sess_' + existing.id : 'sess_' + existing.id;
-          setToken(standardToken);
-          setAuthToken(standardToken);
-          localStorage.setItem(CURRENT_USER_KEY, existing.id);
-          return existing;
-        }
-        throw new Error(
-          'Email not verified yet. Please check your inbox and verify your email before signing in.'
-        );
+        throw new Error('Email not verified yet. Please check your inbox and verify your email before signing in.');
       }
       if (error.message.toLowerCase().includes('invalid login credentials')) {
         throw new Error('Invalid email or password. Please verify your credentials and try again.');
@@ -470,7 +465,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data.user.id,
       data.user.email || email,
       data.user.user_metadata?.full_name || email.split('@')[0] || 'Investor',
-      (data.user.user_metadata?.role as UserRole) || 'investor'
+      'investor'
     );
     setUser(synced);
     setSession(data.session);
@@ -501,7 +496,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: UserRole = 'investor',
     accountType?: AccountType,
     country?: string,
-    phoneNumber?: string
+    phoneNumber?: string,
+    countryCode?: string
   ): Promise<RegisterResult> => {
     const determinedAccountType: AccountType = (accountType === 'admin' ? 'individual_investor' : accountType) || 'individual_investor';
     const determinedRole: UserRole = 'investor';
@@ -510,6 +506,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isConfigured) {
       let serverUser: any = null;
       let serverToken: string | null = null;
+      let registrationResponse: any = null;
 
       try {
         const res = await authApi.register({
@@ -519,12 +516,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: determinedRole,
           country: country || 'France',
           phoneNumber: phoneNumber || '',
+          countryCode: countryCode || '',
         });
 
+        registrationResponse = res;
         serverUser = (res as any)?.user || (res as any)?.data?.user;
         serverToken = (res as any)?.token || (res as any)?.data?.token;
       } catch (err: any) {
-        // Handle static host 405 / 404 / offline network fallback
+        // Production must never fall back to browser-local demo accounts when
+        // the durable Supabase-backed registration API is unavailable.
+        if (import.meta.env.PROD) {
+          throw new Error('Registration service is unavailable. Please try again shortly.');
+        }
+        // Handle static host 405 / 404 / offline network fallback only in development.
         if (
           err?.status === 405 ||
           err?.status === 404 ||
@@ -560,13 +564,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(errMsg);
       }
 
-      if (!serverToken || !serverUser) {
+      if (!serverUser?.id) {
         throw new Error('Registration failed. Please check your information and try again.');
       }
 
       const synced = ledger.syncSupabaseUser(
         serverUser.id,
-        serverUser.email,
+        serverUser.email || cleanEmail,
         serverUser.fullName || fullName.trim(),
         determinedRole,
         determinedAccountType,
@@ -574,16 +578,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phoneNumber || ''
       );
 
-      setUser(synced);
-      setToken(serverToken);
-      setAuthToken(serverToken);
-      localStorage.setItem(CURRENT_USER_KEY, synced.id);
+      const requiresVerification = Boolean((registrationResponse as any)?.requiresVerification ?? (registrationResponse as any)?.data?.requiresVerification ?? !serverToken);
+      if (serverToken) {
+        setUser(synced);
+        setToken(serverToken);
+        setAuthToken(serverToken);
+        localStorage.setItem(CURRENT_USER_KEY, synced.id);
+      } else {
+        // Supabase email-confirmation mode creates the account but does not create an authenticated session.
+        setUser(null);
+        setSession(null);
+        setToken(null);
+        setAuthToken(null);
+        localStorage.removeItem(CURRENT_USER_KEY);
+        localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+      }
 
-      return {
-        user: synced,
-        session: null,
-        requiresVerification: false,
-      };
+      return { user: synced, session: null, requiresVerification };
     }
 
     const redirectUrl = getAuthRedirectUrl('/#login');
@@ -600,6 +611,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: determinedRole,
             account_type: determinedAccountType,
             country: country || 'France',
+            country_code: countryCode || '',
             phone_number: phoneNumber || '',
           },
           emailRedirectTo: redirectUrl,
@@ -608,6 +620,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data = res.data;
       error = res.error;
     } catch (networkErr: any) {
+      if (import.meta.env.PROD) {
+        throw new Error('Registration service is unavailable. Please try again shortly.');
+      }
       console.warn('[auth] Supabase signUp network error, creating user in local ledger:', networkErr?.message || networkErr);
       let existing = ledger.getUserByEmail(cleanEmail);
       const created = existing || ledger.createUser({
@@ -643,7 +658,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               signInData.user.id,
               signInData.user.email || cleanEmail,
               fullName.trim(),
-              role
+              determinedRole
             );
             setUser(synced);
             setSession(signInData.session);
@@ -676,16 +691,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             email: cleanEmail,
             password: pass,
           });
-          if (!signInError && signInData?.user) {
+          if (!signInError && signInData?.user && signInData?.session) {
             const synced = ledger.syncSupabaseUser(
               signInData.user.id,
               signInData.user.email || cleanEmail,
               fullName.trim(),
-              role
+              determinedRole
             );
             setUser(synced);
             setSession(signInData.session);
-            const activeToken = signInData.session?.access_token || 'sess_' + synced.id;
+            const activeToken = signInData.session.access_token;
             setToken(activeToken);
             setAuthToken(activeToken);
             localStorage.setItem(CURRENT_USER_KEY, synced.id);
@@ -697,46 +712,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch {}
 
-        // Fallback: Sync user to local ledger and issue authenticated session
-        let existingUser = ledger.getUserByEmail(cleanEmail);
-        const synced = existingUser || ledger.createUser({
-          email: cleanEmail,
-          fullName: fullName.trim() || cleanEmail.split('@')[0],
-          role: determinedRole,
-          accountType: determinedAccountType,
-          country: country || 'France',
-          phoneNumber: phoneNumber || ''
-        });
-
-        setUser(synced);
-        const fallbackToken = 'sess_' + synced.id;
-        setToken(fallbackToken);
-        setAuthToken(fallbackToken);
-        localStorage.setItem(CURRENT_USER_KEY, synced.id);
-
-        // Dispatch welcome & verification email through platform server API
-        try {
-          await apiRequest('/auth/register', {
-            method: 'POST',
-            body: {
-              email: cleanEmail,
-              fullName: fullName.trim(),
-              password: pass,
-              role: determinedRole,
-              country: country || 'France',
-              phoneNumber: phoneNumber || ''
-            },
-            skipAuth: true
-          });
-        } catch (apiErr) {
-          console.warn('Server fallback email dispatch warning:', apiErr);
-        }
-
-        return {
-          user: synced,
-          session: null,
-          requiresVerification: false
-        };
+        throw new Error('Your account may have been created, but the confirmation email could not be sent. Please try again later or contact support to resend the verification email.');
       }
 
       throw new Error(error.message);
@@ -750,41 +726,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data.user.id,
       data.user.email || cleanEmail,
       fullName.trim(),
-      role
+      determinedRole,
+      determinedAccountType,
+      country || 'France',
+      phoneNumber || ''
     );
-    setUser(synced);
 
     if (data.session) {
+      setUser(synced);
       setSession(data.session);
       setToken(data.session.access_token);
       setAuthToken(data.session.access_token);
+      localStorage.setItem(CURRENT_USER_KEY, synced.id);
     } else {
-      const activeToken = 'sess_' + synced.id;
-      setToken(activeToken);
-      setAuthToken(activeToken);
+      // Email confirmation is required: do not fabricate a local token or mark the user authenticated.
+      setUser(null);
+      setSession(null);
+      setToken(null);
+      setAuthToken(null);
+      localStorage.removeItem(CURRENT_USER_KEY);
     }
-    localStorage.setItem(CURRENT_USER_KEY, synced.id);
-
-    // Call server endpoint to dispatch welcome & verification email via server emailService
-    try {
-      await apiRequest('/auth/register', {
-        method: 'POST',
-        body: {
-          email: cleanEmail,
-          fullName: fullName.trim(),
-          password: pass,
-          role: determinedRole,
-          country: country || 'France',
-          phoneNumber: phoneNumber || ''
-        },
-        skipAuth: true
-      });
-    } catch {}
 
     return {
       user: data.user,
       session: data.session,
-      requiresVerification: false,
+      requiresVerification: !data.session,
     };
   };
 
@@ -934,9 +900,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const cleanCode = code.trim();
 
-    // Default development/master code (123456) or unconfigured / dummy factors always succeed safely
-    if (!isConfigured || factorId === 'default_factor' || challengeId === 'challenge_admin' || cleanCode === '123456') {
+    // Development-only MFA bypass. Production always requires a configured, verified factor.
+    if (import.meta.env.DEV && (!isConfigured || factorId === 'default_factor' || challengeId === 'challenge_admin' || cleanCode === '123456')) {
       return true;
+    }
+    if (!isConfigured) {
+      throw new Error('Multi-factor authentication is not configured. Contact the platform administrator.');
     }
 
     try {
@@ -947,8 +916,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        if (error.message.toLowerCase().includes('factor') || error.message.toLowerCase().includes('not found')) {
-          console.warn('Supabase MFA factor not enrolled; accepting admin verification code.');
+        if (import.meta.env.DEV && (error.message.toLowerCase().includes('factor') || error.message.toLowerCase().includes('not found'))) {
+          console.warn('Development-only MFA fallback: no enrolled factor was found.');
           return true;
         }
         throw new Error(error.message);
@@ -959,7 +928,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return true;
     } catch (err: any) {
-      if (err?.message?.toLowerCase().includes('factor') || err?.message?.toLowerCase().includes('not found')) {
+      if (import.meta.env.DEV && (err?.message?.toLowerCase().includes('factor') || err?.message?.toLowerCase().includes('not found'))) {
         return true;
       }
       throw new Error(err?.message || 'MFA code verification failed. Please try again.');
@@ -983,6 +952,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         skipAuth: true
       });
     } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw new Error('Administrator authentication service is unavailable. Please try again shortly.');
+      }
       if (err?.status === 405 || err?.status === 404 || String(err?.message || '').includes('405') || String(err?.message || '').includes('Failed to fetch')) {
         const localAdmin = ledger.getUserByEmail(cleanEmail) || ledger.getUsers().find(u => u.role === 'admin');
         if (localAdmin && localAdmin.role === 'admin') {

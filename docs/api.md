@@ -124,7 +124,7 @@ Inspect the status and latency of the backend service.
 ## 4. Authentication Endpoints (`/api/v1/auth`)
 
 ### 4.1 Register Customer Account
-Creates a new investor account on the platform with initial KYC state `unverified`.
+Creates a durable Supabase Auth identity. The database trigger creates the corresponding `user_profiles` row and grants only the `investor` role. Public registration cannot create administrator accounts. If email confirmation is enabled, the response has `requiresVerification: true` and no access token until the user confirms their email.
 
 - **Method:** `POST`
 - **Endpoint:** `/api/v1/auth/register`
@@ -134,9 +134,11 @@ Creates a new investor account on the platform with initial KYC state `unverifie
 ```json
 {
   "email": "investor@example.com",
-  "pass": "SecurePassword123!",
+  "pass": "StrongPassword123!",
   "fullName": "Jean Dupont",
-  "role": "investor"
+  "country": "France",
+  "countryCode": "FR",
+  "phoneNumber": "+33123456789"
 }
 ```
 
@@ -144,28 +146,23 @@ Creates a new investor account on the platform with initial KYC state `unverifie
 ```json
 {
   "success": true,
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": "usr_998124",
-      "email": "investor@example.com",
-      "fullName": "Jean Dupont",
-      "role": "investor",
-      "kycStatus": "unverified",
-      "walletBalance": 0,
-      "investedBalance": 0,
-      "totalEarned": 0,
-      "createdAt": "2026-10-15T20:30:00.000Z"
-    }
+  "requiresVerification": true,
+  "user": {
+    "id": "supabase-auth-user-uuid",
+    "email": "investor@example.com",
+    "fullName": "Jean Dupont",
+    "role": "investor",
+    "accountType": "individual_investor",
+    "balance": 0
   },
-  "message": "Account registered successfully."
+  "token": null
 }
 ```
 
 ---
 
 ### 4.2 Login
-Authenticates an investor or administrator, issuing a JWT bearer token.
+Authenticates an investor through Supabase Auth. Administrator identities must use the separate Administrator Gateway. The response contains Supabase access and refresh tokens; the server verifies the associated profile and role before returning a session.
 
 - **Method:** `POST`
 - **Endpoint:** `/api/v1/auth/login`
@@ -175,7 +172,7 @@ Authenticates an investor or administrator, issuing a JWT bearer token.
 ```json
 {
   "email": "investor@example.com",
-  "pass": "SecurePassword123!"
+  "pass": "StrongPassword123!"
 }
 ```
 
@@ -184,23 +181,18 @@ Authenticates an investor or administrator, issuing a JWT bearer token.
 {
   "success": true,
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token": "supabase-access-token",
+    "refreshToken": "supabase-refresh-token",
     "user": {
-      "id": "usr_998124",
+      "id": "supabase-auth-user-uuid",
       "email": "investor@example.com",
       "fullName": "Jean Dupont",
       "role": "investor",
-      "kycStatus": "verified",
-      "walletBalance": 15000.00,
-      "investedBalance": 50000.00,
-      "totalEarned": 3840.50,
-      "createdAt": "2026-01-10T14:22:00.000Z"
+      "status": "active"
     }
   }
 }
 ```
-
----
 
 ### 4.3 Get Authenticated Profile (`/me`)
 Retrieves the session state, current balances, KYC status, and preferences of the logged-in user.
@@ -219,7 +211,7 @@ Retrieves the session state, current balances, KYC status, and preferences of th
       "email": "investor@example.com",
       "fullName": "Jean Dupont",
       "role": "investor",
-      "kycStatus": "verified",
+      "kycStatus": "approved",
       "walletBalance": 15000.00,
       "investedBalance": 50000.00,
       "totalEarned": 3840.50,
@@ -729,6 +721,20 @@ Provides customers with validated destination addresses and SEPA account coordin
 #### List Users
 - **Method:** `GET`
 - **Endpoint:** `/api/v1/admin/users`
+
+#### Update Investor Payment Details
+- **Method:** `PATCH`
+- **Endpoint:** `/api/v1/admin/users/:userId/profile`
+- **Auth Required:** Yes (administrator)
+- **Request Body:**
+```json
+{
+  "bankIban": "ES9121000418450200051332",
+  "cryptoDepositAddress": "0x..."
+}
+```
+
+This endpoint updates the target investor's persisted profile in Supabase. It does not update a browser-side ledger.
 
 #### Update User KYC
 - **Method:** `POST`

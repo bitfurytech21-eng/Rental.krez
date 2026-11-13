@@ -14,8 +14,10 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger';
 import crypto from 'crypto';
 import { verifyAdminSessionToken } from './adminAuth';
+import { verifyPersistentAdminSession } from './persistentAdminAuth';
 
 import { getSession, touchSession, verifyCsrfToken, ServerSession } from './authService';
+import { isSupabaseAuthConfigured, isSupabaseServerConfigured, verifySupabaseAccessToken, getAdminIdentityByEmail } from './supabaseDatabase';
 
 export type UserRoleType = 
   | 'investor' 
@@ -52,17 +54,13 @@ interface RateLimitRecord {
 
 const rateLimitStore = new Map<string, RateLimitRecord>();
 
-/**
- * Clean up old rate limit records periodically
- */
-setInterval(() => {
-  const now = Date.now();
+function pruneExpiredRateLimits(now: number) {
+  // Lazy cleanup avoids background timers in the Cloudflare Workers runtime.
+  if (rateLimitStore.size < 500) return;
   for (const [key, record] of rateLimitStore.entries()) {
-    if (now > record.resetTime) {
-      rateLimitStore.delete(key);
-    }
+    if (now > record.resetTime) rateLimitStore.delete(key);
   }
-}, 60000);
+}
 
 /**
  * Rate Limiter Factory
@@ -77,6 +75,7 @@ export function rateLimiter(options: {
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
     const key = `${req.path}:${ip}`;
     const now = Date.now();
+    pruneExpiredRateLimits(now);
 
     let record = rateLimitStore.get(key);
     if (!record || now > record.resetTime) {
@@ -170,7 +169,7 @@ export function correlationAndTimingMiddleware(
 /**
  * Production-Grade Session & Token Authentication Middleware
  */
-export function authenticateToken(
+export async function authenticateToken(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
@@ -200,9 +199,9 @@ export function authenticateToken(
   try {
     // 2. Handle Server-Authoritative Cryptographic Sessions (kz_sess_*)
     if (token.startsWith('kz_sess_')) {
-      const activeSession = getSession(token);
+      const activeSession = await getSession(token);
       if (activeSession) {
-        touchSession(token);
+        await touchSession(token);
         req.session = activeSession;
         req.user = {
           id: activeSession.userId,
@@ -223,38 +222,93 @@ export function authenticateToken(
 
     // 3. Handle Cryptographically Signed Admin Sessions (Environment Auth)
     if (token.startsWith('kretz_adm_')) {
-      const adminSession = verifyAdminSessionToken(token);
-      if (adminSession) {
+      const adminSession = process.env.NODE_ENV === 'production'
+        ? await verifyPersistentAdminSession(token)
+        : verifyAdminSessionToken(token);
+      if (!adminSession) return next();
+      if (isSupabaseServerConfigured()) {
+        // Legacy signed admin credentials are accepted only when the same email
+        // maps to a provisioned administrator role in the authoritative database.
+        const identity = await getAdminIdentityByEmail(adminSession.email);
+        if (!identity) return next();
         req.user = {
-          id: adminSession.sub,
-          email: adminSession.email,
-          role: 'admin',
-          fullName: adminSession.fullName,
-          status: 'active'
+          id: identity.id,
+          email: identity.email,
+          role: identity.role,
+          fullName: identity.fullName,
+          accountType: identity.accountType,
+          balance: identity.balance,
+          status: identity.status || 'active',
+          suspendedReason: identity.suspendedReason
         };
         return next();
-      } else {
-        return next();
       }
+      if (process.env.NODE_ENV === 'production') return next();
+      req.user = {
+        id: adminSession.sub,
+        email: adminSession.email,
+        role: 'admin',
+        fullName: adminSession.fullName,
+        status: 'active'
+      };
+      return next();
     }
 
-    // 4. Handle Bearer token JWT format (e.g., Supabase Auth or standard JWTs)
+    // 4. Verify Supabase access tokens with Supabase Auth and load the authoritative
+    // role from user_roles. User-editable JWT metadata is never used for authorization.
+    if (token.includes('.') && isSupabaseAuthConfigured()) {
+      const identity = await verifySupabaseAccessToken(token);
+      if (identity) {
+        req.user = {
+          id: identity.id,
+          email: identity.email,
+          role: identity.role,
+          fullName: identity.fullName,
+          accountType: identity.accountType,
+          balance: identity.balance,
+          status: identity.status || 'active',
+          suspendedReason: identity.suspendedReason
+        };
+      }
+      return next();
+    }
+
+    // Legacy HS256 verification remains only when Supabase Auth verification is not configured.
     if (token.includes('.')) {
       const parts = token.split('.');
-      if (parts.length === 3) {
-        const payloadBuf = Buffer.from(parts[1], 'base64').toString('utf-8');
-        const payload = JSON.parse(payloadBuf);
-        if (payload && (payload.sub || payload.id)) {
-          const userId = payload.sub || payload.id;
-          const userEmail = payload.email || '';
-          const role = payload.user_metadata?.role || (userEmail.includes('admin') ? 'admin' : 'investor');
-          const fullName = payload.user_metadata?.full_name || payload.email?.split('@')[0] || 'Verified Investor';
+      if (parts.length === 3 && process.env.JWT_SECRET) {
+        const [encodedHeader, encodedPayload, suppliedSignature] = parts;
+        const header = JSON.parse(Buffer.from(encodedHeader, 'base64url').toString('utf-8'));
+        const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf-8'));
+        const expectedSignature = crypto
+          .createHmac('sha256', process.env.JWT_SECRET)
+          .update(`${encodedHeader}.${encodedPayload}`)
+          .digest('base64url');
+        const supplied = Buffer.from(suppliedSignature);
+        const expected = Buffer.from(expectedSignature);
+        const configuredSupabaseUrl = (process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+        const expectedIssuer = configuredSupabaseUrl ? `${configuredSupabaseUrl}/auth/v1` : '';
+        const validSignature =
+          header?.alg === 'HS256' &&
+          supplied.length === expected.length &&
+          crypto.timingSafeEqual(supplied, expected);
+        const validClaims =
+          typeof payload?.sub === 'string' &&
+          typeof payload?.exp === 'number' &&
+          payload.exp * 1000 > Date.now() &&
+          payload.aud === 'authenticated' &&
+          Boolean(expectedIssuer) &&
+          payload.iss === expectedIssuer;
 
+        if (validSignature && validClaims) {
           req.user = {
-            id: userId,
-            email: userEmail,
-            role: role as UserRoleType,
-            fullName,
+            id: payload.sub,
+            email: typeof payload.email === 'string' ? payload.email : '',
+            // Administrator privileges are granted only by signed server-side admin sessions.
+            role: 'investor',
+            fullName:
+              payload.user_metadata?.full_name ||
+              (typeof payload.email === 'string' ? payload.email.split('@')[0] : 'Investor'),
             status: 'active'
           };
           return next();
@@ -407,6 +461,15 @@ export function requireAdmin(
     });
   }
 
+  if (req.user.status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      error: req.user.suspendedReason || 'Administrator account is suspended.',
+      code: 'ACCOUNT_SUSPENDED',
+      requestId: req.id
+    });
+  }
+
   const ADMIN_ROLES: UserRoleType[] = ['admin', 'super_admin', 'finance_admin', 'operations_admin', 'support', 'auditor'];
   if (!ADMIN_ROLES.includes(req.user.role)) {
     logger.log({
@@ -443,17 +506,22 @@ export function requireAdminOrLogSecret(
   res: Response,
   next: NextFunction
 ) {
-  const secretKey = process.env.ADMIN_LOG_API_KEY || process.env.ADMIN_LOG_API_SECRET || 'kretz_admin_log_secret_key_v1';
-  
-  const providedKey = 
+  // No built-in fallback secret: a missing deployment secret must never create
+  // a publicly guessable administrative bypass.
+  const secretKey = process.env.ADMIN_LOG_API_KEY || process.env.ADMIN_LOG_API_SECRET || '';
+  const providedKey =
     (req.headers['x-admin-log-api-key'] as string) ||
     (req.headers['x-admin-log-secret'] as string) ||
     (req.headers['x-admin-log-key'] as string);
 
   const authHeader = req.headers['authorization'];
   const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const suppliedKey = providedKey || bearerToken || '';
+  const secretMatches = Boolean(secretKey && suppliedKey &&
+    Buffer.byteLength(secretKey) === Buffer.byteLength(suppliedKey) &&
+    crypto.timingSafeEqual(Buffer.from(secretKey), Buffer.from(suppliedKey)));
 
-  if (providedKey === secretKey || bearerToken === secretKey) {
+  if (secretMatches) {
     if (!req.user) {
       req.user = {
         id: 'usr-admin-secret-system',
