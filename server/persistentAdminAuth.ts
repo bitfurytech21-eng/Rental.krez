@@ -159,17 +159,15 @@ export async function checkPersistentAdminRateLimit(identifier: string) {
 }
 
 export async function recordPersistentAdminFailure(identifier: string) {
-  const db = requireStore();
-  const { data, error } = await db.from('kretz_admin_login_attempts')
-    .select('attempts').eq('identifier', identifier).maybeSingle();
+  const { data, error } = await requireStore().rpc('kretz_admin_record_login_failure', {
+    p_identifier: identifier
+  });
   if (error) throw error;
-  const attempts = Number(data?.attempts || 0) + 1;
-  const lockoutUntil = attempts >= 10 ? new Date(Date.now() + 5 * 60 * 1000).toISOString() : null;
-  const { error: saveError } = await db.from('kretz_admin_login_attempts').upsert({
-    identifier, attempts, lockout_until: lockoutUntil, updated_at: new Date().toISOString()
-  }, { onConflict: 'identifier' });
-  if (saveError) throw saveError;
-  return { attempts, isLocked: Boolean(lockoutUntil), remainingSeconds: lockoutUntil ? 300 : undefined };
+  return {
+    attempts: Number(data?.attempts || 0),
+    isLocked: Boolean(data?.isLocked),
+    remainingSeconds: data?.remainingSeconds == null ? undefined : Number(data.remainingSeconds)
+  };
 }
 
 export async function resetPersistentAdminFailures(identifier: string) {
