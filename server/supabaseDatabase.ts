@@ -47,6 +47,7 @@ export async function signInCustomer(email: string, password: string) {
   const identity = await verifySupabaseAccessToken(data.session.access_token);
   if (!identity) throw new Error('SUPABASE_PROFILE_NOT_PROVISIONED');
   if (identity.status === 'suspended') throw new Error('ACCOUNT_SUSPENDED');
+  if (identity.role !== 'investor') throw new Error('ADMIN_LOGIN_REQUIRED');
   return { user: identity, session: data.session };
 }
 
