@@ -1381,6 +1381,7 @@ router.post('/auth/register', authLimiter, requireTurnstile, async (req: Authent
     userAgent: (req.headers['user-agent'] as string) || 'unknown'
     });
   } catch (error) {
+    mockUsers = mockUsers.filter((user) => user.id !== newUser.id);
     logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-register-session', eventType: 'SESSION_STORE_UNAVAILABLE', outcome: 'failure', message: 'Unable to create a durable customer session.' });
     return res.status(503).json({ success: false, error: 'Registration service is temporarily unavailable. Please try again shortly.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
   }
@@ -2041,11 +2042,11 @@ router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Respo
   const targetEmail = (verification.email || '').toLowerCase();
   const targetUser = targetEmail ? mockUsers.find(u => u.email.toLowerCase() === targetEmail) : undefined;
   if (targetUser) {
-    targetUser.passwordHash = hashPassword(newPassword);
-    // Invalidate all active sessions across all devices for this user
+    // Revoke all active sessions before changing credentials; fail closed if revocation is unavailable.
     try { await revokeAllUserSessions(targetUser.id); } catch {
       return res.status(503).json({ success: false, error: 'Session service is temporarily unavailable. Please retry the password reset.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
     }
+    targetUser.passwordHash = hashPassword(newPassword);
   }
 
   logger.log({
