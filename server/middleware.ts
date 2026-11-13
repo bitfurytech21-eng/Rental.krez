@@ -16,6 +16,7 @@ import crypto from 'crypto';
 import { verifyAdminSessionToken } from './adminAuth';
 
 import { getSession, touchSession, verifyCsrfToken, ServerSession } from './authService';
+import { isSupabaseAuthConfigured, verifySupabaseAccessToken } from './supabaseDatabase';
 
 export type UserRoleType = 
   | 'investor' 
@@ -170,7 +171,7 @@ export function correlationAndTimingMiddleware(
 /**
  * Production-Grade Session & Token Authentication Middleware
  */
-export function authenticateToken(
+export async function authenticateToken(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
@@ -238,8 +239,25 @@ export function authenticateToken(
       }
     }
 
-    // 4. Verify Supabase access tokens cryptographically. Never trust decoded JWT
-    // payloads or user-editable metadata to establish identity or administrator roles.
+    // 4. Verify Supabase access tokens with Supabase Auth and load the authoritative
+    // role from user_roles. User-editable JWT metadata is never used for authorization.
+    if (token.includes('.') && isSupabaseAuthConfigured()) {
+      const identity = await verifySupabaseAccessToken(token);
+      if (identity) {
+        req.user = {
+          id: identity.id,
+          email: identity.email,
+          role: identity.role,
+          fullName: identity.fullName,
+          accountType: identity.accountType,
+          balance: identity.balance,
+          status: 'active'
+        };
+      }
+      return next();
+    }
+
+    // Legacy HS256 verification remains only when Supabase Auth verification is not configured.
     if (token.includes('.')) {
       const parts = token.split('.');
       if (parts.length === 3 && process.env.JWT_SECRET) {
