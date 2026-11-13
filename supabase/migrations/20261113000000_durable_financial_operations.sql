@@ -51,6 +51,15 @@ alter table public.user_profiles
   add column if not exists tax_id text,
   add column if not exists date_of_birth date;
 
+-- Prevent authenticated clients from editing balances, KYC decisions, account types,
+-- investment totals, or any other server-owned fields through direct table updates.
+revoke update on table public.user_profiles from anon, authenticated;
+grant update (
+  full_name, country, country_code, phone_number, preferences, address, city,
+  postal_code, avatar_url, bank_iban, crypto_deposit_address, tax_id,
+  date_of_birth, mfa_enabled
+) on table public.user_profiles to authenticated;
+
 -- Durable deposit request. No balance is credited until an admin approves it.
 create or replace function public.kretz_request_deposit(
   p_user_id uuid, p_amount numeric, p_method text, p_reference text,
