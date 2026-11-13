@@ -2359,9 +2359,20 @@ router.get('/admin/logs/export', requireAdminOrLogSecret, (req: AuthenticatedReq
 /**
  * POST /api/v1/admin/users/:id/kyc
  */
-router.post('/admin/users/:id/kyc', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const { kycStatus, notes } = req.body || {};
+  const { kycStatus = 'approved', notes } = req.body || {};
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await runFinancialRpc('kretz_admin_update_kyc', { p_user_id: id, p_admin_id: req.user!.id, p_status: String(kycStatus), p_notes: notes || null });
+      return res.json({ success: true, data: profile, message: `User KYC status updated to ${kycStatus}.`, requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('USER_NOT_FOUND') ? 404 : message.includes('INVALID_KYC_STATUS') ? 400 : message.includes('REQUIRED') ? 403 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'KYC decision could not be saved. Please retry.' : message, code: status === 503 ? 'KYC_DATABASE_UNAVAILABLE' : 'KYC_UPDATE_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
   const target = mockUsers.find(u => u.id === id);
   if (!target) {
@@ -2423,7 +2434,7 @@ router.post('/admin/users/:id/kyc', requireAdmin, (req: AuthenticatedRequest, re
  * POST /api/v1/admin/users/:id/status
  * Toggle user account status (active / suspended) with audit logging
  */
-const handleUserStatusUpdate = (req: AuthenticatedRequest, res: Response) => {
+const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { status, reason } = req.body || {};
 
@@ -2435,6 +2446,17 @@ const handleUserStatusUpdate = (req: AuthenticatedRequest, res: Response) => {
       requestId: req.id
     });
   }
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await runFinancialRpc('kretz_admin_set_user_status', { p_user_id: id, p_admin_id: req.user!.id, p_status: status, p_reason: reason || null });
+      return res.json({ success: true, data: profile, message: `User status successfully updated to ${status.toUpperCase()}.`, requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const statusCode = message.includes('USER_NOT_FOUND') ? 404 : message.includes('INVALID_STATUS') ? 400 : message.includes('SELF_SUSPENSION_FORBIDDEN') || message.includes('REQUIRED') ? 403 : 503;
+      return res.status(statusCode).json({ success: false, error: statusCode === 503 ? 'Account status change could not be saved. Please retry.' : message, code: statusCode === 503 ? 'USER_STATUS_DATABASE_UNAVAILABLE' : 'USER_STATUS_UPDATE_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
   const target = mockUsers.find(u => u.id === id);
   if (!target) {
@@ -2505,13 +2527,31 @@ router.post('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
 /**
  * POST /api/v1/admin/users/:id/credit
  */
-router.post('/admin/users/:id/credit', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/credit', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { amount, currency = 'EUR', method = 'Direct Wire Received', reference, notes } = req.body || {};
 
-  if (!amount || Number(amount) <= 0) {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
     return res.status(400).json({ success: false, error: 'Credit amount must be greater than zero.', code: 'INVALID_AMOUNT', requestId: req.id });
   }
+  if (currency !== 'EUR') return res.status(400).json({ success: false, error: 'Manual wallet adjustments currently support EUR only.', code: 'UNSUPPORTED_CURRENCY', requestId: req.id });
+  if (isSupabaseServerConfigured()) {
+    try {
+      const result: any = await runFinancialRpc('kretz_admin_adjust_wallet', {
+        p_user_id: id, p_admin_id: req.user!.id, p_amount: numericAmount,
+        p_reason: String(notes || 'Administrator manual wallet credit'),
+        p_transaction_id: crypto.randomUUID(),
+        p_reference: String(reference || `KZ-MANUAL-${crypto.randomInt(100000,1000000)}`)
+      });
+      return res.json({ success: true, data: { transaction: toApiTransaction(result.transaction), walletBalance: Number(result.wallet_balance) }, message: `Credited €${numericAmount.toFixed(2)} to the investor wallet.`, requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const statusCode = message.includes('USER_NOT_FOUND') ? 404 : message.includes('REQUIRED') ? 403 : 503;
+      return res.status(statusCode).json({ success: false, error: statusCode === 503 ? 'Wallet adjustment could not be saved. Please retry.' : message, code: statusCode === 503 ? 'WALLET_ADJUSTMENT_FAILED' : 'WALLET_ADJUSTMENT_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
   const target = mockUsers.find(u => u.id === id);
   if (!target) {
