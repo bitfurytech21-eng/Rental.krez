@@ -494,7 +494,7 @@ const authLimiter = rateLimiter({
  * POST /api/v1/auth/login
  * Production-grade customer authentication with bcrypt validation, brute-force lockout, and HttpOnly session cookie
  */
-router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/login', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
   const { email, password, pass } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
   const inputPass = password || pass;
@@ -622,7 +622,7 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
   // 5. Successful authentication: reset failed attempts & regenerate session ID
   resetFailedLogin(lockoutKey);
 
-  const session = createSession({
+  const session = await createSession({
     userId: found.id,
     email: found.email,
     role: found.role as any,
@@ -1277,7 +1277,7 @@ router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest
  * Production-grade registration with email validation, password strength enforcement,
  * duplicate prevention, bcrypt password hashing, and HttpOnly session establishment.
  */
-router.post('/auth/register', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/register', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
   const { email, fullName, password, pass, country, phoneNumber, countryCode } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
   const inputPass = password || pass;
@@ -1364,7 +1364,7 @@ router.post('/auth/register', authLimiter, requireTurnstile, (req: Authenticated
   mockUsers.push(newUser);
 
   // 7. Establish secure server session
-  const session = createSession({
+  const session = await createSession({
     userId: newUser.id,
     email: newUser.email,
     role: 'investor',
@@ -1445,7 +1445,7 @@ router.post('/auth/register', authLimiter, requireTurnstile, (req: Authenticated
  * POST /api/v1/auth/logout
  * Terminates server-authoritative session and clears HttpOnly session cookie
  */
-router.post('/auth/logout', (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => {
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
@@ -1455,7 +1455,7 @@ router.post('/auth/logout', (req: AuthenticatedRequest, res: Response) => {
   }
 
   if (token) {
-    revokeSession(token);
+    await revokeSession(token);
   }
 
   res.clearCookie('kretz_session', {
@@ -1976,7 +1976,7 @@ router.post('/security/verify-turnstile', securityLimiter, async (req: Authentic
  * Verifies single-use reset token, validates password strength, updates bcrypt password hash,
  * and invalidates all existing sessions for the target user.
  */
-router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Response) => {
   const { token, newPassword } = req.body || {};
 
   if (!token || typeof token !== 'string') {
@@ -2029,7 +2029,7 @@ router.post('/auth/password/reset', (req: AuthenticatedRequest, res: Response) =
   if (targetUser) {
     targetUser.passwordHash = hashPassword(newPassword);
     // Invalidate all active sessions across all devices for this user
-    revokeAllUserSessions(targetUser.id);
+    await revokeAllUserSessions(targetUser.id);
   }
 
   logger.log({
@@ -2100,7 +2100,7 @@ router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => 
     });
   }
 
-  const session = getSession(token);
+  const session = await getSession(token);
   if (!session) {
     return res.json({
       success: true,
