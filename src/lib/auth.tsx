@@ -688,7 +688,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               signInData.user.id,
               signInData.user.email || cleanEmail,
               fullName.trim(),
-              role
+              determinedRole
             );
             setUser(synced);
             setSession(signInData.session);
