@@ -220,14 +220,16 @@ export async function getSession(token: string): Promise<ServerSession | null> {
   // Check absolute expiration (7 days)
   if (now > session.expiresAt) {
     session.isRevoked = true;
-    serverSessions.delete(token);
+    if (usePersistentSessionStore()) await getSupabaseAdmin().from('kretz_server_sessions').delete().eq('id', token);
+    else serverSessions.delete(token);
     return null;
   }
 
   // Check idle expiration (2 hours)
   if (now - session.lastActivityAt > session.idleTimeoutMs) {
     session.isRevoked = true;
-    serverSessions.delete(token);
+    if (usePersistentSessionStore()) await getSupabaseAdmin().from('kretz_server_sessions').delete().eq('id', token);
+    else serverSessions.delete(token);
     return null;
   }
 
@@ -241,7 +243,7 @@ export async function touchSession(token: string): Promise<void> {
   const now = Date.now();
   if (usePersistentSessionStore()) {
     if (!isSupabaseServerConfigured()) throw new Error('PERSISTENT_SESSION_STORE_NOT_CONFIGURED');
-    const { error } = await getSupabaseAdmin().from('kretz_server_sessions').update({ last_activity_at_ms: now }).eq('id', token).lt('expires_at_ms', now + ABSOLUTE_TIMEOUT_MS);
+    const { error } = await getSupabaseAdmin().from('kretz_server_sessions').update({ last_activity_at_ms: now }).eq('id', token);
     if (error) throw error;
     return;
   }
