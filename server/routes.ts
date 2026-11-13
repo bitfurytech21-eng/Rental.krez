@@ -592,7 +592,7 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
       success: false,
       error: 'Invalid email address or password.',
       code: 'INVALID_CREDENTIALS',
-      remainingAttempts: Math.max(0, 5 - failureRecord.attempts),
+      remainingAttempts: Math.max(0, 10 - failureRecord.attempts),
       requestId: req.id
     });
   }
@@ -1117,6 +1117,14 @@ router.put(
         code: 'INVALID_EMAIL',
         requestId: req.id
       });
+    }
+    if (process.env.NODE_ENV === 'production' && targetEmail !== config.adminEmail) {
+      try {
+        const targetIdentity = await getAdminIdentityByEmail(targetEmail);
+        if (!targetIdentity) return res.status(403).json({ success: false, error: 'The new administrator email must already be provisioned with an authorized administrator role.', code: 'ADMIN_ROLE_NOT_PROVISIONED', requestId: req.id });
+      } catch {
+        return res.status(503).json({ success: false, error: 'Administrator authorization could not be verified.', code: 'ADMIN_AUTHORIZATION_UNAVAILABLE', requestId: req.id });
+      }
     }
 
     const trimmedNewPass = typeof newPassword === 'string' ? newPassword : '';
