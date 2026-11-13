@@ -37,3 +37,15 @@ npx wrangler@4 deploy --config wrangler.api.toml
 ```
 
 Deploy only after setting the required encrypted secrets and completing the production gate above.
+
+
+## Durable API sessions (optional production switch)
+
+The API can store legacy `kz_sess_*` sessions in Supabase instead of Worker memory.
+
+1. Apply `supabase/migrations/20261113000002_durable_server_sessions.sql` to the production Supabase project.
+2. Confirm the API Worker has the encrypted `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` secrets configured. Never expose the service-role key as a `VITE_*` variable.
+3. Set the Worker variable `AUTH_SESSION_STORE=supabase` and redeploy the API Worker.
+4. Test customer registration, login, session validation, logout, and password-reset revocation across two separate Worker requests.
+
+Do not set `AUTH_SESSION_STORE=supabase` before the migration is applied and the service-role secret is verified. The default remains the existing in-memory store until the operator explicitly enables the persistent store. This migration does not migrate customer account records or the administrator credential file; those are separate remaining authentication tasks.
