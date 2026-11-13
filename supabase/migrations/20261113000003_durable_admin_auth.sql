@@ -46,40 +46,38 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare v_attempts integer; v_lockout timestamptz;
 begin
   if p_identifier is null or length(trim(p_identifier)) = 0 then
     raise exception 'INVALID_LOGIN_IDENTIFIER' using errcode = '22023';
   end if;
-  insert into public.kretz_admin_login_attempts(identifier, attempts, lockout_until, updated_at)
-  values (p_identifier, 1, null, now())
-  on conflict (identifier) do update
-    set attempts = case
-          when public.kretz_admin_login_attempts.lockout_until is not null
-            and public.kretz_admin_login_attempts.lockout_until <= now()
-          then 1
-          else public.kretz_admin_login_attempts.attempts + 1
-        end,
-        lockout_until = case
-          when (case
-            when public.kretz_admin_login_attempts.lockout_until is not null
-              and public.kretz_admin_login_attempts.lockout_until <= now()
-            then 1
-            else public.kretz_admin_login_attempts.attempts + 1
-          end) >= 10
-          then now() + interval '5 minutes'
-          else null
-        end,
-        updated_at = now()
-  returning attempts, lockout_until into v_attempts, v_lockout;
+  insert into public.kretz_admin_login_attempts(identifier, attempts, updated_at)
+  values (p_identifier, 0, now())
+  on conflict (identifier) do nothing;
+  select attempts, lockout_until into v_attempts, v_lockout
+    from public.kretz_admin_login_attempts
+    where identifier = p_identifier
+    for update;
+  if v_lockout is not null and v_lockout <= now() then
+    v_attempts := 0;
+  end if;
+  v_attempts := v_attempts + 1;
+  if v_attempts >= 10 then
+    v_lockout := now() + interval '5 minutes';
+  else
+    v_lockout := null;
+  end if;
+  update public.kretz_admin_login_attempts
+    set attempts = v_attempts, lockout_until = v_lockout, updated_at = now()
+    where identifier = p_identifier;
   return jsonb_build_object(
     'attempts', v_attempts,
     'isLocked', v_lockout is not null and v_lockout > now(),
     'remainingSeconds', case when v_lockout is null then null else greatest(0, ceil(extract(epoch from (v_lockout - now())))::integer) end
   );
 end;
-$;
+$$;
 
 revoke all on function public.kretz_admin_record_login_failure(text) from public, anon, authenticated;
 grant execute on function public.kretz_admin_record_login_failure(text) to service_role;
