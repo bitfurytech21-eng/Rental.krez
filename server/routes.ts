@@ -3648,6 +3648,49 @@ router.post('/investments', requireAuth, async (req: AuthenticatedRequest, res: 
     ? idempotencyKey.trim().slice(0, 128)
     : `${propertyId}-${count}`;
   const safeKey = `${req.user!.id}:${clientKey}`;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const prop = await getInvestmentPlan(String(propertyId));
+      if (!prop) return res.status(404).json({ success: false, error: 'Target property not found in the persistent offerings catalogue.', code: 'PROPERTY_NOT_FOUND', requestId: req.id });
+      if (prop.status !== 'funding' && prop.status !== 'active') return res.status(409).json({ success: false, error: 'This property is not currently accepting investments.', code: 'OFFERING_NOT_OPEN', requestId: req.id });
+      if (prop.availableTokens < count) return res.status(400).json({ success: false, error: `Only ${prop.availableTokens} tokens remain available in ${prop.title}.`, code: 'INSUFFICIENT_AVAILABLE_TOKENS', requestId: req.id });
+      const principal = count * prop.tokenPrice;
+      if (principal < prop.minimumInvestment) return res.status(400).json({ success: false, error: `Minimum investment for ${prop.title} is €${prop.minimumInvestment}.`, code: 'BELOW_MINIMUM_INVESTMENT', requestId: req.id });
+      const certificateId = `KZ-CERT-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      const investmentId = crypto.randomUUID();
+      const transactionId = crypto.randomUUID();
+      const result: any = await runFinancialRpc('kretz_purchase_tokens', {
+        p_user_id: req.user!.id, p_plan_id: prop.id, p_tokens: count,
+        p_payment_method: String(paymentMethod), p_reference: certificateId,
+        p_investment_id: investmentId, p_transaction_id: transactionId,
+        p_certificate_id: certificateId, p_idempotency_key: clientKey
+      });
+      const transaction = toApiTransaction(result.transaction);
+      const investment = result.investment || {};
+      sendEmail({
+        templateId: 'investment_confirmed', recipient: req.user!.email,
+        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, propertyTitle: prop.title, tokensCount: count, tokenPrice: prop.tokenPrice.toFixed(2), totalCost: Number(result.total || transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), currency: 'EUR', certificateId: investment.certificate_id || certificateId, spvName: `${prop.title} SPV S.L.`, projectedYield: `${prop.projectedYield}% Annualized`, firstDistributionDate: '1st of next month' }
+      }).catch(err => logger.log({ level: 'error', category: 'marketplace', requestId: req.id || 'req-investment-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: err.message }));
+      return res.json({
+        success: true,
+        data: {
+          investment: { id: investment.id || investmentId, propertyId: prop.id, tokensPurchased: count, totalCost: Number(result.total || transaction.amount), certificateId: investment.certificate_id || certificateId },
+          transaction: { ...transaction, propertyId: prop.id, propertyTitle: prop.title, tokensPurchased: count },
+          remainingAvailableTokens: Number(result.remaining_tokens ?? Math.max(0, prop.availableTokens - count))
+        },
+        message: `Congratulations! You have acquired ${count} tokens in ${prop.title}.`,
+        requestId: req.id
+      });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-investment-db', eventType: 'INVESTMENT_PERSIST_FAILED', outcome: 'failure', message: error?.message || 'Investment could not be processed.' });
+      const message = String(error?.message || '');
+      const status = /INSUFFICIENT_FUNDS|INSUFFICIENT_AVAILABLE_TOKENS|BELOW_MINIMUM_INVESTMENT|INVALID_TOKEN_COUNT/.test(message) ? 400 : /PROPERTY_NOT_FOUND|ACCOUNT_LEDGER_UNAVAILABLE/.test(message) ? 404 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'The investment service is temporarily unavailable. No investment was charged or issued.' : message, code: status === 503 ? 'INVESTMENT_DATABASE_UNAVAILABLE' : 'INVESTMENT_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Investments are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
   if (processedWebhooks.has(safeKey)) {
     return res.status(409).json({
       success: false,
