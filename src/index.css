@@ -3073,15 +3073,15 @@ body {
 }
 
 /* Dark editorial bands retain their existing content and become more dimensional. */
-section.bg-\\[\\#0B1B30\\] {
+section[class*="bg-[#0B1B30]"] {
   background:
     radial-gradient(ellipse at 85% 0%, rgba(196, 163, 106, .15), transparent 34rem),
     linear-gradient(135deg, #0d202a 0%, #142d35 52%, #0b1b30 100%);
 }
 
-section.bg-\\[\\#0B1B30\\] h1,
-section.bg-\\[\\#0B1B30\\] h2,
-section.bg-\\[\\#0B1B30\\] h3 {
+section[class*="bg-[#0B1B30]"] h1,
+section[class*="bg-[#0B1B30]"] h2,
+section[class*="bg-[#0B1B30]"] h3 {
   text-wrap: balance;
 }
 
