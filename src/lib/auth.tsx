@@ -236,7 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             initialSession.user.id,
             initialSession.user.email || '',
             initialSession.user.user_metadata?.full_name || initialSession.user.email?.split('@')[0] || 'Investor',
-            (initialSession.user.user_metadata?.role as UserRole) || 'investor',
+            'investor',
             (initialSession.user.user_metadata?.account_type as AccountType) || undefined
           );
           setUser(synced);
@@ -287,7 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           currentSession.user.id,
           currentSession.user.email || '',
           currentSession.user.user_metadata?.full_name || currentSession.user.email?.split('@')[0] || 'Investor',
-          (currentSession.user.user_metadata?.role as UserRole) || 'investor',
+          'investor',
           (currentSession.user.user_metadata?.account_type as AccountType) || undefined
         );
         setUser(synced);
@@ -448,19 +448,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e) {}
 
       if (error.message.toLowerCase().includes('email not confirmed')) {
-        const cleanEmail = email.trim().toLowerCase();
-        let existing = ledger.getUserByEmail(cleanEmail);
-        if (existing) {
-          setUser(existing);
-          const standardToken = existing.role === 'admin' ? 'admin_sess_' + existing.id : 'sess_' + existing.id;
-          setToken(standardToken);
-          setAuthToken(standardToken);
-          localStorage.setItem(CURRENT_USER_KEY, existing.id);
-          return existing;
-        }
-        throw new Error(
-          'Email not verified yet. Please check your inbox and verify your email before signing in.'
-        );
+        throw new Error('Email not verified yet. Please check your inbox and verify your email before signing in.');
       }
       if (error.message.toLowerCase().includes('invalid login credentials')) {
         throw new Error('Invalid email or password. Please verify your credentials and try again.');
@@ -476,7 +464,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data.user.id,
       data.user.email || email,
       data.user.user_metadata?.full_name || email.split('@')[0] || 'Investor',
-      (data.user.user_metadata?.role as UserRole) || 'investor'
+      'investor'
     );
     setUser(synced);
     setSession(data.session);
