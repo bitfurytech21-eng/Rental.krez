@@ -93,3 +93,12 @@ Apply these repository migrations to the intended Supabase project in ascending 
 Do not mark the database stage complete until the Supabase migration history confirms each required migration is applied and staging checks verify: signup provisions exactly one investor profile and role; login and logout work through Supabase Auth; administrator identity resolves only through `user_roles`; admin credential changes revoke prior Worker sessions; and the existing investor/admin dashboard, KYC, and financial RPC flows still work.
 
 After database verification, run the repository CI checks and `npx wrangler@4 deploy --dry-run --config wrangler.api.toml`. Only then deploy the Worker. A successful dry run validates the bundle, not runtime secrets, database connectivity, custom-domain routing, or email delivery; verify those separately in staging before switching production traffic.
+
+
+### Customer account API contract
+
+The API's customer registration and login endpoints now call Supabase Auth using the Worker-side anon/publishable key. They do not create passwords, customer identities, or sessions in Worker memory. Registration always assigns the investor role; the database trigger creates the matching profile and investor role. When email confirmation is enabled, registration returns `requiresVerification: true` without creating a local authenticated session. Login returns the Supabase access and refresh tokens only after the profile and authoritative role have been verified. Password recovery and password changes use Supabase Auth recovery sessions.
+
+The profile endpoints (`/user/profile`, `/auth/me`, `/users/me`) read and update `public.user_profiles`. Administrator user listing reads that same table joined to `user_roles`; KYC, suspension/activation, and manual wallet credit use the existing protected database RPCs. These endpoints fail closed when the Supabase service-role connection is unavailable; they do not fall back to a Worker-local user list.
+
+Apply migration `20261113000004_customer_auth_profile_metadata.sql` after the existing base and admin-control migrations so signup also stores `country_code`. The frontend Admin Panel now loads its user registry from `GET /api/v1/admin/users`; KYC and account-status actions require a successful API response before showing success. Client-side ledger data is not treated as the account authority.
