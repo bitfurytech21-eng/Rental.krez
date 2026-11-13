@@ -722,6 +722,20 @@ Provides customers with validated destination addresses and SEPA account coordin
 - **Method:** `GET`
 - **Endpoint:** `/api/v1/admin/users`
 
+#### Update Investor Payment Details
+- **Method:** `PATCH`
+- **Endpoint:** `/api/v1/admin/users/:userId/profile`
+- **Auth Required:** Yes (administrator)
+- **Request Body:**
+```json
+{
+  "bankIban": "ES9121000418450200051332",
+  "cryptoDepositAddress": "0x..."
+}
+```
+
+This endpoint updates the target investor's persisted profile in Supabase. It does not update a browser-side ledger.
+
 #### Update User KYC
 - **Method:** `POST`
 - **Endpoint:** `/api/v1/admin/users/:userId/kyc`
