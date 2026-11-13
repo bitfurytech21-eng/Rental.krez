@@ -356,6 +356,12 @@ export const AdminPanel: React.FC = () => {
     loadUsers().catch((error) => setActionError(error.message || 'Unable to load investor registry.'));
   }, []);
 
+  useEffect(() => {
+    const selected = users.find((item) => item.id === editUserPaymentId);
+    setUserCustomIban(selected?.bankIban || '');
+    setUserCustomCryptoAddress(selected?.cryptoDepositAddress || '');
+  }, [editUserPaymentId, users]);
+
   const refreshAll = () => {
     setTransactions(ledger.getTransactions());
     setProperties(ledger.getProperties());
