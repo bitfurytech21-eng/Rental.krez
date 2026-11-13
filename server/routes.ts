@@ -4141,9 +4141,15 @@ router.get('/admin/withdrawals', requireAdmin, (req: AuthenticatedRequest, res: 
 
 router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   const { depositId } = req.params;
-  const targetTx = mockTransactions.find(t => t.id === depositId || t.reference === depositId);
-  
-  if (targetTx) {
+  const targetTx = mockTransactions.find(t => t.type === 'deposit' && (t.id === depositId || t.reference === depositId));
+  if (!targetTx) {
+    return res.status(404).json({ success: false, error: `Deposit transaction '${depositId}' not found.`, code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
+  }
+  if (targetTx.status !== 'pending') {
+    return res.status(409).json({ success: false, error: `Deposit is already ${targetTx.status}; it cannot be approved again.`, code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+  }
+
+  {
     targetTx.status = 'completed';
     const foundUser =
       mockUsers.find(u => u.id === targetTx.userId) ||
@@ -4197,7 +4203,7 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: Authentica
 router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   const { depositId } = req.params;
   const { reason } = req.body || {};
-  const targetTx = mockTransactions.find(t => t.id === depositId || t.reference === depositId);
+  const targetTx = mockTransactions.find(t => t.type === 'deposit' && (t.id === depositId || t.reference === depositId));
 
   if (!targetTx) {
     return res.status(404).json({
@@ -4208,6 +4214,9 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: Authenticat
     });
   }
 
+  if (targetTx.status !== 'pending') {
+    return res.status(409).json({ success: false, error: `Deposit is already ${targetTx.status}; it cannot be rejected again.`, code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+  }
   targetTx.status = 'rejected';
   (targetTx as any).rejectionReason = reason || 'Transfer verification could not be matched.';
   pushUserNotification(targetTx.userId, {
@@ -4241,9 +4250,15 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, (req: Authenticat
 
 router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   const { withdrawalId } = req.params;
-  const targetTx = mockTransactions.find(t => t.id === withdrawalId || t.reference === withdrawalId);
-  
-  if (targetTx) {
+  const targetTx = mockTransactions.find(t => t.type === 'withdrawal' && (t.id === withdrawalId || t.reference === withdrawalId));
+  if (!targetTx) {
+    return res.status(404).json({ success: false, error: `Withdrawal '${withdrawalId}' not found.`, code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
+  }
+  if (targetTx.status !== 'pending') {
+    return res.status(409).json({ success: false, error: `Withdrawal is already ${targetTx.status}; it cannot be approved again.`, code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
+  }
+
+  {
     targetTx.status = 'completed';
     const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
     
@@ -4280,13 +4295,22 @@ router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, (req: Auth
 
 router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
   const { withdrawalId } = req.params;
-  const targetTx = mockTransactions.find(t => t.id === withdrawalId || t.reference === withdrawalId);
-  if (targetTx) {
+  const targetTx = mockTransactions.find(t => t.type === 'withdrawal' && (t.id === withdrawalId || t.reference === withdrawalId));
+  if (!targetTx) {
+    return res.status(404).json({ success: false, error: `Withdrawal '${withdrawalId}' not found.`, code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
+  }
+  if (targetTx.status !== 'pending') {
+    return res.status(409).json({ success: false, error: `Withdrawal is already ${targetTx.status}; it cannot be rejected or refunded again.`, code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
+  }
+  {
     targetTx.status = 'rejected';
     // Refund locked balance back to user
     const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
     if (foundUser) {
-      foundUser.balance = (foundUser.balance || 0) + Number(targetTx.amount);
+      foundUser.balance = Number(((foundUser.balance || 0) + Number(targetTx.amount)).toFixed(2));
+      if (userSubBalancesStore.has(foundUser.id)) {
+        userSubBalancesStore.get(foundUser.id)!.EUR = foundUser.balance;
+      }
     }
 
     sendEmail({
