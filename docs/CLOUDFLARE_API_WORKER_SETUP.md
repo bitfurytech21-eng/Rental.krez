@@ -19,7 +19,7 @@ Configure these as encrypted Worker secrets in the Cloudflare dashboard or with 
 - `JWT_SECRET` (only if legacy HS256 verification is still required)
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD_HASH` (bcrypt hash; production must not use `ADMIN_PASSWORD` plaintext)
-- `TURNSTILE_SECRET_KEY` (if Turnstile is enabled)
+- `CLOUDFLARE_TURNSTILE_SECRET_KEY` (if Turnstile is enabled)
 
 The public non-secret settings and CORS allowlist are in `wrangler.api.toml`. Add any production custom frontend domain to `ALLOWED_ORIGINS` before switching traffic.
 
