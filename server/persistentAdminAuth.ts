@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { getSupabaseAdmin, isSupabaseServerConfigured } from './supabaseDatabase';
+import { getSupabaseAdmin, isSupabaseServerConfigured, getAdminIdentityByEmail } from './supabaseDatabase';
 
 export interface PersistentAdminPayload {
   sub: string;
@@ -96,9 +96,11 @@ export async function resetPersistentAdminCredentials() {
 export async function createPersistentAdminSession(email: string, fullName: string) {
   const db = requireStore();
   const config = await getPersistentAdminConfig();
+  const identity = await getAdminIdentityByEmail(email);
+  if (!identity) throw new Error('ADMIN_ROLE_NOT_PROVISIONED');
   const now = Date.now();
   const payload: PersistentAdminPayload = {
-    sub: 'usr-admin-01', email: email.trim().toLowerCase(), role: 'admin',
+    sub: identity.id, email: email.trim().toLowerCase(), role: 'admin',
     fullName: fullName.trim() || config.fullName, credUpdatedAt: config.updatedAt,
     iat: now, exp: now + SESSION_MS, jti: crypto.randomBytes(24).toString('hex')
   };
