@@ -71,7 +71,8 @@ import {
   isSupabaseServerConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
-  getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs
+  getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs,
+  createPersistentInvestmentPlan, updatePersistentInvestmentPlan
 } from './supabaseDatabase';
 
 const router = Router();
@@ -2683,7 +2684,7 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: Authent
 /**
  * POST /api/v1/marketplace/listings & /api/v1/properties & /api/v1/admin/properties (Admin Only)
  */
-router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const body = req.body || {};
   if (!body.title || !body.location || !body.targetAmount) {
     return res.status(400).json({
@@ -2693,6 +2694,17 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
       requestId: req.id
     });
   }
+  if (isSupabaseServerConfigured()) {
+    try {
+      const property = await createPersistentInvestmentPlan(body);
+      return res.status(201).json({ success: true, data: property, message: 'Property listing saved to the database.', requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('INVALID_PROPERTY_DATA') ? 400 : message.includes('duplicate key') ? 409 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Property could not be saved. Please check database availability and try again.' : message, code: status === 503 ? 'PROPERTY_DATABASE_WRITE_FAILED' : 'INVALID_PROPERTY_DATA', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
   const slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   const newProp = {
@@ -2744,8 +2756,20 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
 /**
  * PUT /api/v1/marketplace/listings/:id & /api/v1/properties/:id & /api/v1/admin/properties/:id (Admin Only)
  */
-router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const property = await updatePersistentInvestmentPlan(id, req.body || {});
+      if (!property) return res.status(404).json({ success: false, error: `Property listing '${id}' was not found.`, code: 'PROPERTY_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: property, message: 'Property listing updated in the database.', requestId: req.id });
+    } catch (error: any) {
+      const message = String(error?.message || '');
+      const status = message.includes('INVALID_PROPERTY_DATA') ? 400 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'Property changes could not be saved. Please retry.' : message, code: status === 503 ? 'PROPERTY_DATABASE_WRITE_FAILED' : 'INVALID_PROPERTY_DATA', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const targetIndex = mockListings.findIndex(p => p.id === id || p.slug === id);
 
   if (targetIndex === -1) {
