@@ -3246,7 +3246,7 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
 /**
  * POST /api/v1/deposits
  */
-router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.depositsEnabled) {
     return res.status(403).json({
       success: false,
@@ -3291,6 +3291,31 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
       code: 'INVALID_DEPOSIT_AMOUNT',
       requestId: req.id
     });
+  }
+  if (isSupabaseServerConfigured()) {
+    try {
+      const ref = `KZ-DEP-${crypto.randomInt(100000, 1000000)}`;
+      const idempotencyKey = String(req.headers['idempotency-key'] || req.body?.idempotencyKey || crypto.randomUUID()).slice(0, 128);
+      const row = await runFinancialRpc('kretz_request_deposit', {
+        p_user_id: req.user!.id, p_amount: numAmount, p_method: String(method),
+        p_reference: ref, p_transaction_id: crypto.randomUUID(),
+        p_tx_hash: typeof txHash === 'string' ? txHash : null, p_idempotency_key: idempotencyKey
+      });
+      const transaction = toApiTransaction(row);
+      sendEmail({
+        templateId: 'deposit_received', recipient: req.user!.email,
+        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, amount: numAmount.toFixed(2), currency: 'EUR', reference: transaction.reference || ref, method, beneficiary: paymentConfig.traditional.beneficiary, iban: paymentConfig.traditional.iban, bic: paymentConfig.traditional.bic, bankName: paymentConfig.traditional.bankName, address: paymentConfig.traditional.address, country: paymentConfig.traditional.country }
+      }).catch(err => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'req-deposit-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: err.message }));
+      return res.status(201).json({ success: true, data: transaction, message: 'Deposit request saved. Your wallet will only be credited after an administrator verifies settlement.', requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-deposit-db', eventType: 'DEPOSIT_PERSIST_FAILED', outcome: 'failure', message: error?.message || 'Deposit could not be saved.' });
+      const message = String(error?.message || '');
+      const status = message.includes('INVALID_DEPOSIT_AMOUNT') ? 400 : message.includes('ACCOUNT_LEDGER_UNAVAILABLE') ? 409 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'The deposit service is temporarily unavailable. No deposit request was recorded.' : message, code: status === 503 ? 'DEPOSIT_DATABASE_UNAVAILABLE' : 'DEPOSIT_REQUEST_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Deposits are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
   const ref = `KZ-DEP-${Math.floor(100000 + Math.random() * 900000)}`;
   const foundUser = findUserRecordForRequest(req);
@@ -3396,7 +3421,7 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
 /**
  * POST /api/v1/withdrawals
  */
-router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.withdrawalsEnabled) {
     return res.status(403).json({
       success: false,
@@ -3551,7 +3576,7 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
