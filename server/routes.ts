@@ -3217,6 +3217,14 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
   }
 
   const { amount, currency = 'EUR', method = 'SEPA Bank Wire', txHash } = req.body || {};
+  if (currency !== 'EUR') {
+    return res.status(400).json({
+      success: false,
+      error: 'Deposits are currently accepted in EUR only. Other currencies must be converted and verified before submission.',
+      code: 'UNSUPPORTED_DEPOSIT_CURRENCY',
+      requestId: req.id
+    });
+  }
 
   const numAmount = Number(amount);
   if (!Number.isFinite(numAmount) || numAmount < 100) {
@@ -3526,7 +3534,10 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   // Idempotency check to prevent duplicate double-charge
-  const safeKey = idempotencyKey || `${req.user?.id}-${propertyId}-${tokensCount}`;
+  const clientKey = typeof idempotencyKey === 'string' && idempotencyKey.trim()
+    ? idempotencyKey.trim().slice(0, 128)
+    : `${propertyId}-${count}`;
+  const safeKey = `${req.user!.id}:${clientKey}`;
   if (processedWebhooks.has(safeKey)) {
     return res.status(409).json({
       success: false,
@@ -4148,12 +4159,15 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, (req: Authentica
   if (targetTx.status !== 'pending') {
     return res.status(409).json({ success: false, error: `Deposit is already ${targetTx.status}; it cannot be approved again.`, code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
   }
+  const foundUser =
+    mockUsers.find(u => u.id === targetTx.userId) ||
+    (targetTx.userEmail ? mockUsers.find(u => u.email === targetTx.userEmail) : undefined);
+  if (!foundUser) {
+    return res.status(409).json({ success: false, error: 'The investor ledger account could not be found. The deposit was not approved or credited.', code: 'ACCOUNT_LEDGER_UNAVAILABLE', requestId: req.id });
+  }
 
   {
     targetTx.status = 'completed';
-    const foundUser =
-      mockUsers.find(u => u.id === targetTx.userId) ||
-      (targetTx.userEmail ? mockUsers.find(u => u.email === targetTx.userEmail) : undefined);
     const creditAmt = Number(targetTx.amount);
     if (foundUser) {
       if (userSubBalancesStore.has(foundUser.id)) {
