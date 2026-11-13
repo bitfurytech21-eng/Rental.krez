@@ -12,6 +12,7 @@ Apply every migration in timestamp order. Do not cherry-pick the new auth migrat
 4. `20261113000001_persistent_admin_account_controls.sql`
 5. `20261113000002_durable_server_sessions.sql`
 6. `20261113000003_durable_admin_auth.sql`
+7. `20261113000004_customer_auth_profile_metadata.sql`
 
 ## Before applying
 
