@@ -1557,7 +1557,7 @@ router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Respo
   const strength = validatePasswordStrength(password);
   if (!strength.valid) return res.status(400).json({ success: false, error: strength.error || 'Password does not meet security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
   const authHeader = req.headers.authorization || '';
-  const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : String(req.body?.accessToken || '');
+  const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : String(req.body?.accessToken || req.body?.token || '');
   if (!accessToken) return res.status(401).json({ success: false, error: 'A valid Supabase recovery session is required.', code: 'RECOVERY_SESSION_REQUIRED', requestId: req.id });
   try {
     await updateCustomerPassword(accessToken, password);
