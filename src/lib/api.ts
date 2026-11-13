@@ -1,3 +1,5 @@
+const createIdempotencyKey = () => globalThis.crypto?.randomUUID?.() || `op-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 /**
  * Centralized API Client Wrapper for L'Agence Real Estate Platform
  * 
@@ -534,13 +536,13 @@ export const treasuryApi = {
  */
 export const financialApi = {
   deposit: (payload: { amount: number; currency?: string; method?: string; txHash?: string }) =>
-    api.post<any>('/deposits', payload),
+    api.post<any>('/deposits', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   withdraw: (payload: { amount: number; destination: string; method?: string }) =>
-    api.post<any>('/withdrawals', payload),
+    api.post<any>('/withdrawals', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', payload),
+    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 };
 
 export const investmentsApi = {
@@ -551,7 +553,7 @@ export const investmentsApi = {
     api.post<any>('/investments', payload),
 
   reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
+    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
 };
 
 /**
@@ -565,10 +567,10 @@ export const walletApi = {
     api.get<any[]>('/transactions', { params }),
 
   createDepositRequest: (payload: { amount: number; currency: string; method: string; txHash?: string }) =>
-    api.post<any>('/deposits', payload),
+    api.post<any>('/deposits', { ...payload, idempotencyKey: createIdempotencyKey() }),
 
   createWithdrawalRequest: (payload: { amount: number; destination: string; method: string }) =>
-    api.post<any>('/withdrawals', payload),
+    api.post<any>('/withdrawals', { ...payload, idempotencyKey: createIdempotencyKey() }),
 };
 
 /**
