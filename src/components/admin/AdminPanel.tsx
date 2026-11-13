@@ -345,8 +345,11 @@ export const AdminPanel: React.FC = () => {
       walletBalance: Number(row.balance || 0), investedBalance: Number(row.investedBalance || 0),
       totalEarned: Number(row.totalEarned || 0), createdAt: row.createdAt || new Date().toISOString(),
       phoneNumber: row.phoneNumber || undefined, country: row.country || undefined,
-      status: row.status === 'suspended' ? 'suspended' : 'active', suspendedReason: row.suspendedReason || undefined
+      status: row.status === 'suspended' ? 'suspended' : 'active', suspendedReason: row.suspendedReason || undefined,
+      bankIban: row.bankIban || undefined, cryptoDepositAddress: row.cryptoDepositAddress || undefined
     })));
+    setSelectedUserId((current) => current || rows[0]?.id || '');
+    setEditUserPaymentId((current) => current || rows[0]?.id || '');
   };
 
   useEffect(() => {
@@ -432,7 +435,7 @@ export const AdminPanel: React.FC = () => {
     refreshAll();
   };
 
-  const handleExecuteManualCredit = (e: React.FormEvent) => {
+  const handleExecuteManualCredit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
       setActionError('Please select a target investor account.');
@@ -445,20 +448,19 @@ export const AdminPanel: React.FC = () => {
 
     setIsSubmittingCredit(true);
     try {
-      const creditedTx = ledger.recordManualCredit(
-        activeUser.email,
-        selectedUserId,
-        manualAmount,
-        manualCurrency,
-        manualMethod,
-        manualReference.trim() || undefined,
-        manualNotes.trim() || undefined
-      );
-
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${selectedUserId}/credit`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          amount: manualAmount, currency: manualCurrency, method: manualMethod,
+          reference: manualReference.trim() || undefined, notes: manualNotes.trim() || undefined
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'The wallet credit could not be saved.');
       const targetInvestor = users.find(u => u.id === selectedUserId);
-      setActionSuccess(
-        `Successfully integrated payment! Credited ${formatCurrency(manualAmount)} (${manualCurrency}) to ${targetInvestor?.fullName || 'investor'}. Ref: ${creditedTx.reference}`
-      );
+      setActionSuccess(`Credited ${formatCurrency(manualAmount)} (${manualCurrency}) to ${targetInvestor?.fullName || 'investor'} in the database. Ref: ${payload.data?.transaction?.reference || manualReference || 'recorded'}`);
       setActionError(null);
       setManualReference('');
       refreshAll();
@@ -470,17 +472,24 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleSaveUserPaymentDetails = (e: React.FormEvent) => {
+  const handleSaveUserPaymentDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editUserPaymentId) return;
-
     try {
-      ledger.updateUserPaymentDetails(editUserPaymentId, {
-        cryptoDepositAddress: userCustomCryptoAddress.trim() || undefined,
-        bankIban: userCustomIban.trim() || undefined
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${editUserPaymentId}/profile`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          cryptoDepositAddress: userCustomCryptoAddress.trim(),
+          bankIban: userCustomIban.trim()
+        })
       });
-      refreshAll();
-      setActionSuccess('Investor-specific payment details updated successfully!');
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || 'Investor payment details could not be saved.');
+      await loadUsers();
+      setActionSuccess('Investor-specific payment details saved to Supabase.');
+      setActionError(null);
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
       setActionError(err.message || 'Failed to update user payment details.');
