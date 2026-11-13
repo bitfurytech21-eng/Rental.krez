@@ -318,7 +318,7 @@ export const authApi = {
     phoneNumber?: string;
     countryCode?: string;
   }) =>
-    api.post<{ user: any; token: string }>('/auth/register', payload, { skipAuth: true }),
+    api.post<{ user: any; token?: string | null; refreshToken?: string | null; requiresVerification?: boolean }>('/auth/register', payload, { skipAuth: true }),
 
   getMe: () =>
     api.get<{ user: any }>('/auth/me'),
