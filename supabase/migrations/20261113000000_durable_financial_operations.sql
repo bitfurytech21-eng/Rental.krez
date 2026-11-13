@@ -134,7 +134,7 @@ language plpgsql security definer set search_path = ''
 as $$
 declare v_tx public.payment_transactions; v_profile public.user_profiles; v_status text;
 begin
-  if not public.is_admin(p_admin_id) then raise exception 'ADMIN_REQUIRED' using errcode = '42501'; end if;
+  if not (public.has_role(p_admin_id,'finance_admin') or public.has_role(p_admin_id,'super_admin') or public.has_role(p_admin_id,'admin')) then raise exception 'FINANCE_ADMIN_REQUIRED' using errcode = '42501'; end if;
   select * into v_tx from public.payment_transactions
     where id = p_transaction_id and type = 'deposit' for update;
   if not found then raise exception 'DEPOSIT_NOT_FOUND' using errcode = 'P0002'; end if;
@@ -281,5 +281,29 @@ grant execute on function public.kretz_request_withdrawal(uuid,numeric,text,text
 grant execute on function public.kretz_review_deposit(text,uuid,boolean,text) to service_role;
 grant execute on function public.kretz_review_withdrawal(text,uuid,boolean,text) to service_role;
 grant execute on function public.kretz_purchase_tokens(uuid,text,integer,text,text,text,text,text,text) to service_role;
+
+-- Preserve the three existing featured offerings on first database bootstrap.
+-- ON CONFLICT DO NOTHING deliberately avoids overwriting any operator-managed property.
+insert into public.investment_plans
+  (id,slug,title,location,city,country,type,status,target_amount,funded_amount,token_price,
+   total_tokens,available_tokens,monthly_target_rate,estimated_annual_yield,total_estimated_return,
+   duration_months,minimum_investment,distribution_frequency,images,specs,financials)
+values
+  ('prop-villa-mirador','villa-mirador-marbella','Villa El Mirador','La Zagaleta, Benahavís, Spain','Benahavís','Spain','Luxury Villa','funding',
+   2450000,1840000,364,6730,1675,6.10,73.2,292.8,48,1000,'Monthly',
+   '["https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg","https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg","https://files.kretzrealestate.com/3286f7373a9319f6adb33037462b9324.jpg","https://files.kretzrealestate.com/6bc1db91a5f1856684da4204fd49ddd.jpg","https://files.kretzrealestate.com/77505885976169785aa355b7b21d7abe.jpg","https://files.kretzrealestate.com/337717ee33c361d8662e538c0cf8088.jpg","https://files.kretzrealestate.com/413290f763843c687cca11f6bc94ca.jpg"]'::jsonb,
+   '{"bedrooms":7,"bathrooms":9,"builtAreaM2":1280,"plotAreaM2":5200}'::jsonb,
+   '{"grossRentAnnual":220000,"netYield":73.2,"totalIrr":292.8}'::jsonb),
+  ('prop-palacio-pedralbes','palacio-pedralbes-barcelona','Palacio de Pedralbes','Pedralbes, Barcelona, Spain','Barcelona','Spain','Modernist Mansion','funding',
+   1650000,980000,364,4532,1840,6.30,75.6,302.4,48,1000,'Monthly',
+   '["https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg","https://files.kretzrealestate.com/7cae7d2c3b9bbf8e9445a1b2cc78e81.jpg","https://files.kretzrealestate.com/e1d5efb0c63a5b291d5efb22df70cc39.jpg","https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg","https://files.kretzrealestate.com/8ea96ea88eac7013d9d6445c14583f8e.jpg","https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg","https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg"]'::jsonb,
+   '{"bedrooms":6,"bathrooms":7,"builtAreaM2":950,"plotAreaM2":2400}'::jsonb,
+   '{"grossRentAnnual":145000,"netYield":75.6,"totalIrr":302.4}'::jsonb),
+  ('prop-finca-son-vida','finca-son-vida-mallorca','Son Vida Private Estate','Son Vida, Palma de Mallorca, Spain','Palma de Mallorca','Spain','Island Finca','funding',
+   3100000,2600000,364,8516,1373,6.50,78.0,234.0,36,1000,'Monthly',
+   '["https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg","https://files.kretzrealestate.com/b8d5f1e23efcd102b11bcb49831c99.jpg","https://files.kretzrealestate.com/31574c24ff15ac43bf531be459a515f9.jpg","https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg","https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg","https://files.kretzrealestate.com/3c62f78b3114e7f8f343dfcd6ca6dbf.jpg","https://files.kretzrealestate.com/57597262d0e282a1c34ff9e1a4a539d1.jpg"]'::jsonb,
+   '{"bedrooms":8,"bathrooms":10,"builtAreaM2":1450,"plotAreaM2":8900}'::jsonb,
+   '{"grossRentAnnual":310000,"netYield":78.0,"totalIrr":234.0}'::jsonb)
+on conflict (id) do nothing;
 
 commit;
