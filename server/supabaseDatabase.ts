@@ -33,10 +33,10 @@ export function getSupabaseAuthClient(accessToken?: string): SupabaseClient {
   if (!isSupabaseAuthConfigured()) {
     throw new Error('SUPABASE_AUTH_NOT_CONFIGURED');
   }
-  return createClient(supabaseUrl, anonKey, {
-    global: accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-  });
+  const options = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
+  return accessToken
+    ? createClient(supabaseUrl, anonKey, { ...options, global: { headers: { Authorization: `Bearer ${accessToken}` } } })
+    : createClient(supabaseUrl, anonKey, options);
 }
 
 export async function signInCustomer(email: string, password: string) {
