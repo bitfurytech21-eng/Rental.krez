@@ -404,3 +404,66 @@ export async function getPersistentPerformance(userId: string) {
     totalDividendsReceived: Number(profile.total_dividends_earned || 0)
   };
 }
+
+export async function listUserNotifications(userId: string, limit = 100) {
+  const { data, error } = await getSupabaseAdmin().from('notifications').select('*')
+    .eq('user_id', userId).order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 250));
+  if (error) throw error;
+  return data || [];
+}
+
+export async function markUserNotificationRead(userId: string, notificationId: string) {
+  const { data, error } = await getSupabaseAdmin().from('notifications')
+    .update({ read: true }).eq('user_id', userId).eq('id', notificationId).select('*').maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function markAllUserNotificationsRead(userId: string) {
+  const { data, error } = await getSupabaseAdmin().from('notifications')
+    .update({ read: true }).eq('user_id', userId).eq('read', false).select('id');
+  if (error) throw error;
+  return data?.length || 0;
+}
+
+export async function listUserFavorites(userId: string) {
+  const { data, error } = await getSupabaseAdmin().from('user_favorites')
+    .select('property_id').eq('user_id', userId).order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row: any) => row.property_id as string);
+}
+
+export async function saveUserFavorite(userId: string, propertyId: string) {
+  const { error } = await getSupabaseAdmin().from('user_favorites')
+    .upsert({ user_id: userId, property_id: propertyId }, { onConflict: 'user_id,property_id', ignoreDuplicates: true });
+  if (error) throw error;
+  return listUserFavorites(userId);
+}
+
+export async function removeUserFavorite(userId: string, propertyId: string) {
+  const { error } = await getSupabaseAdmin().from('user_favorites')
+    .delete().eq('user_id', userId).eq('property_id', propertyId);
+  if (error) throw error;
+  return listUserFavorites(userId);
+}
+
+export async function getUserPreferences(userId: string) {
+  const { data, error } = await getSupabaseAdmin().from('user_preferences')
+    .select('preferences').eq('user_id', userId).maybeSingle();
+  if (error) throw error;
+  return data?.preferences || {
+    defaultSort: 'yield-desc', itemsPerPage: 6, currencyDisplay: 'EUR', emailNotifications: true
+  };
+}
+
+export async function saveUserPreferences(userId: string, preferences: Record<string, unknown>) {
+  const allowed = ['defaultSort','itemsPerPage','currencyDisplay','emailNotifications','smsAlerts'];
+  const safe: Record<string, unknown> = {};
+  for (const key of allowed) if (preferences[key] !== undefined) safe[key] = preferences[key];
+  const current = await getUserPreferences(userId);
+  const merged = { ...current, ...safe };
+  const { error } = await getSupabaseAdmin().from('user_preferences')
+    .upsert({ user_id: userId, preferences: merged, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  if (error) throw error;
+  return merged;
+}
