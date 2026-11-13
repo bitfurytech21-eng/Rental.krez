@@ -1002,7 +1002,7 @@ router.post(
 /**
  * POST /api/v1/admin/logout & /api/v1/auth/admin-logout
  */
-router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req: AuthenticatedRequest, res: Response) => {
+router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], async (req: AuthenticatedRequest, res: Response) => {
   const authHeader = req.headers['authorization'];
   let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token && req.headers.cookie) {
@@ -1045,7 +1045,7 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], (req:
  */
 router.get('/admin/security/credentials', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
-  const envState = process.env.NODE_ENV === 'production' ? { mode: config.mode } : validateAdminEnvironment();
+  const envState = process.env.NODE_ENV === 'production' ? { mode: config.isCustomConfigured ? 'custom_bcrypt' as const : 'bcrypt_hash' as const } : validateAdminEnvironment();
 
   return res.json({
     success: true,
@@ -1231,7 +1231,7 @@ router.post(
 
     if (process.env.NODE_ENV === 'production') await resetPersistentAdminCredentials(); else resetCustomAdminCredentials();
     const restoredConfig = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
-    const envState = process.env.NODE_ENV === 'production' ? { mode: restoredConfig.mode } : validateAdminEnvironment();
+    const envState = process.env.NODE_ENV === 'production' ? { mode: restoredConfig.isCustomConfigured ? 'custom_bcrypt' as const : 'bcrypt_hash' as const } : validateAdminEnvironment();
     const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(restoredConfig.adminEmail, restoredConfig.fullName) : createAdminSession(restoredConfig.adminEmail, restoredConfig.fullName);
 
     res.cookie('kretz_admin_session', session.token, {
