@@ -3571,7 +3571,7 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
   if (numAmount >= 50000) {
     sendEmail({
       templateId: 'admin_alert',
-      recipient: 'info@kretz.site',
+      recipient: process.env.EMAIL_SUPPORT || process.env.EMAIL_FROM || 'info@kretzdespain.com',
       data: {
         adminName: 'Chief Compliance Officer',
         eventType: 'HIGH_VALUE_DEPOSIT_INITIATED',
