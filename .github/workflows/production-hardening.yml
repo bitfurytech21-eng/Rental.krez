@@ -27,4 +27,6 @@ jobs:
       - name: Automated tests
         run: npm test
       - name: Production build
+        env:
+          VITE_API_BASE_URL: https://api.kretzdespain.com/api/v1
         run: npm run build
