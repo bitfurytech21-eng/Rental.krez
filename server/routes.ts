@@ -4005,7 +4005,21 @@ router.get('/admin/database/health', requireAdmin, async (req: AuthenticatedRequ
  * POST /api/v1/admin/database/repair
  * Scans, repairs, and synchronizes database state
  */
-router.post('/admin/database/repair', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/database/repair', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const health = await databaseHealth();
+      return res.status(health.status === 'healthy' ? 200 : 503).json({
+        success: health.status === 'healthy',
+        data: { status: health.status, usersCount: health.usersCount, listingsCount: health.listingsCount, transactionsCount: health.transactionsCount, checkedAt: new Date().toISOString(), repairedItems: [] },
+        message: 'Database integrity connectivity check completed. No records were automatically modified.',
+        requestId: req.id
+      });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Database integrity check failed.', code: 'DATABASE_REPAIR_CHECK_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   logger.log({
     level: 'info',
     category: 'admin',
