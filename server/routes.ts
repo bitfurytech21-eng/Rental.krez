@@ -452,6 +452,7 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
   } catch (error: any) {
     const message = String(error?.message || '');
     if (message === 'ACCOUNT_SUSPENDED') return res.status(403).json({ success: false, error: 'Your account has been suspended by compliance. Please contact support.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+    if (message === 'ADMIN_LOGIN_REQUIRED') return res.status(403).json({ success: false, error: 'Administrator accounts must sign in through the Administrator Gateway.', code: 'ADMIN_LOGIN_REQUIRED', requestId: req.id });
     if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
     logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
     return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
