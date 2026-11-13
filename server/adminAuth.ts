@@ -113,7 +113,9 @@ export function getAdminConfig() {
     !rawEnvEmail ||
     rawEnvEmail === 'admin@example.com' ||
     rawEnvEmail.startsWith('replace_with');
-  const envEmail = isPlaceholderEmail ? 'admin@kretz.com' : rawEnvEmail;
+  const envEmail = isPlaceholderEmail
+    ? (process.env.NODE_ENV === 'production' ? '' : 'admin@kretz.com')
+    : rawEnvEmail;
 
   const rawHash = process.env.ADMIN_PASSWORD_HASH?.trim() || '';
   const isValidBcryptHash = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(rawHash);
@@ -132,7 +134,7 @@ export function getAdminConfig() {
   const sessionSecret =
     process.env.SESSION_SECRET ||
     process.env.JWT_SECRET ||
-    getEphemeralSessionSecret();
+    (process.env.NODE_ENV === 'production' ? '' : getEphemeralSessionSecret());
 
   if (custom) {
     return {
@@ -174,7 +176,10 @@ export function validateAdminEnvironment(): {
   if (config.plaintextPassword) {
     return { configured: true, mode: 'environment_password' };
   }
-  return { configured: true, mode: 'development_fallback' };
+  return {
+    configured: process.env.NODE_ENV !== 'production' && Boolean(config.adminEmail && config.sessionSecret),
+    mode: 'development_fallback'
+  };
 }
 
 /**
@@ -183,6 +188,7 @@ export function validateAdminEnvironment(): {
 export async function verifyAdminCredentials(password: string): Promise<boolean> {
   if (!password) return false;
   const config = getAdminConfig();
+  if (!config.adminEmail || !config.sessionSecret) return false;
 
   // 1. If secure bcrypt password hash is configured (Custom Admin Store or Production Env)
   if (config.passwordHash) {
@@ -202,7 +208,8 @@ export async function verifyAdminCredentials(password: string): Promise<boolean>
     return crypto.timingSafeEqual(a, b);
   }
 
-  // 3. Development / Sandbox fallback if unconfigured
+  // 3. Development / Sandbox fallback only. Production must have an explicit secret.
+  if (process.env.NODE_ENV === 'production') return false;
   const devDefault = 'AdminSecure2026!#';
   const a = Buffer.from(password);
   const b = Buffer.from(devDefault);
