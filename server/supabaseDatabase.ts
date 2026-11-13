@@ -478,7 +478,7 @@ export async function saveUserPreferences(userId: string, preferences: Record<st
 export async function getAdminIdentityByEmail(email: string): Promise<VerifiedSupabaseIdentity | null> {
   if (!isSupabaseServerConfigured()) return null;
   const { data, error } = await getSupabaseAdmin().from('user_profiles')
-    .select('id,email,full_name,account_type,wallet_balance,status,suspended_reason,user_roles(role)')
+    .select('id,email,full_name,account_type,wallet_balance,account_status,suspended_reason,user_roles(role)')
     .eq('email', email.trim().toLowerCase()).maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -488,7 +488,7 @@ export async function getAdminIdentityByEmail(email: string): Promise<VerifiedSu
   return {
     id: data.id, email: data.email, fullName: data.full_name || 'Administrator',
     role, accountType: data.account_type, balance: Number(data.wallet_balance || 0),
-    status: data.status === 'suspended' ? 'suspended' : 'active',
+    status: data.account_status === 'suspended' ? 'suspended' : 'active',
     suspendedReason: data.suspended_reason || undefined
   };
 }
