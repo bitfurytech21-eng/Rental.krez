@@ -50,6 +50,23 @@ After verifying an administrator's identity through your approved onboarding pro
 
 Do not grant `super_admin` as a convenience or to ordinary investor accounts.
 
+### One-time first-admin bootstrap
+
+For the very first administrator only, the Supabase project owner must:
+1. Create the intended administrator account through the normal Supabase Auth signup/invitation flow.
+2. Verify the identity and email out-of-band.
+3. In SQL Editor, replace the email below with that verified account and execute this once:
+
+```sql
+insert into public.user_roles (user_id, role, granted_by)
+select id, 'super_admin', id
+from public.user_profiles
+where lower(email) = lower('verified-admin@your-company.example')
+on conflict (user_id, role) do nothing;
+```
+
+After this bootstrap, only an existing super administrator should grant or revoke roles. Configure the server's `ADMIN_EMAIL` to the same verified email if using the legacy signed administrator gateway. The gateway login is additionally checked against `public.user_roles`.
+
 ## 4. Deploy and verify
 
 Deploy the `production-hardening` branch to a staging/preview environment first. After the migration and environment variables are installed, verify:
