@@ -97,7 +97,7 @@ export async function databaseHealth() {
 export async function listUserTransactions(userId: string, limit = 100) {
   const { data, error } = await getSupabaseAdmin()
     .from('payment_transactions')
-    .select('*')
+    .select('*, user_profiles(email,full_name)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 250));
@@ -106,7 +106,7 @@ export async function listUserTransactions(userId: string, limit = 100) {
 }
 
 export async function listAdminTransactions(type?: 'deposit' | 'withdrawal', status?: string, limit = 250) {
-  let query = getSupabaseAdmin().from('payment_transactions').select('*').order('created_at', { ascending: false });
+  let query = getSupabaseAdmin().from('payment_transactions').select('*, user_profiles(email,full_name)').order('created_at', { ascending: false });
   if (type) query = query.eq('type', type);
   if (status) query = query.eq('status', status);
   const { data, error } = await query.limit(Math.min(Math.max(limit, 1), 500));
@@ -141,6 +141,8 @@ export function toApiTransaction(row: any) {
   return {
     id: row.id,
     userId: row.user_id,
+    userEmail: row.user_profiles?.email || undefined,
+    userName: row.user_profiles?.full_name || undefined,
     type: row.type,
     amount: Number(row.amount),
     currency: row.currency,
@@ -151,6 +153,7 @@ export function toApiTransaction(row: any) {
     createdAt: row.created_at,
     processedAt: row.processed_at || undefined,
     metadata: row.metadata || {},
+    destination: row.metadata?.destination || undefined,
     notes: row.notes || undefined
   };
 }
@@ -195,10 +198,13 @@ export async function listInvestmentPlans(options: { status?: string; search?: s
 }
 
 export async function getInvestmentPlan(identifier: string) {
-  const { data, error } = await getSupabaseAdmin().from('investment_plans').select('*')
-    .or(`id.eq.${identifier},slug.eq.${identifier}`).maybeSingle();
-  if (error) throw error;
-  return data ? toApiProperty(data) : null;
+  const client = getSupabaseAdmin();
+  const byId = await client.from('investment_plans').select('*').eq('id', identifier).maybeSingle();
+  if (byId.error) throw byId.error;
+  if (byId.data) return toApiProperty(byId.data);
+  const bySlug = await client.from('investment_plans').select('*').eq('slug', identifier).maybeSingle();
+  if (bySlug.error) throw bySlug.error;
+  return bySlug.data ? toApiProperty(bySlug.data) : null;
 }
 
 export async function listUserInvestments(userId: string) {
@@ -336,9 +342,14 @@ export async function createPersistentInvestmentPlan(body: any) {
 
 export async function updatePersistentInvestmentPlan(identifier: string, body: any) {
   const client = getSupabaseAdmin();
-  const { data: existing, error: findError } = await client.from('investment_plans').select('*')
-    .or(`id.eq.${identifier},slug.eq.${identifier}`).maybeSingle();
-  if (findError) throw findError;
+  const byId = await client.from('investment_plans').select('*').eq('id', identifier).maybeSingle();
+  if (byId.error) throw byId.error;
+  let existing = byId.data;
+  if (!existing) {
+    const bySlug = await client.from('investment_plans').select('*').eq('slug', identifier).maybeSingle();
+    if (bySlug.error) throw bySlug.error;
+    existing = bySlug.data;
+  }
   if (!existing) return null;
   const payload = propertyWritePayload(body || {}, existing);
   const { data, error } = await client.from('investment_plans').update({ ...payload, updated_at: new Date().toISOString() })
