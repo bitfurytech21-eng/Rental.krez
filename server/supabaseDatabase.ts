@@ -243,15 +243,16 @@ export async function getPersistentDashboardSummary(userId: string) {
 
 export async function getPersistentAdminDashboard() {
   const client = getSupabaseAdmin();
-  const [users, plans, transactions, pendingKyc, pendingWithdrawals, invested] = await Promise.all([
+  const [users, plans, transactions, pendingKyc, pendingWithdrawals, invested, dividends] = await Promise.all([
     client.from('user_profiles').select('id', { count: 'exact', head: true }),
     client.from('investment_plans').select('id', { count: 'exact', head: true }),
     client.from('payment_transactions').select('id', { count: 'exact', head: true }),
     client.from('user_profiles').select('id', { count: 'exact', head: true }).in('kyc_status', ['pending','unverified']),
     client.from('payment_transactions').select('id', { count: 'exact', head: true }).eq('type','withdrawal').eq('status','pending'),
-    client.from('user_profiles').select('invested_balance')
+    client.from('user_profiles').select('invested_balance'),
+    client.from('user_profiles').select('total_dividends_earned')
   ]);
-  const error = users.error || plans.error || transactions.error || pendingKyc.error || pendingWithdrawals.error || invested.error;
+  const error = users.error || plans.error || transactions.error || pendingKyc.error || pendingWithdrawals.error || invested.error || dividends.error;
   if (error) throw error;
   const totalAssetsUnderManagement = (invested.data || []).reduce((sum: number, row: any) => sum + Number(row.invested_balance || 0), 0);
   return {
@@ -259,6 +260,7 @@ export async function getPersistentAdminDashboard() {
     totalProperties: plans.count || 0,
     totalTransactions: transactions.count || 0,
     totalAssetsUnderManagement,
+    totalDividendsPaid: (dividends.data || []).reduce((sum: number, row: any) => sum + Number(row.total_dividends_earned || 0), 0),
     pendingKYC: pendingKyc.count || 0,
     pendingWithdrawalsCount: pendingWithdrawals.count || 0
   };
