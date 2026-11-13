@@ -2037,16 +2037,16 @@ router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => 
       const profile = isSupabaseServerConfigured() ? await getUserProfile(req.user.id) : findUserRecordForRequest(req);
       const status = profile?.status || req.user.status || 'active';
       if (status === 'suspended') {
-        return res.status(403).json({ success: false, error: profile?.suspended_reason || req.user.suspendedReason || 'Your account has been suspended by compliance.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+        return res.status(403).json({ success: false, error: profile?.suspended_reason || profile?.suspendedReason || req.user.suspendedReason || 'Your account has been suspended by compliance.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
       }
-      const safeUser = profile ? {
+      const safeUser = profile && 'full_name' in profile ? {
         id: req.user.id, email: profile.email || req.user.email,
         fullName: profile.full_name || req.user.fullName,
         role: req.user.role, accountType: profile.account_type || req.user.accountType,
         country: profile.country, phoneNumber: profile.phone_number,
         balance: Number(profile.wallet_balance ?? req.user.balance ?? 0),
         kycStatus: profile.kyc_status || 'pending', status
-      } : req.user;
+      } : profile ? sanitizeUser(profile) : req.user;
       const csrfToken = req.session?.csrfToken || '';
       return res.json({ success: true, data: { authenticated: true, user: safeUser, csrfToken }, authenticated: true, user: safeUser, csrfToken, requestId: req.id });
     } catch (error: any) {
