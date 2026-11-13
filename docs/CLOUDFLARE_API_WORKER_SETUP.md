@@ -49,3 +49,8 @@ The API can store legacy `kz_sess_*` sessions in Supabase instead of Worker memo
 4. Test customer registration, login, session validation, logout, and password-reset revocation across two separate Worker requests.
 
 Do not set `AUTH_SESSION_STORE=supabase` before the migration is applied and the service-role secret is verified. The default remains the existing in-memory store until the operator explicitly enables the persistent store. This migration does not migrate customer account records or the administrator credential file; those are separate remaining authentication tasks.
+
+
+## Supabase Auth registration flow
+
+When the frontend is configured with Supabase Auth, the browser's Supabase sign-up is the account-creation authority. The frontend must not submit the same credentials a second time to the legacy `/auth/register` endpoint. If Supabase requires email confirmation, the UI must remain unauthenticated until a real Supabase session is issued; never substitute a locally fabricated `sess_*` token.
