@@ -52,7 +52,6 @@ alter table public.user_profiles
   add column if not exists tax_id text,
   add column if not exists date_of_birth date,
   add column if not exists mfa_enabled boolean not null default false,
-  add column if not exists status text not null default 'active' check (status in ('active','suspended')),
   add column if not exists suspended_reason text;
 
 -- Prevent authenticated clients from editing balances, KYC decisions, account types,
@@ -309,60 +308,6 @@ $$;
 
 
 -- Durable account status and KYC decisions.
-create or replace function public.kretz_admin_update_kyc(
-  p_user_id uuid, p_admin_id uuid, p_status text, p_notes text default null
-) returns jsonb
-language plpgsql security definer set search_path = ''
-as $
-declare v_profile public.user_profiles;
-begin
-  if not (public.has_role(p_admin_id,'operations_admin') or public.has_role(p_admin_id,'super_admin') or public.has_role(p_admin_id,'admin')) then
-    raise exception 'OPERATIONS_ADMIN_REQUIRED' using errcode = '42501';
-  end if;
-  if p_status not in ('unverified','pending','approved','rejected') then
-    raise exception 'INVALID_KYC_STATUS' using errcode = '22023';
-  end if;
-  update public.user_profiles set kyc_status = p_status,
-    kyc_notes = p_notes,
-    kyc_verified_at = case when p_status = 'approved' then now() else null end,
-    updated_at = now()
-    where id = p_user_id returning * into v_profile;
-  if not found then raise exception 'USER_NOT_FOUND' using errcode = 'P0002'; end if;
-  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
-  select p_admin_id,email,'operations_admin','KYC_STATUS_UPDATED','user',p_user_id::text,
-    'KYC status set to ' || p_status || '. ' || coalesce(p_notes,'')
-    from public.user_profiles where id = p_admin_id;
-  return jsonb_build_object('id',v_profile.id,'email',v_profile.email,'full_name',v_profile.full_name,
-    'kyc_status',v_profile.kyc_status,'kyc_notes',v_profile.kyc_notes,'kyc_verified_at',v_profile.kyc_verified_at);
-end;
-$;
-
-create or replace function public.kretz_admin_set_user_status(
-  p_user_id uuid, p_admin_id uuid, p_status text, p_reason text default null
-) returns jsonb
-language plpgsql security definer set search_path = ''
-as $
-declare v_profile public.user_profiles;
-begin
-  if not (public.has_role(p_admin_id,'operations_admin') or public.has_role(p_admin_id,'super_admin') or public.has_role(p_admin_id,'admin')) then
-    raise exception 'OPERATIONS_ADMIN_REQUIRED' using errcode = '42501';
-  end if;
-  if p_status not in ('active','suspended') then raise exception 'INVALID_STATUS' using errcode = '22023'; end if;
-  if p_user_id = p_admin_id and p_status = 'suspended' then raise exception 'SELF_SUSPENSION_FORBIDDEN' using errcode = '42501'; end if;
-  update public.user_profiles set status = p_status,
-    suspended_reason = case when p_status = 'suspended' then coalesce(p_reason,'Administrative Compliance Suspension') else null end,
-    updated_at = now()
-    where id = p_user_id returning * into v_profile;
-  if not found then raise exception 'USER_NOT_FOUND' using errcode = 'P0002'; end if;
-  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
-  select p_admin_id,email,'operations_admin',case when p_status = 'suspended' then 'USER_SUSPENDED' else 'USER_ACTIVATED' end,
-    'user',p_user_id::text,coalesce(p_reason,'')
-    from public.user_profiles where id = p_admin_id;
-  return jsonb_build_object('id',v_profile.id,'email',v_profile.email,'full_name',v_profile.full_name,
-    'status',v_profile.status,'suspended_reason',v_profile.suspended_reason);
-end;
-$;
-
 create or replace function public.kretz_admin_adjust_wallet(
   p_user_id uuid, p_admin_id uuid, p_amount numeric, p_reason text,
   p_transaction_id text, p_reference text
@@ -435,11 +380,7 @@ values
    '{"grossRentAnnual":310000,"netYield":78.0,"totalIrr":234.0}'::jsonb)
 on conflict (id) do nothing;
 
-revoke all on function public.kretz_admin_update_kyc(uuid,uuid,text,text) from public, anon, authenticated;
-revoke all on function public.kretz_admin_set_user_status(uuid,uuid,text,text) from public, anon, authenticated;
 revoke all on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) from public, anon, authenticated;
-grant execute on function public.kretz_admin_update_kyc(uuid,uuid,text,text) to service_role;
-grant execute on function public.kretz_admin_set_user_status(uuid,uuid,text,text) to service_role;
 grant execute on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) to service_role;
 
 -- Compatibility profile view must respect caller RLS on user_profiles.
