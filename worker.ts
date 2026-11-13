@@ -111,5 +111,5 @@ app.use('/auth', (req, res, next) => {
 });
 app.use(['/api', '/auth'], errorHandler);
 
-const server = app.listen(8787);
-export default httpServerHandler(server);
+app.listen(8787);
+export default httpServerHandler({ port: 8787 });
