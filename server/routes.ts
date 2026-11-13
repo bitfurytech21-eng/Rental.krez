@@ -2659,7 +2659,7 @@ router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, 
   });
 });
 
-router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (isSupabaseServerConfigured()) {
     return res.status(501).json({ success: false, error: 'Multi-currency conversion is not enabled on the persistent wallet yet. Your EUR balance is safe and unchanged.', code: 'FX_PERSISTENCE_NOT_ENABLED', requestId: req.id });
   }
@@ -3931,248 +3931,55 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
 });
 
 router.post('/admin/deposits/:depositId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { depositId } = req.params;
-  if (isSupabaseServerConfigured()) {
-    try {
-      const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
-      return res.json({ success: true, data: toApiTransaction(row), message: `Deposit ${depositId} approved and cash credited to the investor wallet.`, requestId: req.id });
-    } catch (error: any) {
-      const message = String(error?.message || '');
-      const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-      return res.status(status).json({ success: false, error: status === 503 ? 'Deposit approval could not be completed. Please retry after checking database availability.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
-    }
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit approved and wallet credited.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Deposit approval could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const targetTx = mockTransactions.find(t => t.type === 'deposit' && (t.id === depositId || t.reference === depositId));
-  if (!targetTx) {
-    return res.status(404).json({ success: false, error: `Deposit transaction '${depositId}' not found.`, code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
-  }
-  if (targetTx.status !== 'pending') {
-    return res.status(409).json({ success: false, error: `Deposit is already ${targetTx.status}; it cannot be approved again.`, code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
-  }
-  const foundUser =
-    mockUsers.find(u => u.id === targetTx.userId) ||
-    (targetTx.userEmail ? mockUsers.find(u => u.email === targetTx.userEmail) : undefined);
-  if (!foundUser) {
-    return res.status(409).json({ success: false, error: 'The investor ledger account could not be found. The deposit was not approved or credited.', code: 'ACCOUNT_LEDGER_UNAVAILABLE', requestId: req.id });
-  }
-
-  {
-    targetTx.status = 'completed';
-    const creditAmt = Number(targetTx.amount);
-    if (foundUser) {
-      if (userSubBalancesStore.has(foundUser.id)) {
-        const sub = userSubBalancesStore.get(foundUser.id)!;
-        sub.EUR = Number(((sub.EUR || 0) + creditAmt).toFixed(2));
-        foundUser.balance = sub.EUR;
-      } else {
-        foundUser.balance = Number(((foundUser.balance || 0) + creditAmt).toFixed(2));
-      }
-    }
-    pushUserNotification(targetTx.userId, {
-      title: 'Deposit Approved & Credited',
-      message: `Your deposit of €${creditAmt.toFixed(2)} (${targetTx.reference}) has been credited to your EUR balance.`,
-      type: 'financial'
-    });
-    
-    sendEmail({
-      templateId: 'deposit_confirmed',
-      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-      data: {
-        fullName: foundUser?.fullName || 'Valued Investor',
-        amount: Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        currency: targetTx.currency || 'EUR',
-        reference: targetTx.reference || depositId,
-        creditedBalance: (foundUser?.balance || Number(targetTx.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        settledAt: new Date().toUTCString()
-      }
-    }).catch(err => {
-      logger.log({
-        level: 'error',
-        category: 'admin',
-        requestId: req.id || 'req-dep-appr-email',
-        eventType: 'EMAIL_DISPATCH_FAILURE',
-        outcome: 'failure',
-        message: `Failed to dispatch deposit confirmation email: ${err.message}`
-      });
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `Deposit ${depositId} approved and cash credited to user balance.`,
-    requestId: req.id
-  });
 });
 
 router.post('/admin/deposits/:depositId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { depositId } = req.params;
-  const { reason } = req.body || {};
-  if (isSupabaseServerConfigured()) {
-    try {
-      const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason || 'Transfer verification could not be matched.' });
-      return res.json({ success: true, data: toApiTransaction(row), message: `Deposit ${depositId} rejected.`, requestId: req.id });
-    } catch (error: any) {
-      const message = String(error?.message || '');
-      const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-      return res.status(status).json({ success: false, error: status === 503 ? 'Deposit rejection could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
-    }
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Transfer verification could not be matched.' });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit rejected.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Deposit rejection could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const targetTx = mockTransactions.find(t => t.type === 'deposit' && (t.id === depositId || t.reference === depositId));
-
-  if (!targetTx) {
-    return res.status(404).json({
-      success: false,
-      error: `Deposit transaction '${depositId}' not found.`,
-      code: 'DEPOSIT_NOT_FOUND',
-      requestId: req.id
-    });
-  }
-
-  if (targetTx.status !== 'pending') {
-    return res.status(409).json({ success: false, error: `Deposit is already ${targetTx.status}; it cannot be rejected again.`, code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
-  }
-  targetTx.status = 'rejected';
-  (targetTx as any).rejectionReason = reason || 'Transfer verification could not be matched.';
-  pushUserNotification(targetTx.userId, {
-    title: 'Deposit Request Declined',
-    message: `Your deposit (${targetTx.reference}) was declined: ${(targetTx as any).rejectionReason}`,
-    type: 'warning'
-  });
-
-  const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
-  sendEmail({
-    templateId: 'payment_notification',
-    recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-    data: {
-      fullName: foundUser?.fullName || 'Valued Investor',
-      payment_type: 'Deposit Request Declined',
-      amount: `€${Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      payment_status: 'Declined',
-      reference: targetTx.reference || depositId,
-      notes: (targetTx as any).rejectionReason
-    },
-    idempotencyKey: `idemp-dep-reject-${targetTx.id}`
-  }).catch(() => {});
-
-  res.json({
-    success: true,
-    data: targetTx,
-    message: `Deposit ${depositId} rejected.`,
-    requestId: req.id
-  });
 });
 
 router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { withdrawalId } = req.params;
-  if (isSupabaseServerConfigured()) {
-    try {
-      const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
-      return res.json({ success: true, data: toApiTransaction(row), message: `Withdrawal ${withdrawalId} approved and marked for payout processing.`, requestId: req.id });
-    } catch (error: any) {
-      const message = String(error?.message || '');
-      const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-      return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal approval could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
-    }
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal approval could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const targetTx = mockTransactions.find(t => t.type === 'withdrawal' && (t.id === withdrawalId || t.reference === withdrawalId));
-  if (!targetTx) {
-    return res.status(404).json({ success: false, error: `Withdrawal '${withdrawalId}' not found.`, code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
-  }
-  if (targetTx.status !== 'pending') {
-    return res.status(409).json({ success: false, error: `Withdrawal is already ${targetTx.status}; it cannot be approved again.`, code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
-  }
-
-  {
-    targetTx.status = 'completed';
-    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
-    
-    sendEmail({
-      templateId: 'withdrawal_completed',
-      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-      data: {
-        fullName: foundUser?.fullName || 'Valued Investor',
-        amount: Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        currency: targetTx.currency || 'EUR',
-        reference: targetTx.reference || withdrawalId,
-        destination: (targetTx as any).destination || 'Verified Bank Account',
-        bankTransferId: `SEPA-CX-${Date.now().toString().slice(-6)}`,
-        dispatchedAt: new Date().toUTCString()
-      }
-    }).catch(err => {
-      logger.log({
-        level: 'error',
-        category: 'admin',
-        requestId: req.id || 'req-wth-appr-email',
-        eventType: 'EMAIL_DISPATCH_FAILURE',
-        outcome: 'failure',
-        message: `Failed to dispatch withdrawal completed email: ${err.message}`
-      });
-    });
-  }
-
-  res.json({
-    success: true,
-    message: `Withdrawal ${withdrawalId} approved and transfer queued.`,
-    requestId: req.id
-  });
 });
 
 router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { withdrawalId } = req.params;
-  if (isSupabaseServerConfigured()) {
-    try {
-      const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Withdrawal rejected by finance review.' });
-      return res.json({ success: true, data: toApiTransaction(row), message: `Withdrawal ${withdrawalId} rejected and reserved funds refunded to the investor wallet.`, requestId: req.id });
-    } catch (error: any) {
-      const message = String(error?.message || '');
-      const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-      return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal rejection could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
-    }
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Withdrawal rejected by finance review.' });
+    return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal rejection could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const targetTx = mockTransactions.find(t => t.type === 'withdrawal' && (t.id === withdrawalId || t.reference === withdrawalId));
-  if (!targetTx) {
-    return res.status(404).json({ success: false, error: `Withdrawal '${withdrawalId}' not found.`, code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
-  }
-  if (targetTx.status !== 'pending') {
-    return res.status(409).json({ success: false, error: `Withdrawal is already ${targetTx.status}; it cannot be rejected or refunded again.`, code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
-  }
-  {
-    targetTx.status = 'rejected';
-    // Refund locked balance back to user
-    const foundUser = mockUsers.find(u => u.id === targetTx.userId || u.email === targetTx.userEmail);
-    if (foundUser) {
-      foundUser.balance = Number(((foundUser.balance || 0) + Number(targetTx.amount)).toFixed(2));
-      if (userSubBalancesStore.has(foundUser.id)) {
-        userSubBalancesStore.get(foundUser.id)!.EUR = foundUser.balance;
-      }
-    }
-
-    sendEmail({
-      templateId: 'payment_notification',
-      recipient: targetTx.userEmail || foundUser?.email || 'investor@kretz.com',
-      data: {
-        fullName: foundUser?.fullName || 'Valued Investor',
-        payment_type: 'Withdrawal Declined & Refunded',
-        amount: `€${Number(targetTx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        payment_status: 'Refunded to Wallet',
-        reference: targetTx.reference || withdrawalId
-      },
-      idempotencyKey: `idemp-wth-reject-${targetTx.id}`
-    }).catch(() => {});
-  }
-
-  res.json({
-    success: true,
-    message: `Withdrawal ${withdrawalId} rejected and funds unlocked.`,
-    requestId: req.id
-  });
 });
 
 /**
+ * ==========================================================================/**
  * ============================================================================
  * REAL ESTATE DOSSIERS & EDITORIAL INSIGHTS API ENDPOINTS
  * ============================================================================
@@ -4947,7 +4754,7 @@ router.get('/trust-center', (_req, res) => {
  * Returns verified property-by-property payment allocations and daily payment history
  * for the authenticated investor.
  */
-router.get('/distributions/my-properties', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/distributions/my-properties', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   const matchedUser = await findUserRecordForRequest(req);
   const resolvedEmail = matchedUser?.email || req.user?.email || '';
@@ -5124,7 +4931,7 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
 
         const userMap = new Map<string, any>();
         for (const tx of relevantTxs) {
-          const u = mockUsers.find(mu => mu.id === tx.userId || (tx.userEmail && mu.email === tx.userEmail));
+          const u = null;
           const prev = userMap.get(tx.userId);
           const tokens = Number((tx as any).tokensPurchased || 0);
           const cost = Number(tx.amount || 0);
@@ -5145,7 +4952,7 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
         return Array.from(userMap.values());
       },
       (targetUserId, amountEUR, propTitle, ref, date) => {
-        const u = mockUsers.find(mu => mu.id === targetUserId);
+        const u = null;
         if (u) {
           u.balance = Math.round((u.balance + amountEUR) * 100) / 100;
           const subBals = getOrInitUserSubBalances(u.id, u.balance);
