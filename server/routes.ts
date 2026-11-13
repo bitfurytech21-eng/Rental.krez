@@ -622,14 +622,20 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
   // 5. Successful authentication: reset failed attempts & regenerate session ID
   resetFailedLogin(lockoutKey);
 
-  const session = await createSession({
+  let session;
+  try {
+    session = await createSession({
     userId: found.id,
     email: found.email,
     role: found.role as any,
     fullName: found.fullName,
     ip,
     userAgent: (req.headers['user-agent'] as string) || 'unknown'
-  });
+    });
+  } catch (error) {
+    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-login-session', eventType: 'SESSION_STORE_UNAVAILABLE', outcome: 'failure', message: 'Unable to create a durable customer session.' });
+    return res.status(503).json({ success: false, error: 'Authentication service is temporarily unavailable. Please try again shortly.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+  }
 
   // 6. Set Secure, HttpOnly, SameSite session cookie
   res.cookie('kretz_session', session.id, {
@@ -1364,14 +1370,20 @@ router.post('/auth/register', authLimiter, requireTurnstile, async (req: Authent
   mockUsers.push(newUser);
 
   // 7. Establish secure server session
-  const session = await createSession({
+  let session;
+  try {
+    session = await createSession({
     userId: newUser.id,
     email: newUser.email,
     role: 'investor',
     fullName: newUser.fullName,
     ip,
     userAgent: (req.headers['user-agent'] as string) || 'unknown'
-  });
+    });
+  } catch (error) {
+    logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-register-session', eventType: 'SESSION_STORE_UNAVAILABLE', outcome: 'failure', message: 'Unable to create a durable customer session.' });
+    return res.status(503).json({ success: false, error: 'Registration service is temporarily unavailable. Please try again shortly.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+  }
 
   // 8. Set HTTP-only secure session cookie
   res.cookie('kretz_session', session.id, {
@@ -1455,7 +1467,9 @@ router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => 
   }
 
   if (token) {
-    await revokeSession(token);
+    try { await revokeSession(token); } catch {
+      return res.status(503).json({ success: false, error: 'Session service is temporarily unavailable.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+    }
   }
 
   res.clearCookie('kretz_session', {
@@ -2029,7 +2043,9 @@ router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Respo
   if (targetUser) {
     targetUser.passwordHash = hashPassword(newPassword);
     // Invalidate all active sessions across all devices for this user
-    await revokeAllUserSessions(targetUser.id);
+    try { await revokeAllUserSessions(targetUser.id); } catch {
+      return res.status(503).json({ success: false, error: 'Session service is temporarily unavailable. Please retry the password reset.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+    }
   }
 
   logger.log({
@@ -2100,7 +2116,10 @@ router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => 
     });
   }
 
-  const session = await getSession(token);
+  let session;
+  try { session = await getSession(token); } catch {
+    return res.status(503).json({ success: false, error: 'Session verification is temporarily unavailable.', code: 'SESSION_STORE_UNAVAILABLE', requestId: req.id });
+  }
   if (!session) {
     return res.json({
       success: true,
