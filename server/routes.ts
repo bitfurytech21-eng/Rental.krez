@@ -1693,7 +1693,7 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
       id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number,
       role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','support','auditor'].includes(role)) || 'investor',
       accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0),
-      kycStatus: u.kyc_status, status: u.account_status || 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
+      kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), status: u.account_status || 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
     }));
     return res.json({ success: true, data, total: data.length, requestId: req.id });
   } catch (error: any) {
