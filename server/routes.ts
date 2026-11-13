@@ -1943,6 +1943,7 @@ router.patch('/admin/users/:id/profile', requireAdmin, async (req: Authenticated
   if (bankIban === undefined && cryptoDepositAddress === undefined) return res.status(400).json({ success: false, error: 'At least one payment detail must be supplied.', code: 'NO_PROFILE_CHANGES', requestId: req.id });
   try {
     const profile = await updateUserProfile(req.params.id, { bank_iban: bankIban, crypto_deposit_address: cryptoDepositAddress });
+    if (!profile) return res.status(404).json({ success: false, error: 'Investor account not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     return res.json({ success: true, data: { id: profile.id, email: profile.email, bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address }, message: 'Investor payment details saved.', requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
