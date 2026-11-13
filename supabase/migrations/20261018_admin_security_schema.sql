@@ -10,7 +10,7 @@ alter table public.user_profiles
 
 -- Keep the legacy read-only profiles view aligned with the canonical profile and
 -- role tables. This preserves the existing frontend view contract.
-create or replace view public.profiles as
+create or replace view public.profiles with (security_invoker = true) as
 select
   up.id,
   up.email,
