@@ -383,6 +383,12 @@ on conflict (id) do nothing;
 revoke all on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) from public, anon, authenticated;
 grant execute on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) to service_role;
 
+-- Explicit table grants complement RLS; clients may read but never mutate the financial ledger.
+revoke insert, update, delete on table public.ledger_entries from anon, authenticated;
+grant select on table public.ledger_entries to authenticated;
+grant select, insert, update, delete on table public.user_favorites to authenticated;
+grant select, insert, update, delete on table public.user_preferences to authenticated;
+
 -- Compatibility profile view must respect caller RLS on user_profiles.
 create or replace view public.profiles with (security_invoker = true) as
 select up.id, up.email, up.full_name,
