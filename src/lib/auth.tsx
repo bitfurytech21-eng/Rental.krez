@@ -959,8 +959,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) {
-        if (error.message.toLowerCase().includes('factor') || error.message.toLowerCase().includes('not found')) {
-          console.warn('Supabase MFA factor not enrolled; accepting admin verification code.');
+        if (import.meta.env.DEV && (error.message.toLowerCase().includes('factor') || error.message.toLowerCase().includes('not found'))) {
+          console.warn('Development-only MFA fallback: no enrolled factor was found.');
           return true;
         }
         throw new Error(error.message);
@@ -971,7 +971,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return true;
     } catch (err: any) {
-      if (err?.message?.toLowerCase().includes('factor') || err?.message?.toLowerCase().includes('not found')) {
+      if (import.meta.env.DEV && (err?.message?.toLowerCase().includes('factor') || err?.message?.toLowerCase().includes('not found'))) {
         return true;
       }
       throw new Error(err?.message || 'MFA code verification failed. Please try again.');
