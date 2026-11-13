@@ -495,7 +495,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role: UserRole = 'investor',
     accountType?: AccountType,
     country?: string,
-    phoneNumber?: string
+    phoneNumber?: string,
+    countryCode?: string
   ): Promise<RegisterResult> => {
     const determinedAccountType: AccountType = (accountType === 'admin' ? 'individual_investor' : accountType) || 'individual_investor';
     const determinedRole: UserRole = 'investor';
@@ -513,6 +514,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: determinedRole,
           country: country || 'France',
           phoneNumber: phoneNumber || '',
+          countryCode: countryCode || '',
         });
 
         serverUser = (res as any)?.user || (res as any)?.data?.user;
@@ -601,7 +603,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             role: determinedRole,
             account_type: determinedAccountType,
             country: country || 'France',
-            country_code: '',
+            country_code: countryCode || '',
             phone_number: phoneNumber || '',
           },
           emailRedirectTo: redirectUrl,
