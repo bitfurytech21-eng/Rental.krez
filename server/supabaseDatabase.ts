@@ -467,3 +467,21 @@ export async function saveUserPreferences(userId: string, preferences: Record<st
   if (error) throw error;
   return merged;
 }
+
+export async function getAdminIdentityByEmail(email: string): Promise<VerifiedSupabaseIdentity | null> {
+  if (!isSupabaseServerConfigured()) return null;
+  const { data, error } = await getSupabaseAdmin().from('user_profiles')
+    .select('id,email,full_name,account_type,wallet_balance,status,suspended_reason,user_roles(role)')
+    .eq('email', email.trim().toLowerCase()).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const assigned = new Set((data.user_roles || []).map((row: any) => String(row.role)));
+  const role = rolePriority.find(candidate => assigned.has(candidate)) || 'investor';
+  if (!['admin','super_admin','finance_admin','operations_admin','support','auditor'].includes(role)) return null;
+  return {
+    id: data.id, email: data.email, fullName: data.full_name || 'Administrator',
+    role, accountType: data.account_type, balance: Number(data.wallet_balance || 0),
+    status: data.status === 'suspended' ? 'suspended' : 'active',
+    suspendedReason: data.suspended_reason || undefined
+  };
+}
