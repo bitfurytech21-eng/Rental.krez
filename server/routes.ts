@@ -2258,32 +2258,23 @@ async function findUserRecordForRequest(req: AuthenticatedRequest): Promise<User
  * GET /api/v1/user/profile
  */
 router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
-    try {
-      const profile = await getUserProfile(req.user!.id);
-      if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-      return res.json({ success: true, data: { id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country, countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type, balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0), kycStatus: profile.kyc_status, createdAt: profile.created_at, address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url, bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id, dateOfBirth: profile.date_of_birth, preferences: profile.preferences }, requestId: req.id });
-    } catch (error: any) {
-      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-db', eventType: 'PROFILE_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Profile query failed.' });
-      return res.status(503).json({ success: false, error: 'Your profile is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
-    }
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const profile = await getUserProfile(req.user!.id);
+    if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
+      countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
+      balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0),
+      kycStatus: profile.kyc_status, status: profile.account_status || 'active', createdAt: profile.created_at,
+      address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url,
+      bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
+      dateOfBirth: profile.date_of_birth, preferences: profile.preferences
+    }, requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-db', eventType: 'PROFILE_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Profile query failed.' });
+    return res.status(503).json({ success: false, error: 'Your profile is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const profile = await findUserRecordForRequest(req);
-  if (!profile) {
-    return res.status(404).json({
-      success: false,
-      error: 'User profile not found.',
-      code: 'USER_NOT_FOUND',
-      requestId: req.id
-    });
-  }
-
-  res.json({
-    success: true,
-    data: sanitizeUser(profile),
-    requestId: req.id
-  });
 });
 
 /**
@@ -3594,74 +3585,45 @@ router.put('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, re
 
 // User profile & session contract endpoints
 router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
-    try {
-      const profile = await getUserProfile(req.user!.id);
-      if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-      return res.json({ success: true, data: { ...req.user, fullName: profile.full_name, country: profile.country, accountType: profile.account_type, balance: Number(profile.wallet_balance || 0), kycStatus: profile.kyc_status, phoneNumber: profile.phone_number }, requestId: req.id });
-    } catch (error: any) {
-      return res.status(503).json({ success: false, error: 'Your account is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
-    }
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  try {
+    const profile = await getUserProfile(req.user!.id);
+    if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    return res.json({ success: true, data: {
+      ...req.user, fullName: profile.full_name, country: profile.country,
+      accountType: profile.account_type, balance: Number(profile.wallet_balance || 0),
+      kycStatus: profile.kyc_status, phoneNumber: profile.phone_number,
+      status: profile.account_status || 'active'
+    }, requestId: req.id });
+  } catch {
+    return res.status(503).json({ success: false, error: 'Your account is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const stored = await findUserRecordForRequest(req);
-  res.json({
-    success: true,
-    data: stored ? { ...req.user, ...stored } : req.user,
-    requestId: req.id
-  });
 });
 
 router.patch('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const updates = req.body || {};
-  if (isSupabaseServerConfigured()) {
-    try {
-      const patch: Record<string, unknown> = {
-        full_name: updates.fullName, phone_number: updates.phoneNumber, country: updates.country,
-        country_code: updates.countryCode, bank_iban: updates.bankIban,
-        crypto_deposit_address: updates.cryptoDepositAddress, tax_id: updates.taxId,
-        address: updates.address, city: updates.city, postal_code: updates.postalCode,
-        date_of_birth: updates.dateOfBirth, avatar_url: updates.avatarUrl
-      };
-      const profile = await updateUserProfile(req.user!.id, patch);
-      return res.json({ success: true, data: { id: profile.id, email: profile.email, fullName: profile.full_name, phoneNumber: profile.phone_number, country: profile.country, countryCode: profile.country_code, address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url, bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id, dateOfBirth: profile.date_of_birth, balance: Number(profile.wallet_balance || 0), kycStatus: profile.kyc_status }, message: 'User profile updated successfully.', requestId: req.id });
-    } catch (error: any) {
-      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-update-db', eventType: 'PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Profile update failed.' });
-      return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
-    }
+  try {
+    const patch: Record<string, unknown> = {
+      full_name: updates.fullName, phone_number: updates.phoneNumber, country: updates.country,
+      country_code: updates.countryCode, bank_iban: updates.bankIban,
+      crypto_deposit_address: updates.cryptoDepositAddress, tax_id: updates.taxId,
+      address: updates.address, city: updates.city, postal_code: updates.postalCode,
+      date_of_birth: updates.dateOfBirth, avatar_url: updates.avatarUrl
+    };
+    const profile = await updateUserProfile(req.user!.id, patch);
+    return res.json({ success: true, data: {
+      id: profile.id, email: profile.email, fullName: profile.full_name, phoneNumber: profile.phone_number,
+      country: profile.country, countryCode: profile.country_code, address: profile.address,
+      city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url,
+      bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address,
+      taxId: profile.tax_id, dateOfBirth: profile.date_of_birth,
+      balance: Number(profile.wallet_balance || 0), kycStatus: profile.kyc_status
+    }, message: 'User profile updated successfully.', requestId: req.id });
+  } catch (error: any) {
+    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-update-db', eventType: 'PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Profile update failed.' });
+    return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const allowedFields = [
-    'fullName',
-    'phoneNumber',
-    'country',
-    'countryCode',
-    'bankIban',
-    'cryptoDepositAddress',
-    'taxId',
-    'address',
-    'city',
-    'postalCode',
-    'dateOfBirth',
-    'twoFactorEnabled',
-    'avatarUrl'
-  ];
-
-  let target = await findUserRecordForRequest(req);
-  if (!target) return res.status(404).json({ success: false, error: 'Persistent user profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-
-  for (const key of allowedFields) {
-    if (updates[key] !== undefined) {
-      (target as any)[key] = typeof updates[key] === 'string' ? updates[key].trim() : updates[key];
-    }
-  }
-
-  res.json({
-    success: true,
-    data: sanitizeUser(target),
-    message: 'User profile updated successfully.',
-    requestId: req.id
-  });
 });
 
 // Dashboard summary & performance endpoints
