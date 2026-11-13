@@ -181,7 +181,6 @@ export interface UserRecord {
   id: string;
   email: string;
   fullName: string;
-  passwordHash: string;
   role: string;
   kycStatus: string;
   balance: number;
@@ -195,9 +194,8 @@ export interface UserRecord {
   suspendedReason?: string;
 }
 
-export function sanitizeUser(user: UserRecord): Omit<UserRecord, 'passwordHash'> {
-  const { passwordHash, ...safe } = user;
-  return safe;
+export function sanitizeUser(user: UserRecord): UserRecord {
+  return user;
 }
 
 // Customer identities and profiles are authoritative in Supabase Auth and public.user_profiles.
@@ -2270,7 +2268,7 @@ async function findUserRecordForRequest(req: AuthenticatedRequest): Promise<User
   if (!profile) return undefined;
   return {
     id: profile.id, email: profile.email || req.user.email, fullName: profile.full_name || req.user.fullName || 'Investor',
-    passwordHash: '', role: req.user.role, kycStatus: profile.kyc_status || 'pending',
+    role: req.user.role, kycStatus: profile.kyc_status || 'pending',
     balance: Number(profile.wallet_balance || 0), currency: 'EUR', createdAt: profile.created_at,
     country: profile.country || undefined, countryCode: profile.country_code || undefined,
     phoneNumber: profile.phone_number || undefined, isEmailVerified: true,
@@ -4936,6 +4934,7 @@ router.post('/admin/distributions/properties/:id/toggle', requireAdmin, (req: Au
  * Admin: Execute daily payment calculation and processing run with idempotency protection
  */
 router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent distribution processing is not configured. No customer balances were changed.', code: 'DISTRIBUTION_DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const result = dailyPaymentService.processDailyRun(
       req.body || {},
@@ -4950,7 +4949,6 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
 
         const userMap = new Map<string, any>();
         for (const tx of relevantTxs) {
-          const u: MockUser | undefined = undefined;
           const prev = userMap.get(tx.userId);
           const tokens = Number((tx as any).tokensPurchased || 0);
           const cost = Number(tx.amount || 0);
@@ -4960,8 +4958,8 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
           } else {
             userMap.set(tx.userId, {
               userId: tx.userId,
-              userEmail: tx.userEmail || u?.email || 'investor@kretz.com',
-              userName: u?.fullName || 'Institutional Investor',
+              userEmail: tx.userEmail || '',
+              userName: 'Institutional Investor',
               tokensCount: tokens,
               allocatedEUR: cost,
               investmentId: tx.id
@@ -4971,13 +4969,6 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
         return Array.from(userMap.values());
       },
       (targetUserId, amountEUR, propTitle, ref, date) => {
-        const u: MockUser | undefined = undefined;
-        if (u) {
-          u.balance = Math.round((u.balance + amountEUR) * 100) / 100;
-          const subBals = getOrInitUserSubBalances(u.id, u.balance);
-          subBals.EUR = u.balance;
-        }
-
         const txId = `tx-dist-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
         mockTransactions.unshift({
           id: txId,
