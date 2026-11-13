@@ -3439,7 +3439,7 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
     });
   }
   const userRecord = findUserRecordForRequest(req);
-  if (!userRecord) {
+  if (!userRecord && !isSupabaseServerConfigured()) {
     return res.status(409).json({
       success: false,
       error: 'Your investor account is not available in the server ledger. Please contact support before requesting a withdrawal.',
@@ -3447,7 +3447,7 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
       requestId: req.id
     });
   }
-  if (userRecord.status === 'suspended') {
+  if (userRecord?.status === 'suspended') {
     return res.status(403).json({
       success: false,
       error: 'Account access restricted by administrative compliance.',
@@ -3468,7 +3468,7 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
     });
   }
 
-  if (typeof destination !== 'string' || !destination.trim()) {
+  if (typeof destination !== 'string' || destination.trim().length < 5) {
     return res.status(400).json({
       success: false,
       error: 'Withdrawal destination (IBAN or Crypto Address) is required.',
@@ -3477,6 +3477,34 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
     });
   }
 
+  if (isSupabaseServerConfigured()) {
+    try {
+      const ref = `KZ-WTH-${crypto.randomInt(100000, 1000000)}`;
+      const idempotencyKey = String(req.headers['idempotency-key'] || req.body?.idempotencyKey || crypto.randomUUID()).slice(0, 128);
+      const row = await runFinancialRpc('kretz_request_withdrawal', {
+        p_user_id: req.user!.id, p_amount: numAmount, p_method: String(method),
+        p_destination: destination.trim(), p_reference: ref,
+        p_transaction_id: crypto.randomUUID(), p_idempotency_key: idempotencyKey
+      });
+      const transaction = toApiTransaction(row);
+      sendEmail({
+        templateId: 'withdrawal_requested', recipient: req.user!.email,
+        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, amount: numAmount.toFixed(2), currency: 'EUR', reference: transaction.reference || ref, destination: destination.trim(), estimatedProcessingTime: '24 business hours' }
+      }).catch(err => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'req-withdrawal-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: err.message }));
+      return res.status(201).json({ success: true, data: { ...transaction, destination: destination.trim() }, message: 'Withdrawal request recorded and funds reserved in your wallet. Compliance review is required before payout.', requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-withdrawal-db', eventType: 'WITHDRAWAL_PERSIST_FAILED', outcome: 'failure', message: error?.message || 'Withdrawal could not be saved.' });
+      const message = String(error?.message || '');
+      const status = message.includes('INSUFFICIENT_FUNDS') ? 400 : message.includes('INVALID_WITHDRAWAL_AMOUNT') || message.includes('INVALID_WITHDRAWAL_DESTINATION') ? 400 : message.includes('ACCOUNT_LEDGER_UNAVAILABLE') ? 409 : 503;
+      return res.status(status).json({ success: false, error: status === 503 ? 'The withdrawal service is temporarily unavailable. No request was recorded.' : message, code: status === 503 ? 'WITHDRAWAL_DATABASE_UNAVAILABLE' : 'WITHDRAWAL_REQUEST_REJECTED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Withdrawals are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  if (!userRecord) {
+    return res.status(409).json({ success: false, error: 'Investor ledger account is unavailable.', code: 'ACCOUNT_LEDGER_UNAVAILABLE', requestId: req.id });
+  }
   if (userRecord.balance < numAmount) {
     logger.log({
       level: 'warn',
