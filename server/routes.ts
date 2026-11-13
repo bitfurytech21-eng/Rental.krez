@@ -2645,6 +2645,8 @@ router.get(['/marketplace/listings', '/properties', '/listings'], async (req: Au
       return res.status(503).json({ success: false, error: 'The property catalogue is temporarily unavailable. Please try again shortly.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  const canViewUnpublished = Boolean(req.user && ['admin','super_admin','operations_admin'].includes(req.user.role));
+  if (!canViewUnpublished) items = items.filter(p => p.status !== 'hidden' && p.status !== 'draft');
 
   if (search) {
     const s = String(search).toLowerCase().trim();
@@ -2731,6 +2733,9 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: Authent
     }
   }
 
+  if (!req.user || !['admin','super_admin','operations_admin'].includes(req.user.role)) {
+    if (found?.status === 'hidden' || found?.status === 'draft') found = undefined as any;
+  }
   if (!found) {
     return res.status(404).json({
       success: false,
