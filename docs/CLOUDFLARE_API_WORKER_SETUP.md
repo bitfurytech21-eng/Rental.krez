@@ -48,7 +48,7 @@ The browser's configured production customer-authentication path uses Supabase A
 3. Set the Worker variable `AUTH_SESSION_STORE=supabase` and redeploy the API Worker.
 4. Test the legacy cookie-session path in an isolated staging environment: session creation, validation, logout, and password-reset revocation across separate Worker requests. Test the primary Supabase Auth frontend flow separately.
 
-Do not set `AUTH_SESSION_STORE=supabase` before the migration is applied and the service-role secret is verified. The default remains the existing in-memory store until the operator explicitly enables the persistent store. This migration does not migrate customer account records or the administrator credential file; those are separate remaining authentication tasks.
+Do not set `AUTH_SESSION_STORE=supabase` before the migration is applied and the service-role secret is verified. The default remains the existing in-memory store until the operator explicitly enables the persistent store. This migration does not migrate customer account records; customer accounts are owned by Supabase Auth and `user_profiles` as documented below. Administrator credentials are handled separately by `20261113000003_durable_admin_auth.sql`.
 
 
 ## Supabase Auth registration flow
@@ -77,3 +77,19 @@ The API Worker separately requires encrypted `SUPABASE_URL`, `SUPABASE_ANON_KEY`
 The old API endpoints that authenticated or registered against the Worker-local `mockUsers` collection now fail closed in production with `SUPABASE_AUTH_REQUIRED`. This is intentional: configured production clients use Supabase Auth directly, and the Worker must not create a second, non-durable customer-account system. Development-only mock accounts remain available outside production. Profile, investor registry, KYC, suspension, and financial operations use the existing Supabase-backed tables/RPCs when the database is configured.
 
 Before routing production traffic, verify that the existing enterprise schema migration has been applied and that the `on_auth_user_created` trigger exists and provisions both a profile and the investor role. Confirm the Pages build variables are present; otherwise customer registration/login will not be available and the API will correctly reject the legacy fallback.
+
+
+## Required Supabase migration order and release verification
+
+Apply these repository migrations to the intended Supabase project in ascending order using the Supabase SQL editor or the project's controlled migration pipeline:
+
+1. `20261018000000_enterprise_financial_schema.sql`
+2. `20261018000001_real_estate_dossiers_insights.sql`
+3. `20261113000000_durable_financial_operations.sql`
+4. `20261113000001_persistent_admin_account_controls.sql`
+5. `20261113000002_durable_server_sessions.sql` (only if the optional legacy cookie-session store is enabled)
+6. `20261113000003_durable_admin_auth.sql`
+
+Do not mark the database stage complete until the Supabase migration history confirms each required migration is applied and staging checks verify: signup provisions exactly one investor profile and role; login and logout work through Supabase Auth; administrator identity resolves only through `user_roles`; admin credential changes revoke prior Worker sessions; and the existing investor/admin dashboard, KYC, and financial RPC flows still work.
+
+After database verification, run the repository CI checks and `npx wrangler@4 deploy --dry-run --config wrangler.api.toml`. Only then deploy the Worker. A successful dry run validates the bundle, not runtime secrets, database connectivity, custom-domain routing, or email delivery; verify those separately in staging before switching production traffic.
