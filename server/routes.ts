@@ -3246,7 +3246,17 @@ router.get('/treasury/rates', (_req: AuthenticatedRequest, res: Response) => {
   });
 });
 
-router.get('/treasury/balances', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await getUserProfile(req.user!.id);
+      if (!profile) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: { balances: { EUR: Number(profile.wallet_balance || 0) } }, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Treasury balances are temporarily unavailable.', code: 'TREASURY_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent treasury storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const userRecord = findUserRecordForRequest(req);
   if (!userRecord) {
     return res.status(409).json({
@@ -3265,6 +3275,10 @@ router.get('/treasury/balances', requireAuth, (req: AuthenticatedRequest, res: R
 });
 
 router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    return res.status(501).json({ success: false, error: 'Multi-currency conversion is not enabled on the persistent wallet yet. Your EUR balance is safe and unchanged.', code: 'FX_PERSISTENCE_NOT_ENABLED', requestId: req.id });
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent treasury storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const { fromCurrency, toCurrency, amount } = req.body || {};
   const from = String(fromCurrency || '').toUpperCase();
   const to = String(toCurrency || '').toUpperCase();
