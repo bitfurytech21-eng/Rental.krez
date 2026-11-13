@@ -11,10 +11,10 @@ Recommended: Resend.
 Set these server-side environment variables in the actual hosting platform (not in the browser):
 
 - `RESEND_API_KEY`: API key created in Resend.
-- `EMAIL_FROM`: a sender address on a domain verified with the provider, for example `notifications@your-verified-domain.example`.
+- `EMAIL_FROM`: `info@kretzdespain.com` (must be verified as a sender by the selected provider).
 - `EMAIL_SENDER_NAME`: `Kretz Real Estate`.
-- `EMAIL_REPLY_TO`: monitored support mailbox.
-- `EMAIL_SUPPORT`: support mailbox shown in templates.
+- `EMAIL_REPLY_TO`: `info@kretzdespain.com` (ensure this mailbox is monitored).
+- `EMAIL_SUPPORT`: `info@kretzdespain.com`.
 - `PUBLIC_APP_URL`: canonical deployed website origin, with no trailing slash.
 - `EMAIL_TEST_MODE`: `false` for live delivery.
 
@@ -25,6 +25,8 @@ Alternative SMTP: set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `E
 Never put provider secrets in `VITE_*` variables, frontend source, GitHub commits, or chat messages. Add them as protected server runtime secrets and redeploy/restart the server.
 
 ## 2. Verify the sending domain
+
+Verify `kretzdespain.com` in the selected provider and add the exact SPF/DKIM (and recommended DMARC) DNS records the provider supplies. Do not switch `EMAIL_FROM` to live mode until the provider shows the domain and sender as verified.
 
 In the provider dashboard, add the sending domain and publish the exact DNS records it supplies (typically SPF and DKIM; add DMARC for domain policy/reporting). Do not copy generic SPF/DKIM values from an example: use the provider-specific records and ensure there is only one valid SPF record for the domain. Wait for provider verification before testing delivery.
 
@@ -48,6 +50,8 @@ Set `PUBLIC_APP_URL` to the exact production origin. Register the corresponding 
 The automation rules registry also defines welcome, verification, password reset, command confirmation, transaction receipt, payment, security, status, report and custom notification rules. A rule being enabled does not prove that a corresponding business event is wired to it; verify each path with the test checklist below.
 
 ## 5. Production test checklist
+
+Before enabling live delivery, add the provider API key (or SMTP credentials) as a protected server runtime secret. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
 
 1. Confirm the admin email-provider status reports a real provider, not sandbox.
 2. Send a test message to a mailbox controlled by the project owner.
