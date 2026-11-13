@@ -109,10 +109,10 @@ begin
   update public.user_profiles set wallet_balance = wallet_balance - p_amount, updated_at = now()
     where id = p_user_id returning * into v_profile;
   insert into public.payment_transactions
-    (id,user_id,type,amount,currency,status,payment_method,reference,notes,idempotency_key)
+    (id,user_id,type,amount,currency,status,payment_method,reference,notes,idempotency_key,metadata)
   values
     (p_transaction_id,p_user_id,'withdrawal',p_amount,'EUR','pending',trim(p_method),p_reference,
-     'Funds reserved pending withdrawal review.',p_idempotency_key)
+     'Funds reserved pending withdrawal review.',p_idempotency_key,jsonb_build_object('destination',trim(p_destination)))
   returning * into v_tx;
   insert into public.withdrawal_requests
     (id,user_id,amount,currency,method,destination,status,reference)
