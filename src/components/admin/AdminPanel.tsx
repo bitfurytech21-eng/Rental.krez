@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
 import { ledger, CryptoNetworkConfig, VerificationDocument } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
+import { User as PlatformUser, UserRole, AccountType } from '../../types/user';
 import { getAuthToken, getApiUrl } from '../../lib/api';
 import {
   Shield,
@@ -211,7 +212,7 @@ export const AdminPanel: React.FC = () => {
 
   const [transactions, setTransactions] = useState(ledger.getTransactions());
   const [properties, setProperties] = useState(ledger.getProperties());
-  const [users, setUsers] = useState(ledger.getUsers());
+  const [users, setUsers] = useState<PlatformUser[]>([]);
   const [verificationDocs, setVerificationDocs] = useState<VerificationDocument[]>(ledger.getVerificationDocuments());
   const [auditLogs, setAuditLogs] = useState(ledger.getAuditLogs());
   const [paymentConfig, setPaymentConfig] = useState(ledger.getPaymentConfig());
@@ -320,10 +321,33 @@ export const AdminPanel: React.FC = () => {
   const pendingKYCUsers = users.filter(u => u.kycStatus === 'pending');
   const pendingVerificationDocs = verificationDocs.filter(d => d.status === 'pending');
 
+  const loadUsers = async () => {
+    const token = getAuthToken();
+    const response = await fetch(getApiUrl('/admin/users'), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (!response.ok) throw new Error('Unable to load the Supabase investor registry.');
+    const payload = await response.json();
+    const rows = Array.isArray(payload?.data) ? payload.data : [];
+    setUsers(rows.map((row: any): PlatformUser => ({
+      id: String(row.id), email: String(row.email || ''), fullName: String(row.fullName || ''),
+      role: (row.role || 'investor') as UserRole, accountType: row.accountType as AccountType,
+      kycStatus: row.kycStatus === 'approved' ? 'verified' : (row.kycStatus || 'pending'),
+      walletBalance: Number(row.balance || 0), investedBalance: Number(row.investedBalance || 0),
+      totalEarned: Number(row.totalEarned || 0), createdAt: row.createdAt || new Date().toISOString(),
+      phoneNumber: row.phoneNumber || undefined, country: row.country || undefined,
+      status: row.status === 'suspended' ? 'suspended' : 'active', suspendedReason: row.suspendedReason || undefined
+    })));
+  };
+
+  useEffect(() => {
+    loadUsers().catch((error) => setActionError(error.message || 'Unable to load investor registry.'));
+  }, []);
+
   const refreshAll = () => {
     setTransactions(ledger.getTransactions());
     setProperties(ledger.getProperties());
-    setUsers(ledger.getUsers());
+    loadUsers().catch((error) => setActionError(error.message || 'Unable to refresh investor registry.'));
     setVerificationDocs(ledger.getVerificationDocuments());
     setAuditLogs(ledger.getAuditLogs());
     setPaymentConfig(ledger.getPaymentConfig());
@@ -532,21 +556,19 @@ export const AdminPanel: React.FC = () => {
 
   const handleReviewKYC = async (userId: string, approved: boolean) => {
     try {
-      ledger.updateKYCStatus(userId, approved ? 'verified' : 'rejected');
-      try {
-        const token = getAuthToken();
-        await fetch(getApiUrl(`/admin/users/${userId}/kyc`), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({ status: approved ? 'verified' : 'rejected' })
-        });
-      } catch (e) {}
-      setActionSuccess(`User KYC ${approved ? 'verified' : 'rejected'}.`);
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${userId}/kyc`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ kycStatus: approved ? 'approved' : 'rejected' })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'The KYC decision could not be saved.');
+      }
+      await loadUsers();
+      setActionSuccess(`User KYC ${approved ? 'approved' : 'rejected'} and saved to the database.`);
       setActionError(null);
-      refreshAll();
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (e: any) {
       setActionError(e.message || 'Action failed');
