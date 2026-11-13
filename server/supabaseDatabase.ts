@@ -205,7 +205,7 @@ export async function listUserInvestments(userId: string) {
 
 export async function listAdminUsers(limit = 500) {
   const { data, error } = await getSupabaseAdmin().from('user_profiles')
-    .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,created_at,updated_at')
+    .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,created_at,updated_at,user_roles(role)')
     .order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 1000));
   if (error) throw error;
   return data || [];
@@ -276,4 +276,11 @@ export async function listPersistentInvestments(limit = 500) {
     status: row.status,
     certificateId: row.certificate_id
   }));
+}
+
+export async function listPersistentAuditLogs(limit = 250) {
+  const { data, error } = await getSupabaseAdmin().from('audit_logs')
+    .select('*').order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 1000));
+  if (error) throw error;
+  return data || [];
 }
