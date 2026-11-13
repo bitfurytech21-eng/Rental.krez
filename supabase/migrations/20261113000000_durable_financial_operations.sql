@@ -64,6 +64,30 @@ grant update (
   date_of_birth
 ) on table public.user_profiles to authenticated;
 
+
+-- Durable investor dashboard preferences and property watchlists.
+create table if not exists public.user_favorites (
+  user_id uuid not null references public.user_profiles(id) on delete cascade,
+  property_id text not null,
+  created_at timestamptz not null default now(),
+  primary key(user_id, property_id)
+);
+create index if not exists idx_user_favorites_property on public.user_favorites(property_id);
+alter table public.user_favorites enable row level security;
+drop policy if exists "Users manage own favorites" on public.user_favorites;
+create policy "Users manage own favorites" on public.user_favorites
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create table if not exists public.user_preferences (
+  user_id uuid primary key references public.user_profiles(id) on delete cascade,
+  preferences jsonb not null default '{"defaultSort":"yield-desc","itemsPerPage":6,"currencyDisplay":"EUR","emailNotifications":true}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.user_preferences enable row level security;
+drop policy if exists "Users manage own preferences" on public.user_preferences;
+create policy "Users manage own preferences" on public.user_preferences
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- Durable deposit request. No balance is credited until an admin approves it.
 create or replace function public.kretz_request_deposit(
   p_user_id uuid, p_amount numeric, p_method text, p_reference text,
