@@ -36,18 +36,13 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
-// Periodically clean up consumed tokens older than 10 minutes
-const cleanupInterval = setInterval(() => {
-  const now = Date.now();
+function pruneConsumedTokens(now = Date.now()) {
+  // Lazy cleanup avoids background timers in Cloudflare Workers isolates.
+  if (consumedTokens.size < 250) return;
   const maxAge = 10 * 60 * 1000;
   for (const [hash, item] of consumedTokens.entries()) {
-    if (now - item.consumedAt > maxAge) {
-      consumedTokens.delete(hash);
-    }
+    if (now - item.consumedAt > maxAge) consumedTokens.delete(hash);
   }
-}, 60000);
-if (cleanupInterval.unref) {
-  cleanupInterval.unref();
 }
 
 export interface TurnstileVerificationResult {
@@ -84,6 +79,7 @@ export async function verifyTurnstileToken(
   token: string | undefined | null,
   remoteIp?: string
 ): Promise<TurnstileVerificationResult> {
+  pruneConsumedTokens();
   const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || DEFAULT_TEST_SECRET_KEY;
   const isDevOrPreview = !isProduction();
 
