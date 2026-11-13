@@ -2545,9 +2545,21 @@ router.post('/admin/users/:id/credit', requireAdmin, (req: AuthenticatedRequest,
 /**
  * GET /api/v1/marketplace/listings
  */
-router.get(['/marketplace/listings', '/properties', '/listings'], (req: AuthenticatedRequest, res: Response) => {
+router.get(['/marketplace/listings', '/properties', '/listings'], async (req: AuthenticatedRequest, res: Response) => {
   const { search, type, status, location, minPrice, maxPrice, sortBy, page, limit } = req.query;
   let items = [...mockListings];
+  if (isSupabaseServerConfigured()) {
+    try {
+      items = await listInvestmentPlans({
+        search: typeof search === 'string' ? search : undefined,
+        type: typeof type === 'string' ? type : undefined,
+        status: typeof status === 'string' ? status : undefined
+      });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-listings-db', eventType: 'PROPERTY_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property catalogue from Supabase.' });
+      return res.status(503).json({ success: false, error: 'The property catalogue is temporarily unavailable. Please try again shortly.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
 
   if (search) {
     const s = String(search).toLowerCase().trim();
@@ -2622,9 +2634,17 @@ router.get(['/marketplace/listings', '/properties', '/listings'], (req: Authenti
 /**
  * GET /api/v1/marketplace/listings/:id
  */
-router.get(['/marketplace/listings/:id', '/properties/:id'], (req: AuthenticatedRequest, res: Response) => {
+router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const found = mockListings.find(p => p.id === id || p.slug === id);
+  let found = mockListings.find(p => p.id === id || p.slug === id);
+  if (isSupabaseServerConfigured()) {
+    try {
+      found = await getInvestmentPlan(id) as any;
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-property-db', eventType: 'PROPERTY_DETAIL_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property.' });
+      return res.status(503).json({ success: false, error: 'Property details are temporarily unavailable.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
 
   if (!found) {
     return res.status(404).json({
