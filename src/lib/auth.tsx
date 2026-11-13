@@ -319,7 +319,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         res = await authApi.login(cleanEmail, pass);
       } catch (err: any) {
-        // Handle static host 405 Method Not Allowed / 404 / network connection fallback
+        if (import.meta.env.PROD) {
+          throw new Error('Authentication service is unavailable. Please try again shortly.');
+        }
+        // Development preview fallback only for static hosts without the API.
         if (
           err?.status === 405 ||
           err?.status === 404 ||
@@ -411,6 +414,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data = res.data;
       error = res.error;
     } catch (networkErr: any) {
+      if (import.meta.env.PROD) {
+        throw new Error('Authentication service is unavailable. Please try again shortly.');
+      }
       console.warn('[auth] Supabase sign-in network error, falling back to local ledger:', networkErr?.message || networkErr);
       let found = ledger.getUserByEmail(cleanEmail);
       if (!found) {
@@ -608,6 +614,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data = res.data;
       error = res.error;
     } catch (networkErr: any) {
+      if (import.meta.env.PROD) {
+        throw new Error('Registration service is unavailable. Please try again shortly.');
+      }
       console.warn('[auth] Supabase signUp network error, creating user in local ledger:', networkErr?.message || networkErr);
       let existing = ledger.getUserByEmail(cleanEmail);
       const created = existing || ledger.createUser({
@@ -934,9 +943,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const cleanCode = code.trim();
 
-    // Default development/master code (123456) or unconfigured / dummy factors always succeed safely
-    if (!isConfigured || factorId === 'default_factor' || challengeId === 'challenge_admin' || cleanCode === '123456') {
+    // Development-only MFA bypass. Production always requires a configured, verified factor.
+    if (import.meta.env.DEV && (!isConfigured || factorId === 'default_factor' || challengeId === 'challenge_admin' || cleanCode === '123456')) {
       return true;
+    }
+    if (!isConfigured) {
+      throw new Error('Multi-factor authentication is not configured. Contact the platform administrator.');
     }
 
     try {
@@ -983,6 +995,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         skipAuth: true
       });
     } catch (err: any) {
+      if (import.meta.env.PROD) {
+        throw new Error('Administrator authentication service is unavailable. Please try again shortly.');
+      }
       if (err?.status === 405 || err?.status === 404 || String(err?.message || '').includes('405') || String(err?.message || '').includes('Failed to fetch')) {
         const localAdmin = ledger.getUserByEmail(cleanEmail) || ledger.getUsers().find(u => u.role === 'admin');
         if (localAdmin && localAdmin.role === 'admin') {
