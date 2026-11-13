@@ -1656,7 +1656,7 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
       id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number,
       role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','support','auditor'].includes(role)) || 'investor',
       accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0),
-      kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), status: u.account_status || 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
+      kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), bankIban: u.bank_iban || undefined, cryptoDepositAddress: u.crypto_deposit_address || undefined, status: u.account_status || 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
     }));
     return res.json({ success: true, data, total: data.length, requestId: req.id });
   } catch (error: any) {
@@ -1936,6 +1936,21 @@ router.get('/admin/logs/export', requireAdminOrLogSecret, (req: AuthenticatedReq
 /**
  * POST /api/v1/admin/users/:id/kyc
  */
+router.patch('/admin/users/:id/profile', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const bankIban = typeof req.body?.bankIban === 'string' ? req.body.bankIban.trim() : undefined;
+  const cryptoDepositAddress = typeof req.body?.cryptoDepositAddress === 'string' ? req.body.cryptoDepositAddress.trim() : undefined;
+  if (bankIban === undefined && cryptoDepositAddress === undefined) return res.status(400).json({ success: false, error: 'At least one payment detail must be supplied.', code: 'NO_PROFILE_CHANGES', requestId: req.id });
+  try {
+    const profile = await updateUserProfile(req.params.id, { bank_iban: bankIban, crypto_deposit_address: cryptoDepositAddress });
+    return res.json({ success: true, data: { id: profile.id, email: profile.email, bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address }, message: 'Investor payment details saved.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const notFound = message.toLowerCase().includes('0 rows') || message.toLowerCase().includes('not found');
+    return res.status(notFound ? 404 : 503).json({ success: false, error: notFound ? 'Investor account not found.' : 'Investor payment details could not be saved.', code: notFound ? 'USER_NOT_FOUND' : 'PROFILE_UPDATE_FAILED', requestId: req.id });
+  }
+});
+
 router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const { id } = req.params;
