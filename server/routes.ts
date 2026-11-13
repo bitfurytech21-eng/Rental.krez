@@ -553,6 +553,17 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
     });
   }
 
+  // Production customer accounts are owned by Supabase Auth. Never authenticate against
+  // the development-only in-memory mockUsers collection on the API Worker.
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({
+      success: false,
+      error: 'Customer authentication must use the configured Supabase Auth client.',
+      code: 'SUPABASE_AUTH_REQUIRED',
+      requestId: req.id
+    });
+  }
+
   // 3. Authenticate credentials against verified database store
   let found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
 
@@ -1325,6 +1336,17 @@ router.post('/auth/register', authLimiter, requireTurnstile, async (req: Authent
     });
   }
 
+  // Supabase Auth creates the durable auth.users record and the database trigger
+  // provisions user_profiles + the least-privilege investor role. Do not create Worker-local accounts.
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({
+      success: false,
+      error: 'Customer registration must use the configured Supabase Auth client.',
+      code: 'SUPABASE_AUTH_REQUIRED',
+      requestId: req.id
+    });
+  }
+
   // 4. Prevent duplicate email registrations (Strict 409 Conflict)
   const existing = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
   if (existing) {
@@ -1513,6 +1535,15 @@ router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => 
 router.post('/auth/password/forgot', authLimiter, requireTurnstile, (req: AuthenticatedRequest, res: Response) => {
   const { email } = req.body || {};
   const normalizedEmail = (email || '').toLowerCase().trim();
+
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({
+      success: false,
+      error: 'Customer password recovery must use Supabase Auth.',
+      code: 'SUPABASE_AUTH_REQUIRED',
+      requestId: req.id
+    });
+  }
 
   const foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
 
@@ -2016,6 +2047,15 @@ router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Respo
       success: false,
       error: strengthCheck.error || 'Password does not meet institutional complexity standards.',
       code: 'WEAK_PASSWORD',
+      requestId: req.id
+    });
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({
+      success: false,
+      error: 'Customer password recovery must use Supabase Auth.',
+      code: 'SUPABASE_AUTH_REQUIRED',
       requestId: req.id
     });
   }
