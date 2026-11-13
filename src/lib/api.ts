@@ -113,7 +113,7 @@ export const getBaseUrl = (): string => {
 
 /** Resolve an API-relative path against the configured API origin. */
 export const getApiUrl = (endpoint: string): string => {
-  if (/^https?:\\/\\//i.test(endpoint)) return endpoint;
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) return endpoint;
   const base = getBaseUrl();
   return `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 };
