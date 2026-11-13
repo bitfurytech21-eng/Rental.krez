@@ -4985,7 +4985,7 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
         return Array.from(userMap.values());
       },
       (targetUserId, amountEUR, propTitle, ref, date) => {
-        const u = null;
+        const u: MockUser | undefined = undefined;
         if (u) {
           u.balance = Math.round((u.balance + amountEUR) * 100) / 100;
           const subBals = getOrInitUserSubBalances(u.id, u.balance);
