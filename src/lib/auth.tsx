@@ -38,7 +38,8 @@ interface AuthContextType {
     role?: UserRole,
     accountType?: AccountType,
     country?: string,
-    phoneNumber?: string
+    phoneNumber?: string,
+    countryCode?: string
   ) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   refreshUser: () => void;
@@ -505,6 +506,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isConfigured) {
       let serverUser: any = null;
       let serverToken: string | null = null;
+      let registrationResponse: any = null;
 
       try {
         const res = await authApi.register({
@@ -517,6 +519,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           countryCode: countryCode || '',
         });
 
+        registrationResponse = res;
         serverUser = (res as any)?.user || (res as any)?.data?.user;
         serverToken = (res as any)?.token || (res as any)?.data?.token;
       } catch (err: any) {
@@ -570,7 +573,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phoneNumber || ''
       );
 
-      const requiresVerification = Boolean((res as any)?.requiresVerification ?? (res as any)?.data?.requiresVerification ?? !serverToken);
+      const requiresVerification = Boolean((registrationResponse as any)?.requiresVerification ?? (registrationResponse as any)?.data?.requiresVerification ?? !serverToken);
       if (serverToken) {
         setUser(synced);
         setToken(serverToken);
