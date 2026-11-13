@@ -71,7 +71,7 @@ order by c.relname;
 
 select
   t.tgname,
-  t.tgenabled
+  (t.tgenabled = 'O') as trigger_enabled
 from pg_trigger t
 join pg_class c on c.oid = t.tgrelid
 join pg_namespace n on n.oid = c.relnamespace
@@ -83,7 +83,8 @@ where n.nspname = 'auth'
 select
   to_regprocedure('public.kretz_admin_set_user_status(uuid,uuid,text,text)') is not null as admin_status_rpc_exists,
   to_regprocedure('public.kretz_admin_update_kyc(uuid,uuid,text,text)') is not null as admin_kyc_rpc_exists,
-  to_regprocedure('public.kretz_admin_credit_user(uuid,uuid,numeric,text,text,text,text)') is not null as admin_credit_rpc_exists;
+  to_regprocedure('public.kretz_admin_credit_user(uuid,uuid,numeric,text,text,text,text)') is not null as admin_credit_rpc_exists,
+  to_regprocedure('public.kretz_admin_record_login_failure(text)') is not null as admin_login_lockout_rpc_exists;
 ```
 
 Expected: all six table checks are true, all four new private auth tables report RLS enabled, the `on_auth_user_created` trigger is present/enabled, and all three admin RPC checks are true.
