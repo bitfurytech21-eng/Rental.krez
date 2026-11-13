@@ -1,0 +1,18 @@
+# Separate Cloudflare Worker configuration for the API.
+# The root wrangler.toml remains the Cloudflare Pages frontend configuration.
+name = "rental-krez-api"
+main = "worker.ts"
+compatibility_date = "2026-11-13"
+workers_dev = true
+
+[vars]
+NODE_ENV = "production"
+ENVIRONMENT = "production"
+API_VERSION = "v1"
+ALLOWED_ORIGINS = "https://rental-krez.pages.dev"
+EMAIL_FROM = "info@kretzdespain.com"
+EMAIL_SENDER_NAME = "Kretz Real Estate"
+EMAIL_REPLY_TO = "info@kretzdespain.com"
+EMAIL_SUPPORT = "info@kretzdespain.com"
+EMAIL_TEST_MODE = "false"
+PUBLIC_APP_URL = "https://rental-krez.pages.dev"
