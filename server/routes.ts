@@ -3057,8 +3057,15 @@ router.get('/treasury/rates', (_req: AuthenticatedRequest, res: Response) => {
 
 router.get('/treasury/balances', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const userRecord = findUserRecordForRequest(req);
-  const eurBal = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
-  const subBalances = getOrInitUserSubBalances(req.user!.id, eurBal);
+  if (!userRecord) {
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+  const subBalances = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
   res.json({
     success: true,
     data: { balances: subBalances },
@@ -3067,7 +3074,7 @@ router.get('/treasury/balances', requireAuth, (req: AuthenticatedRequest, res: R
 });
 
 router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const { fromCurrency, toCurrency, amount, clientEurBalance } = req.body || {};
+  const { fromCurrency, toCurrency, amount } = req.body || {};
   const from = String(fromCurrency || '').toUpperCase();
   const to = String(toCurrency || '').toUpperCase();
   const numericAmount = Number(amount);
@@ -3099,23 +3106,14 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
     });
   }
 
-  let userRecord = findUserRecordForRequest(req);
+  const userRecord = findUserRecordForRequest(req);
   if (!userRecord) {
-    userRecord = {
-      id: req.user!.id,
-      email: req.user!.email,
-      fullName: req.user!.fullName || 'Verified Investor',
-      passwordHash: '',
-      role: req.user!.role,
-      kycStatus: 'approved',
-      balance: typeof clientEurBalance === 'number' && clientEurBalance >= 0 ? clientEurBalance : 0,
-      currency: 'EUR',
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-    mockUsers.push(userRecord);
-  } else if (typeof clientEurBalance === 'number' && clientEurBalance >= 0 && !userSubBalancesStore.has(userRecord.id)) {
-    userRecord.balance = clientEurBalance;
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger. Client-supplied balances cannot be used for currency conversion.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
   }
 
   const activeUser = userRecord;
@@ -3220,16 +3218,15 @@ router.post('/deposits', requireAuth, (req: AuthenticatedRequest, res: Response)
 
   const { amount, currency = 'EUR', method = 'SEPA Bank Wire', txHash } = req.body || {};
 
-  if (!amount || Number(amount) < 100) {
+  const numAmount = Number(amount);
+  if (!Number.isFinite(numAmount) || numAmount < 100) {
     return res.status(400).json({
       success: false,
-      error: 'Minimum deposit amount is €100.',
+      error: 'Minimum deposit amount is €100. Enter a valid numeric amount.',
       code: 'INVALID_DEPOSIT_AMOUNT',
       requestId: req.id
     });
   }
-
-  const numAmount = Number(amount);
   const ref = `KZ-DEP-${Math.floor(100000 + Math.random() * 900000)}`;
   const foundUser = findUserRecordForRequest(req);
   const resolvedRecipient = foundUser?.email || req.user?.email || 'investor@kretz.com';
@@ -3351,8 +3348,16 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
       requestId: req.id
     });
   }
-  const userRecordCheck = mockUsers.find(u => u.id === req.user?.id);
-  if (userRecordCheck && userRecordCheck.status === 'suspended') {
+  const userRecord = findUserRecordForRequest(req);
+  if (!userRecord) {
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger. Please contact support before requesting a withdrawal.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+  if (userRecord.status === 'suspended') {
     return res.status(403).json({
       success: false,
       error: 'Account access restricted by administrative compliance.',
@@ -3363,16 +3368,17 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
 
   const { amount, destination, method = 'Bank Wire SEPA' } = req.body || {};
 
-  if (!amount || Number(amount) < 250) {
+  const numAmount = Number(amount);
+  if (!Number.isFinite(numAmount) || numAmount < 250) {
     return res.status(400).json({
       success: false,
-      error: 'Minimum withdrawal amount is €250.',
+      error: 'Minimum withdrawal amount is €250. Enter a valid numeric amount.',
       code: 'INVALID_AMOUNT',
       requestId: req.id
     });
   }
 
-  if (!destination) {
+  if (typeof destination !== 'string' || !destination.trim()) {
     return res.status(400).json({
       success: false,
       error: 'Withdrawal destination (IBAN or Crypto Address) is required.',
@@ -3381,10 +3387,7 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const numAmount = Number(amount);
-  const userRecord = mockUsers.find(u => u.id === req.user?.id);
-
-  if (userRecord && userRecord.balance < numAmount) {
+  if (userRecord.balance < numAmount) {
     logger.log({
       level: 'warn',
       category: 'payments',
@@ -3408,8 +3411,9 @@ router.post('/withdrawals', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   // Deduct immediately on server to lock funds
-  if (userRecord) {
-    userRecord.balance -= numAmount;
+  userRecord.balance = Math.round((userRecord.balance - numAmount) * 100) / 100;
+  if (userSubBalancesStore.has(userRecord.id)) {
+    userSubBalancesStore.get(userRecord.id)!.EUR = userRecord.balance;
   }
 
   const ref = `KZ-WTH-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -3509,9 +3513,10 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const { propertyId, tokensCount, paymentMethod = 'Platform Balance', feePercent, idempotencyKey } = req.body || {};
+  const { propertyId, tokensCount, paymentMethod = 'Platform Balance', idempotencyKey } = req.body || {};
+  const count = Number(tokensCount);
 
-  if (!propertyId || !tokensCount || Number(tokensCount) < 1) {
+  if (!propertyId || !Number.isSafeInteger(count) || count < 1) {
     return res.status(400).json({
       success: false,
       error: 'Valid property ID and token count (min 1) are required.',
@@ -3550,9 +3555,9 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
     });
   }
 
-  const count = Number(tokensCount);
   const principalCost = count * prop.tokenPrice;
-  const resolvedFeePct = typeof feePercent === 'number' && feePercent >= 0 ? feePercent : 0;
+  // The settlement fee is a server-owned platform setting, never a client-controlled input.
+  const resolvedFeePct = 0.25;
   const feeEur = Math.round(principalCost * (resolvedFeePct / 100) * 100) / 100;
   const totalCost = Math.round((principalCost + feeEur) * 100) / 100;
 
@@ -3576,8 +3581,16 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   const userRecord = findUserRecordForRequest(req);
+  if (!userRecord) {
+    return res.status(409).json({
+      success: false,
+      error: 'Your investor account is not available in the server ledger. No investment can be charged or issued.',
+      code: 'ACCOUNT_LEDGER_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
 
-  if (userRecord && userRecord.balance < totalCost) {
+  if (userRecord.balance < totalCost) {
     return res.status(400).json({
       success: false,
       error: `Insufficient balance (€${userRecord.balance.toFixed(2)}) for investment of €${totalCost.toFixed(2)}. Please deposit funds first.`,
@@ -3587,11 +3600,9 @@ router.post('/investments', requireAuth, (req: AuthenticatedRequest, res: Respon
   }
 
   // Server-authoritative state mutation
-  if (userRecord) {
-    userRecord.balance = Math.round((userRecord.balance - totalCost) * 100) / 100;
-    const subBals = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
-    subBals.EUR = userRecord.balance;
-  }
+  userRecord.balance = Math.round((userRecord.balance - totalCost) * 100) / 100;
+  const subBals = getOrInitUserSubBalances(userRecord.id, userRecord.balance);
+  subBals.EUR = userRecord.balance;
   prop.availableTokens -= count;
   prop.fundedAmount += principalCost;
   processedWebhooks.add(safeKey);
