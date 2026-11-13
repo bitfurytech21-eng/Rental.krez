@@ -251,7 +251,8 @@ export async function authenticateToken(
           fullName: identity.fullName,
           accountType: identity.accountType,
           balance: identity.balance,
-          status: 'active'
+          status: identity.status || 'active',
+          suspendedReason: identity.suspendedReason
         };
       }
       return next();
