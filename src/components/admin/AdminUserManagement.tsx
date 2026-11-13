@@ -4,7 +4,7 @@ import { Investment } from '../../types/investment';
 import { Transaction } from '../../types/transaction';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
-import { getAuthToken } from '../../lib/api';
+import { getAuthToken, getApiUrl } from '../../lib/api';
 import { printUserDirectoryReport, UserDirectoryPrintData } from '../../lib/printService';
 import {
   Users,
@@ -191,7 +191,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       // 2. Call backend API if available
       try {
         const token = getAuthToken();
-        await fetch(`/api/v1/admin/users/${statusModalUser.id}/status`, {
+        await fetch(getApiUrl(`/admin/users/${statusModalUser.id}/status`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
