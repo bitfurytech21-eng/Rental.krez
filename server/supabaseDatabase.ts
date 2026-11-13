@@ -84,15 +84,19 @@ export async function requestCustomerPasswordReset(email: string, redirectTo: st
 }
 
 export async function updateCustomerPassword(accessToken: string, password: string) {
-  const client = getSupabaseAuthClient(accessToken);
-  const { data, error } = await client.auth.updateUser({ password });
+  const identity = await verifySupabaseAccessToken(accessToken);
+  if (!identity) throw new Error('INVALID_RECOVERY_SESSION');
+  const { data, error } = await getSupabaseAdmin().auth.admin.updateUserById(identity.id, { password });
   if (error) throw error;
+  const { error: revokeError } = await getSupabaseAdmin().auth.admin.signOut(accessToken, 'global');
+  if (revokeError) throw revokeError;
   return data.user;
 }
 
 export async function signOutCustomer(accessToken: string) {
-  const client = getSupabaseAuthClient(accessToken);
-  const { error } = await client.auth.signOut({ scope: 'local' });
+  const identity = await verifySupabaseAccessToken(accessToken);
+  if (!identity) return;
+  const { error } = await getSupabaseAdmin().auth.admin.signOut(accessToken, 'global');
   if (error) throw error;
 }
 
