@@ -51,7 +51,9 @@ alter table public.user_profiles
   add column if not exists crypto_deposit_address text,
   add column if not exists tax_id text,
   add column if not exists date_of_birth date,
-  add column if not exists mfa_enabled boolean not null default false;
+  add column if not exists mfa_enabled boolean not null default false,
+  add column if not exists status text not null default 'active' check (status in ('active','suspended')),
+  add column if not exists suspended_reason text;
 
 -- Prevent authenticated clients from editing balances, KYC decisions, account types,
 -- investment totals, or any other server-owned fields through direct table updates.
@@ -281,6 +283,98 @@ begin
 end;
 $$;
 
+
+-- Durable account status and KYC decisions.
+create or replace function public.kretz_admin_update_kyc(
+  p_user_id uuid, p_admin_id uuid, p_status text, p_notes text default null
+) returns jsonb
+language plpgsql security definer set search_path = ''
+as $
+declare v_profile public.user_profiles;
+begin
+  if not (public.has_role(p_admin_id,'operations_admin') or public.has_role(p_admin_id,'super_admin') or public.has_role(p_admin_id,'admin')) then
+    raise exception 'OPERATIONS_ADMIN_REQUIRED' using errcode = '42501';
+  end if;
+  if p_status not in ('unverified','pending','approved','rejected') then
+    raise exception 'INVALID_KYC_STATUS' using errcode = '22023';
+  end if;
+  update public.user_profiles set kyc_status = p_status,
+    kyc_notes = p_notes,
+    kyc_verified_at = case when p_status = 'approved' then now() else null end,
+    updated_at = now()
+    where id = p_user_id returning * into v_profile;
+  if not found then raise exception 'USER_NOT_FOUND' using errcode = 'P0002'; end if;
+  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
+  select p_admin_id,email,'operations_admin','KYC_STATUS_UPDATED','user',p_user_id::text,
+    'KYC status set to ' || p_status || '. ' || coalesce(p_notes,'')
+    from public.user_profiles where id = p_admin_id;
+  return jsonb_build_object('id',v_profile.id,'email',v_profile.email,'full_name',v_profile.full_name,
+    'kyc_status',v_profile.kyc_status,'kyc_notes',v_profile.kyc_notes,'kyc_verified_at',v_profile.kyc_verified_at);
+end;
+$;
+
+create or replace function public.kretz_admin_set_user_status(
+  p_user_id uuid, p_admin_id uuid, p_status text, p_reason text default null
+) returns jsonb
+language plpgsql security definer set search_path = ''
+as $
+declare v_profile public.user_profiles;
+begin
+  if not (public.has_role(p_admin_id,'operations_admin') or public.has_role(p_admin_id,'super_admin') or public.has_role(p_admin_id,'admin')) then
+    raise exception 'OPERATIONS_ADMIN_REQUIRED' using errcode = '42501';
+  end if;
+  if p_status not in ('active','suspended') then raise exception 'INVALID_STATUS' using errcode = '22023'; end if;
+  if p_user_id = p_admin_id and p_status = 'suspended' then raise exception 'SELF_SUSPENSION_FORBIDDEN' using errcode = '42501'; end if;
+  update public.user_profiles set status = p_status,
+    suspended_reason = case when p_status = 'suspended' then coalesce(p_reason,'Administrative Compliance Suspension') else null end,
+    updated_at = now()
+    where id = p_user_id returning * into v_profile;
+  if not found then raise exception 'USER_NOT_FOUND' using errcode = 'P0002'; end if;
+  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
+  select p_admin_id,email,'operations_admin',case when p_status = 'suspended' then 'USER_SUSPENDED' else 'USER_ACTIVATED' end,
+    'user',p_user_id::text,coalesce(p_reason,'')
+    from public.user_profiles where id = p_admin_id;
+  return jsonb_build_object('id',v_profile.id,'email',v_profile.email,'full_name',v_profile.full_name,
+    'status',v_profile.status,'suspended_reason',v_profile.suspended_reason);
+end;
+$;
+
+create or replace function public.kretz_admin_adjust_wallet(
+  p_user_id uuid, p_admin_id uuid, p_amount numeric, p_reason text,
+  p_transaction_id text, p_reference text
+) returns jsonb
+language plpgsql security definer set search_path = ''
+as $
+declare v_profile public.user_profiles; v_tx public.payment_transactions;
+begin
+  if not (public.has_role(p_admin_id,'finance_admin') or public.has_role(p_admin_id,'super_admin') or public.has_role(p_admin_id,'admin')) then
+    raise exception 'FINANCE_ADMIN_REQUIRED' using errcode = '42501';
+  end if;
+  if p_amount is null or p_amount = 0 or abs(p_amount) > 100000000 then
+    raise exception 'INVALID_ADJUSTMENT_AMOUNT' using errcode = '22023';
+  end if;
+  select * into v_profile from public.user_profiles where id = p_user_id for update;
+  if not found then raise exception 'USER_NOT_FOUND' using errcode = 'P0002'; end if;
+  if v_profile.wallet_balance + p_amount < 0 then raise exception 'INSUFFICIENT_FUNDS' using errcode = '22023'; end if;
+  update public.user_profiles set wallet_balance = wallet_balance + p_amount, updated_at = now()
+    where id = p_user_id returning * into v_profile;
+  insert into public.payment_transactions
+    (id,user_id,type,amount,currency,status,payment_method,reference,notes,metadata,processed_at)
+  values (p_transaction_id,p_user_id,'adjustment',abs(p_amount),'EUR','completed','Admin wallet adjustment',
+    p_reference,p_reason,jsonb_build_object('direction',case when p_amount > 0 then 'credit' else 'debit' end),now())
+  returning * into v_tx;
+  insert into public.ledger_entries
+    (user_id,transaction_id,entry_type,amount,currency,balance_after,description,idempotency_key)
+  values (p_user_id,p_transaction_id,'adjustment',p_amount,'EUR',v_profile.wallet_balance,
+    coalesce(p_reason,'Administrator wallet adjustment'),'adjustment:' || p_transaction_id);
+  insert into public.audit_logs(actor_id,actor_email,actor_role,action,entity_type,entity_id,details)
+  select p_admin_id,email,'finance_admin','WALLET_ADJUSTMENT','user',p_user_id::text,
+    'Adjustment ' || p_amount::text || ' EUR. ' || coalesce(p_reason,'')
+    from public.user_profiles where id = p_admin_id;
+  return jsonb_build_object('transaction',to_jsonb(v_tx),'wallet_balance',v_profile.wallet_balance);
+end;
+$;
+
 -- Server-only execution; browser clients cannot invoke money-moving functions.
 revoke all on function public.kretz_request_deposit(uuid,numeric,text,text,text,text,text) from public, anon, authenticated;
 revoke all on function public.kretz_request_withdrawal(uuid,numeric,text,text,text,text,text) from public, anon, authenticated;
@@ -316,5 +410,19 @@ values
    '{"bedrooms":8,"bathrooms":10,"builtAreaM2":1450,"plotAreaM2":8900}'::jsonb,
    '{"grossRentAnnual":310000,"netYield":78.0,"totalIrr":234.0}'::jsonb)
 on conflict (id) do nothing;
+
+revoke all on function public.kretz_admin_update_kyc(uuid,uuid,text,text) from public, anon, authenticated;
+revoke all on function public.kretz_admin_set_user_status(uuid,uuid,text,text) from public, anon, authenticated;
+revoke all on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) from public, anon, authenticated;
+grant execute on function public.kretz_admin_update_kyc(uuid,uuid,text,text) to service_role;
+grant execute on function public.kretz_admin_set_user_status(uuid,uuid,text,text) to service_role;
+grant execute on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) to service_role;
+
+-- Compatibility profile view must respect caller RLS on user_profiles.
+create or replace view public.profiles with (security_invoker = true) as
+select up.id, up.email, up.full_name,
+  case when public.is_admin(up.id) then 'admin' else 'investor' end as role,
+  up.account_type, up.wallet_balance, up.invested_balance, up.kyc_status, up.created_at
+from public.user_profiles up;
 
 commit;
