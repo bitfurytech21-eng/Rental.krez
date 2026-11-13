@@ -20,10 +20,12 @@ From a trusted local development environment with the Supabase CLI installed and
 
 ```sh
 supabase link --project-ref YOUR_PROJECT_REF
+supabase migration list --remote
+supabase db push --dry-run
 supabase db push
 ```
 
-Review the SQL migrations in `supabase/migrations/` before applying them to a live project. The new persistence migrations add an append-only ledger, atomic deposit/withdrawal/investment RPCs, account suspension/KYC controls, audited manual wallet credits, and a safe first-time seed for the three existing featured offerings. Existing property rows are not overwritten.
+Review the SQL migrations in `supabase/migrations/` and inspect the remote/local migration list and dry-run output before applying them to a live project. If the migration history is already populated, do not use `migration repair` unless you have verified which migrations were actually applied. The new persistence migrations add an append-only ledger, atomic deposit/withdrawal/investment RPCs, account suspension/KYC controls, audited manual wallet credits, and a safe first-time seed for the three existing featured offerings. Existing property rows are not overwritten.
 
 ## 3. Verify
 
