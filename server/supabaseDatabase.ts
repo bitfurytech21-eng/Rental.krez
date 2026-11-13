@@ -339,3 +339,50 @@ export async function updatePersistentInvestmentPlan(identifier: string, body: a
   if (error) throw error;
   return toApiProperty(data);
 }
+
+export async function getPersistentAccountStatement(userId: string) {
+  const [profile, transactions, investments] = await Promise.all([
+    getUserProfile(userId), listUserTransactions(userId, 1000), listUserInvestments(userId)
+  ]);
+  if (!profile) return null;
+  const completed = transactions.filter((row: any) => row.status === 'completed');
+  const sum = (type: string) => completed.filter((row: any) => row.type === type)
+    .reduce((total: number, row: any) => total + Number(row.amount || 0), 0);
+  return {
+    statementId: `STMT-${new Date().getUTCFullYear()}-${userId.slice(0, 8).toUpperCase()}`,
+    periodStart: transactions.length ? transactions[transactions.length - 1].created_at : null,
+    periodEnd: new Date().toISOString(),
+    totalDeposits: sum('deposit'),
+    totalWithdrawals: sum('withdrawal'),
+    totalInvested: investments.reduce((total: number, row: any) => total + Number(row.total_amount_invested || 0), 0),
+    totalDividendsReceived: Number(profile.total_dividends_earned || 0),
+    currentBalance: Number(profile.wallet_balance || 0),
+    transactions: transactions.map(toApiTransaction)
+  };
+}
+
+export async function getPersistentPerformance(userId: string) {
+  const [profile, transactions, investments] = await Promise.all([
+    getUserProfile(userId), listUserTransactions(userId, 1000), listUserInvestments(userId)
+  ]);
+  if (!profile) return null;
+  const dividends = transactions.filter((row: any) => row.type === 'dividend' && row.status === 'completed');
+  const byMonth = new Map<string, { yield: number; totalValue: number }>();
+  for (const row of dividends) {
+    const date = new Date(row.created_at);
+    const key = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+    const current = byMonth.get(key) || { yield: 0, totalValue: 0 };
+    current.yield += Number(row.amount || 0);
+    byMonth.set(key, current);
+  }
+  const invested = investments.reduce((total: number, row: any) => total + Number(row.total_amount_invested || 0), 0);
+  const weightedAnnualRate = invested > 0
+    ? investments.reduce((total: number, row: any) => total + Number(row.monthly_target_rate || 0) * 12 * Number(row.total_amount_invested || 0), 0) / invested
+    : 0;
+  return {
+    annualizedReturnPercent: Number(weightedAnnualRate.toFixed(2)),
+    historicalPerformance: Array.from(byMonth.entries()).map(([month, values]) => ({ month, ...values })),
+    totalInvested: invested,
+    totalDividendsReceived: Number(profile.total_dividends_earned || 0)
+  };
+}
