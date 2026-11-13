@@ -41,7 +41,7 @@ Deploy only after setting the required encrypted secrets and completing the prod
 
 ## Durable API sessions (optional production switch)
 
-The browser's configured production customer-authentication path uses Supabase Auth access tokens. This optional store applies only to the API's legacy `kz_sess_*` cookie-session path (used when the frontend is not configured for Supabase Auth); it does not replace Supabase Auth or migrate legacy `mockUsers` customer records. It stores those legacy sessions in Supabase instead of Worker memory.
+The browser's configured production customer-authentication path uses Supabase Auth access tokens. This optional store applies only to the API's legacy `kz_sess_*` cookie-session path. The production browser flow uses Supabase Auth JWTs, and the old API login/register/password-recovery routes now fail closed in production rather than creating Worker-local mock accounts.
 
 1. Apply `supabase/migrations/20261113000002_durable_server_sessions.sql` to the production Supabase project.
 2. Confirm the API Worker has the encrypted `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` secrets configured. Never expose the service-role key as a `VITE_*` variable.
