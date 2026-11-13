@@ -289,7 +289,7 @@ export async function listUserInvestments(userId: string) {
 
 export async function listAdminUsers(limit = 500) {
   const { data, error } = await getSupabaseAdmin().from('user_profiles')
-    .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,account_status,suspended_reason,total_dividends_earned,created_at,updated_at,user_roles(role)')
+    .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,account_status,suspended_reason,total_dividends_earned,bank_iban,crypto_deposit_address,created_at,updated_at,user_roles(role)')
     .order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 1000));
   if (error) throw error;
   return data || [];
