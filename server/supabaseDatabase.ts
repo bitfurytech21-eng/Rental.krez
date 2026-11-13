@@ -302,16 +302,23 @@ export async function listPersistentAuditLogs(limit = 250) {
 function propertyWritePayload(body: any, existing?: any) {
   const targetAmount = Number(body.targetAmount ?? existing?.target_amount ?? 0);
   const tokenPrice = Number(body.tokenPrice ?? existing?.token_price ?? 364);
-  const totalTokens = Number(body.totalTokens ?? existing?.total_tokens ?? Math.floor(targetAmount / tokenPrice));
+  const totalTokens = Number(body.totalTokens ?? ((body.targetAmount !== undefined || body.tokenPrice !== undefined) ? Math.floor(targetAmount / tokenPrice) : (existing?.total_tokens ?? Math.floor(targetAmount / tokenPrice))));
   const fundedAmount = Number(body.fundedAmount ?? existing?.funded_amount ?? 0);
   const monthlyRate = Number(body.monthlyTargetRate ?? existing?.monthly_target_rate ?? 6);
   const duration = Number(body.holdingPeriodMonths ?? body.durationMonths ?? existing?.duration_months ?? 36);
   const title = String(body.title ?? existing?.title ?? '').trim();
   const location = String(body.location ?? existing?.location ?? '').trim();
-  if (!title || !location || !Number.isFinite(targetAmount) || targetAmount <= 0 || !Number.isFinite(tokenPrice) || tokenPrice <= 0 || !Number.isSafeInteger(totalTokens) || totalTokens <= 0) {
+  if (!title || !location || !Number.isFinite(targetAmount) || targetAmount <= 0 ||
+      !Number.isFinite(tokenPrice) || tokenPrice <= 0 || !Number.isSafeInteger(totalTokens) || totalTokens <= 0 ||
+      !Number.isFinite(fundedAmount) || fundedAmount < 0 || fundedAmount > targetAmount ||
+      !Number.isFinite(monthlyRate) || monthlyRate < 5 || monthlyRate > 15 ||
+      !Number.isSafeInteger(duration) || duration < 1) {
     throw new Error('INVALID_PROPERTY_DATA');
   }
-  const availableTokens = Number(body.availableTokens ?? existing?.available_tokens ?? Math.max(0, totalTokens - Math.floor(fundedAmount / tokenPrice)));
+  const computedAvailable = Math.max(0, totalTokens - Math.floor(fundedAmount / tokenPrice));
+  const availableTokens = Number(body.availableTokens ?? ((body.targetAmount !== undefined || body.fundedAmount !== undefined || body.tokenPrice !== undefined) ? computedAvailable : (existing?.available_tokens ?? computedAvailable)));
+  if (!Number.isSafeInteger(availableTokens) || availableTokens < 0 || availableTokens > totalTokens) throw new Error('INVALID_PROPERTY_DATA');
+  if (body.images !== undefined && !Array.isArray(body.images)) throw new Error('INVALID_PROPERTY_DATA');
   return {
     slug: String(body.slug ?? existing?.slug ?? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')),
     title, location, city: String(body.city ?? existing?.city ?? location.split(',').slice(-2, -1)[0]?.trim() ?? 'Unknown'),
