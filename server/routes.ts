@@ -2122,7 +2122,7 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
   if (isSupabaseServerConfigured()) {
     try {
       const users = await listAdminUsers();
-      return res.json({ success: true, data: users.map((u: any) => ({ id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number, role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','support','auditor'].includes(role)) || 'investor', accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0), kycStatus: u.kyc_status, status: 'active', createdAt: u.created_at })), total: users.length, requestId: req.id });
+      return res.json({ success: true, data: users.map((u: any) => ({ id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number, role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','support','auditor'].includes(role)) || 'investor', accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0), kycStatus: u.kyc_status, status: u.status || 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at })), total: users.length, requestId: req.id });
     } catch (error: any) {
       logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-users-db', eventType: 'ADMIN_USERS_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load users.' });
       return res.status(503).json({ success: false, error: 'The investor registry is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
@@ -2727,6 +2727,7 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: Authent
  */
 router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const body = req.body || {};
+  if (isSupabaseServerConfigured() && !['admin','super_admin','operations_admin'].includes(req.user!.role)) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
   if (!body.title || !body.location || !body.targetAmount) {
     return res.status(400).json({
       success: false,
@@ -2799,6 +2800,7 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
  */
 router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  if (isSupabaseServerConfigured() && !['admin','super_admin','operations_admin'].includes(req.user!.role)) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
   if (isSupabaseServerConfigured()) {
     try {
       const property = await updatePersistentInvestmentPlan(id, req.body || {});
