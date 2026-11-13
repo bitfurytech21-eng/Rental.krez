@@ -29,6 +29,73 @@ export function getSupabaseAdmin(): SupabaseClient {
   return serviceClient;
 }
 
+export function getSupabaseAuthClient(accessToken?: string): SupabaseClient {
+  if (!isSupabaseAuthConfigured()) {
+    throw new Error('SUPABASE_AUTH_NOT_CONFIGURED');
+  }
+  return createClient(supabaseUrl, anonKey, {
+    global: accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined,
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
+}
+
+export async function signInCustomer(email: string, password: string) {
+  const client = getSupabaseAuthClient();
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  if (!data.session || !data.user) throw new Error('SUPABASE_SESSION_NOT_CREATED');
+  const identity = await verifySupabaseAccessToken(data.session.access_token);
+  if (!identity) throw new Error('SUPABASE_PROFILE_NOT_PROVISIONED');
+  if (identity.status === 'suspended') throw new Error('ACCOUNT_SUSPENDED');
+  return { user: identity, session: data.session };
+}
+
+export async function registerCustomer(input: {
+  email: string; password: string; fullName: string; country?: string;
+  countryCode?: string; phoneNumber?: string; redirectTo: string;
+}) {
+  const client = getSupabaseAuthClient();
+  const { data, error } = await client.auth.signUp({
+    email: input.email,
+    password: input.password,
+    options: {
+      emailRedirectTo: input.redirectTo,
+      data: {
+        full_name: input.fullName,
+        role: 'investor',
+        account_type: 'individual_investor',
+        country: input.country || 'France',
+        country_code: input.countryCode || '',
+        phone_number: input.phoneNumber || ''
+      }
+    }
+  });
+  if (error) throw error;
+  if (!data.user) throw new Error('SUPABASE_USER_NOT_CREATED');
+  const identity = data.session
+    ? await verifySupabaseAccessToken(data.session.access_token)
+    : null;
+  return { user: identity, authUser: data.user, session: data.session };
+}
+
+export async function requestCustomerPasswordReset(email: string, redirectTo: string) {
+  const { error } = await getSupabaseAuthClient().auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+export async function updateCustomerPassword(accessToken: string, password: string) {
+  const client = getSupabaseAuthClient(accessToken);
+  const { data, error } = await client.auth.updateUser({ password });
+  if (error) throw error;
+  return data.user;
+}
+
+export async function signOutCustomer(accessToken: string) {
+  const client = getSupabaseAuthClient(accessToken);
+  const { error } = await client.auth.signOut({ scope: 'local' });
+  if (error) throw error;
+}
+
 export type VerifiedSupabaseIdentity = {
   id: string;
   email: string;
