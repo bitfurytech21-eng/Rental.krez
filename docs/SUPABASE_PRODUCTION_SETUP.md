@@ -9,7 +9,7 @@ In the Supabase Dashboard, open **SQL Editor** and apply the migrations in the c
 - If the existing enterprise schema has not been installed yet, apply `supabase/migrations/20261018000000_enterprise_financial_schema.sql` first.
 - Apply `supabase/migrations/20261113000000_durable_financial_operations.sql` after the enterprise schema.
 - Apply `supabase/migrations/20261113000003_durable_admin_auth.sql` for persistent administrator credentials, sessions and login lockouts.
-- Apply `supabase/migrations/20261113000004_durable_server_sessions.sql` for the legacy/API server session store.
+- Apply `supabase/migrations/20261113000002_durable_server_sessions.sql` for the legacy/API server session store.
 - The file `supabase/migrations/20261018_admin_security_schema.sql` is a compatibility hardening script. It no longer creates a second `profiles` table or grants administrator access based on email domains. If you previously ran the old version of that script, run the updated version after the enterprise schema to restore the read-only compatibility view safely.
 
 The new financial migration:
