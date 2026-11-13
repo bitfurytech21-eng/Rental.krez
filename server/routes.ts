@@ -70,7 +70,7 @@ import { BLOG_POSTS } from '../src/data/blogPosts';
 import { dailyPaymentService } from './dailyPaymentService';
 import { generatePropertyPaymentsCsv } from '../src/lib/distributionService';
 import {
-  isSupabaseServerConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
+  isSupabaseServerConfigured, isSupabaseAuthConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
   getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs, getAdminIdentityByEmail,
