@@ -201,9 +201,9 @@ export async function authenticateToken(
   try {
     // 2. Handle Server-Authoritative Cryptographic Sessions (kz_sess_*)
     if (token.startsWith('kz_sess_')) {
-      const activeSession = getSession(token);
+      const activeSession = await getSession(token);
       if (activeSession) {
-        touchSession(token);
+        await touchSession(token);
         req.session = activeSession;
         req.user = {
           id: activeSession.userId,
