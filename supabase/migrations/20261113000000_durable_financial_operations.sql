@@ -9,8 +9,9 @@ alter table public.payment_transactions
   add column if not exists metadata jsonb not null default '{}'::jsonb,
   add column if not exists updated_at timestamptz not null default now();
 
-create unique index if not exists uq_payment_transactions_user_idempotency
-  on public.payment_transactions(user_id, idempotency_key)
+drop index if exists public.uq_payment_transactions_user_idempotency;
+create unique index if not exists uq_payment_transactions_user_type_idempotency
+  on public.payment_transactions(user_id, type, idempotency_key)
   where idempotency_key is not null;
 
 create table if not exists public.ledger_entries (
@@ -78,7 +79,7 @@ begin
   end if;
   if p_idempotency_key is not null then
     select * into v_tx from public.payment_transactions
-      where user_id = p_user_id and idempotency_key = p_idempotency_key;
+      where user_id = p_user_id and type = 'deposit' and idempotency_key = p_idempotency_key;
     if found then return to_jsonb(v_tx); end if;
   end if;
   insert into public.payment_transactions
@@ -108,7 +109,7 @@ begin
   end if;
   if p_idempotency_key is not null then
     select * into v_tx from public.payment_transactions
-      where user_id = p_user_id and idempotency_key = p_idempotency_key;
+      where user_id = p_user_id and type = 'withdrawal' and idempotency_key = p_idempotency_key;
     if found then return to_jsonb(v_tx); end if;
   end if;
   select * into v_profile from public.user_profiles where id = p_user_id for update;
@@ -231,7 +232,7 @@ begin
   if p_tokens is null or p_tokens < 1 then raise exception 'INVALID_TOKEN_COUNT' using errcode = '22023'; end if;
   if p_idempotency_key is not null then
     select * into v_tx from public.payment_transactions
-      where user_id = p_user_id and idempotency_key = p_idempotency_key;
+      where user_id = p_user_id and type = 'investment' and idempotency_key = p_idempotency_key;
     if found then
       select * into v_investment from public.investments where user_id = p_user_id and id = v_tx.metadata->>'investment_id';
       return jsonb_build_object('transaction',to_jsonb(v_tx),'investment',case when found then to_jsonb(v_investment) else null end);
