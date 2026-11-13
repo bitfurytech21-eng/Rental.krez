@@ -2128,6 +2128,7 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
       return res.status(503).json({ success: false, error: 'The investor registry is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   logger.log({
     level: 'info',
     category: 'admin',
@@ -2161,6 +2162,7 @@ router.get('/admin/audit-logs', requireAdmin, async (req: AuthenticatedRequest, 
       return res.status(503).json({ success: false, error: 'Audit records are temporarily unavailable.', code: 'AUDIT_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent audit log storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: mockAuditLogs,
@@ -2879,6 +2881,7 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
       return res.status(503).json({ success: false, error: 'Your profile is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const profile = findUserRecordForRequest(req);
   if (!profile) {
     return res.status(404).json({
@@ -2927,6 +2930,7 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, async (req: Authen
       return res.status(503).json({ success: false, error: 'Your investment portfolio is temporarily unavailable.', code: 'PORTFOLIO_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const matchedUser = findUserRecordForRequest(req);
   const resolvedEmail = matchedUser?.email || req.user?.email || '';
   const userInvTxs = mockTransactions.filter(
@@ -3004,6 +3008,7 @@ router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, async (req:
       return res.status(503).json({ success: false, error: 'Wallet balance is temporarily unavailable.', code: 'WALLET_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent wallet storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const user = findUserRecordForRequest(req);
   const userId = req.user!.id;
   const userEmail = req.user?.email?.toLowerCase();
@@ -3063,6 +3068,7 @@ router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: 
       return res.status(503).json({ success: false, error: 'Transaction history is temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent transaction storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const userEmail = req.user?.email?.toLowerCase();
   
   // If user is ordinary investor, filter to their transactions
@@ -4176,6 +4182,7 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
       return res.status(503).json({ success: false, error: 'Your account is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const stored = findUserRecordForRequest(req);
   res.json({
     success: true,
@@ -4202,6 +4209,7 @@ router.patch('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Re
       return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
     }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const allowedFields = [
     'fullName',
     'phoneNumber',
@@ -4464,6 +4472,7 @@ router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest,
     catch (error: any) { return res.status(503).json({ success: false, error: 'Investment records are temporarily unavailable.', code: 'INVESTMENT_DATABASE_UNAVAILABLE', requestId: req.id }); }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: [
@@ -4478,6 +4487,7 @@ router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest
     try { const rows = await listAdminTransactions(); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
     catch (error: any) { return res.status(503).json({ success: false, error: 'Financial transactions are temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id }); }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
     success: true,
     data: mockTransactions,
@@ -4490,6 +4500,7 @@ router.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, re
     try { const rows = await listAdminTransactions('deposit'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
     catch (error: any) { return res.status(503).json({ success: false, error: 'Deposit requests are temporarily unavailable.', code: 'DEPOSIT_DATABASE_UNAVAILABLE', requestId: req.id }); }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent deposit storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const deposits = mockTransactions.filter(t => t.type === 'deposit');
   res.json({
     success: true,
@@ -4503,6 +4514,7 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
     try { const rows = await listAdminTransactions('withdrawal'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
     catch (error: any) { return res.status(503).json({ success: false, error: 'Withdrawal requests are temporarily unavailable.', code: 'WITHDRAWAL_DATABASE_UNAVAILABLE', requestId: req.id }); }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent withdrawal storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const withdrawals = mockTransactions.filter(t => t.type === 'withdrawal');
   res.json({
     success: true,
