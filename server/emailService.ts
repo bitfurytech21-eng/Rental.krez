@@ -95,7 +95,7 @@ export interface EmailSenderSettings {
 let emailSettings: EmailSenderSettings = {
   senderName: process.env.EMAIL_SENDER_NAME || "L'Agence · Kretz",
   fromAddress: process.env.EMAIL_FROM || process.env.SMTP_FROM || 'info@kretzdespain.com',
-  replyToAddress: process.env.EMAIL_REPLY_TO || 'support@kretzdespain.com',
+  replyToAddress: process.env.EMAIL_REPLY_TO || 'info@kretzdespain.com',
   supportEmail: process.env.EMAIL_SUPPORT || 'info@kretzdespain.com',
   supportPhone: '+34 912 345 678',
   platformUrl: (process.env.PUBLIC_APP_URL || process.env.PLATFORM_URL || 'https://kretzdespain.com').trim().replace(/\/+$/, ''),
