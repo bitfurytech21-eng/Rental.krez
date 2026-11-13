@@ -383,6 +383,19 @@ on conflict (id) do nothing;
 revoke all on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) from public, anon, authenticated;
 grant execute on function public.kretz_admin_adjust_wallet(uuid,uuid,numeric,text,text,text) to service_role;
 
+-- Tighten legacy broad policies so draft offerings and financial state cannot be changed directly by browser clients.
+drop policy if exists "Anyone can view non-hidden investment plans" on public.investment_plans;
+create policy "Public can view published investment plans" on public.investment_plans
+  for select using (status in ('funding','funded','active','closed') or public.is_admin(auth.uid()));
+
+drop policy if exists "Finance admins can update payment transactions" on public.payment_transactions;
+revoke insert, update, delete on table public.payment_transactions from anon, authenticated;
+grant select on table public.payment_transactions to authenticated;
+
+-- Notifications are immutable to the client except for the read flag.
+revoke update on table public.notifications from anon, authenticated;
+grant update (read) on table public.notifications to authenticated;
+
 -- Explicit table grants complement RLS; clients may read but never mutate the financial ledger.
 revoke insert, update, delete on table public.ledger_entries from anon, authenticated;
 grant select on table public.ledger_entries to authenticated;
