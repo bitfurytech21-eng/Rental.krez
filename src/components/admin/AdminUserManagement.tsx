@@ -180,35 +180,24 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     setIsSubmittingStatus(true);
     try {
-      // 1. Update in local authoritative ledger & write audit log
-      ledger.toggleUserStatus(
-        statusModalUser.id,
-        targetNewStatus,
-        currentAdminEmail,
-        suspensionReason.trim() || undefined
-      );
-
-      // 2. Call backend API if available
-      try {
-        const token = getAuthToken();
-        await fetch(getApiUrl(`/admin/users/${statusModalUser.id}/status`), {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({
-            status: targetNewStatus,
-            reason: suspensionReason.trim()
-          })
-        });
-      } catch (apiErr) {
-        // Fallback gracefully if API is running in static/mock mode
-        console.warn('API sync notice:', apiErr);
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/users/${statusModalUser.id}/status`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          status: targetNewStatus,
+          reason: suspensionReason.trim()
+        })
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'The account status change could not be saved.');
       }
-
       onQuickSuccess(
-        `User ${statusModalUser.fullName} (${statusModalUser.email}) status successfully set to ${targetNewStatus.toUpperCase()}. Audit log recorded.`
+        `User ${statusModalUser.fullName} (${statusModalUser.email}) status successfully set to ${targetNewStatus.toUpperCase()} in the database.`
       );
       setStatusModalUser(null);
       onRefreshAll();
