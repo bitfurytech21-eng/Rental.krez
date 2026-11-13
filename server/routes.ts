@@ -1255,10 +1255,11 @@ router.post(
  * GET /api/v1/admin/session & /api/v1/auth/admin-session
  */
 router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest, res: Response) => {
-  if (req.user && req.user.role === 'admin') {
+  const adminRoles = ['admin','super_admin','finance_admin','operations_admin','support','auditor'];
+  if (req.user && adminRoles.includes(req.user.role)) {
     return res.json({
       success: true,
-      data: req.user,
+      data: { ...req.user, permissionsRole: req.user.role, role: 'admin' },
       requestId: req.id
     });
   }
