@@ -192,7 +192,7 @@ const securityLimiter = rateLimiter({
   message: 'Too many security checks. Please wait 1 minute.'
 });
 
-export interface MockUser {
+export interface UserRecord {
   id: string;
   email: string;
   fullName: string;
@@ -210,73 +210,12 @@ export interface MockUser {
   suspendedReason?: string;
 }
 
-export function sanitizeUser(user: MockUser): Omit<MockUser, 'passwordHash'> {
+export function sanitizeUser(user: UserRecord): Omit<UserRecord, 'passwordHash'> {
   const { passwordHash, ...safe } = user;
   return safe;
 }
 
-// In-memory data store for server-authoritative state
-// Seed accounts with industry-standard bcrypt hashes and 0 balance
-let mockUsers: MockUser[] = process.env.NODE_ENV === 'production' ? [] : [
-  {
-    id: 'usr-admin-kretz-site',
-    email: 'info@kretz.site',
-    fullName: 'Kretz Executive Admin',
-    passwordHash: hashPassword('AdminSecret2026!'),
-    role: 'admin',
-    kycStatus: 'approved',
-    balance: 0,
-    currency: 'EUR',
-    country: 'Spain',
-    countryCode: 'ES',
-    phoneNumber: '+34 912 345 678',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-01-01T09:00:00Z'
-  },
-  {
-    id: 'usr-admin-01',
-    email: 'admin@kretz.com',
-    fullName: 'Chief Compliance Officer',
-    passwordHash: hashPassword('AdminSecret2026!'),
-    role: 'admin',
-    kycStatus: 'approved',
-    balance: 0,
-    currency: 'EUR',
-    country: 'Spain',
-    countryCode: 'ES',
-    phoneNumber: '+34 912 345 678',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-01-15T09:00:00Z'
-  },
-  {
-    id: 'usr-investor-01',
-    email: 'investor@kretz.com',
-    fullName: 'European Angel Partner',
-    passwordHash: hashPassword('InvestorPass123!'),
-    role: 'investor',
-    kycStatus: 'approved',
-    balance: 0,
-    currency: 'EUR',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-02-10T11:30:00Z'
-  },
-  {
-    id: 'usr-investor-02',
-    email: 'sophie.martin@luxcapital.fr',
-    fullName: 'Sophie Martin',
-    passwordHash: hashPassword('InvestorPass123!'),
-    role: 'investor',
-    kycStatus: 'pending',
-    balance: 0,
-    currency: 'EUR',
-    isEmailVerified: true,
-    status: 'active',
-    createdAt: '2025-03-01T14:20:00Z'
-  }
-];
+// Customer identities and profiles are authoritative in Supabase Auth and public.user_profiles.
 
 let mockListings = [
   {
@@ -777,13 +716,7 @@ router.post(
       ? await updatePersistentAdminCredentials({ email: targetEmail, fullName: targetFullName, password: targetPassword, updatedBy: req.user?.id || 'system' })
       : await updateCustomAdminCredentials({ email: targetEmail, fullName: targetFullName, passwordToHash: targetPassword });
 
-    const adminMock = mockUsers.find((u) => u.role === 'admin');
-    if (adminMock) {
-      adminMock.email = updated.adminEmail;
-      adminMock.fullName = updated.fullName;
-    }
-
-    const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
+        const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -980,13 +913,7 @@ router.put(
       ? await updatePersistentAdminCredentials({ email: targetEmail, fullName: targetFullName, password: passwordToPersist, updatedBy: req.user?.id || 'system' })
       : await updateCustomAdminCredentials({ email: targetEmail, fullName: targetFullName, passwordToHash: passwordToPersist });
 
-    const adminMock = mockUsers.find((u) => u.role === 'admin');
-    if (adminMock) {
-      adminMock.email = updated.adminEmail;
-      adminMock.fullName = updated.fullName;
-    }
-
-    const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
+        const session = process.env.NODE_ENV === 'production' ? await createPersistentAdminSession(updated.adminEmail, updated.fullName) : createAdminSession(updated.adminEmail, updated.fullName);
     res.cookie('kretz_admin_session', session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -1505,7 +1432,7 @@ router.post('/user/referrals/invite', requireAuth, (req: AuthenticatedRequest, r
   const userId = req.user!.id;
   const normalizedEmail = String(req.body?.email || '').toLowerCase().trim();
   const referralCode = String(req.body?.referralCode || '').trim();
-  const serverUser = mockUsers.find((u) => u.id === userId);
+  const serverUser = isSupabaseServerConfigured() ? await getUserProfile(userId) : null;
   const ownEmails = new Set(
     [serverUser?.email, req.user?.email, req.body?.inviterEmail]
       .map((e) => String(e || '').toLowerCase().trim())
@@ -1648,19 +1575,19 @@ router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Respo
 router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => {
   if (req.user) {
     try {
-      const profile = isSupabaseServerConfigured() ? await getUserProfile(req.user.id) : findUserRecordForRequest(req);
-      const status = profile?.status || req.user.status || 'active';
+      const profile = isSupabaseServerConfigured() ? await getUserProfile(req.user.id) : null;
+      const status = profile?.account_status === 'suspended' ? 'suspended' : (req.user.status || 'active');
       if (status === 'suspended') {
-        return res.status(403).json({ success: false, error: profile?.suspended_reason || profile?.suspendedReason || req.user.suspendedReason || 'Your account has been suspended by compliance.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+        return res.status(403).json({ success: false, error: profile?.suspended_reason || req.user.suspendedReason || 'Your account has been suspended by compliance.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
       }
-      const safeUser = profile && 'full_name' in profile ? {
+      const safeUser = profile ? {
         id: req.user.id, email: profile.email || req.user.email,
         fullName: profile.full_name || req.user.fullName,
         role: req.user.role, accountType: profile.account_type || req.user.accountType,
         country: profile.country, phoneNumber: profile.phone_number,
         balance: Number(profile.wallet_balance ?? req.user.balance ?? 0),
         kycStatus: profile.kyc_status || 'pending', status
-      } : profile ? sanitizeUser(profile) : req.user;
+      } : req.user;
       const csrfToken = req.session?.csrfToken || '';
       return res.json({ success: true, data: { authenticated: true, user: safeUser, csrfToken }, authenticated: true, user: safeUser, csrfToken, requestId: req.id });
     } catch (error: any) {
@@ -1709,7 +1636,7 @@ router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => 
   req.user = { id: session.userId, email: session.email, role: session.role, fullName: session.fullName } as any;
   req.session = session;
 
-  const currentUser = findUserRecordForRequest(req);
+  const currentUser = await findUserRecordForRequest(req);
 
   if (!currentUser) {
     return res.json({
@@ -2016,7 +1943,7 @@ router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedReque
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
-  const target = mockUsers.find(u => u.id === id);
+  const target = isSupabaseServerConfigured() ? await getUserProfile(id) : null;
   if (!target) {
     return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
   }
@@ -2100,7 +2027,7 @@ const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) 
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
-  const target = mockUsers.find(u => u.id === id);
+  const target = isSupabaseServerConfigured() ? await getUserProfile(id) : null;
   if (!target) {
     return res.status(404).json({
       success: false,
@@ -2195,7 +2122,7 @@ router.post('/admin/users/:id/credit', requireAdmin, async (req: AuthenticatedRe
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
 
-  const target = mockUsers.find(u => u.id === id);
+  const target = isSupabaseServerConfigured() ? await getUserProfile(id) : null;
   if (!target) {
     return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
   }
@@ -2502,14 +2429,19 @@ router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:
 // 4. USER DASHBOARD & PORTFOLIO ROUTES (/api/v1/user & /api/v1/portfolio)
 // ============================================================================
 
-function findUserRecordForRequest(req: AuthenticatedRequest) {
-  if (!req.user) return undefined;
-  const byId = mockUsers.find(u => u.id === req.user!.id);
-  if (byId) return byId;
-  if (req.user.email) {
-    return mockUsers.find(u => u.email.toLowerCase() === req.user!.email.toLowerCase());
-  }
-  return undefined;
+async function findUserRecordForRequest(req: AuthenticatedRequest): Promise<UserRecord | undefined> {
+  if (!req.user || !isSupabaseServerConfigured()) return undefined;
+  const profile = await getUserProfile(req.user.id);
+  if (!profile) return undefined;
+  return {
+    id: profile.id, email: profile.email || req.user.email, fullName: profile.full_name || req.user.fullName || 'Investor',
+    passwordHash: '', role: req.user.role, kycStatus: profile.kyc_status || 'pending',
+    balance: Number(profile.wallet_balance || 0), currency: 'EUR', createdAt: profile.created_at,
+    country: profile.country || undefined, countryCode: profile.country_code || undefined,
+    phoneNumber: profile.phone_number || undefined, isEmailVerified: true,
+    status: profile.account_status === 'suspended' ? 'suspended' : 'active',
+    suspendedReason: profile.suspended_reason || undefined
+  };
 }
 
 /**
@@ -2527,7 +2459,7 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const profile = findUserRecordForRequest(req);
+  const profile = await findUserRecordForRequest(req);
   if (!profile) {
     return res.status(404).json({
       success: false,
@@ -2576,7 +2508,7 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, async (req: Authen
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const matchedUser = findUserRecordForRequest(req);
+  const matchedUser = await findUserRecordForRequest(req);
   const resolvedEmail = matchedUser?.email || req.user?.email || '';
   const userInvTxs = mockTransactions.filter(
     t =>
@@ -2654,7 +2586,7 @@ router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, async (req:
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent wallet storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const user = findUserRecordForRequest(req);
+  const user = await findUserRecordForRequest(req);
   const userId = req.user!.id;
   const userEmail = req.user?.email?.toLowerCase();
 
@@ -2900,7 +2832,7 @@ router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, 
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent treasury storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
   if (!userRecord) {
     return res.status(409).json({
       success: false,
@@ -2954,7 +2886,7 @@ router.post('/treasury/convert', requireAuth, (req: AuthenticatedRequest, res: R
     });
   }
 
-  const userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
   if (!userRecord) {
     return res.status(409).json({
       success: false,
@@ -3054,7 +2986,7 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
       requestId: req.id
     });
   }
-  const foundUserRecord = findUserRecordForRequest(req);
+  const foundUserRecord = await findUserRecordForRequest(req);
   if (foundUserRecord && foundUserRecord.status === 'suspended') {
     return res.status(403).json({
       success: false,
@@ -3109,7 +3041,7 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
     return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Deposits are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
   const ref = `KZ-DEP-${Math.floor(100000 + Math.random() * 900000)}`;
-  const foundUser = findUserRecordForRequest(req);
+  const foundUser = await findUserRecordForRequest(req);
   const resolvedRecipient = foundUser?.email || req.user?.email || 'investor@kretz.com';
 
   const depositTx = {
@@ -3229,7 +3161,7 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
       requestId: req.id
     });
   }
-  const userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
   if (!userRecord && !isSupabaseServerConfigured()) {
     return res.status(409).json({
       success: false,
@@ -3343,7 +3275,7 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
   mockTransactions.unshift(withdrawalTx);
 
   const userRecipient = req.user?.email || 'investor@kretz.com';
-  const foundUser = mockUsers.find(u => u.id === req.user?.id);
+  const foundUser = req.user;
   
   sendEmail({
     templateId: 'withdrawal_requested',
@@ -3412,8 +3344,8 @@ router.post('/investments', requireAuth, async (req: AuthenticatedRequest, res: 
       requestId: req.id
     });
   }
-  const userRecordCheck = mockUsers.find(u => u.id === req.user?.id);
-  if (userRecordCheck && userRecordCheck.status === 'suspended') {
+  const userRecordCheck = req.user?.status === 'suspended' ? req.user : null;
+  if (userRecordCheck) {
     return res.status(403).json({
       success: false,
       error: 'Account access restricted by administrative compliance.',
@@ -3535,7 +3467,7 @@ router.post('/investments', requireAuth, async (req: AuthenticatedRequest, res: 
     });
   }
 
-  const userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
   if (!userRecord) {
     return res.status(409).json({
       success: false,
@@ -3658,7 +3590,7 @@ router.get('/admin/database/health', requireAdmin, async (req: AuthenticatedRequ
   }
   return res.status(process.env.NODE_ENV === 'production' ? 503 : 200).json({
     success: process.env.NODE_ENV !== 'production',
-    data: { status: 'not_configured', usersCount: mockUsers.length, listingsCount: mockListings.length, transactionsCount: mockTransactions.length, timestamp: new Date().toISOString() },
+    data: { status: 'not_configured', usersCount: null, listingsCount: mockListings.length, transactionsCount: mockTransactions.length, timestamp: new Date().toISOString() },
     message: 'Supabase server credentials are not configured.', requestId: req.id
   });
 });
@@ -3700,11 +3632,11 @@ router.post('/admin/database/repair', requireAdmin, async (req: AuthenticatedReq
     data: {
       status: 'repaired',
       repairedItems: [
-        'Verified mockUsers data structures and balance allocations',
+        'Verified Supabase Auth and user_profiles are the customer identity source',
         'Verified mockListings property token counts and image arrays',
         'Validated transaction history integrity'
       ],
-      usersCount: mockUsers.length,
+      usersCount: null,
       listingsCount: mockListings.length,
       transactionsCount: mockTransactions.length,
       repairedAt: new Date().toISOString()
@@ -3862,7 +3794,7 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const stored = findUserRecordForRequest(req);
+  const stored = await findUserRecordForRequest(req);
   res.json({
     success: true,
     data: stored ? { ...req.user, ...stored } : req.user,
@@ -3905,22 +3837,8 @@ router.patch('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Re
     'avatarUrl'
   ];
 
-  let target = findUserRecordForRequest(req);
-  if (!target) {
-    target = {
-      id: req.user!.id,
-      email: req.user!.email,
-      fullName: req.user!.fullName || 'Verified Investor',
-      passwordHash: '',
-      role: req.user!.role,
-      kycStatus: 'unverified',
-      balance: req.user!.balance ?? 0,
-      currency: 'EUR',
-      status: 'active',
-      createdAt: new Date().toISOString()
-    };
-    mockUsers.push(target);
-  }
+  let target = await findUserRecordForRequest(req);
+  if (!target) return res.status(404).json({ success: false, error: 'Persistent user profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
 
   for (const key of allowedFields) {
     if (updates[key] !== undefined) {
@@ -3949,7 +3867,7 @@ router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, 
       return res.status(503).json({ success: false, error: 'Your dashboard is temporarily unavailable.', code: 'DASHBOARD_DATABASE_UNAVAILABLE', requestId: req.id });
     }
   }
-  const userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
   const availableBalance = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
   const userInvTxs = mockTransactions.filter(
     t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
@@ -4035,7 +3953,7 @@ router.get('/reports/account-statement', requireAuth, async (req: AuthenticatedR
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const userRecord = findUserRecordForRequest(req);
+  const userRecord = await findUserRecordForRequest(req);
   const userId = req.user!.id;
   const userEmail = req.user?.email?.toLowerCase();
   const userTxs = mockTransactions.filter(
@@ -5221,7 +5139,7 @@ router.get('/trust-center', (_req, res) => {
  */
 router.get('/distributions/my-properties', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
-  const matchedUser = findUserRecordForRequest(req);
+  const matchedUser = await findUserRecordForRequest(req);
   const resolvedEmail = matchedUser?.email || req.user?.email || '';
 
   // Filter investor transactions
