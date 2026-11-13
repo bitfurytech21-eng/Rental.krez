@@ -4992,7 +4992,7 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
         mockTransactions.unshift({
           id: txId,
           userId: targetUserId,
-          userEmail: u?.email || 'investor@kretz.com',
+          userEmail: '',
           type: 'distribution',
           amount: amountEUR,
           currency: 'EUR',
