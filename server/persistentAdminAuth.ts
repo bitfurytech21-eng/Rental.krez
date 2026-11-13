@@ -85,6 +85,8 @@ export async function resetPersistentAdminCredentials() {
   if (!fallbackEmail || !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(fallbackHash)) {
     throw new Error('ADMIN_ENV_CREDENTIALS_NOT_CONFIGURED');
   }
+  const fallbackIdentity = await getAdminIdentityByEmail(fallbackEmail);
+  if (!fallbackIdentity) throw new Error('ADMIN_ROLE_NOT_PROVISIONED');
   const now = new Date().toISOString();
   const { error } = await db.from('kretz_admin_credentials').delete().eq('id', 'primary');
   if (error) throw error;
