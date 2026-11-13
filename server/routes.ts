@@ -2364,7 +2364,7 @@ router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedReque
   const { kycStatus = 'approved', notes } = req.body || {};
   if (isSupabaseServerConfigured()) {
     try {
-      const profile = await runFinancialRpc('kretz_admin_update_kyc', { p_user_id: id, p_admin_id: req.user!.id, p_status: String(kycStatus), p_notes: notes || null });
+      const profile = await runFinancialRpc('kretz_admin_update_kyc', { p_user_id: id, p_admin_id: req.user!.id, p_kyc_status: String(kycStatus), p_notes: notes || null });
       return res.json({ success: true, data: profile, message: `User KYC status updated to ${kycStatus}.`, requestId: req.id });
     } catch (error: any) {
       const message = String(error?.message || '');
@@ -2538,13 +2538,13 @@ router.post('/admin/users/:id/credit', requireAdmin, async (req: AuthenticatedRe
   if (currency !== 'EUR') return res.status(400).json({ success: false, error: 'Manual wallet adjustments currently support EUR only.', code: 'UNSUPPORTED_CURRENCY', requestId: req.id });
   if (isSupabaseServerConfigured()) {
     try {
-      const result: any = await runFinancialRpc('kretz_admin_adjust_wallet', {
+      const result: any = await runFinancialRpc('kretz_admin_credit_user', {
         p_user_id: id, p_admin_id: req.user!.id, p_amount: numericAmount,
-        p_reason: String(notes || 'Administrator manual wallet credit'),
-        p_transaction_id: crypto.randomUUID(),
-        p_reference: String(reference || `KZ-MANUAL-${crypto.randomInt(100000,1000000)}`)
+        p_method: String(method), p_reference: String(reference || `KZ-MANUAL-${crypto.randomInt(100000,1000000)}`),
+        p_notes: String(notes || 'Administrator manual wallet credit'),
+        p_transaction_id: crypto.randomUUID()
       });
-      return res.json({ success: true, data: { transaction: toApiTransaction(result.transaction), walletBalance: Number(result.wallet_balance) }, message: `Credited €${numericAmount.toFixed(2)} to the investor wallet.`, requestId: req.id });
+      return res.json({ success: true, data: { transaction: toApiTransaction(result.transaction), walletBalance: Number(result.balance) }, message: `Credited €${numericAmount.toFixed(2)} to the investor wallet.`, requestId: req.id });
     } catch (error: any) {
       const message = String(error?.message || '');
       const statusCode = message.includes('USER_NOT_FOUND') ? 404 : message.includes('REQUIRED') ? 403 : 503;
