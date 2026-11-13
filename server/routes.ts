@@ -4964,7 +4964,7 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
 
         const userMap = new Map<string, any>();
         for (const tx of relevantTxs) {
-          const u = null;
+          const u: MockUser | undefined = undefined;
           const prev = userMap.get(tx.userId);
           const tokens = Number((tx as any).tokensPurchased || 0);
           const cost = Number(tx.amount || 0);
