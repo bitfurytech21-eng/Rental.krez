@@ -1038,7 +1038,7 @@ router.post('/auth/register', authLimiter, requireTurnstile, async (req: Authent
   const country = String(req.body?.country || 'France').trim();
   const phoneNumber = String(req.body?.phoneNumber || '').trim();
   const countryCode = String(req.body?.countryCode || '').trim();
-  if (!email || !password || !fullName || !country || !phoneNumber) return res.status(400).json({ success: false, error: 'Full legal name, valid email, password, country of residence, and phone number are required.', code: 'VALIDATION_ERROR', requestId: req.id });
+  if (!email || !password || !fullName) return res.status(400).json({ success: false, error: 'Full legal name, valid email address, and password are required.', code: 'VALIDATION_ERROR', requestId: req.id });
   if (!validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL_FORMAT', requestId: req.id });
   const strength = validatePasswordStrength(password);
   if (!strength.valid) return res.status(400).json({ success: false, error: strength.error || 'Password does not meet institutional security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
