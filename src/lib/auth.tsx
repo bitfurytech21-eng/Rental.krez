@@ -554,13 +554,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(errMsg);
       }
 
-      if (!serverToken || !serverUser) {
+      if (!serverUser?.id) {
         throw new Error('Registration failed. Please check your information and try again.');
       }
 
       const synced = ledger.syncSupabaseUser(
         serverUser.id,
-        serverUser.email,
+        serverUser.email || cleanEmail,
         serverUser.fullName || fullName.trim(),
         determinedRole,
         determinedAccountType,
@@ -568,16 +568,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phoneNumber || ''
       );
 
-      setUser(synced);
-      setToken(serverToken);
-      setAuthToken(serverToken);
-      localStorage.setItem(CURRENT_USER_KEY, synced.id);
+      const requiresVerification = Boolean((res as any)?.requiresVerification ?? (res as any)?.data?.requiresVerification ?? !serverToken);
+      if (serverToken) {
+        setUser(synced);
+        setToken(serverToken);
+        setAuthToken(serverToken);
+        localStorage.setItem(CURRENT_USER_KEY, synced.id);
+      } else {
+        // Supabase email-confirmation mode creates the account but does not create an authenticated session.
+        setUser(null);
+        setSession(null);
+        setToken(null);
+        setAuthToken(null);
+        localStorage.removeItem(CURRENT_USER_KEY);
+        localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+      }
 
-      return {
-        user: synced,
-        session: null,
-        requiresVerification: false,
-      };
+      return { user: synced, session: null, requiresVerification };
     }
 
     const redirectUrl = getAuthRedirectUrl('/#login');
