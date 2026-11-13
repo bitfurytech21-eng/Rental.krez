@@ -523,7 +523,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         serverUser = (res as any)?.user || (res as any)?.data?.user;
         serverToken = (res as any)?.token || (res as any)?.data?.token;
       } catch (err: any) {
-        // Handle static host 405 / 404 / offline network fallback
+        // Production must never fall back to browser-local demo accounts when
+        // the durable Supabase-backed registration API is unavailable.
+        if (import.meta.env.PROD) {
+          throw new Error('Registration service is unavailable. Please try again shortly.');
+        }
+        // Handle static host 405 / 404 / offline network fallback only in development.
         if (
           err?.status === 405 ||
           err?.status === 404 ||
