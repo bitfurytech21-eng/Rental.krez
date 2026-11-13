@@ -56,7 +56,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ variant = 'f
     setIsTesting(true);
     try {
       const sample = 'Exclusive Luxury Villa in Marbella with 9.2% Net Yield';
-      const res = await fetch(getApiUrl('/translate/test', {
+      const res = await fetch(getApiUrl('/translate/test'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
