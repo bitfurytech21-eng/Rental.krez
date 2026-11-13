@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { LanguageCode, TranslationProviderId } from '../../types/language';
+import { getApiUrl } from '../../lib/api';
 import { Globe, ChevronDown, Check, X, Cpu, Zap, Shield, Sparkles, Book, RefreshCw, ArrowRight, Play, Info } from 'lucide-react';
 
 interface LanguageSelectorProps {
@@ -55,7 +56,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({ variant = 'f
     setIsTesting(true);
     try {
       const sample = 'Exclusive Luxury Villa in Marbella with 9.2% Net Yield';
-      const res = await fetch('/api/v1/translate/test', {
+      const res = await fetch(getApiUrl('/translate/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
