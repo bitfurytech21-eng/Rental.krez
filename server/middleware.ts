@@ -238,23 +238,43 @@ export function authenticateToken(
       }
     }
 
-    // 4. Handle Bearer token JWT format (e.g., Supabase Auth or standard JWTs)
+    // 4. Verify Supabase access tokens cryptographically. Never trust decoded JWT
+    // payloads or user-editable metadata to establish identity or administrator roles.
     if (token.includes('.')) {
       const parts = token.split('.');
-      if (parts.length === 3) {
-        const payloadBuf = Buffer.from(parts[1], 'base64').toString('utf-8');
-        const payload = JSON.parse(payloadBuf);
-        if (payload && (payload.sub || payload.id)) {
-          const userId = payload.sub || payload.id;
-          const userEmail = payload.email || '';
-          const role = payload.user_metadata?.role || (userEmail.includes('admin') ? 'admin' : 'investor');
-          const fullName = payload.user_metadata?.full_name || payload.email?.split('@')[0] || 'Verified Investor';
+      if (parts.length === 3 && process.env.JWT_SECRET) {
+        const [encodedHeader, encodedPayload, suppliedSignature] = parts;
+        const header = JSON.parse(Buffer.from(encodedHeader, 'base64url').toString('utf-8'));
+        const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf-8'));
+        const expectedSignature = crypto
+          .createHmac('sha256', process.env.JWT_SECRET)
+          .update(`${encodedHeader}.${encodedPayload}`)
+          .digest('base64url');
+        const supplied = Buffer.from(suppliedSignature);
+        const expected = Buffer.from(expectedSignature);
+        const configuredSupabaseUrl = (process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+        const expectedIssuer = configuredSupabaseUrl ? `${configuredSupabaseUrl}/auth/v1` : '';
+        const validSignature =
+          header?.alg === 'HS256' &&
+          supplied.length === expected.length &&
+          crypto.timingSafeEqual(supplied, expected);
+        const validClaims =
+          typeof payload?.sub === 'string' &&
+          typeof payload?.exp === 'number' &&
+          payload.exp * 1000 > Date.now() &&
+          payload.aud === 'authenticated' &&
+          Boolean(expectedIssuer) &&
+          payload.iss === expectedIssuer;
 
+        if (validSignature && validClaims) {
           req.user = {
-            id: userId,
-            email: userEmail,
-            role: role as UserRoleType,
-            fullName,
+            id: payload.sub,
+            email: typeof payload.email === 'string' ? payload.email : '',
+            // Administrator privileges are granted only by signed server-side admin sessions.
+            role: 'investor',
+            fullName:
+              payload.user_metadata?.full_name ||
+              (typeof payload.email === 'string' ? payload.email.split('@')[0] : 'Investor'),
             status: 'active'
           };
           return next();
