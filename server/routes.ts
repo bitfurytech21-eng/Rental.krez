@@ -72,7 +72,8 @@ import {
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
   getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs,
-  createPersistentInvestmentPlan, updatePersistentInvestmentPlan
+  createPersistentInvestmentPlan, updatePersistentInvestmentPlan,
+  getPersistentAccountStatement, getPersistentPerformance
 } from './supabaseDatabase';
 
 const router = Router();
@@ -4244,8 +4245,19 @@ router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, 
   });
 });
 
-router.get('/dashboard/performance', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/dashboard/performance', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const data = await getPersistentPerformance(userId);
+      if (!data) return res.status(404).json({ success: false, error: 'Investor profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-performance-db', eventType: 'PERFORMANCE_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Performance query failed.' });
+      return res.status(503).json({ success: false, error: 'Investment performance is temporarily unavailable.', code: 'PERFORMANCE_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const userInvTxs = mockTransactions.filter(
     t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
   );
@@ -4282,7 +4294,18 @@ router.get('/dashboard/performance', requireAuth, (req: AuthenticatedRequest, re
 });
 
 // Financial Reports
-router.get('/reports/account-statement', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/reports/account-statement', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const data = await getPersistentAccountStatement(req.user!.id);
+      if (!data) return res.status(404).json({ success: false, error: 'Investor profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-statement-db', eventType: 'ACCOUNT_STATEMENT_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Account statement query failed.' });
+      return res.status(503).json({ success: false, error: 'Your account statement is temporarily unavailable.', code: 'STATEMENT_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const userRecord = findUserRecordForRequest(req);
   const userId = req.user!.id;
   const userEmail = req.user?.email?.toLowerCase();
