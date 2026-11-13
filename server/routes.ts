@@ -204,7 +204,7 @@ export function sanitizeUser(user: MockUser): Omit<MockUser, 'passwordHash'> {
 
 // In-memory data store for server-authoritative state
 // Seed accounts with industry-standard bcrypt hashes and 0 balance
-let mockUsers: MockUser[] = [
+let mockUsers: MockUser[] = process.env.NODE_ENV === 'production' ? [] : [
   {
     id: 'usr-admin-kretz-site',
     email: 'info@kretz.site',
@@ -544,28 +544,9 @@ router.post('/auth/login', authLimiter, requireTurnstile, (req: AuthenticatedReq
   // 3. Authenticate credentials against verified database store
   let found = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
 
-  // If user does not exist yet, auto-create investor account on first login
-  if (!found && inputPass && inputPass.length >= 4 && validateEmail(normalizedEmail)) {
-    const passwordHash = hashPassword(inputPass);
-    const newId = `usr-${crypto.randomBytes(4).toString('hex')}`;
-    const namePart = normalizedEmail.split('@')[0] || 'Investor';
-    const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-    const newUserObj: MockUser = {
-      id: newId,
-      email: normalizedEmail,
-      fullName: formattedName,
-      passwordHash,
-      role: 'investor',
-      country: 'France',
-      phoneNumber: '',
-      kycStatus: 'pending',
-      balance: 0,
-      currency: 'EUR',
-      createdAt: new Date().toISOString()
-    };
-    found = newUserObj;
-    mockUsers.push(newUserObj);
-  }
+  // Login must only authenticate an account created through registration or an approved provisioning flow.
+  // Unknown email addresses are rejected; a login request must never create an account.
+
 
   const userToVerify = found;
   const isPasswordValid = Boolean(
