@@ -20,6 +20,9 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { logger } from './logger';
 import { UserRoleType } from './middleware';
+import { getSupabaseAdmin, isSupabaseServerConfigured } from './supabaseDatabase';
+
+const usePersistentSessionStore = () => process.env.AUTH_SESSION_STORE === 'supabase';
 
 export interface ServerSession {
   id: string;              // Cryptographic session token (hex)
@@ -138,14 +141,14 @@ export function verifyPassword(password: string, hash: string): boolean {
 /**
  * Creates and registers a new secure server-authoritative session
  */
-export function createSession(params: {
+export async function createSession(params: {
   userId: string;
   email: string;
   role: UserRoleType;
   fullName: string;
   ip: string;
   userAgent: string;
-}): ServerSession {
+}): Promise<ServerSession> {
   const now = Date.now();
   // Generate high-entropy 256-bit cryptographically secure session token
   const sessionId = `kz_sess_${crypto.randomBytes(32).toString('hex')}`;
@@ -168,7 +171,18 @@ export function createSession(params: {
     isRevoked: false
   };
 
-  serverSessions.set(sessionId, session);
+  if (usePersistentSessionStore()) {
+    if (!isSupabaseServerConfigured()) throw new Error('PERSISTENT_SESSION_STORE_NOT_CONFIGURED');
+    const { error } = await getSupabaseAdmin().from('kretz_server_sessions').insert({
+      id: session.id, user_id: session.userId, email: session.email, role: session.role,
+      full_name: session.fullName, csrf_token: session.csrfToken, created_at_ms: session.createdAt,
+      last_activity_at_ms: session.lastActivityAt, expires_at_ms: session.expiresAt,
+      idle_timeout_ms: session.idleTimeoutMs, ip: session.ip, user_agent: session.userAgent
+    });
+    if (error) throw error;
+  } else {
+    serverSessions.set(sessionId, session);
+  }
   return session;
 }
 
@@ -176,14 +190,29 @@ export function createSession(params: {
  * Retrieves and validates an active server session.
  * Checks for idle and absolute expiration and revocation status.
  */
-export function getSession(token: string): ServerSession | null {
+export async function getSession(token: string): Promise<ServerSession | null> {
   if (!token || typeof token !== 'string') return null;
 
-  const session = serverSessions.get(token);
+  let session: ServerSession | undefined;
+  if (usePersistentSessionStore()) {
+    if (!isSupabaseServerConfigured()) throw new Error('PERSISTENT_SESSION_STORE_NOT_CONFIGURED');
+    const { data, error } = await getSupabaseAdmin().from('kretz_server_sessions').select('*').eq('id', token).maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    session = {
+      id: data.id, userId: data.user_id, email: data.email, role: data.role,
+      fullName: data.full_name, csrfToken: data.csrf_token, createdAt: Number(data.created_at_ms),
+      lastActivityAt: Number(data.last_activity_at_ms), expiresAt: Number(data.expires_at_ms),
+      idleTimeoutMs: Number(data.idle_timeout_ms), ip: data.ip || '', userAgent: data.user_agent || 'unknown', isRevoked: false
+    };
+  } else {
+    session = serverSessions.get(token);
+  }
   if (!session) return null;
 
   if (session.isRevoked) {
-    serverSessions.delete(token);
+    if (usePersistentSessionStore()) await getSupabaseAdmin().from('kretz_server_sessions').delete().eq('id', token);
+    else serverSessions.delete(token);
     return null;
   }
 
@@ -208,30 +237,45 @@ export function getSession(token: string): ServerSession | null {
 /**
  * Updates lastActivityAt timestamp for rolling idle expiration
  */
-export function touchSession(token: string): void {
-  const session = serverSessions.get(token);
-  if (session && !session.isRevoked) {
-    session.lastActivityAt = Date.now();
+export async function touchSession(token: string): Promise<void> {
+  const now = Date.now();
+  if (usePersistentSessionStore()) {
+    if (!isSupabaseServerConfigured()) throw new Error('PERSISTENT_SESSION_STORE_NOT_CONFIGURED');
+    const { error } = await getSupabaseAdmin().from('kretz_server_sessions').update({ last_activity_at_ms: now }).eq('id', token).lt('expires_at_ms', now + ABSOLUTE_TIMEOUT_MS);
+    if (error) throw error;
+    return;
   }
+  const session = serverSessions.get(token);
+  if (session && !session.isRevoked) session.lastActivityAt = now;
 }
 
 /**
  * Invalidate and revoke a specific session (e.g. on logout)
  */
-export function revokeSession(token: string): boolean {
-  const session = serverSessions.get(token);
-  if (session) {
-    session.isRevoked = true;
-    serverSessions.delete(token);
-    return true;
+export async function revokeSession(token: string): Promise<boolean> {
+  if (usePersistentSessionStore()) {
+    if (!isSupabaseServerConfigured()) throw new Error('PERSISTENT_SESSION_STORE_NOT_CONFIGURED');
+    const { data, error } = await getSupabaseAdmin().from('kretz_server_sessions').delete().eq('id', token).select('id');
+    if (error) throw error;
+    return Boolean(data?.length);
   }
-  return false;
+  const session = serverSessions.get(token);
+  if (!session) return false;
+  session.isRevoked = true;
+  serverSessions.delete(token);
+  return true;
 }
 
 /**
  * Invalidate all sessions for a user (e.g. on password reset or account suspension)
  */
-export function revokeAllUserSessions(userId: string): number {
+export async function revokeAllUserSessions(userId: string): Promise<number> {
+  if (usePersistentSessionStore()) {
+    if (!isSupabaseServerConfigured()) throw new Error('PERSISTENT_SESSION_STORE_NOT_CONFIGURED');
+    const { data, error } = await getSupabaseAdmin().from('kretz_server_sessions').delete().eq('user_id', userId).select('id');
+    if (error) throw error;
+    return data?.length || 0;
+  }
   let count = 0;
   for (const [tokenId, session] of serverSessions.entries()) {
     if (session.userId === userId) {
