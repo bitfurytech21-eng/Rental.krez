@@ -148,3 +148,89 @@ export function toApiTransaction(row: any) {
     notes: row.notes || undefined
   };
 }
+
+export function toApiProperty(row: any) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    location: row.location,
+    type: row.type,
+    status: row.status,
+    fundedAmount: Number(row.funded_amount || 0),
+    targetAmount: Number(row.target_amount || 0),
+    tokenPrice: Number(row.token_price || 0),
+    totalTokens: Number(row.total_tokens || 0),
+    availableTokens: Number(row.available_tokens || 0),
+    monthlyTargetRate: Number(row.monthly_target_rate || 0),
+    projectedYield: Number(row.estimated_annual_yield || 0),
+    estimatedAnnualYield: Number(row.estimated_annual_yield || 0),
+    capitalAppreciation: Number(row.financials?.capitalAppreciation || 0),
+    minimumInvestment: Number(row.minimum_investment || 0),
+    holdingPeriodMonths: Number(row.duration_months || 0),
+    images: Array.isArray(row.images) ? row.images : [],
+    specs: row.specs || {},
+    financials: row.financials || {},
+    city: row.city,
+    country: row.country,
+    updatedAt: row.updated_at
+  };
+}
+
+export async function listInvestmentPlans(options: { status?: string; search?: string; type?: string } = {}) {
+  let query = getSupabaseAdmin().from('investment_plans').select('*').order('created_at', { ascending: false });
+  if (options.status && options.status !== 'all') query = query.eq('status', options.status);
+  else query = query.neq('status', 'hidden');
+  if (options.type && options.type !== 'all') query = query.ilike('type', options.type);
+  if (options.search) query = query.or(`title.ilike.%${options.search.replace(/[,%()]/g, '')}%,location.ilike.%${options.search.replace(/[,%()]/g, '')}%`);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map(toApiProperty);
+}
+
+export async function getInvestmentPlan(identifier: string) {
+  const { data, error } = await getSupabaseAdmin().from('investment_plans').select('*')
+    .or(`id.eq.${identifier},slug.eq.${identifier}`).maybeSingle();
+  if (error) throw error;
+  return data ? toApiProperty(data) : null;
+}
+
+export async function listUserInvestments(userId: string) {
+  const { data, error } = await getSupabaseAdmin().from('investments')
+    .select('*, investment_plans(title,location,images,estimated_annual_yield)')
+    .eq('user_id', userId).order('purchased_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function listAdminUsers(limit = 500) {
+  const { data, error } = await getSupabaseAdmin().from('user_profiles')
+    .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,created_at,updated_at')
+    .order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 1000));
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getPersistentDashboardSummary(userId: string) {
+  const [profile, investments, transactions] = await Promise.all([
+    getUserProfile(userId),
+    listUserInvestments(userId),
+    listUserTransactions(userId, 250)
+  ]);
+  if (!profile) return null;
+  const investedCapital = investments.reduce((sum: number, item: any) => sum + Number(item.total_amount_invested || 0), 0);
+  const dividends = investments.reduce((sum: number, item: any) => sum + Number(item.total_dividends_received || 0), 0);
+  const activeProperties = new Set(investments.filter((item: any) => item.status === 'active').map((item: any) => item.plan_id));
+  const monthlyIncome = investments.filter((item: any) => item.status === 'active')
+    .reduce((sum: number, item: any) => sum + Number(item.projected_monthly_income || 0), 0);
+  return {
+    totalPortfolioValue: Number((Number(profile.wallet_balance || 0) + Number(profile.invested_balance || investedCapital)).toFixed(2)),
+    availableBalance: Number(profile.wallet_balance || 0),
+    investedCapital: Number(profile.invested_balance || investedCapital),
+    totalEarnedDividends: dividends,
+    activePropertiesCount: activeProperties.size,
+    projectedMonthlyIncome: Number(monthlyIncome.toFixed(2)),
+    currency: 'EUR',
+    recentTransactions: transactions.slice(0, 8).map(toApiTransaction)
+  };
+}
