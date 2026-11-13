@@ -3986,19 +3986,6 @@ router.get('/admin/database/health', requireAdmin, async (req: AuthenticatedRequ
     data: { status: 'not_configured', usersCount: mockUsers.length, listingsCount: mockListings.length, transactionsCount: mockTransactions.length, timestamp: new Date().toISOString() },
     message: 'Supabase server credentials are not configured.', requestId: req.id
   });
-  /* legacy mock health response retained below for local test fixtures */
-  res.json({
-    success: true,
-    data: {
-      status: 'healthy',
-      usersCount: mockUsers.length,
-      listingsCount: mockListings.length,
-      transactionsCount: mockTransactions.length,
-      timestamp: new Date().toISOString()
-    },
-    message: 'Database structure verified and healthy.',
-    requestId: req.id
-  });
 });
 
 /**
