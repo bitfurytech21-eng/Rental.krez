@@ -2783,7 +2783,17 @@ function findUserRecordForRequest(req: AuthenticatedRequest) {
 /**
  * GET /api/v1/user/profile
  */
-router.get('/user/profile', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await getUserProfile(req.user!.id);
+      if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: { id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country, countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type, balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0), kycStatus: profile.kyc_status, createdAt: profile.created_at, address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url, bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id, dateOfBirth: profile.date_of_birth, preferences: profile.preferences }, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-db', eventType: 'PROFILE_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Profile query failed.' });
+      return res.status(503).json({ success: false, error: 'Your profile is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const profile = findUserRecordForRequest(req);
   if (!profile) {
     return res.status(404).json({
@@ -2919,8 +2929,20 @@ router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, (req: Authe
 /**
  * GET /api/v1/transactions
  */
-router.get('/transactions', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const rows = req.user?.role === 'admin' || req.user?.role === 'super_admin' || req.user?.role === 'finance_admin'
+        ? await listAdminTransactions(undefined, undefined, 250)
+        : await listUserTransactions(userId, 250);
+      const formatted = rows.map((row: any) => ({ ...toApiTransaction(row), user_id: row.user_id, userId: row.user_id, created_at: row.created_at, paymentMethod: row.payment_method }));
+      return res.json({ success: true, data: formatted, total: formatted.length, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-transactions-db', eventType: 'TRANSACTION_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Transaction query failed.' });
+      return res.status(503).json({ success: false, error: 'Transaction history is temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const userEmail = req.user?.email?.toLowerCase();
   
   // If user is ordinary investor, filter to their transactions
@@ -3914,7 +3936,16 @@ router.put('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, re
  */
 
 // User profile & session contract endpoints
-router.get(['/auth/me', '/users/me'], requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const profile = await getUserProfile(req.user!.id);
+      if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: { ...req.user, fullName: profile.full_name, country: profile.country, accountType: profile.account_type, balance: Number(profile.wallet_balance || 0), kycStatus: profile.kyc_status, phoneNumber: profile.phone_number }, requestId: req.id });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, error: 'Your account is temporarily unavailable.', code: 'PROFILE_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const stored = findUserRecordForRequest(req);
   res.json({
     success: true,
@@ -3923,8 +3954,24 @@ router.get(['/auth/me', '/users/me'], requireAuth, (req: AuthenticatedRequest, r
   });
 });
 
-router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.patch('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const updates = req.body || {};
+  if (isSupabaseServerConfigured()) {
+    try {
+      const patch: Record<string, unknown> = {
+        full_name: updates.fullName, phone_number: updates.phoneNumber, country: updates.country,
+        country_code: updates.countryCode, bank_iban: updates.bankIban,
+        crypto_deposit_address: updates.cryptoDepositAddress, tax_id: updates.taxId,
+        address: updates.address, city: updates.city, postal_code: updates.postalCode,
+        date_of_birth: updates.dateOfBirth, avatar_url: updates.avatarUrl
+      };
+      const profile = await updateUserProfile(req.user!.id, patch);
+      return res.json({ success: true, data: { id: profile.id, email: profile.email, fullName: profile.full_name, phoneNumber: profile.phone_number, country: profile.country, countryCode: profile.country_code, address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url, bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id, dateOfBirth: profile.date_of_birth, balance: Number(profile.wallet_balance || 0), kycStatus: profile.kyc_status }, message: 'User profile updated successfully.', requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-update-db', eventType: 'PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Profile update failed.' });
+      return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
+    }
+  }
   const allowedFields = [
     'fullName',
     'phoneNumber',
@@ -3973,8 +4020,18 @@ router.patch('/users/me', requireAuth, (req: AuthenticatedRequest, res: Response
 });
 
 // Dashboard summary & performance endpoints
-router.get('/dashboard/summary', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const summary = await getPersistentDashboardSummary(userId);
+      if (!summary) return res.status(404).json({ success: false, error: 'Investor profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: summary, requestId: req.id });
+    } catch (error: any) {
+      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-dashboard-db', eventType: 'DASHBOARD_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Dashboard query failed.' });
+      return res.status(503).json({ success: false, error: 'Your dashboard is temporarily unavailable.', code: 'DASHBOARD_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
   const userRecord = findUserRecordForRequest(req);
   const availableBalance = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
   const userInvTxs = mockTransactions.filter(
