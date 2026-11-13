@@ -71,7 +71,7 @@ import {
   isSupabaseServerConfigured, databaseHealth, listUserTransactions, listAdminTransactions,
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
-  getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs,
+  getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs, getAdminIdentityByEmail,
   createPersistentInvestmentPlan, updatePersistentInvestmentPlan,
   listUserNotifications, markUserNotificationRead, markAllUserNotificationsRead,
   listUserFavorites, saveUserFavorite, removeUserFavorite, getUserPreferences, saveUserPreferences,
@@ -756,6 +756,21 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
     });
   }
 
+  // Production administrator credentials must map to an explicitly provisioned database role.
+  if (process.env.NODE_ENV === 'production') {
+    if (!isSupabaseServerConfigured()) {
+      return res.status(503).json({ success: false, error: 'Administrator database authorization is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    try {
+      const identity = await getAdminIdentityByEmail(normalizedEmail);
+      if (!identity) {
+        return res.status(403).json({ success: false, error: 'This administrator email has not been provisioned with an authorized role in the platform database.', code: 'ADMIN_ROLE_NOT_PROVISIONED', requestId: req.id });
+      }
+    } catch {
+      return res.status(503).json({ success: false, error: 'Administrator authorization could not be verified.', code: 'ADMIN_AUTHORIZATION_UNAVAILABLE', requestId: req.id });
+    }
+  }
+
   // 5. Success: reset failed attempts
   resetAdminFailedAttempts(ip);
 
@@ -889,6 +904,15 @@ router.post(
         code: 'INVALID_EMAIL',
         requestId: req.id
       });
+    }
+    if (process.env.NODE_ENV === 'production') {
+      if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Administrator database authorization is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+      try {
+        const identity = await getAdminIdentityByEmail(targetEmail);
+        if (!identity) return res.status(403).json({ success: false, error: 'The new administrator email must already belong to a provisioned platform administrator.', code: 'ADMIN_ROLE_NOT_PROVISIONED', requestId: req.id });
+      } catch {
+        return res.status(503).json({ success: false, error: 'Administrator authorization could not be verified.', code: 'ADMIN_AUTHORIZATION_UNAVAILABLE', requestId: req.id });
+      }
     }
 
     const targetPassword = typeof newPassword === 'string' ? newPassword : '';
