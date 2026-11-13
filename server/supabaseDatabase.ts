@@ -198,7 +198,7 @@ export async function updateUserProfile(userId: string, patch: Record<string, un
   for (const key of allowed) if (patch[key] !== undefined) safePatch[key] = patch[key];
   if (Object.keys(safePatch).length === 0) return getUserProfile(userId);
   const { data, error } = await getSupabaseAdmin().from('user_profiles')
-    .update({ ...safePatch, updated_at: new Date().toISOString() }).eq('id', userId).select('*').single();
+    .update({ ...safePatch, updated_at: new Date().toISOString() }).eq('id', userId).select('*').maybeSingle();
   if (error) throw error;
   return data;
 }
