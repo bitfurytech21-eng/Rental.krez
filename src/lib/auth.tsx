@@ -315,9 +315,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string, turnstileToken?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!isConfigured) {
+    if (import.meta.env.PROD || !isConfigured) {
       let res: any;
       try {
+        if (!turnstileToken) throw new Error('Please complete the Cloudflare security check.');
         res = await authApi.login(cleanEmail, pass, turnstileToken);
       } catch (err: any) {
         if (import.meta.env.PROD) {
@@ -500,13 +501,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     accountType?: AccountType,
     country?: string,
     phoneNumber?: string,
-    countryCode?: string
+    countryCode?: string,
+    turnstileToken?: string
   ): Promise<RegisterResult> => {
     const determinedAccountType: AccountType = (accountType === 'admin' ? 'individual_investor' : accountType) || 'individual_investor';
     const determinedRole: UserRole = 'investor';
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!isConfigured) {
+    if (import.meta.env.PROD || !isConfigured) {
+      if (!turnstileToken) throw new Error('Please complete the Cloudflare security check.');
       let serverUser: any = null;
       let serverToken: string | null = null;
       let registrationResponse: any = null;
@@ -520,6 +523,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           country: country || 'France',
           phoneNumber: phoneNumber || '',
           countryCode: countryCode || '',
+          turnstileToken,
         });
 
         registrationResponse = res;
