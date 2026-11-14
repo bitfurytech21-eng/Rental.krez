@@ -4,7 +4,7 @@
  * Keep the API Worker separate from the Cloudflare Pages frontend.
  * The Node HTTP bridge is the supported Cloudflare adapter for Express.
  */
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { httpServerHandler } from 'cloudflare:node';
 import v1Routes from './server/routes';
 import {
@@ -18,10 +18,100 @@ import { validateAdminEnvironment } from './server/adminAuth';
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Cloudflare-compatible replacement for express.json()/express.urlencoded().
+ * Avoids body-parser/raw-body/iconv-lite, which currently fail during Worker
+ * bundling/runtime validation. Supports JSON, +json and URL-encoded requests.
+ */
+async function parseRequestBody(req: Request, res: Response, next: NextFunction) {
+  const methodCanHaveBody = !['GET', 'HEAD'].includes(req.method.toUpperCase());
+  if (!methodCanHaveBody) {
+    req.body = {};
+    return next();
+  }
+
+  const contentType = String(req.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase();
+  const isJson = contentType === 'application/json' || contentType.endsWith('+json');
+  const isForm = contentType === 'application/x-www-form-urlencoded';
+
+  if (!isJson && !isForm) {
+    req.body = {};
+    return next();
+  }
+
+  try {
+    const declaredLength = Number(req.headers['content-length'] || 0);
+    if (declaredLength > MAX_BODY_BYTES) {
+      return res.status(413).json({
+        success: false,
+        error: 'Request body exceeds the 2 MB limit.',
+        code: 'PAYLOAD_TOO_LARGE'
+      });
+    }
+
+    const decoder = new TextDecoder();
+    let raw = '';
+    let byteLength = 0;
+
+    for await (const chunk of req as any as AsyncIterable<Uint8Array>) {
+      const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+      byteLength += bytes.byteLength;
+      if (byteLength > MAX_BODY_BYTES) {
+        return res.status(413).json({
+          success: false,
+          error: 'Request body exceeds the 2 MB limit.',
+          code: 'PAYLOAD_TOO_LARGE'
+        });
+      }
+      raw += decoder.decode(bytes, { stream: true });
+    }
+    raw += decoder.decode();
+
+    if (!raw.trim()) {
+      req.body = {};
+    } else if (isJson) {
+      req.body = JSON.parse(raw);
+      if (req.body === null || typeof req.body !== 'object') {
+        return res.status(400).json({
+          success: false,
+          error: 'JSON request body must be an object or array.',
+          code: 'INVALID_JSON_BODY'
+        });
+      }
+    } else {
+      const params = new URLSearchParams(raw);
+      const body: Record<string, string | string[]> = {};
+      params.forEach((value, key) => {
+        const existing = body[key];
+        if (existing === undefined) body[key] = value;
+        else if (Array.isArray(existing)) existing.push(value);
+        else body[key] = [existing, value];
+      });
+      req.body = body;
+    }
+
+    return next();
+  } catch (error) {
+    logger.log({
+      level: 'warning',
+      category: 'security',
+      requestId: 'request-body-parser',
+      eventType: 'INVALID_REQUEST_BODY',
+      outcome: 'failure',
+      message: error instanceof Error ? error.message : 'Unable to parse request body'
+    });
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid request body.',
+      code: 'INVALID_REQUEST_BODY'
+    });
+  }
+}
 
 app.disable('x-powered-by');
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(parseRequestBody);
 
 // Credentials are never allowed with a wildcard CORS origin.
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
