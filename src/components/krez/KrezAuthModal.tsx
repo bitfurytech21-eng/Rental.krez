@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
+import { TurnstileWidget } from '../security/TurnstileWidget';
 
 export type KrezAuthMode = 'login' | 'register' | 'forgot';
 
@@ -27,6 +28,7 @@ export const KrezAuthModal: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export const KrezAuthModal: React.FC = () => {
       setRedirectTo(custom.detail?.redirectTo);
       setError(null);
       setNotice(null);
+      setTurnstileToken('');
       setIsOpen(true);
     };
     window.addEventListener(OPEN_AUTH_EVENT, handleOpen);
@@ -61,6 +64,7 @@ export const KrezAuthModal: React.FC = () => {
     setMode(nextMode);
     setError(null);
     setNotice(null);
+    setTurnstileToken('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,12 +82,17 @@ export const KrezAuthModal: React.FC = () => {
     setBusy(true);
     try {
       if (mode === 'login') {
+        if (!turnstileToken) {
+          setError('Please complete the Cloudflare security check.');
+          setBusy(false);
+          return;
+        }
         if (!password) {
           setError('Please enter your password.');
           setBusy(false);
           return;
         }
-        await login(cleanEmail, password);
+        await login(cleanEmail, password, turnstileToken);
         setIsOpen(false);
         setPassword('');
         if (redirectTo) {
@@ -249,6 +258,17 @@ export const KrezAuthModal: React.FC = () => {
             </div>
           )}
 
+          {mode === 'login' && (
+            <TurnstileWidget
+              action="investor_login"
+              theme="light"
+              label="Security verification"
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken('')}
+              onError={() => setTurnstileToken('')}
+            />
+          )}
+
           {error && (
             <p className="rounded-input border border-red-300 bg-red-50 px-3.5 py-2.5 text-xs text-red-800" role="alert">
               {error}
@@ -263,7 +283,7 @@ export const KrezAuthModal: React.FC = () => {
 
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || (mode === 'login' && !turnstileToken)}
             className="w-full rounded-pill bg-primary px-6 py-3.5 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
           >
             {busy
