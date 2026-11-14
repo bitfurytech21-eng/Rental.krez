@@ -1,6 +1,7 @@
 # Cloudflare Pages configuration for the Rental Krez frontend.
 # The API is hosted separately by the rental-krez-api Worker.
 name = "rental-krez"
+name = 'rental-krez-api'
 compatibility_date = "2026-11-13"
 pages_build_output_dir = "./dist"
 
