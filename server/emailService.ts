@@ -12,7 +12,6 @@
  * - In-memory transmission activity log with webhook delivery status tracking and safe retries
  */
 
-import nodemailer, { Transporter } from 'nodemailer';
 import crypto from 'crypto';
 
 // ============================================================================
@@ -1342,33 +1341,8 @@ export function getProviderConfig() {
   };
 }
 
-let transporter: Transporter | null = null;
-
-function getTransporter(): Transporter {
-  const prov = getProviderConfig();
-  if (prov.type === 'smtp' && (prov as any).host) {
-    return nodemailer.createTransport({
-      host: (prov as any).host,
-      port: (prov as any).port,
-      secure: (prov as any).port === 465,
-      auth: { user: (prov as any).user, pass: (prov as any).pass },
-      pool: true,
-      maxConnections: 5,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 20000
-    });
-  }
-
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      streamTransport: true,
-      newline: 'windows',
-      buffer: true
-    });
-  }
-  return transporter;
-}
+// Cloudflare Workers cannot open raw SMTP sockets. Production delivery uses
+// Resend's HTTPS API (fetch) below; no Nodemailer transport is loaded.
 
 // ============================================================================
 // CORE EMAIL DISPATCH & IDEMPOTENCY
@@ -1546,31 +1520,14 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
         throw new Error(e?.message?.startsWith('SendGrid rejected') ? e.message : `SendGrid request failed: ${e?.message || e}`);
       }
     } else if (provider.type === 'smtp') {
-      mode = 'smtp';
-      const mailer = getTransporter();
-      const info = await mailer.sendMail({
-        from: `"${emailSettings.senderName}" <${emailSettings.fromAddress}>`,
-        to: recipient,
-        replyTo: emailSettings.replyToAddress,
-        subject,
-        text,
-        html
-      });
-      if (info?.messageId) providerMessageId = info.messageId;
+      throw new Error('SMTP socket transport is not supported in Cloudflare Workers. Configure RESEND_API_KEY and use the Resend HTTPS API.');
     } else {
       mode = 'sandbox';
       if (process.env.NODE_ENV === 'production') {
-        // Never report success when nothing can actually be sent.
-        throw new Error('No email provider is configured. Set RESEND_API_KEY, SENDGRID_API_KEY, or SMTP_HOST/SMTP_USER/SMTP_PASS (and EMAIL_FROM) and redeploy.');
+        throw new Error('No email provider is configured. Set RESEND_API_KEY and verify EMAIL_FROM in Resend, then redeploy the Worker.');
       }
-      const mailer = getTransporter();
-      await mailer.sendMail({
-        from: `"${emailSettings.senderName}" <${emailSettings.fromAddress}>`,
-        to: recipient,
-        subject,
-        text,
-        html
-      });
+      // Development-only preview mode: do not claim an email was delivered.
+      throw new Error('Email provider is not configured. Set RESEND_API_KEY to send real email.');
     }
 
     const elapsed = Date.now() - startTime;
