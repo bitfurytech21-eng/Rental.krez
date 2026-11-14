@@ -321,7 +321,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         res = await authApi.login(cleanEmail, pass, turnstileToken);
       } catch (err: any) {
         if (import.meta.env.PROD) {
-          throw new Error('Authentication service is unavailable. Please try again shortly.');
+          // Preserve the API's safe, actionable error response (for example,
+          // Turnstile configuration or Supabase auth setup) instead of hiding
+          // every production failure behind one generic message.
+          throw new Error(err?.message || 'Authentication service is unavailable. Please try again shortly.');
         }
         // Development preview fallback only for static hosts without the API.
         if (
