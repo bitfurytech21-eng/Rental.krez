@@ -6,18 +6,20 @@ compatibility_date = "2026-11-13"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
+# ...
 [vars]
-NODE_ENV = "production"
-ENVIRONMENT = "production"
-API_VERSION = "v1"
 ALLOWED_ORIGINS = "https://rental-krez.pages.dev,https://kretzdespain.com,https://www.kretzdespain.com"
+API_VERSION = "v1"
 EMAIL_FROM = "info@kretzdespain.com"
-EMAIL_SENDER_NAME = "Kretz Real Estate"
 EMAIL_REPLY_TO = "info@kretzdespain.com"
+EMAIL_SENDER_NAME = "Kretz Real Estate"
 EMAIL_SUPPORT = "info@kretzdespain.com"
 EMAIL_TEST_MODE = "false"
+ENVIRONMENT = "production"
+NODE_ENV = "production"
 PUBLIC_APP_URL = "https://rental-krez.pages.dev"
-
+SESSION_SECRET = "45Xu7SNk+vK2N6/gammJPUQJYQbO7WzrLg5VA9j7XEkitmg29unQZG74O+c1lvfkYSUI/x/fLDvB0nCN2Cd7qg=="
+# ...
 # Express imports body-parser internally during module initialization. The Worker
 # uses its own bounded parser, so alias the unused package to avoid pulling in
 # raw-body/iconv-lite, which is incompatible with this Worker bundle.
