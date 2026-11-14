@@ -20,6 +20,7 @@ EMAIL_SENDER_NAME = "Kretz Real Estate"
 EMAIL_SUPPORT = "info@kretzdespain.com"
 EMAIL_TEST_MODE = "false"
 ENVIRONMENT = "production"
+TURNSTILE_ALLOWED_HOSTNAMES = "kretzdespain.com,www.kretzdespain.com,rental-krez.pages.dev"
 NODE_ENV = "production"
 PUBLIC_APP_URL = "https://rental-krez.pages.dev"
 # SESSION_SECRET must be configured as an encrypted Worker secret, never in this file.
