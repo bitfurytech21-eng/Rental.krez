@@ -64,13 +64,9 @@ function loadCustomCredentials(): CustomAdminCredentials | null {
   return cachedCustomCreds || null;
 }
 
-let ephemeralSessionSecret: string | null = null;
-function getEphemeralSessionSecret(): string {
-  if (!ephemeralSessionSecret) {
-    ephemeralSessionSecret = crypto.randomBytes(32).toString('hex');
-  }
-  return ephemeralSessionSecret;
-}
+// Never generate cryptographic randomness during module initialization.
+// Cloudflare Workers prohibit randomBytes() in global scope. A configured
+// SESSION_SECRET (or legacy JWT_SECRET) is required for signed admin sessions.
 
 /**
  * Resolve Administrator configuration from custom store or server environment variables
@@ -98,13 +94,9 @@ export function getAdminConfig() {
     rawPlain === 'your_secure_password';
   const envPlaintextPassword = isPlaceholderPlain ? null : rawPlain;
 
-  // No public default: a known fallback would let anyone forge admin session tokens.
-  // Without SESSION_SECRET/JWT_SECRET a random per-process secret is used (sessions reset on
-  // restart); production should always set one (render.yaml generates it).
-  const sessionSecret =
-    process.env.SESSION_SECRET ||
-    process.env.JWT_SECRET ||
-    (process.env.NODE_ENV === 'production' ? '' : getEphemeralSessionSecret());
+  // Fail closed when no signing secret is configured. Do not create random
+  // values during module evaluation: Workers reject crypto randomness in global scope.
+  const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET || '';
 
   if (custom) {
     return {
@@ -231,6 +223,9 @@ export function createAdminSession(
   fullName?: string
 ): { token: string; payload: AdminSessionPayload } {
   const config = getAdminConfig();
+  if (!config.sessionSecret) {
+    throw new Error('Administrator session signing is not configured. Set SESSION_SECRET in the Worker secrets.');
+  }
   const now = Date.now();
   const jti = crypto.randomBytes(16).toString('hex');
 
