@@ -3,7 +3,11 @@
 name = "rental-krez-api"
 main = "worker.ts"
 compatibility_date = "2026-11-13"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = [
+  "nodejs_compat",
+  "enable_nodejs_http_modules",
+  "enable_nodejs_http_server_modules"
+]
 workers_dev = true
 
 # ...
