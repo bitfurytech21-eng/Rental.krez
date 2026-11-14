@@ -104,10 +104,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please enter your password.');
       return;
     }
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare security check.');
+      return;
+    }
 
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, turnstileToken);
       onSuccess();
     } catch (err: any) {
       const msg = String(err?.message || '');
@@ -139,6 +143,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       return;
     }
 
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare security check.');
+      return;
+    }
     if (!selectedCountryCode) {
       setError('Please select your country of residence.');
       return;
@@ -166,7 +174,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         accountType,
         currentCountry.name,
         fullPhoneNumber,
-        currentCountry.code
+        currentCountry.code,
+        turnstileToken
       );
 
       if (referralCode) {
