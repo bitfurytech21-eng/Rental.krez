@@ -81,13 +81,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   useEffect(() => {
     let isMounted = true;
 
-    // Instantly auto-verify with a test token so users never get blocked by Turnstile loading/CSP issues in preview
-    const autoVerifyTimer = setTimeout(() => {
-      if (isMounted) {
-        handleVerified(`test-cf-token-auto-${Date.now()}`);
-      }
-    }, 400);
-
     // Load Cloudflare Turnstile Script if not already loaded
     const loadScript = () => {
       if (document.getElementById('cf-turnstile-script')) {
@@ -109,9 +102,7 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
 
       script.onerror = () => {
         if (isMounted) {
-          setStatus('verified');
-          setErrorMessage('Cloudflare Turnstile unavailable. Auto-verified with development security token.');
-          handleFallbackPass();
+          handleError('Cloudflare Turnstile could not load. Check your connection and try again.');
         }
       };
 
@@ -137,8 +128,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
           'error-callback': (err: any) => {
             if (isMounted) {
               handleError(err);
-              // If domain is not authorized in Cloudflare Turnstile on dynamic preview URLs, provide fallback pass
-              handleFallbackPass();
             }
           },
           theme: theme,
@@ -153,7 +142,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
         console.error('Turnstile render exception:', e);
         if (isMounted) {
           handleError(e?.message || 'Verification initialization error');
-          handleFallbackPass();
         }
       }
     };
@@ -182,13 +170,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
         window.turnstile.reset(widgetIdRef.current);
       } catch {}
     }
-  };
-
-  // Fallback demo pass (for testing when external network prevents reaching Cloudflare)
-  const handleFallbackPass = () => {
-    // Generate valid test token
-    const testToken = `test-cf-token-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    handleVerified(testToken);
   };
 
   return (
@@ -229,13 +210,6 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
             >
               <RefreshCw className="w-3 h-3" />
               Retry
-            </button>
-            <button
-              type="button"
-              onClick={handleFallbackPass}
-              className="text-xs font-semibold px-2 py-1 bg-[#213138] hover:bg-[#18252b] text-white rounded cursor-pointer"
-            >
-              Verify
             </button>
           </div>
         </div>
