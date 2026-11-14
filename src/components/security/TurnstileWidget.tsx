@@ -35,7 +35,7 @@ interface TurnstileWidgetProps {
 }
 
 // Official Cloudflare Dummy Sitekey: Always Passes in development/testing
-const DEFAULT_TEST_SITEKEY = '1x00000000000000000000AA';
+const DEFAULT_TEST_SITEKEY = '0x4AAAAAAGAW16GKNQCPgkic';
 
 export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   onVerify,
@@ -83,28 +83,36 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
 
     // Load Cloudflare Turnstile Script if not already loaded
     const loadScript = () => {
-      if (document.getElementById('cf-turnstile-script')) {
-        renderWidget();
+      const existingScript = document.getElementById('cf-turnstile-script') as HTMLScriptElement | null;
+      if (existingScript) {
+        if (window.turnstile) {
+          renderWidget();
+        } else {
+          existingScript.addEventListener('load', () => {
+            if (isMounted) renderWidget();
+          }, { once: true });
+          existingScript.addEventListener('error', () => {
+            if (isMounted) handleError('Cloudflare Turnstile could not load. Check your connection and try again.');
+          }, { once: true });
+        }
         return;
       }
 
       const script = document.createElement('script');
       script.id = 'cf-turnstile-script';
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit';
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
       script.async = true;
       script.defer = true;
 
-      window.onloadTurnstileCallback = () => {
-        if (isMounted) {
-          renderWidget();
-        }
-      };
+      script.addEventListener('load', () => {
+        if (isMounted) renderWidget();
+      }, { once: true });
 
-      script.onerror = () => {
+      script.addEventListener('error', () => {
         if (isMounted) {
           handleError('Cloudflare Turnstile could not load. Check your connection and try again.');
         }
-      };
+      }, { once: true });
 
       document.head.appendChild(script);
     };
