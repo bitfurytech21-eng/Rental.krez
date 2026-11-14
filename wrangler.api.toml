@@ -17,3 +17,9 @@ EMAIL_REPLY_TO = "info@kretzdespain.com"
 EMAIL_SUPPORT = "info@kretzdespain.com"
 EMAIL_TEST_MODE = "false"
 PUBLIC_APP_URL = "https://rental-krez.pages.dev"
+
+# Express imports body-parser internally during module initialization. The Worker
+# uses its own bounded parser, so alias the unused package to avoid pulling in
+# raw-body/iconv-lite, which is incompatible with this Worker bundle.
+[alias]
+"body-parser" = "./cloudflare/body-parser-shim.js"
