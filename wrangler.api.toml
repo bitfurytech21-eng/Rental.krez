@@ -23,3 +23,4 @@ PUBLIC_APP_URL = "https://rental-krez.pages.dev"
 # raw-body/iconv-lite, which is incompatible with this Worker bundle.
 [alias]
 "body-parser" = "./cloudflare/body-parser-shim.js"
+"iconv-lite" = "./cloudflare/iconv-lite-shim.js"
