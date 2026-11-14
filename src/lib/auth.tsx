@@ -21,7 +21,7 @@ interface AuthContextType {
   isConfigured: boolean;
   isRecoveryMode: boolean;
   setIsRecoveryMode: (val: boolean) => void;
-  login: (email: string, pass: string) => Promise<User>;
+  login: (email: string, pass: string, turnstileToken?: string) => Promise<User>;
   adminLogin: (email: string, pass: string, turnstileToken?: string) => Promise<User>;
   customizeAdminCredentials: (params: {
     currentEmail: string;
@@ -312,13 +312,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isConfigured]);
 
   // Connect Customer Login form strictly to investor accounts (Administrator login is isolated at /admin/login)
-  const login = async (email: string, pass: string): Promise<User> => {
+  const login = async (email: string, pass: string, turnstileToken?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
 
     if (!isConfigured) {
       let res: any;
       try {
-        res = await authApi.login(cleanEmail, pass);
+        res = await authApi.login(cleanEmail, pass, turnstileToken);
       } catch (err: any) {
         if (import.meta.env.PROD) {
           throw new Error('Authentication service is unavailable. Please try again shortly.');
