@@ -77,7 +77,8 @@ export function isFallbackOrTestToken(token: string): boolean {
  */
 export async function verifyTurnstileToken(
   token: string | undefined | null,
-  remoteIp?: string
+  remoteIp?: string,
+  expectedActions: string[] = []
 ): Promise<TurnstileVerificationResult> {
   pruneConsumedTokens();
   const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || DEFAULT_TEST_SECRET_KEY;
@@ -179,6 +180,19 @@ export async function verifyTurnstileToken(
     const data: any = await response.json();
 
     if (data.success === true) {
+      if (isProduction()) {
+        const allowedHostnames = (process.env.TURNSTILE_ALLOWED_HOSTNAMES || 'kretzdespain.com,www.kretzdespain.com,rental-krez.pages.dev')
+          .split(',')
+          .map((hostname) => hostname.trim().toLowerCase())
+          .filter(Boolean);
+        const verifiedHostname = String(data.hostname || '').toLowerCase();
+        if (!verifiedHostname || !allowedHostnames.includes(verifiedHostname)) {
+          return { success: false, error: 'Security verification came from an unapproved website. Please reload and try again.', code: 'TURNSTILE_HOSTNAME_MISMATCH' };
+        }
+        if (expectedActions.length && !expectedActions.includes(String(data.action || ''))) {
+          return { success: false, error: 'Security verification action did not match this request. Please complete the check again.', code: 'TURNSTILE_ACTION_MISMATCH' };
+        }
+      }
       // Mark token as consumed to prevent replay attacks
       consumedTokens.set(tokenHash, {
         consumedAt: Date.now(),
@@ -275,7 +289,13 @@ export function requireTurnstile(
   const rawIp = Array.isArray(rawHeader) ? rawHeader[0] : (typeof rawHeader === 'string' ? rawHeader.split(',')[0].trim() : undefined);
   const ip = rawIp || req.socket.remoteAddress || '127.0.0.1';
 
-  verifyTurnstileToken(token, ip)
+  const routePath = String(req.path || '');
+  const expectedActions =
+    routePath.endsWith('/auth/register') ? ['register'] :
+    routePath.endsWith('/auth/login') ? ['login', 'investor_login'] :
+    [];
+
+  verifyTurnstileToken(token, ip, expectedActions)
     .then((result) => {
       if (!result.success) {
         logger.log({
