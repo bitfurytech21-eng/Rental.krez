@@ -81,18 +81,19 @@ export async function verifyTurnstileToken(
   expectedActions: string[] = []
 ): Promise<TurnstileVerificationResult> {
   pruneConsumedTokens();
-  const secretKey = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || DEFAULT_TEST_SECRET_KEY;
+  const configuredSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET_KEY || '';
+  const secretKey = configuredSecret || DEFAULT_TEST_SECRET_KEY;
   const isDevOrPreview = !isProduction();
 
   // Fail closed: production must have a real Turnstile secret configured.
-  if (isProduction() && (!process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || secretKey === DEFAULT_TEST_SECRET_KEY)) {
+  if (isProduction() && (!configuredSecret || secretKey === DEFAULT_TEST_SECRET_KEY)) {
     logger.log({
       level: 'error',
       category: 'security',
       requestId: 'req-turnstile-config',
       eventType: 'BOT_CHALLENGE_MISCONFIGURED',
       outcome: 'failure',
-      message: 'CLOUDFLARE_TURNSTILE_SECRET_KEY is missing or is the public test key in production; rejecting request.'
+      message: 'Turnstile secret is unavailable to the Worker. Configure CLOUDFLARE_TURNSTILE_SECRET_KEY (or TURNSTILE_SECRET_KEY) on the rental-krez-api Worker; rejecting request.'
     });
     return {
       success: false,
