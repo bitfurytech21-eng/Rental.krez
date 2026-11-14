@@ -18,8 +18,9 @@ EMAIL_TEST_MODE = "false"
 ENVIRONMENT = "production"
 NODE_ENV = "production"
 PUBLIC_APP_URL = "https://rental-krez.pages.dev"
-SESSION_SECRET = "45Xu7SNk+vK2N6/gammJPUQJYQbO7WzrLg5VA9j7XEkitmg29unQZG74O+c1lvfkYSUI/x/fLDvB0nCN2Cd7qg=="
+# SESSION_SECRET must be configured as an encrypted Worker secret, never in this file.
 # ...
+
 # Express imports body-parser internally during module initialization. The Worker
 # uses its own bounded parser, so alias the unused package to avoid pulling in
 # raw-body/iconv-lite, which is incompatible with this Worker bundle.
