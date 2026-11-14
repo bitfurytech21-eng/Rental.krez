@@ -31,4 +31,4 @@ jobs:
           VITE_API_BASE_URL: https://api.kretzdespain.com/api/v1
         run: npm run build
       - name: Cloudflare API Worker dry run
-        run: npx --yes wrangler@4 deploy --dry-run --config wrangler.api.toml
+        run: npx --yes wrangler@4.15.2 deploy --dry-run --config wrangler.api.toml
