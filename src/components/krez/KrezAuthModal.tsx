@@ -110,7 +110,12 @@ export const KrezAuthModal: React.FC = () => {
           setBusy(false);
           return;
         }
-        const res = await register(cleanEmail, password, cleanName, 'investor', 'individual_investor');
+        if (!turnstileToken) {
+          setError('Please complete the Cloudflare security check.');
+          setBusy(false);
+          return;
+        }
+        const res = await register(cleanEmail, password, cleanName, 'investor', 'individual_investor', undefined, undefined, undefined, turnstileToken);
         if (res.requiresVerification) {
           setNotice('Account created. Check your inbox to confirm your email address, or sign in once verified.');
           setMode('login');
@@ -258,9 +263,9 @@ export const KrezAuthModal: React.FC = () => {
             </div>
           )}
 
-          {mode === 'login' && (
+          {(mode === 'login' || mode === 'register') && (
             <TurnstileWidget
-              action="investor_login"
+              action={mode === 'login' ? 'investor_login' : 'register'}
               theme="light"
               label="Security verification"
               onVerify={setTurnstileToken}
