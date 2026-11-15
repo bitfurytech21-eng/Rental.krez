@@ -315,7 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string, emailCode?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
 
-    // When Supabase is configured, use its Auth signup directly in every environment.\n    // The legacy server registration route is only a fallback for unconfigured development.\n    if (!isConfigured) {
+    if (import.meta.env.PROD || !isConfigured) {
       let res: any;
       try {
         res = await authApi.login(cleanEmail, pass, emailCode);
@@ -499,7 +499,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const determinedRole: UserRole = 'investor';
     const cleanEmail = email.trim().toLowerCase();
 
-    if (import.meta.env.PROD || !isConfigured) {
+    // Use Supabase Auth directly in production when it is configured.
+    // The legacy API is reserved for an unconfigured environment.
+    if (!isConfigured) {
       let serverUser: any = null;
       let serverToken: string | null = null;
       let registrationResponse: any = null;
