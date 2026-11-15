@@ -274,13 +274,6 @@ const publicSubmissionLimiter = rateLimiter({
   message: 'Too many submissions from this IP address. Please wait 1 minute.'
 });
 
-const securityLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  max: 10,
-  category: 'security',
-  message: 'Too many security checks. Please wait 1 minute.'
-});
-
 export interface UserRecord {
   id: string;
   email: string;
@@ -1188,7 +1181,7 @@ router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => 
 /**
  * POST /api/v1/auth/password/forgot
  */
-router.post('/auth/password/forgot', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/password/forgot', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   if (!email || !validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL', requestId: req.id });
   if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Password recovery is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
