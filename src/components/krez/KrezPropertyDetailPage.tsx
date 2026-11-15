@@ -95,6 +95,8 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [email, setEmail] = useState(user?.email || '');
   const [range, setRange] = useState(KREZ_INVESTMENT_RANGES[1].label);
+  const [enquiryType, setEnquiryType] = useState<'general' | 'viewing' | 'dossier'>('general');
+  const [preferredViewingDate, setPreferredViewingDate] = useState('');
   const [notes, setNotes] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -148,10 +150,18 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
       const res = await contactApi.submit({
         fullName: cleanName,
         email: cleanEmail,
-        topic: `Building Enquiry — ${building.name}`,
+        topic: `Building ${enquiryType === 'viewing' ? 'Viewing Request' : enquiryType === 'dossier' ? 'Dossier Request' : 'Enquiry'} — ${building.name}`,
         investmentCapacity: range,
         message:
-          notes.trim() ||
+          [
+            enquiryType === 'viewing'
+              ? 'Request: property viewing (date is a preference only and requires confirmation).'
+              : enquiryType === 'dossier'
+                ? 'Request: property dossier and share documentation.'
+                : 'Request: general property information.',
+            preferredViewingDate ? `Preferred viewing date: ${preferredViewingDate} (subject to confirmation).` : '',
+            notes.trim(),
+          ].filter(Boolean).join('\\n') ||
           `Enquiring about share availability and lease documentation for ${building.name} (${building.location}), indicative allocation ${range}.`,
         turnstileToken: turnstileToken || undefined,
       });
@@ -526,6 +536,35 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
                         className="mt-2 w-full rounded-input border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
                       />
                     </div>
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="krez-enq-type" className="block text-xs font-semibold tracking-widest uppercase text-muted">Enquiry type</label>
+                      <select
+                        id="krez-enq-type"
+                        value={enquiryType}
+                        onChange={(e) => setEnquiryType(e.target.value as 'general' | 'viewing' | 'dossier')}
+                        className="mt-2 w-full rounded-input border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                      >
+                        <option value="general">General information</option>
+                        <option value="viewing">Request a property viewing</option>
+                        <option value="dossier">Request property dossier</option>
+                      </select>
+                    </div>
+                    {enquiryType === 'viewing' && (
+                      <div>
+                        <label htmlFor="krez-enq-viewing-date" className="block text-xs font-semibold tracking-widest uppercase text-muted">Preferred viewing date (optional)</label>
+                        <input
+                          id="krez-enq-viewing-date"
+                          type="date"
+                          value={preferredViewingDate}
+                          onChange={(e) => setPreferredViewingDate(e.target.value)}
+                          min={new Date().toISOString().slice(0, 10)}
+                          className="mt-2 w-full rounded-input border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
