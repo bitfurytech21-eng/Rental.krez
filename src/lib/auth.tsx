@@ -295,13 +295,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(synced);
         setSession(currentSession);
         setToken(currentSession.access_token);
+        setAuthToken(currentSession.access_token);
         localStorage.setItem(CURRENT_USER_KEY, synced.id);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setSession(null);
         setToken(null);
+        setAuthToken(null);
         localStorage.removeItem(CURRENT_USER_KEY);
-        localStorage.removeItem('kretz_auth_token');
       }
 
       setIsLoading(false);
@@ -367,6 +368,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const serverUser = (res as any)?.user || (res as any)?.data?.user;
       const serverToken = (res as any)?.token || (res as any)?.data?.token;
+      const serverRefreshToken = (res as any)?.refreshToken || (res as any)?.data?.refreshToken;
 
       if (!serverToken || !serverUser) {
         throw new Error('Authentication failed. Invalid email address or password.');
@@ -393,6 +395,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(synced);
       setToken(serverToken);
       setAuthToken(serverToken);
+
+      // The API returns the Supabase refresh token as well as the access token.
+      // Persist both in the Supabase client so AuthProvider can restore the same
+      // API-authenticated session after a page reload and keep token rotation in sync.
+      if (isConfigured && serverRefreshToken) {
+        try {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: serverToken,
+            refresh_token: serverRefreshToken,
+          });
+          if (sessionError) {
+            console.warn('[auth] API login succeeded, but Supabase session persistence needs a retry:', sessionError.message);
+          }
+        } catch (sessionError: any) {
+          console.warn('[auth] API login succeeded, but Supabase session persistence failed:', sessionError?.message || sessionError);
+        }
+      }
+
       localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
       localStorage.setItem(CURRENT_USER_KEY, synced.id);
 
@@ -961,7 +981,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (err: any) {
       if (import.meta.env.PROD) {
-        throw new Error('Administrator authentication service is unavailable. Please try again shortly.');
+        // The API wrapper already exposes safe server error messages and codes.
+        // Preserve those messages so configuration, access and credential failures
+        // are distinguishable from an actual network outage.
+        throw new Error(err?.message || 'Administrator authentication service is unavailable. Please try again shortly.');
       }
       if (err?.status === 405 || err?.status === 404 || String(err?.message || '').includes('405') || String(err?.message || '').includes('Failed to fetch')) {
         const localAdmin = ledger.getUserByEmail(cleanEmail) || ledger.getUsers().find(u => u.role === 'admin');

@@ -306,7 +306,7 @@ export const api = {
  */
 export const authApi = {
   login: (email: string, pass: string, turnstileToken?: string) =>
-    api.post<{ user: any; token: string }>('/auth/login', { email, pass, turnstileToken }, { skipAuth: true }),
+    api.post<{ user: any; token: string; refreshToken?: string; data?: { user: any; token: string; refreshToken?: string } }>('/auth/login', { email, pass, turnstileToken }, { skipAuth: true }),
 
   register: (payload: {
     email: string;
@@ -346,7 +346,7 @@ export const authApi = {
     api.post<{ success: boolean; message: string }>('/auth/admin-logout', {}, { skipAuth: true }),
 
   getAdminSession: () =>
-    api.get<{ user: any }>('/auth/admin-session'),
+    api.get<{ user: any }>('/auth/admin/session'),
 };
 
 /**
