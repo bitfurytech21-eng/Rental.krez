@@ -61,6 +61,7 @@ import { AdminFrontendErrorLogView } from './AdminFrontendErrorLogView';
 import { AdminPaymentDistributionManager } from './AdminPaymentDistributionManager';
 import { AdminMembershipTab } from './AdminMembershipTab';
 import { AdminTemplateSectionView } from './AdminTemplateSections';
+import { AdminManualPaymentManager } from './AdminManualPaymentManager';
 
 export type AdminTabType = string;
 
@@ -2765,6 +2766,8 @@ export const AdminPanel: React.FC = () => {
 
         {/* Tab 12: Club Privé Membership Management */}
         {(activeTab === 'club' || activeTab === 'membership') && <AdminMembershipTab />}
+
+        {activeTab === 'deposit-system-manual-gateways' && <AdminManualPaymentManager />}
 
         {/* Fallback View for Template Sections (Plans, Support, Marketing, Website, Site Settings, System utilities) */}
         {isTemplateOnlySection(activeTab) && (

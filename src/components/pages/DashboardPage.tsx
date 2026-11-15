@@ -13,7 +13,7 @@ import { UnitPurchaseModal } from '../properties/UnitPurchaseModal';
 import { TransactionTable } from '../dashboard/TransactionTable';
 import { DistributionsView } from '../dashboard/DistributionsView';
 import { WithdrawalModal } from '../dashboard/WithdrawalModal';
-import { DepositModal } from '../dashboard/DepositModal';
+import { ManualDepositModal } from '../dashboard/ManualDepositModal';
 import { DocumentViewerModal } from '../dashboard/DocumentViewerModal';
 import { DocumentUploadVault } from '../dashboard/DocumentUploadVault';
 import { ProfilePage } from './ProfilePage';
@@ -2444,14 +2444,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       )}
 
       {/* Deposit Modal */}
-      <DepositModal
+      <ManualDepositModal
         isOpen={isDepositOpen}
         onClose={() => setIsDepositOpen(false)}
         onSuccess={() => {
           refreshUser();
-        }}
-        onNavigateAdmin={() => {
-          navigateTo('/admin#deposits');
         }}
         onNavigateTransactions={() => setActiveTab('transactions')}
       />
