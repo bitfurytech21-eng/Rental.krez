@@ -95,9 +95,11 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={handlePrintPortfolio}
-            className="py-1.5 px-3 bg-[#202020] hover:bg-[#282828] border border-[#303030] text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
+            className="py-1.5 px-3 bg-[#202020] hover:bg-[#282828] border border-[#303030] text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#151515] cursor-pointer shadow-xs active:scale-[0.98]"
             title="Print official Portfolio Performance Report"
+            aria-label="Print official portfolio performance report"
           >
             <Printer className="w-3.5 h-3.5 text-[#35C9F5]" />
             <span>Print Report</span>
@@ -161,7 +163,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedInvestmentForDocs(inv)}
-                className="font-semibold text-[#F5F5F2] flex items-center gap-1.5 bg-[#1D1E1E] hover:bg-[#252626] border border-white/[0.1] px-3 py-1.5 rounded-lg text-[11px] cursor-pointer transition-colors active:scale-[0.98]"
+                className="font-semibold text-[#F5F5F2] flex items-center gap-1.5 bg-[#1D1E1E] hover:bg-[#252626] border border-white/[0.1] px-3 py-1.5 rounded-lg text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#151515] cursor-pointer transition-colors active:scale-[0.98]"
+                aria-label={`View legal documents for ${inv.propertyTitle}`}
               >
                 <FileText className="w-3.5 h-3.5 text-[#55BDE8]" /> Legal Docs
               </button>
@@ -170,8 +173,10 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                 <span className="font-mono text-[9.5px] text-[#A5A6A5] hidden sm:inline">{inv.certificateId}</span>
                 {onSelectProperty && (
                   <button
+                    type="button"
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="cinematic-btn cinematic-btn-primary flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-lg font-bold cursor-pointer"
+                    className="cinematic-btn cinematic-btn-primary flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-lg font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#151515] cursor-pointer"
+                    aria-label={`View asset ${inv.propertyTitle}`}
                   >
                     <span>View Asset</span>
                     <ArrowRight className="w-3.5 h-3.5 text-[#070A09]" />
