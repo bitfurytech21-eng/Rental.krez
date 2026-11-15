@@ -232,7 +232,7 @@ manualPaymentRouter.post('/admin/deposits/:id/review', requireAdmin, async (req:
     if (auditError) throw auditError;
     const recipient = current.user_profiles?.email;
     if (recipient) sendEmail({
-      templateId: approve ? 'deposit_approved' : 'deposit_rejected', recipient,
+      templateId: approve ? 'deposit_confirmed' : 'deposit_received', recipient,
       data: { fullName: current.user_profiles?.full_name || 'Valued Investor', amount: Number(current.amount).toFixed(2), currency: current.currency || 'EUR', reference: current.reference, reason }
     }).catch(error => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'manual-review-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: error?.message || 'Manual deposit decision email failed.' }));
     return res.json({ success: true, data: toApiTransaction(row), message: approve ? 'Deposit approved and wallet credited.' : 'Deposit rejected.', requestId: req.id });
