@@ -1,0 +1,164 @@
+/* Kretz investor dashboard — fintech visual system */
+.app-shell {
+  --dash-bg: #07131f;
+  --dash-bg-gradient: radial-gradient(ellipse at 72% -12%, rgba(24, 92, 91, .24), transparent 42%), linear-gradient(145deg, #07131f 0%, #0a1724 52%, #0b1d29 100%);
+  --dash-sidebar: rgba(7, 19, 31, .97);
+  --dash-sidebar-border: rgba(148, 181, 194, .13);
+  --dash-sidebar-card: rgba(17, 39, 52, .76);
+  --dash-sidebar-active-bg: #123d3b;
+  --dash-sidebar-active-text: #f4fbf8;
+  --dash-sidebar-hover-bg: rgba(33, 75, 83, .52);
+  --dash-header: rgba(8, 23, 35, .9);
+  --dash-header-border: rgba(148, 181, 194, .14);
+  --dash-header-controls: rgba(20, 43, 57, .82);
+  --dash-header-controls-border: rgba(148, 181, 194, .17);
+  --dash-card: rgba(14, 34, 47, .94);
+  --dash-card-border: rgba(137, 175, 187, .17);
+  --dash-card-hover: rgba(20, 48, 60, .98);
+  --dash-card-shadow: 0 14px 38px rgba(0, 0, 0, .2);
+  --dash-inner: rgba(20, 44, 57, .84);
+  --dash-inner-border: rgba(137, 175, 187, .14);
+  --dash-elevated: #173647;
+  --dash-text: #f1f7f7;
+  --dash-text-secondary: #a8bdc4;
+  --dash-text-muted: #78929b;
+  --dash-hover: rgba(111, 180, 174, .1);
+  --dash-accent: #4dd6b0;
+  --dash-cyan: #63c8e5;
+  --dash-verification: #4dd6b0;
+  --dash-positive: #4dd6b0;
+  --dash-info: #63c8e5;
+  --dash-chart-secondary: #a6a4f6;
+  --dash-warm: #e6bd78;
+  --dash-negative: #f18b91;
+  --dash-accent-gold: #e6bd78;
+  --dash-highlight: rgba(77, 214, 176, .1);
+  background: var(--dash-bg-gradient);
+  color: var(--dash-text);
+  font-family: var(--font-financial);
+  letter-spacing: -.01em;
+}
+.app-shell.dashboard-light {
+  --dash-bg: #f3f7f7;
+  --dash-bg-gradient: linear-gradient(145deg, #f4f8f7, #eaf1f1);
+  --dash-sidebar: #fff;
+  --dash-sidebar-border: #e1eae9;
+  --dash-sidebar-card: #f3f7f6;
+  --dash-sidebar-active-bg: #e0f4ed;
+  --dash-sidebar-active-text: #0d3b35;
+  --dash-sidebar-hover-bg: #edf5f3;
+  --dash-header: rgba(255,255,255,.92);
+  --dash-header-border: #e1eae9;
+  --dash-header-controls: #f4f8f7;
+  --dash-header-controls-border: #e1eae9;
+  --dash-card: #fff;
+  --dash-card-border: #e1eae9;
+  --dash-card-hover: #f9fcfb;
+  --dash-card-shadow: 0 12px 32px rgba(24, 58, 59, .07);
+  --dash-inner: #f4f8f7;
+  --dash-inner-border: #e4edeb;
+  --dash-elevated: #eaf3f1;
+  --dash-text: #102c32;
+  --dash-text-secondary: #526d72;
+  --dash-text-muted: #789095;
+  --dash-hover: rgba(15, 111, 92, .07);
+  --dash-accent: #087f62;
+  --dash-cyan: #1788a7;
+  --dash-verification: #087f62;
+  --dash-positive: #087f62;
+  --dash-info: #1788a7;
+  --dash-chart-secondary: #7569bb;
+  --dash-warm: #a36d21;
+  --dash-negative: #c34f5d;
+  --dash-accent-gold: #a36d21;
+  --dash-highlight: #e4f4ee;
+}
+.app-shell .app-sidebar {
+  background: var(--dash-sidebar);
+  border-right: 1px solid var(--dash-sidebar-border);
+  box-shadow: 10px 0 38px rgba(0,0,0,.08);
+  backdrop-filter: blur(22px);
+}
+.app-shell .app-sidebar > div:first-child {
+  min-height: 76px;
+  padding: 18px 17px;
+  border-bottom: 1px solid var(--dash-sidebar-border);
+}
+.app-shell .app-sidebar nav { padding: 14px 12px; gap: 5px; }
+.app-shell .app-sidebar nav button {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+.app-shell .app-sidebar nav button[class*="bg-[var(--dash-sidebar-active-bg)]"] {
+  border-left: 0;
+  box-shadow: inset 3px 0 0 var(--dash-accent);
+}
+.app-shell .app-sidebar nav button svg { width: 16px; height: 16px; }
+.app-shell .app-content-scroll {
+  background: transparent;
+  scrollbar-color: rgba(111, 155, 160, .35) transparent;
+}
+.app-shell header {
+  background: var(--dash-header);
+  border-bottom: 1px solid var(--dash-header-border);
+  box-shadow: 0 8px 28px rgba(0,0,0,.08);
+  backdrop-filter: blur(20px);
+}
+.app-shell .cinematic-card {
+  background: linear-gradient(120deg, #103d3a 0%, #0d2b36 58%, #142b3a 100%);
+  border: 1px solid rgba(100, 220, 190, .22);
+  box-shadow: 0 18px 44px rgba(0,0,0,.2);
+}
+.app-shell .cinematic-btn-primary {
+  background: linear-gradient(135deg, #4dd6b0, #20a98c);
+  color: #062820;
+  border: 1px solid rgba(122, 246, 208, .4);
+  box-shadow: 0 7px 18px rgba(32,169,140,.2);
+}
+.app-shell .cinematic-btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.app-shell .cinematic-btn {
+  background: var(--dash-inner);
+  color: var(--dash-text);
+  border: 1px solid var(--dash-inner-border);
+}
+.app-shell .cinematic-btn:hover { background: var(--dash-card-hover); border-color: var(--dash-accent); }
+.app-shell .dash-card,
+.app-shell [class*="rounded-2xl"][class*="border-[#303030]"],
+.app-shell [class*="rounded-xl"][class*="border-[#303030]"] {
+  border-color: var(--dash-card-border);
+  box-shadow: var(--dash-card-shadow);
+}
+.app-shell .financial-num,
+.app-shell [class*="font-mono"] { font-variant-numeric: tabular-nums; letter-spacing: -.025em; }
+.app-shell button:focus-visible,
+.app-shell a:focus-visible,
+.app-shell input:focus-visible,
+.app-shell select:focus-visible,
+.app-shell textarea:focus-visible {
+  outline: 2px solid var(--dash-accent);
+  outline-offset: 2px;
+}
+.app-shell .mobile-bottom-nav {
+  background: var(--dash-sidebar);
+  border-top: 1px solid var(--dash-sidebar-border);
+  box-shadow: 0 -12px 32px rgba(0,0,0,.16);
+  backdrop-filter: blur(20px);
+}
+.app-shell .mobile-bottom-nav button[aria-current="page"] { color: var(--dash-accent) !important; }
+.app-shell .mobile-bottom-nav button[aria-current="page"] svg { color: var(--dash-accent) !important; }
+.app-shell ::selection { background: rgba(77,214,176,.3); }
+@media (max-width: 767px) {
+  .app-shell .app-content-scroll > div { padding-left: 14px; padding-right: 14px; }
+  .app-shell .cinematic-card { border-radius: 16px; }
+  .app-shell .mobile-bottom-nav { padding-bottom: max(env(safe-area-inset-bottom), 5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *, .app-shell *::before, .app-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
