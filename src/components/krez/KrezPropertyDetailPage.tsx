@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, Expand, X } from 'lucide-react';
 import { Property } from '../../types/property';
 import {
   KREZ_INVESTMENT_RANGES,
@@ -40,15 +40,63 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
 
   const [activeHeroPhoto, setActiveHeroPhoto] = useState<string | null>(null);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const galleryPhotos = useMemo(
+    () =>
+      building
+        ? Array.from(new Set([building.image, ...building.photos, ...building.allPhotos].filter(Boolean)))
+        : [],
+    [building]
+  );
+  const activePhoto = activeHeroPhoto || building?.image || '';
+  const activePhotoIndex = Math.max(0, galleryPhotos.indexOf(activePhoto));
 
   React.useEffect(() => {
     setActiveHeroPhoto(null);
     setShowAllPhotos(false);
+    setLightboxOpen(false);
   }, [building?.id]);
+
+  React.useEffect(() => {
+    if (!lightboxOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [lightboxOpen]);
+
+  React.useEffect(() => {
+    if (!lightboxOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setLightboxOpen(false);
+      if (event.key === 'ArrowLeft' && galleryPhotos.length > 1) {
+        setActiveHeroPhoto(galleryPhotos[(activePhotoIndex - 1 + galleryPhotos.length) % galleryPhotos.length]);
+      }
+      if (event.key === 'ArrowRight' && galleryPhotos.length > 1) {
+        setActiveHeroPhoto(galleryPhotos[(activePhotoIndex + 1) % galleryPhotos.length]);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxOpen, galleryPhotos, activePhotoIndex]);
+
+  const openGallery = (photo: string) => {
+    setActiveHeroPhoto(photo);
+    setLightboxOpen(true);
+  };
+
+  const moveGallery = (direction: number) => {
+    if (galleryPhotos.length < 2) return;
+    const nextIndex = (activePhotoIndex + direction + galleryPhotos.length) % galleryPhotos.length;
+    setActiveHeroPhoto(galleryPhotos[nextIndex]);
+  };
 
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [email, setEmail] = useState(user?.email || '');
   const [range, setRange] = useState(KREZ_INVESTMENT_RANGES[1].label);
+  const [enquiryType, setEnquiryType] = useState<'general' | 'viewing' | 'dossier'>('general');
+  const [preferredViewingDate, setPreferredViewingDate] = useState('');
   const [notes, setNotes] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -102,10 +150,18 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
       const res = await contactApi.submit({
         fullName: cleanName,
         email: cleanEmail,
-        topic: `Building Enquiry — ${building.name}`,
+        topic: `Building ${enquiryType === 'viewing' ? 'Viewing Request' : enquiryType === 'dossier' ? 'Dossier Request' : 'Enquiry'} — ${building.name}`,
         investmentCapacity: range,
         message:
-          notes.trim() ||
+          [
+            enquiryType === 'viewing'
+              ? 'Request: property viewing (date is a preference only and requires confirmation).'
+              : enquiryType === 'dossier'
+                ? 'Request: property dossier and share documentation.'
+                : 'Request: general property information.',
+            preferredViewingDate ? `Preferred viewing date: ${preferredViewingDate} (subject to confirmation).` : '',
+            notes.trim(),
+          ].filter(Boolean).join('\\n') ||
           `Enquiring about share availability and lease documentation for ${building.name} (${building.location}), indicative allocation ${range}.`,
         turnstileToken: turnstileToken || undefined,
       });
@@ -174,18 +230,27 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
 
           {/* 3-Photo Architectural Grid + Full Kretz Property Gallery */}
           <div className="mt-10 grid gap-4 md:grid-cols-[1.6fr_1fr]">
-            <div className="aspect-[16/10] overflow-hidden rounded-card bg-secondary">
+            <button
+              type="button"
+              onClick={() => openGallery(activePhoto)}
+              aria-label={`Open photograph gallery for ${building.name}`}
+              className="group relative block aspect-[16/10] w-full overflow-hidden rounded-card bg-secondary text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+            >
               <KrezImage
-                src={activeHeroPhoto || building.image}
+                src={activePhoto}
                 alt={building.name}
                 loading="eager"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-base group-hover:scale-[1.02]"
               />
-            </div>
+              <span className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-pill border border-white/30 bg-black/60 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-widest text-white backdrop-blur-sm">
+                <Expand className="h-3.5 w-3.5" />
+                View gallery
+              </span>
+            </button>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-1">
               <button
                 type="button"
-                onClick={() => setActiveHeroPhoto(building.photos[0])}
+                onClick={() => openGallery(building.photos[0])}
                 className="aspect-[4/3] overflow-hidden rounded-card bg-secondary text-left cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 aria-label={`View ${building.name} interior photograph`}
                 aria-pressed={activeHeroPhoto === building.photos[0]}
@@ -198,7 +263,7 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setActiveHeroPhoto(building.photos[1])}
+                onClick={() => openGallery(building.photos[1])}
                 className="aspect-[4/3] overflow-hidden rounded-card bg-secondary text-left cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 aria-label={`View ${building.name} architectural detail`}
                 aria-pressed={activeHeroPhoto === building.photos[1]}
@@ -238,7 +303,7 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
                       <button
                         key={`${photoUrl}-${idx}`}
                         type="button"
-                        onClick={() => setActiveHeroPhoto(photoUrl)}
+                        onClick={() => openGallery(photoUrl)}
                         aria-label={`Select photograph ${idx + 1} of ${building.name}`}
                         aria-pressed={isSelected}
                         className={`aspect-[4/3] overflow-hidden rounded-input bg-secondary transition-opacity duration-fast cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
@@ -473,6 +538,35 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
                     </div>
                   </div>
 
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="krez-enq-type" className="block text-xs font-semibold tracking-widest uppercase text-muted">Enquiry type</label>
+                      <select
+                        id="krez-enq-type"
+                        value={enquiryType}
+                        onChange={(e) => setEnquiryType(e.target.value as 'general' | 'viewing' | 'dossier')}
+                        className="mt-2 w-full rounded-input border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                      >
+                        <option value="general">General information</option>
+                        <option value="viewing">Request a property viewing</option>
+                        <option value="dossier">Request property dossier</option>
+                      </select>
+                    </div>
+                    {enquiryType === 'viewing' && (
+                      <div>
+                        <label htmlFor="krez-enq-viewing-date" className="block text-xs font-semibold tracking-widest uppercase text-muted">Preferred viewing date (optional)</label>
+                        <input
+                          id="krez-enq-viewing-date"
+                          type="date"
+                          value={preferredViewingDate}
+                          onChange={(e) => setPreferredViewingDate(e.target.value)}
+                          min={new Date().toISOString().slice(0, 10)}
+                          className="mt-2 w-full rounded-input border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label
                       htmlFor="krez-enq-range"
@@ -539,6 +633,86 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
           </div>
         </div>
       </section>
+
+      {/* Mobile enquiry action stays within thumb reach without covering page content. */}
+      <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
+        <button
+          type="button"
+          onClick={() => document.getElementById('enquire')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className="flex w-full items-center justify-center gap-2 rounded-pill bg-primary px-6 py-4 text-xs font-semibold uppercase tracking-widest text-white shadow-[0_12px_32px_rgba(0,0,0,0.22)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
+          Enquire about this property
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {lightboxOpen && galleryPhotos.length > 0 && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#090d0c]/95 p-4 backdrop-blur-sm sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Photograph gallery for ${building.name}`}
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Close photograph gallery"
+            className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div className="flex w-full max-w-6xl flex-col items-center gap-4" onClick={(event) => event.stopPropagation()}>
+            <div className="relative flex h-[min(72vh,760px)] w-full items-center justify-center">
+              {galleryPhotos.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => moveGallery(-1)}
+                  aria-label="Previous photograph"
+                  className="absolute left-0 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:left-3"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+              )}
+              <KrezImage
+                src={activePhoto}
+                alt={`${building.name} — photograph ${activePhotoIndex + 1}`}
+                className="max-h-full max-w-full rounded-card object-contain"
+              />
+              {galleryPhotos.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => moveGallery(1)}
+                  aria-label="Next photograph"
+                  className="absolute right-0 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white transition-colors hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:right-3"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              )}
+            </div>
+            <p className="text-xs font-medium tracking-widest text-white/75" aria-live="polite">
+              {activePhotoIndex + 1} / {galleryPhotos.length} · {building.name}
+            </p>
+            <div className="flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Choose photograph">
+              {galleryPhotos.map((photo, index) => (
+                <button
+                  key={`${photo}-lightbox-${index}`}
+                  type="button"
+                  onClick={() => setActiveHeroPhoto(photo)}
+                  aria-label={`View photograph ${index + 1}`}
+                  aria-pressed={photo === activePhoto}
+                  className={`h-14 w-20 shrink-0 overflow-hidden rounded-input border-2 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                    photo === activePhoto ? 'border-white opacity-100' : 'border-white/20 opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <KrezImage src={photo} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

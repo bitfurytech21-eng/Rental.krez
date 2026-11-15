@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Property } from '../../types/property';
 import {
   KREZ_INVESTMENT_RANGES,
@@ -26,6 +26,27 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
   const buildings = useMemo(() => getUnifiedKrezBuildings(properties), [properties]);
 
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [locationFilter, setLocationFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All');
+  const [priceFilter, setPriceFilter] = useState('All');
+  const [sortOrder, setSortOrder] = useState('featured');
+
+  const availableLocations = useMemo(
+    () => Array.from(new Set(buildings.map((building) => building.location).filter(Boolean))).sort(),
+    [buildings]
+  );
+  const availableTypes = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          buildings
+            .map((building) => building.linkedLedgerProperty?.type)
+            .filter((type): type is Exclude<typeof type, undefined> => Boolean(type))
+        )
+      ).sort(),
+    [buildings]
+  );
 
   // Calculator state
   const [calcBuildingId, setCalcBuildingId] = useState<string>(
@@ -58,9 +79,53 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
   }, [buildings]);
 
   const filteredBuildings = useMemo(() => {
-    if (statusFilter === 'All') return buildings;
-    return buildings.filter((b) => b.status.toLowerCase() === statusFilter.toLowerCase());
-  }, [buildings, statusFilter]);
+    const query = searchQuery.trim().toLowerCase();
+    const filtered = buildings.filter((building) => {
+      const matchesStatus =
+        statusFilter === 'All' || building.status.toLowerCase() === statusFilter.toLowerCase();
+      const matchesSearch =
+        !query ||
+        [building.name, building.location, building.summary, building.linkedLedgerProperty?.type]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query));
+      const matchesLocation = locationFilter === 'All' || building.location === locationFilter;
+      const matchesType =
+        typeFilter === 'All' || building.linkedLedgerProperty?.type === typeFilter;
+      const price = building.sharePriceNumeric || 0;
+      const matchesPrice =
+        priceFilter === 'All' ||
+        (priceFilter === 'under-250' && price < 250) ||
+        (priceFilter === '250-499' && price >= 250 && price < 500) ||
+        (priceFilter === '500-999' && price >= 500 && price < 1000) ||
+        (priceFilter === '1000-plus' && price >= 1000);
+      return matchesStatus && matchesSearch && matchesLocation && matchesType && matchesPrice;
+    });
+
+    return filtered.sort((a, b) => {
+      if (sortOrder === 'price-low') return a.sharePriceNumeric - b.sharePriceNumeric;
+      if (sortOrder === 'price-high') return b.sharePriceNumeric - a.sharePriceNumeric;
+      if (sortOrder === 'yield-high') return b.projectedYieldNumeric - a.projectedYieldNumeric;
+      if (sortOrder === 'funding') return b.funded - a.funded;
+      return 0;
+    });
+  }, [buildings, statusFilter, searchQuery, locationFilter, typeFilter, priceFilter, sortOrder]);
+
+  const hasActiveFilters =
+    Boolean(searchQuery.trim()) ||
+    statusFilter !== 'All' ||
+    locationFilter !== 'All' ||
+    typeFilter !== 'All' ||
+    priceFilter !== 'All' ||
+    sortOrder !== 'featured';
+
+  const clearPropertyFilters = () => {
+    setStatusFilter('All');
+    setSearchQuery('');
+    setLocationFilter('All');
+    setTypeFilter('All');
+    setPriceFilter('All');
+    setSortOrder('featured');
+  };
 
   const selectedCalcBuilding: KrezBuilding =
     buildings.find((b) => b.id === calcBuildingId) || buildings[0];
@@ -196,20 +261,108 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
             </a>
           </div>
 
+          {/* Search and advanced property filters */}
+          <section className="mt-7 rounded-card border border-border bg-secondary/45 p-4 sm:p-5" aria-label="Search and filter properties">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-foreground">
+              <SlidersHorizontal className="h-4 w-4 text-accent" />
+              Refine the register
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(140px,1fr))]">
+              <div className="relative sm:col-span-2 lg:col-span-1">
+                <label htmlFor="krez-property-search" className="sr-only">Search buildings</label>
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <input
+                  id="krez-property-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search name, city or description"
+                  className="w-full rounded-input border border-border bg-background py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="krez-location-filter" className="sr-only">Filter by location</label>
+                <select
+                  id="krez-location-filter"
+                  value={locationFilter}
+                  onChange={(event) => setLocationFilter(event.target.value)}
+                  className="w-full rounded-input border border-border bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="All">All locations</option>
+                  {availableLocations.map((location) => <option key={location} value={location}>{location}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="krez-type-filter" className="sr-only">Filter by property type</label>
+                <select
+                  id="krez-type-filter"
+                  value={typeFilter}
+                  onChange={(event) => setTypeFilter(event.target.value)}
+                  className="w-full rounded-input border border-border bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="All">All property types</option>
+                  {availableTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="krez-price-filter" className="sr-only">Filter by share price</label>
+                <select
+                  id="krez-price-filter"
+                  value={priceFilter}
+                  onChange={(event) => setPriceFilter(event.target.value)}
+                  className="w-full rounded-input border border-border bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="All">Any share price</option>
+                  <option value="under-250">Under €250</option>
+                  <option value="250-499">€250 – €499</option>
+                  <option value="500-999">€500 – €999</option>
+                  <option value="1000-plus">€1,000 and above</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <label htmlFor="krez-sort-order" className="text-xs font-medium text-muted">Sort by</label>
+                <select
+                  id="krez-sort-order"
+                  value={sortOrder}
+                  onChange={(event) => setSortOrder(event.target.value)}
+                  className="rounded-input border border-border bg-background px-3 py-2.5 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
+                >
+                  <option value="featured">Featured</option>
+                  <option value="price-low">Share price: low to high</option>
+                  <option value="price-high">Share price: high to low</option>
+                  <option value="yield-high">Projected yield: highest</option>
+                  <option value="funding">Funding progress</option>
+                </select>
+              </div>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearPropertyFilters}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Reset filters
+                </button>
+              )}
+            </div>
+          </section>
+
           {/* Results summary and responsive building cards */}
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2" aria-live="polite">
             <p className="text-xs text-muted">
               Showing <span className="font-semibold tabular-nums text-foreground">{filteredBuildings.length}</span>{' '}
-              {filteredBuildings.length === 1 ? 'building' : 'buildings'}
+              of <span className="tabular-nums">{buildings.length}</span> {filteredBuildings.length === 1 ? 'building' : 'buildings'}
               {statusFilter !== 'All' ? ` · ${statusFilter}` : ''}
             </p>
-            {statusFilter !== 'All' && (
+            {hasActiveFilters && (
               <button
                 type="button"
-                onClick={() => setStatusFilter('All')}
+                onClick={clearPropertyFilters}
                 className="text-xs font-semibold tracking-wider uppercase text-accent underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
               >
-                Clear filter
+                Clear all filters
               </button>
             )}
           </div>
