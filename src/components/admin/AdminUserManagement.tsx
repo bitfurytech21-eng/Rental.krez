@@ -4,7 +4,7 @@ import { Investment } from '../../types/investment';
 import { Transaction } from '../../types/transaction';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
-import { getAuthToken, getApiUrl } from '../../lib/api';
+import { getAuthToken, getApiUrl, withActionEmailVerification } from '../../lib/api';
 import { printUserDirectoryReport, UserDirectoryPrintData } from '../../lib/printService';
 import {
   Users,
@@ -199,21 +199,22 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     setIsSubmittingStatus(true);
     try {
       const token = getAuthToken();
-      const response = await fetch(getApiUrl(`/admin/users/${statusModalUser.id}/status`), {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          status: targetNewStatus,
-          reason: suspensionReason.trim()
-        })
+      await withActionEmailVerification('admin.user.status', async (grantId) => {
+        const response = await fetch(getApiUrl(`/admin/users/${statusModalUser.id}/status`), {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Action-Verification': grantId,
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ status: targetNewStatus, reason: suspensionReason.trim() })
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'The account status change could not be saved.');
+        }
+        return response;
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'The account status change could not be saved.');
-      }
       onQuickSuccess(
         `User ${statusModalUser.fullName} (${statusModalUser.email}) status successfully set to ${targetNewStatus.toUpperCase()} in the database.`
       );
