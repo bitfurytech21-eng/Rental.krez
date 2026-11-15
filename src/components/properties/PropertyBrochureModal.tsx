@@ -1,33 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Property } from '../../types/property';
-import { PropertyBrochureService, BrochureData } from '../../lib/propertyBrochureService';
-import { formatCurrency, formatPercent } from '../../lib/utils';
-import {
-  FileText,
-  Download,
-  Printer,
-  X,
-  Share2,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ZoomIn,
-  ZoomOut,
-  Building2,
-  MapPin,
-  Calendar,
-  ShieldCheck,
-  Layers,
-  Sparkles,
-  Phone,
-  Mail,
-  Archive,
-  ExternalLink,
-  Eye,
-  CheckCircle2,
-  Clock
-} from 'lucide-react';
-
+import { FileText, Download, Printer, X, Share2, Check, Building2, Archive } from 'lucide-react';
 interface PropertyBrochureModalProps {
   property: Property;
   isOpen: boolean;
