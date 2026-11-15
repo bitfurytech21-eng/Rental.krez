@@ -895,7 +895,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
         </div>
 
         {/* Tab Navigation (Requirement 6: Description, Investment Structure, Financial Terms, Fees, Documents, Risks, Payment Schedule, Exit Conditions) */}
-        <div className="flex flex-wrap border-b border-[#E3E8E3] mb-6 gap-3 sm:gap-6 text-xs sm:text-sm font-bold">
+        <nav aria-label="Property information sections" className="property-section-nav mb-6 -mx-1 px-1 overflow-x-auto overscroll-x-contain">
+          <div className="flex w-max min-w-full items-center gap-2 border-b border-[#E3E8E3] pb-2 text-xs sm:text-sm font-bold">
           {[
             { id: 'overview', label: 'Description & Highlights' },
             { id: 'location', label: '🗺️ Map & Location' },
@@ -915,16 +916,21 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`pb-3 border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
+              className={`rounded-full border px-4 py-2.5 transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#27845D] focus-visible:ring-offset-2 ${
                 activeTab === tab.id
-                  ? 'border-[#182D2A] text-[#182D2A]'
-                  : 'border-transparent text-[#69736F] hover:text-[#18211F]'
+                  ? 'border-[#234D40] bg-[#234D40] text-white shadow-sm'
+                  : 'border-[#E1E9E4] bg-white text-[#69736F] hover:border-[#B8D7C9] hover:bg-[#F2F8F4] hover:text-[#18211F]'
               }`}
+            >
+              {tab.label}
+              aria-pressed={activeTab === tab.id}
+              type="button"
             >
               {tab.label}
             </button>
           ))}
-        </div>
+          </div>
+        </nav>
 
         {/* Tab Content */}
         <div className="space-y-8">
@@ -1375,35 +1381,33 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                 </div>
               )}
 
-              <div className="divide-y divide-[#E3E8E3]">
+              <div className="divide-y divide-[#E3EAE5]">
                 {property.documents.map((doc) => (
-                  <div key={doc.id} className="py-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#EEF1EC] text-[#182D2A] flex items-center justify-center">
-                        <FileText className="w-5 h-5" />
+                  <article key={doc.id} className="grid grid-cols-1 gap-4 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="flex min-w-0 items-start gap-3.5">
+                      <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#E2EAE5] bg-[#F1F5F1] text-[#234D40]">
+                        <FileText className="h-5 w-5" />
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-[#18211F]">{doc.name}</h4>
-                        <div className="flex items-center gap-2 text-xs text-[#69736F]">
-                          <span className="font-semibold text-[#27845D]">{doc.category}</span>
-                          <span>·</span>
+                      <div className="min-w-0">
+                        <h4 className="text-sm sm:text-base font-bold leading-snug text-[#202A27]">{doc.name}</h4>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#737D78]">
+                          <span className="font-semibold text-[#43836A]">{doc.category}</span>
+                          <span aria-hidden="true">·</span>
                           <span>{doc.size}</span>
-                          <span>·</span>
+                          <span aria-hidden="true">·</span>
                           <span>Verified {doc.updatedAt}</span>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setInspectingDoc(doc)}
-                        className="btn btn-primary btn-sm text-xs font-bold cursor-pointer"
-                      >
-                        <FileText className="w-3.5 h-3.5 mr-1 text-[#B7E36A]" />
-                        Inspect Document
-                      </button>
-                    </div>
-                  </div>
+                    <button
+                      type="button"
+                      onClick={() => setInspectingDoc(doc)}
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#234D40] bg-[#234D40] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#183C31] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#43836A] focus-visible:ring-offset-2 sm:w-auto"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Inspect Document
+                    </button>
+                  </article>
                 ))}
               </div>
             </div>
