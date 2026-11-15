@@ -154,10 +154,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       return;
     }
 
-    if (!turnstileToken) {
-      setError('Please complete the Cloudflare security check.');
-      return;
-    }
     if (!selectedCountryCode) {
       setError('Please select your country of residence.');
       return;
@@ -185,8 +181,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         accountType,
         currentCountry.name,
         fullPhoneNumber,
-        currentCountry.code,
-        turnstileToken
+        currentCountry.code
       );
 
       if (referralCode) {
@@ -591,19 +586,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
-                    />
-                  </div>
-
-                  <div className="pt-1">
-                    <TurnstileWidget
-                      onVerify={(token) => {
-                        setTurnstileToken(token);
-                        setError(null);
-                      }}
-                      onExpire={() => setTurnstileToken(null)}
-                      onError={(msg) => setError(msg)}
-                      action="register"
-                      theme="dark"
                     />
                   </div>
 
