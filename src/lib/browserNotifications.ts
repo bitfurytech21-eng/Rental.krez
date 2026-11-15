@@ -13,7 +13,6 @@ export function showPlatformNotification(title: string, body: string): boolean {
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       tag: 'kretz-investor-activity',
-      renotify: false,
     });
     notification.onclick = () => {
       window.focus();
