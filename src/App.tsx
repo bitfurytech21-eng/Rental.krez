@@ -692,6 +692,20 @@ function MainApp() {
   const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
   const isIsolatedAdminEnvironment = isAdminView || isAdminLoginPage;
+  const isAdminUtilityRoute = [
+    '/users', '/deposits', '/withdrawals', '/deposit-system', '/spv', '/kyc',
+    '/proofs', '/wallets', '/ledger', '/reconciliation', '/audit', '/logs',
+    '/security', '/admin-security', '/dividends', '/issuance', '/restore',
+    '/manage-referral', '/plan-manage', '/support-ticket', '/report',
+    '/promotional-tool', '/subscribers', '/language', '/active-template',
+    '/manage-pages', '/section-manage', '/settings', '/logo-icon-setting',
+    '/plugins', '/seo', '/email-manager', '/sms-manager', '/holiday-setting',
+    '/gdpr-cookie', '/system-information', '/custom-css', '/clear-cache', '/manual-payment'
+  ].some((prefix) =>
+    currentBasePath === prefix ||
+    currentBasePath.startsWith(`${prefix}/`) ||
+    currentBasePath.startsWith(`${prefix}-`)
+  );
 
   const isKrezTemplatePage =
     currentBasePath === '/' ||
@@ -755,7 +769,7 @@ function MainApp() {
       <ViewportDesktopMonitor />
 
       <SchemaJsonLd property={selectedProperty} />
-      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
+      {!isIsolatedAdminEnvironment && !isAdminUtilityRoute && <SmartsuppWidget />}
     </div>
   );
 }
