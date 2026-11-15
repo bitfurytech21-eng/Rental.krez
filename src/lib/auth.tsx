@@ -327,8 +327,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // every production failure behind one generic message.
           throw new Error(err?.message || 'Authentication service is unavailable. Please try again shortly.');
         }
-        // Authentication must fail closed when the API is unavailable.
-        throw new Error('Authentication service is unavailable. Please try again shortly.');
+        // Only use the generic outage response for transport/server failures.
+        // Never create or restore a local session when authentication cannot be verified.
+        if (
+          err?.status === 405 ||
+          err?.status === 404 ||
+          err?.status === 0 ||
+          err?.status >= 500 ||
+          String(err?.message || '').includes('Failed to fetch') ||
+          String(err?.message || '').includes('Network request failed') ||
+          String(err?.message || '').includes('temporarily unavailable')
+        ) {
+          throw new Error('Authentication service is unavailable. Please try again shortly.');
+        }
         const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Invalid email address or password.';
         throw new Error(errMsg);
       }
