@@ -175,24 +175,8 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     }
   };
 
-  // Step 6 Verification Approval: Execute actual verification clearance and credit account balance
-  const handleCompleteVerification = async () => {
-    if (!submittedTx) return;
-    setIsVerifying(true);
-    setError(null);
-    try {
-      const updatedTx = await ledger.reviewDeposit(submittedTx.id, true);
-      setSubmittedTx(updatedTx || { ...submittedTx, status: 'completed' });
-      refreshUser();
-      onSuccess();
-      // Advance to Step 7 (Completion)
-      setStep(7);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to verify deposit.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
+  // Customer submissions remain pending. Deposit approval and wallet credit are admin-only.
+
 
   const resetModal = () => {
     setStep(1);
@@ -680,7 +664,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                     <span>Security Notice</span>
                   </div>
                   <p className="text-xs text-[#A5A6A5] leading-relaxed">
-                    Wallet balance updates automatically after platform verification in Step 6.
+                    Wallet balance is credited only after an administrator verifies the payment and approves the deposit.
                   </p>
                 </div>
               </div>
@@ -885,20 +869,15 @@ export const DepositModal: React.FC<DepositModalProps> = ({
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[#141515] border border-[#303030] space-y-3">
+                  <p className="text-xs text-[#E7B96D] leading-relaxed">
+                    Your deposit confirmation has been submitted and is awaiting administrator approval. Your wallet balance will not change until the payment is verified and approved.
+                  </p>
                   <button
                     type="button"
-                    disabled={isVerifying}
-                    onClick={handleCompleteVerification}
-                    className="w-full py-3 px-4 rounded-xl bg-[#43C98B] hover:bg-[#3bb87f] text-[#090A0A] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
+                    onClick={resetModal}
+                    className="w-full py-3 px-4 rounded-xl bg-[#F5F5F2] hover:bg-[#E2E2DF] text-[#090A0A] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
                   >
-                    {isVerifying ? (
-                      <ButtonLoader text="Verifying Transfer..." />
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-4 h-4 text-[#090A0A]" />
-                        <span>Verify &amp; Credit Wallet ({currencySymbol === '€' ? formatCurrency(submittedTx.amount) : `${submittedTx.amount} ${submittedTx.currency}`})</span>
-                      </>
-                    )}
+                    Return to Dashboard
                   </button>
                 </div>
               </div>
