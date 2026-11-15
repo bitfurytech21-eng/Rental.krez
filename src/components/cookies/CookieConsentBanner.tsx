@@ -46,6 +46,12 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
     setIsVisible(false);
   };
 
+  useEffect(() => {
+    const openSettings = () => setIsModalOpen(true);
+    window.addEventListener('kretz:open-cookie-settings', openSettings);
+    return () => window.removeEventListener('kretz:open-cookie-settings', openSettings);
+  }, []);
+
   const handleOpenSettings = () => {
     setIsModalOpen(true);
   };
@@ -76,7 +82,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-[#8EA7C7] leading-relaxed">
-                    Kretz uses strictly necessary cookies to deliver secure authentication, double-entry financial ledger integrity, and Cloudflare Turnstile bot verification. Optional cookies for analytics, performance, and embedded broadcast playback require your consent.{' '}
+                    Kretz uses strictly necessary cookies to deliver secure authentication, double-entry financial ledger integrity, and Cloudflare Turnstile bot verification. Optional cookies for analytics, embedded media, and the Smartsupp live-chat service require your consent.{' '}
                     {onNavigatePrivacy && (
                       <button
                         onClick={onNavigatePrivacy}
