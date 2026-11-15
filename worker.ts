@@ -144,7 +144,7 @@ app.use((req, res, next) => {
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       res.header(
         'Access-Control-Allow-Headers',
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-CSRF-Token, X-XSRF-Token'
+        'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-CSRF-Token, X-XSRF-Token, X-Action-Verification, Idempotency-Key'
       );
       res.header('Access-Control-Expose-Headers', 'X-Request-Id, X-CSRF-Token');
     } else if (req.method === 'OPTIONS') {
