@@ -245,6 +245,18 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
         </div>
       </section>
 
+      {/* Real-estate tokenization visual — custom KRETZ editorial artwork */}
+      <section className="bg-[#0B1B30] px-gutter py-8 sm:py-12 md:px-gutter-md lg:px-gutter-lg">
+        <div className="mx-auto max-w-container overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
+          <KrezImage
+            src={KREZ_IMAGES.tokenizationCity}
+            alt="Illustration of a European real-estate district connected through digital investment infrastructure"
+            className="block h-auto w-full"
+            loading="eager"
+          />
+        </div>
+      </section>
+
       {/* Section 2: Sticky Dark Philosophy & Live Counters */}
       <div className="s2-spacer" data-nav-dark="true" />
       <div className="s2-wrapper" data-nav-dark="true">
