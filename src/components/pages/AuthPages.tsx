@@ -70,6 +70,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('individual_investor');
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [emailCode, setEmailCode] = useState('');
+  const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [referralCode, setReferralCode] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -88,6 +90,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
     setTurnstileToken(null);
+    setEmailCode('');
+    setRequiresEmailCode(false);
     setMode(newMode);
     onNavigateMode(newMode);
   };
@@ -104,16 +108,16 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please enter your password.');
       return;
     }
-    if (!turnstileToken) {
-      setError('Please complete the Cloudflare security check.');
-      return;
-    }
-
     setLoading(true);
     try {
-      await login(email, password, turnstileToken);
+      await login(email, password, emailCode || undefined);
       onSuccess();
     } catch (err: any) {
+      if (err?.code === 'EMAIL_CODE_REQUIRED') {
+        setRequiresEmailCode(true);
+        setError(err?.message || 'A six-digit security code has been sent to your email address.');
+        return;
+      }
       const msg = String(err?.message || '');
       if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
         setError('Authentication service is currently unavailable. Please check your credentials and try again.');
@@ -415,18 +419,24 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 />
               </div>
 
-              <div className="pt-1">
-                <TurnstileWidget
-                  onVerify={(token) => {
-                    setTurnstileToken(token);
-                    setError(null);
-                  }}
-                  onExpire={() => setTurnstileToken(null)}
-                  onError={(msg) => setError(msg)}
-                  action="login"
-                  theme="dark"
-                />
-              </div>
+              {requiresEmailCode && (
+                <div className="form-field space-y-1">
+                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email security code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    required
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value.replace(/\\D/g, '').slice(0, 6))}
+                    placeholder="Enter 6-digit code"
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium tracking-[0.35em] text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                  />
+                  <p className="text-[11px] text-[#8EA7C7]">The code expires in five minutes.</p>
+                </div>
+              )}
 
               <button
                 type="submit"
