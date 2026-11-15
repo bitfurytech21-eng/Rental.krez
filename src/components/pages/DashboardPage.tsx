@@ -1101,6 +1101,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
               const unreadCount = notifications.filter((notification) => !notification.read).length;
               const portfolioValue = user.walletBalance + user.investedBalance;
+              const featuredProperties = (frontendProperties.length > 0 ? frontendProperties : properties).slice(0, 2);
 
               return (
                 <div className="dashboard-home space-y-4 sm:space-y-5 animate-in fade-in duration-200">
@@ -1198,6 +1199,45 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </div>
                     </section>
                   )}
+
+                  <section className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-sm font-semibold text-[var(--dash-text)]">Open for investment</h2>
+                        <p className="mt-1 text-xs text-[var(--dash-text-muted)]">Explore available real-estate opportunities.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('properties')}
+                        className="shrink-0 text-xs font-semibold text-[var(--dash-accent)] hover:underline cursor-pointer"
+                      >
+                        See all <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {featuredProperties.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {featuredProperties.map((property) => (
+                          <PropertyCard
+                            key={property.id}
+                            property={property}
+                            isFavorite={ledger.isFavorite(user.id, property.id)}
+                            onSelect={(prop) => onSelectProperty(prop.id)}
+                            onInvest={(prop) => {
+                              setBuyModalProperty(prop);
+                              setBuyModalMode('purchase');
+                              setIsBuyModalOpen(true);
+                            }}
+                            onOpenBrochure={(prop) => setBrochureProperty(prop)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-[18px] border border-dashed border-[var(--dash-card-border)] px-4 py-6 text-center">
+                        <p className="text-sm font-semibold text-[var(--dash-text)]">No properties listed yet</p>
+                        <p className="mt-1 text-xs text-[var(--dash-text-muted)]">New investment opportunities will appear here.</p>
+                      </div>
+                    )}
+                  </section>
                 </div>
               );
             })()}
