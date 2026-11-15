@@ -3282,3 +3282,76 @@ section[class*="bg-[#0B1B30]"] h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Stage 7: unified premium platform canvas for investor and administrator workspaces.
+   Public marketing pages retain the established limestone brand background. */
+:root {
+  --platform-canvas: #0b1110;
+  --platform-canvas-raised: #121b18;
+  --platform-surface: #17211e;
+  --platform-border: #2b3934;
+  --platform-text: #f3f5f1;
+  --platform-muted: #a6b2ad;
+  --platform-accent: #b69a63;
+}
+
+/* Investor workspace: keep existing component contrast while softening the page canvas. */
+.app-shell {
+  background-color: var(--platform-canvas) !important;
+  background-image:
+    radial-gradient(ellipse at 12% 0%, rgba(77, 126, 101, 0.16), transparent 38%),
+    radial-gradient(ellipse at 92% 100%, rgba(182, 154, 99, 0.08), transparent 34%) !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
+/* Administrator workspace: align its outer canvas, header and sidebar with the investor platform. */
+.kretz-admin-scope {
+  --admin-bg: var(--platform-canvas);
+  --admin-card: #141d1a;
+  --admin-tx: var(--platform-text);
+  --admin-mu: var(--platform-muted);
+  --admin-bd: var(--platform-border);
+  --admin-dk: #111b18;
+  --admin-gr: #4d9870;
+  --admin-lt: #b7dfb1;
+  color: var(--platform-text);
+  background-color: var(--platform-canvas);
+  background-image:
+    radial-gradient(ellipse at 12% 0%, rgba(77, 126, 101, 0.16), transparent 38%),
+    radial-gradient(ellipse at 92% 100%, rgba(182, 154, 99, 0.08), transparent 34%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.kretz-admin-scope .kretz-admin-top {
+  background: rgba(20, 29, 26, 0.94);
+  color: var(--platform-text);
+  border-bottom-color: var(--platform-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.kretz-admin-scope .kretz-admin-side {
+  background: #111b18;
+  border-right: 1px solid var(--platform-border);
+}
+
+.kretz-admin-scope .kretz-admin-card {
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.16);
+}
+
+@media (max-width: 768px) {
+  .app-shell,
+  .kretz-admin-scope {
+    background-attachment: scroll !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .kretz-admin-scope {
+    transition: none !important;
+  }
+}
