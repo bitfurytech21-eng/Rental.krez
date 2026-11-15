@@ -144,6 +144,106 @@ create table if not exists public.investments (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- Compatibility for databases bootstrapped with the earlier supabase/schema.sql.
+-- That legacy script created public.investments with property_id and denormalized
+-- property fields. CREATE TABLE IF NOT EXISTS does not reconcile an existing table,
+-- so add the current financial columns without dropping or rewriting historical data.
+alter table public.investments
+  add column if not exists plan_id text,
+  add column if not exists monthly_target_rate numeric(5,2),
+  add column if not exists current_valuation numeric(14,2),
+  add column if not exists duration_months integer,
+  add column if not exists maturity_date timestamptz;
+
+-- Backfill the columns needed by the current investment service. Preserve existing
+-- values; historical rows whose property_id is not an investment_plans.id remain
+-- readable with a null plan_id rather than being assigned to the wrong property.
+do $
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'investments' and column_name = 'property_id'
+  ) then
+    execute $sql$
+      update public.investments i
+      set plan_id = i.property_id
+      where i.plan_id is null
+        and exists (select 1 from public.investment_plans p where p.id = i.property_id)
+    $sql$;
+  end if;
+end;
+$;
+
+update public.investments
+set monthly_target_rate = coalesce(monthly_target_rate, round(coalesce(estimated_annual_yield, 0) / 12, 2)),
+    current_valuation = coalesce(current_valuation, total_amount_invested, 0),
+    duration_months = coalesce(duration_months, 48),
+    maturity_date = coalesce(maturity_date, created_at + interval '48 months');
+
+alter table public.investments
+  alter column monthly_target_rate set default 0,
+  alter column monthly_target_rate set not null,
+  alter column current_valuation set default 0,
+  alter column current_valuation set not null,
+  alter column duration_months set default 48,
+  alter column duration_months set not null,
+  alter column maturity_date set default (now() + interval '48 months'),
+  alter column maturity_date set not null;
+
+-- For legacy tables retain the old required columns and populate them on new
+-- inserts made by the current RPC, which writes the normalized plan_id fields.
+do $
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'investments' and column_name = 'property_id'
+  ) then
+    execute $fn$
+      create or replace function public.sync_legacy_investment_columns()
+      returns trigger
+      language plpgsql
+      set search_path = ''
+      as $body$
+      declare v_plan public.investment_plans;
+      begin
+        if new.plan_id is null and new.property_id is not null then
+          select * into v_plan from public.investment_plans where id = new.property_id;
+          if found then new.plan_id := v_plan.id; end if;
+        end if;
+
+        if new.plan_id is not null then
+          select * into v_plan from public.investment_plans where id = new.plan_id;
+          if found then
+            new.property_id := new.plan_id;
+            new.property_title := coalesce(nullif(new.property_title, ''), v_plan.title);
+            new.property_location := coalesce(nullif(new.property_location, ''), v_plan.location);
+            new.estimated_annual_yield := coalesce(new.estimated_annual_yield, v_plan.estimated_annual_yield);
+          end if;
+        end if;
+
+        new.purchased_at := coalesce(new.purchased_at, now()::text);
+        return new;
+      end;
+      $body$;
+    $fn$;
+
+    execute 'drop trigger if exists trg_sync_legacy_investment_columns on public.investments';
+    execute 'create trigger trg_sync_legacy_investment_columns before insert or update on public.investments for each row execute function public.sync_legacy_investment_columns()';
+    
+    if not exists (
+      select 1 from pg_constraint
+      where conname = 'investments_plan_id_compat_fkey'
+        and conrelid = 'public.investments'::regclass
+    ) then
+      alter table public.investments
+        add constraint investments_plan_id_compat_fkey
+        foreign key (plan_id) references public.investment_plans(id)
+        on delete restrict not valid;
+    end if;
+  end if;
+end;
+$;
+
 create index if not exists idx_investments_user_id on public.investments(user_id);
 create index if not exists idx_investments_plan_id on public.investments(plan_id);
 create index if not exists idx_investments_status on public.investments(status);
