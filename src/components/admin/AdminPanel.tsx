@@ -908,7 +908,7 @@ export const AdminPanel: React.FC = () => {
       i: [
         { k: 'settings', l: 'Settings', d: 'General platform parameters and regulatory disclosures.', f: 'Site settings menu', c: ['Platform branding', 'Base currency (€ EUR)', 'Maintenance mode'] },
         { k: 'logo-icon-setting', l: 'Logo icon setting', d: 'Platform insignia, favicon, and brand marks.', f: 'Site settings menu', c: ['Header logo', 'Favicon & PWA icons', 'White-label stamps'] },
-        { k: 'plugins', l: 'Plugins', d: 'Installed verification, chat, and analytics integrations.', f: 'Site settings menu', c: ['Smartsupp live concierge', 'Google Analytics tag', 'Cloudflare Turnstile'] },
+        { k: 'plugins', l: 'Plugins', d: 'Installed verification, chat, and analytics integrations.', f: 'Site settings menu', c: ['Smartsupp live concierge', 'Google Analytics tag'] },
         { k: 'seo', l: 'SEO', d: 'Search engine metadata, OpenGraph cards, and schema JSON-LD.', f: 'Site settings menu', c: ['Meta title & description', 'Social preview images', 'Rich snippets'] },
         { k: 'email-manager', l: 'Email manager', s: [
           { k: 'email-manager-global-template', l: 'Global template', d: 'Master HTML email layout and brand styling.', f: 'Email manager menu' },
