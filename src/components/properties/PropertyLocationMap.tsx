@@ -67,12 +67,21 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
       scrollWheelZoom: false,
     });
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-      maxZoom: 19,
-      updateWhenIdle: true,
-      keepBuffer: 2,
-    }).addTo(map);
+    const mapTilerKey = import.meta.env.VITE_MAPTILER_API_KEY?.trim();
+    const tileLayer = mapTilerKey
+      ? L.tileLayer(`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${encodeURIComponent(mapTilerKey)}`, {
+          attribution: '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank" rel="noreferrer">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+          maxZoom: 20,
+          updateWhenIdle: true,
+          keepBuffer: 2,
+        })
+      : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+          updateWhenIdle: true,
+          keepBuffer: 2,
+        });
+    tileLayer.addTo(map);
 
     const marker = L.divIcon({
       className: 'kretz-property-map-pin',
@@ -129,7 +138,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
           <div ref={mapContainerRef} className="h-[340px] w-full bg-[#eef2ef] sm:h-[440px]" aria-label={`Map showing ${property.title}`} />
           <div className="flex items-start gap-2 border-t border-[#e5ebe7] bg-[#fbfcfb] px-5 py-3 text-xs text-[#66716b]">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#477a63]" />
-            <span>{coordinates.exact ? 'Pin uses the property coordinates supplied in its record.' : 'Approximate city-centre location. Add verified latitude and longitude to the property record for an exact pin.'} Map data © OpenStreetMap contributors.</span>
+            <span>{coordinates.exact ? 'Pin uses the property coordinates supplied in its record.' : 'Approximate city-centre location. Add verified latitude and longitude to the property record for an exact pin.'} Map data © MapTiler / OpenStreetMap contributors.</span>
           </div>
         </>
       ) : (
