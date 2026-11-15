@@ -112,7 +112,8 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              aria-pressed={statusFilter === tab.id}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00D2FF] ${
                 statusFilter === tab.id
                   ? 'bg-white text-black shadow-md'
                   : 'text-[#999999] hover:bg-[#1D1D1D] hover:text-white'
@@ -130,6 +131,19 @@ export const MyPropertyInvestments: React.FC<MyPropertyInvestmentsProps> = ({
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Buy Units</span>
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 px-1 text-[11px] text-[#999999]" aria-live="polite">
+        <span>Showing <strong className="text-white tabular-nums">{filteredInvestments.length}</strong> of <strong className="text-white tabular-nums">{investments.length}</strong> investments</span>
+        {statusFilter !== 'all' && (
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className="font-semibold text-[#00D2FF] underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#00D2FF]"
+          >
+            Clear filter
           </button>
         )}
       </div>
