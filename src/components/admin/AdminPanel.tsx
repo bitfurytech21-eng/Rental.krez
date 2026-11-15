@@ -220,6 +220,7 @@ export const AdminPanel: React.FC = () => {
   const [paymentConfig, setPaymentConfig] = useState(ledger.getPaymentConfig());
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [reviewingTransactionIds, setReviewingTransactionIds] = useState<Record<string, boolean>>({});
   const [confirmDeleteNetId, setConfirmDeleteNetId] = useState<string | null>(null);
 
   const SPV_DATA = properties.map((p) => {
@@ -506,6 +507,8 @@ export const AdminPanel: React.FC = () => {
   };
 
   const handleReviewDeposit = async (txId: string, approved: boolean) => {
+    if (reviewingTransactionIds[txId]) return;
+    setReviewingTransactionIds(prev => ({ ...prev, [txId]: true }));
     try {
       const token = getAuthToken();
       const endpoint = approved ? `/api/v1/admin/deposits/${txId}/approve` : `/api/v1/admin/deposits/${txId}/reject`;
@@ -519,17 +522,20 @@ export const AdminPanel: React.FC = () => {
         if (!response.ok) throw new Error(payload.error || 'The deposit decision could not be saved.');
         return payload;
       });
-      await ledger.reviewDeposit(txId, approved, approved ? undefined : 'Bank transfer wire reference or blockchain transaction could not be verified in treasury feed.');
-      setActionSuccess(`Deposit request ${approved ? 'approved and credited to wallet balance' : 'declined'}.`);
+      setActionSuccess(`Deposit request ${approved ? 'approved and credited by the secure server' : 'declined by the secure server'}.`);
       setActionError(null);
       refreshAll();
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (e: any) {
       setActionError(e.message || 'Action failed');
+    } finally {
+      setReviewingTransactionIds(prev => { const next = { ...prev }; delete next[txId]; return next; });
     }
   };
 
   const handleReviewWithdrawal = async (txId: string, approved: boolean) => {
+    if (reviewingTransactionIds[txId]) return;
+    setReviewingTransactionIds(prev => ({ ...prev, [txId]: true }));
     try {
       const token = getAuthToken();
       const endpoint = approved ? `/api/v1/admin/withdrawals/${txId}/approve` : `/api/v1/admin/withdrawals/${txId}/reject`;
@@ -543,13 +549,14 @@ export const AdminPanel: React.FC = () => {
         if (!response.ok) throw new Error(payload.error || 'The withdrawal decision could not be saved.');
         return payload;
       });
-      await ledger.reviewWithdrawal(txId, approved, approved ? undefined : 'Compliance review flagged incomplete banking or wallet verification documentation.');
-      setActionSuccess(`Withdrawal ${approved ? 'approved and transfer executed' : 'declined and capital refunded to investor'}.`);
+      setActionSuccess(`Withdrawal ${approved ? 'approved by the secure server and marked for payout' : 'declined by the secure server; reserved funds refunded'}.`);
       setActionError(null);
       refreshAll();
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (e: any) {
       setActionError(e.message || 'Action failed');
+    } finally {
+      setReviewingTransactionIds(prev => { const next = { ...prev }; delete next[txId]; return next; });
     }
   };
 
@@ -1415,15 +1422,17 @@ export const AdminPanel: React.FC = () => {
                       <div className="flex items-center gap-2.5 shrink-0">
                         <button
                           onClick={() => handleReviewDeposit(tx.id, true)}
+                          disabled={!!reviewingTransactionIds[tx.id]}
                           className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center cursor-pointer shadow-sm"
                         >
-                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> Approve & Credit
+                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> {reviewingTransactionIds[tx.id] ? 'Processing Approval…' : 'Approve & Credit'}
                         </button>
                         <button
                           onClick={() => handleReviewDeposit(tx.id, false)}
+                          disabled={!!reviewingTransactionIds[tx.id]}
                           className="btn btn-secondary text-xs font-bold px-4 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center cursor-pointer"
                         >
-                          <XCircle className="w-4 h-4 mr-1.5" /> Decline
+                          <XCircle className="w-4 h-4 mr-1.5" /> {reviewingTransactionIds[tx.id] ? 'Processing…' : 'Decline'}
                         </button>
                       </div>
                     </div>
@@ -1508,17 +1517,19 @@ export const AdminPanel: React.FC = () => {
                       <div className="flex items-center gap-2.5 shrink-0">
                         <button
                           onClick={() => handleReviewWithdrawal(tx.id, true)}
+                          disabled={!!reviewingTransactionIds[tx.id]}
                           className="btn btn-primary text-xs font-bold px-4 py-2.5 bg-[#27845D] hover:bg-[#1f6b4a] text-white flex items-center cursor-pointer shadow-sm"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                          Approve & Execute Payout
+                          {reviewingTransactionIds[tx.id] ? 'Processing Approval…' : 'Approve & Execute Payout'}
                         </button>
                         <button
                           onClick={() => handleReviewWithdrawal(tx.id, false)}
+                          disabled={!!reviewingTransactionIds[tx.id]}
                           className="btn btn-secondary text-xs font-bold px-4 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center cursor-pointer"
                         >
                           <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                          Decline & Refund
+                          {reviewingTransactionIds[tx.id] ? 'Processing…' : 'Decline & Refund'}
                         </button>
                       </div>
                     </div>
