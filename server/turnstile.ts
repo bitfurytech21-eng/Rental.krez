@@ -293,6 +293,7 @@ export function requireTurnstile(
   const routePath = String(req.path || '');
   const expectedActions =
     routePath.endsWith('/auth/register') ? ['register'] :
+    routePath.endsWith('/auth/admin-login') ? ['admin_login'] :
     routePath.endsWith('/auth/login') ? ['login', 'investor_login'] :
     [];
 
