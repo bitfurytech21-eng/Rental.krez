@@ -69,7 +69,7 @@ async function runServer() {
   const PORT = portArg || (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
 
   // Body Parsers
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '8mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
   // CORS: never wildcard with credentials. Production only allows same-origin requests and
