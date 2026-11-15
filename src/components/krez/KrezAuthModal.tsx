@@ -301,7 +301,7 @@ export const KrezAuthModal: React.FC = () => {
 
           <button
             type="submit"
-            disabled={busy || (mode === 'login' && !turnstileToken)}
+            disabled={busy}
             className="w-full rounded-pill bg-primary px-6 py-3.5 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
           >
             {busy
