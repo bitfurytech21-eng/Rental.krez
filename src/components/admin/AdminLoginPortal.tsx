@@ -273,7 +273,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
                   maxLength={6}
                   required
                   value={emailCode}
-                  onChange={(e) => setEmailCode(e.target.value.replace(/\\D/g, '').slice(0, 6))}
+                  onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="Enter 6-digit code"
                   className="w-full px-4 py-3 rounded-xl bg-[#0B1513] border border-[#233530] text-white placeholder-gray-600 text-sm tracking-[0.35em] focus:outline-none focus:border-[#087F5B]"
                 />
