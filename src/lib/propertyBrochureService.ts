@@ -784,7 +784,7 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
     // Trigger download
     const link = document.createElement('a');
     link.href = URL.createObjectURL(zipBlob);
-    link.download = `${data.sanitizedFilename}${suffix}-brochure.zip`;
+    link.download = `${data.sanitizedFilename}-brochure.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
