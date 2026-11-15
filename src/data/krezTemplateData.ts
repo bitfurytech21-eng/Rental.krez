@@ -12,9 +12,13 @@ export const KREZ_IMAGES = {
   galleryTerrace: 'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
   galleryStairwell: 'https://files.kretzrealestate.com/d92edb3b50aae9836a6fd0808b3fd4f.jpg',
   galleryLoft: 'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
-  howItWorksOwnership: 'https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg',
+  howItWorksOwnership: '/assets/investment/spv-ownership.svg',
   portfolioOverview: 'https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg',
   contactOffice: 'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg',
+  tokenizationCity: '/assets/investment/tokenized-city.svg',
+  spvOwnership: '/assets/investment/spv-ownership.svg',
+  oracleDataFlow: '/assets/investment/oracle-data-flow.svg',
+  propertyDiligence: '/assets/investment/property-diligence.svg',
 } as const;
 
 export interface KrezCostLine {
