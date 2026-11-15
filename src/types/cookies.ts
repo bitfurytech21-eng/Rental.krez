@@ -81,7 +81,7 @@ export const COOKIE_CATEGORIES: CookieCategoryDefinition[] = [
   {
     id: 'marketing',
     name: 'Marketing & Media',
-    description: 'Supports high-definition embedded media broadcasts (such as YouTube property tours and television interview embeds) and relevant platform announcements.',
+    description: 'Supports optional embedded media and the Smartsupp live-chat service, including its conversation-session cookies.',
     required: false,
     cookies: [
       {
