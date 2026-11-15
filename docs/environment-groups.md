@@ -43,18 +43,7 @@ Investor accounts, profiles, and persistent database connectivity.
 
 ---
 
-## Group 4 — `kretz-cloudflare-turnstile`
-Human verification challenge on customer & administrator authentication forms.
-
-| Key | Recommended Value | Scope | Notes |
-| :--- | :--- | :--- | :--- |
-| `VITE_CLOUDFLARE_TURNSTILE_SITE_KEY` | *(Cloudflare Site Key)* | Build/Client | Required public widget key; configure the production hostname in the Turnstile widget. Do not rely on a test fallback in production. |
-| `CLOUDFLARE_TURNSTILE_SECRET_KEY` | *(Cloudflare Secret Key)* | Server | Server secret key paired with the Site Key above. |
-| `SKIP_TURNSTILE` | `false` | Server | Set to `true` only if temporarily bypassing Turnstile verification. |
-
----
-
-## Group 5 — `kretz-transactional-email`
+## Group 4 — `kretz-transactional-email`
 Automated receipts, KYC updates, and security alerts. **Configure only ONE provider** (priority order: Resend -> SendGrid -> SMTP -> Sandbox fallback).
 
 | Key | Recommended Value | Scope | Notes |
