@@ -3282,3 +3282,110 @@ section[class*="bg-[#0B1B30]"] h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Kretz Prime — unified premium architectural background across every dashboard.
+   Keeps the public site's limestone palette while giving content cards clear contrast. */
+:root,
+.dashboard-light,
+.dashboard-dark,
+.dashboard-theme-slate,
+.dashboard-theme-sandstone,
+.dashboard-theme-titanium,
+.dashboard-theme-obsidian {
+  --dash-bg: #f2f0eb;
+  --dash-bg-gradient:
+    radial-gradient(ellipse at 92% 0%, rgba(190, 163, 119, .13), transparent 34rem),
+    linear-gradient(180deg, #f7f5f0 0%, #efede7 100%);
+  --dash-sidebar: #fbfaf7;
+  --dash-sidebar-border: #e5e0d6;
+  --dash-sidebar-card: #f0ede6;
+  --dash-sidebar-active-bg: #213a36;
+  --dash-sidebar-active-text: #ffffff;
+  --dash-sidebar-hover-bg: #eeeae2;
+  --dash-header: rgba(250, 249, 246, .92);
+  --dash-header-border: #e5e0d6;
+  --dash-header-controls: #f1eee8;
+  --dash-header-controls-border: #e5dfd4;
+  --dash-card: rgba(255, 255, 255, .96);
+  --dash-card-border: #e5e0d6;
+  --dash-card-hover: #ffffff;
+  --dash-card-shadow: 0 8px 26px rgba(37, 48, 43, .055);
+  --dash-inner: #f6f4ef;
+  --dash-inner-border: #e9e4da;
+  --dash-elevated: #ffffff;
+  --dash-text: #1d2d2e;
+  --dash-text-secondary: #68736d;
+  --dash-text-muted: #89918a;
+  --dash-hover: rgba(33, 58, 54, .055);
+  --dash-accent: #9a7b3f;
+  --dash-cyan: #568d89;
+  --dash-verification: #34785b;
+  --dash-positive: #34785b;
+  --dash-info: #568d89;
+  --dash-chart-secondary: #9b82b2;
+  --dash-warm: #b58c52;
+  --dash-negative: #bd6864;
+  --dash-accent-gold: #b58c52;
+  --dash-highlight: #eeeae2;
+}
+
+.app-shell {
+  background-color: #f2f0eb !important;
+  background-image:
+    radial-gradient(ellipse at 92% 0%, rgba(190, 163, 119, .13), transparent 34rem),
+    linear-gradient(180deg, #f7f5f0 0%, #efede7 100%) !important;
+  color: #1d2d2e !important;
+}
+
+.app-shell .app-sidebar {
+  background: #fbfaf7 !important;
+  border-right: 1px solid #e5e0d6 !important;
+}
+
+.app-shell .app-main-area,
+.app-shell .app-content-scroll {
+  background: transparent !important;
+}
+
+.app-shell header {
+  background: rgba(250, 249, 246, .92) !important;
+  border-bottom: 1px solid #e5e0d6 !important;
+  color: #1d2d2e !important;
+}
+
+.app-shell .mobile-bottom-nav {
+  background: rgba(250, 249, 246, .96) !important;
+  border-top: 1px solid #e5e0d6 !important;
+  box-shadow: 0 -5px 20px rgba(37, 48, 43, .07) !important;
+  color: #1d2d2e !important;
+}
+
+.app-shell .dash-card {
+  background: rgba(255, 255, 255, .96) !important;
+  border-color: #e5e0d6 !important;
+  color: #1d2d2e !important;
+  box-shadow: 0 8px 26px rgba(37, 48, 43, .055) !important;
+}
+
+.app-shell .dash-inner {
+  background: #f6f4ef !important;
+  border-color: #e9e4da !important;
+  color: #1d2d2e !important;
+}
+
+.app-shell .dash-header {
+  background: rgba(250, 249, 246, .92) !important;
+  border-color: #e5e0d6 !important;
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    min-height: 100dvh;
+    background-attachment: scroll;
+  }
+
+  .app-shell .app-content-scroll {
+    padding: 14px 12px calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
