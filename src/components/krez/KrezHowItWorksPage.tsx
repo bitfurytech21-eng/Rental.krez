@@ -129,6 +129,22 @@ export const KrezHowItWorksPage: React.FC<KrezHowItWorksPageProps> = ({ onNaviga
         </div>
       </section>
 
+      {/* Property data, oracle and smart-contract flow */}
+      <section className="border-t border-[#DCE7E1] bg-[#F8FAF7] py-section-sm md:py-section-spacing">
+        <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
+          <KrezReveal>
+            <div className="mb-8 max-w-2xl">
+              <p className="text-xs font-semibold tracking-widest uppercase text-accent">Digital infrastructure</p>
+              <h2 className="mt-3 text-3xl font-heading font-bold tracking-tight uppercase text-foreground md:text-4xl">How property information moves</h2>
+              <p className="mt-4 text-sm leading-relaxed text-muted">Property records, market inputs and asset events may be sourced off-chain and passed through validated integrations. Where blockchain or smart-contract infrastructure is used, the applicable legal documents define the rights and obligations. This diagram is an explanatory model, not a claim that every data source is currently connected live.</p>
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-[#D8E4DD] bg-white shadow-sm">
+              <KrezImage src={KREZ_IMAGES.oracleDataFlow} alt="Diagram showing property records, an oracle layer, smart contracts, investors and property SPVs" className="block h-auto w-full" />
+            </div>
+          </KrezReveal>
+        </div>
+      </section>
+
       {/* Dark Safeguards Band */}
       <section data-nav-dark="true" className="bg-ink py-section-sm text-white md:py-section-spacing">
         <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
