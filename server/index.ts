@@ -28,7 +28,7 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-Action-Verification, Idempotency-Key');
   res.header('Access-Control-Expose-Headers', 'X-Request-Id');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
