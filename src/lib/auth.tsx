@@ -1078,7 +1078,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     newEmail: string;
     newPassword: string;
     fullName?: string;
-    turnstileToken?: string;
   }): Promise<User> => {
     const res = await apiRequest<{
       success: boolean;
