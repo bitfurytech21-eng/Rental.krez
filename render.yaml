@@ -50,7 +50,7 @@ envVarGroups:
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
 
-  # 5. Transactional Email Delivery (Resend / SendGrid / SMTP)
+  # 4. Transactional Email Delivery (Resend / SendGrid / SMTP)
   - name: kretz-transactional-email
     envVars:
       - key: RESEND_API_KEY
