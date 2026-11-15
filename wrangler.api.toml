@@ -22,7 +22,7 @@ EMAIL_SENDER_NAME = "Kretz Real Estate"
 EMAIL_SUPPORT = "info@kretzdespain.com"
 EMAIL_TEST_MODE = "false"
 ENVIRONMENT = "production"
-TURNSTILE_ALLOWED_HOSTNAMES = "kretzdespain.com,www.kretzdespain.com,rental-krez.pages.dev"
+TURNSTILE_ALLOWED_HOSTNAMES = "kretzdespain.com,www.kretzdespain.com,rental-krez.pages.dev,rental-krez-api"
 NODE_ENV = "production"
 PUBLIC_APP_URL = "https://kretzdespain.com"
 # SESSION_SECRET and CLOUDFLARE_TURNSTILE_SECRET_KEY must be configured as encrypted Worker secrets, never in this file.
