@@ -13,6 +13,7 @@ import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
 import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
+import { manualPaymentRouter } from './manualPaymentRoutes';
 import {
   handleTranslationRequest,
   handleGetProviders,
@@ -67,6 +68,7 @@ import {
 } from './supabaseDatabase';
 
 const router = Router();
+router.use('/manual-payments', manualPaymentRouter);
 const DASHBOARD_ACTION_SCOPES = new Set([
   'investor.withdrawal.create',
   'investor.investment.create',
