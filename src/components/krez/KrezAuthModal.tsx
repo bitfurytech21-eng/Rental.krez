@@ -261,10 +261,6 @@ export const KrezAuthModal: React.FC = () => {
             </div>
           )}
 
-          {mode === 'login' && (
-            
-          )}
-
           {mode === 'login' && requiresEmailCode && (
             <div>
               <label htmlFor="krez-auth-email-code" className="block text-xs font-semibold tracking-widest uppercase text-muted">
