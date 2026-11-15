@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../context/NavigationContext';
 import { useToast } from '../../context/ToastContext';
-import { showPlatformNotification } from '../../lib/browserNotifications';
+import { requestPlatformNotificationPermission, showPlatformNotification } from '../../lib/browserNotifications';
 import { ledger } from '../../lib/ledger';
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { contactApi, userApi } from '../../lib/api';
@@ -2035,7 +2035,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <h2 className="text-base sm:text-lg font-bold text-white">Notification Center</h2>
                     <p className="text-xs text-[#999999]">Account alerts, investment confirmations, and distribution logs.</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const permission = await requestPlatformNotificationPermission();
+                        if (permission === 'granted') toast.success('Device notifications enabled.');
+                        else if (permission === 'unsupported') toast.info('Device notifications are not supported in this browser.');
+                        else toast.info('Device notifications are blocked. Enable them in your browser settings.');
+                      }}
+                      className="px-3 py-1 rounded-xl border border-[#477a63] text-[#b9d8c5] hover:bg-[#183d32] text-xs font-semibold transition-colors"
+                    >
+                      Enable device alerts
+                    </button>
                     <span className="px-2.5 py-0.5 rounded-full bg-[#00D2FF]/15 text-[#00D2FF] border border-[#00D2FF]/30 text-[10px] font-semibold">
                       {notifications.filter(n => !n.read).length} Unread
                     </span>
