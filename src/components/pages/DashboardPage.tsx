@@ -1095,138 +1095,109 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <main className="app-content-scroll">
           <div className="max-w-[1200px] w-full mx-auto space-y-6 sm:space-y-8 px-2 sm:px-4 relative z-10">
 
-            {/* 1. OVERVIEW TAB */}
+            {/* 1. OVERVIEW TAB — compact L'Agence investor home */}
             {activeTab === 'overview' && (() => {
               const hour = new Date().getHours();
               const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+              const unreadCount = notifications.filter((notification) => !notification.read).length;
+              const portfolioValue = user.walletBalance + user.investedBalance;
 
               return (
-                <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
-                  {/* Personal Account Welcome Section */}
-                  <div className="cinematic-card text-[#F5F5F2] px-4 py-3.5 sm:px-5 sm:py-4 rounded-[18px] shadow-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden">
-                    <div className="flex items-center gap-3.5 z-10 min-w-0">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#1D1E1E] border border-white/[0.12] text-[#F5F5F2] flex items-center justify-center font-bold text-sm shadow-inner shrink-0 overflow-hidden">
-                        {user.avatarUrl ? (
-                          <img src={user.avatarUrl} alt={user.fullName || 'User Profile'} className="w-full h-full object-cover" />
-                        ) : (
-                          (user.fullName || 'User').trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#777979]">
-                            Personal Account
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-mono text-[#55BDE8] bg-[#55BDE8]/10 border border-[#55BDE8]/20 px-2 py-0.5 rounded-full">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#55BDE8] animate-pulse" /> Synced
-                          </span>
-                        </div>
-                        <h2 className="text-base sm:text-lg font-bold text-[#F5F5F2] tracking-tight truncate leading-tight">
-                          {greeting}, {user.fullName}
-                        </h2>
-                        <p className="text-[13px] text-[#A5A6A5] mt-0.5 leading-tight font-normal">
-                          Welcome back to your investor dashboard.
-                        </p>
-                      </div>
+                <div className="dashboard-home space-y-4 sm:space-y-5 animate-in fade-in duration-200">
+                  <section className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs text-[var(--dash-text-muted)]">
+                      <span className="h-2 w-2 rounded-full bg-[var(--dash-accent)]" />
+                      <span>{realtimeStatus === 'live' ? 'Synced · Personal account' : 'Personal account'}</span>
                     </div>
+                    <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-[var(--dash-text)]">
+                      {greeting}, {(user.fullName || 'Investor').trim().split(/\s+/)[0]}
+                    </h1>
+                  </section>
 
-                    <div className="flex items-center gap-2.5 z-10 shrink-0">
+                  <section className="dashboard-home-balance rounded-[20px] border border-[var(--dash-card-border)] bg-[var(--dash-card)] p-5 sm:p-6">
+                    <div className="text-[11px] font-bold tracking-[.14em] text-[var(--dash-text-muted)]">TOTAL PORTFOLIO VALUE</div>
+                    <div className="mt-2 text-[36px] sm:text-[42px] leading-none font-bold tracking-tight tabular-nums text-[var(--dash-text)]">
+                      {formatCurrency(portfolioValue)}
+                    </div>
+                    <p className="mt-2 text-xs sm:text-[13px] text-[var(--dash-text-muted)]">
+                      Cash balance and SPV real estate holdings
+                    </p>
+                    <div className="mt-5 grid grid-cols-2 gap-2.5">
                       <button
-                        onClick={() => setActiveTab('properties')}
-                        className="cinematic-btn-primary text-xs font-bold px-4 py-2 rounded-xl cursor-pointer shadow-xs whitespace-nowrap"
+                        type="button"
+                        onClick={() => setIsDepositOpen(true)}
+                        className="h-11 sm:h-12 rounded-[13px] bg-[var(--dash-accent)] px-4 text-sm font-bold text-[#07231A] hover:brightness-105 cursor-pointer"
                       >
-                        Explore Properties
+                        Deposit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsWithdrawOpen(true)}
+                        className="h-11 sm:h-12 rounded-[13px] border border-[var(--dash-inner-border)] bg-transparent px-4 text-sm font-semibold text-[var(--dash-text)] hover:bg-[var(--dash-hover)] cursor-pointer"
+                      >
+                        Withdraw
                       </button>
                     </div>
+                  </section>
 
-                  </div>
-
-                  {/* Fast paths to the investor's most-used account areas */}
-                  <section aria-label="Dashboard quick access" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <section aria-label="Account summary" className="grid grid-cols-3 gap-2.5 sm:gap-3">
                     <button
                       type="button"
                       onClick={() => setActiveTab('portfolio')}
-                      className="cinematic-card group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-[#35C9F5]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#35C9F5]"
-                      aria-label={`Open portfolio, ${investments.length} holdings`}
+                      className="dashboard-home-stat rounded-2xl border border-[var(--dash-card-border)] bg-[var(--dash-card)] p-3.5 sm:p-4 text-left hover:border-[var(--dash-accent)] transition-colors"
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#35C9F5]/10 text-[#35C9F5]"><Building2 className="h-4 w-4" /></span>
-                        <span className="min-w-0"><span className="block text-xs font-semibold text-white">My portfolio</span><span className="block text-[11px] text-[#999999]">View holdings</span></span>
-                      </span>
-                      <span className="text-sm font-bold tabular-nums text-[#35C9F5]">{investments.length}</span>
+                      <span className="block text-[21px] sm:text-2xl font-bold tabular-nums text-[var(--dash-text)]">{investments.length}</span>
+                      <span className="mt-0.5 block text-[11px] sm:text-xs text-[var(--dash-text-muted)]">Holdings</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('transactions')}
-                      className="cinematic-card group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-[#35C9F5]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#35C9F5]"
-                      aria-label={`Open transaction history, ${transactions.length} records`}
+                      className="dashboard-home-stat rounded-2xl border border-[var(--dash-card-border)] bg-[var(--dash-card)] p-3.5 sm:p-4 text-left hover:border-[var(--dash-accent)] transition-colors"
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#35C9F5]/10 text-[#35C9F5]"><History className="h-4 w-4" /></span>
-                        <span className="min-w-0"><span className="block text-xs font-semibold text-white">Transactions</span><span className="block text-[11px] text-[#999999]">Account activity</span></span>
-                      </span>
-                      <span className="text-sm font-bold tabular-nums text-[#35C9F5]">{transactions.length}</span>
+                      <span className="block text-[21px] sm:text-2xl font-bold tabular-nums text-[var(--dash-text)]">{transactions.length}</span>
+                      <span className="mt-0.5 block text-[11px] sm:text-xs text-[var(--dash-text-muted)]">Transactions</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('notifications')}
-                      className="cinematic-card group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-[#35C9F5]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#35C9F5]"
-                      aria-label={`Open notifications, ${notifications.filter(n => !n.read).length} unread`}
+                      className="dashboard-home-stat rounded-2xl border border-[var(--dash-card-border)] bg-[var(--dash-card)] p-3.5 sm:p-4 text-left hover:border-[var(--dash-accent)] transition-colors"
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#35C9F5]/10 text-[#35C9F5]"><Bell className="h-4 w-4" /></span>
-                        <span className="min-w-0"><span className="block text-xs font-semibold text-white">Notifications</span><span className="block text-[11px] text-[#999999]">Updates and alerts</span></span>
-                      </span>
-                      <span className="text-sm font-bold tabular-nums text-[#35C9F5]">{notifications.filter(n => !n.read).length}</span>
+                      <span className="block text-[21px] sm:text-2xl font-bold tabular-nums text-[var(--dash-text)]">{unreadCount}</span>
+                      <span className="mt-0.5 block text-[11px] sm:text-xs text-[var(--dash-text-muted)]">Alerts</span>
                     </button>
                   </section>
 
-                  {notifications.filter(n => !n.read).length > 0 && (() => {
-                    const unreadList = notifications.filter(n => !n.read);
-                    const firstUnread = unreadList[0];
-                    return (
-                      <div className="cinematic-card px-4 py-2.5 rounded-xl flex items-center justify-between gap-3 shadow-md text-xs">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-6 h-6 rounded-md bg-[#202020] text-[#35C9F5] border border-[#303030] flex items-center justify-center shrink-0">
-                            <Bell className="w-3 h-3" />
-                          </div>
-                          <div className="text-xs leading-tight truncate">
-                            <span className="font-semibold text-white mr-1.5">{firstUnread.title}:</span>
-                            <span className="text-[#A0A0A0]">{firstUnread.message}</span>
-                          </div>
+                  {investments.length === 0 ? (
+                    <section className="rounded-[20px] border border-dashed border-[#2A4A40] bg-[#0F1A18] p-5 sm:p-6">
+                      <h2 className="text-base font-semibold text-[var(--dash-text)]">Make your first investment</h2>
+                      <p className="mt-1.5 max-w-lg text-[13px] leading-relaxed text-[var(--dash-text-muted)]">
+                        Browse available properties, then fund your wallet when you are ready to get started.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('properties')}
+                        className="mt-4 h-11 rounded-xl border border-[var(--dash-accent)] px-5 text-sm font-semibold text-[var(--dash-accent)] hover:bg-[var(--dash-highlight)] cursor-pointer"
+                      >
+                        Explore properties <ArrowRight className="ml-1 inline h-4 w-4" />
+                      </button>
+                    </section>
+                  ) : (
+                    <section className="dashboard-panel">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h2 className="text-sm font-semibold text-[var(--dash-text)]">Your investments</h2>
+                          <p className="mt-1 text-xs text-[var(--dash-text-muted)]">Your property holdings are ready to review.</p>
                         </div>
-                        <button onClick={() => setActiveTab('notifications')} className="text-xs font-semibold text-[#35C9F5] hover:underline whitespace-nowrap shrink-0 cursor-pointer">
-                          View Unread ({unreadList.length})
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('portfolio')}
+                          className="text-xs font-semibold text-[var(--dash-accent)] hover:underline cursor-pointer"
+                        >
+                          View portfolio <ArrowRight className="ml-1 inline h-3.5 w-3.5" />
                         </button>
                       </div>
-                    );
-                  })()}
-
-                  {/* Portfolio Valuation & 4 Financial Metric Cards */}
-                  <BalanceCard
-                    user={user}
-                    transactions={transactions}
-                    onDeposit={() => setIsDepositOpen(true)}
-                    onWithdraw={() => setIsWithdrawOpen(true)}
-                  />
-
-                  {/* Recent Human-Centered Transactions Feed */}
-                  <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="text-sm sm:text-base font-bold text-white">Recent Account Activity</h3>
-                        <p className="text-xs text-[#999999]">Verified SEPA deposits, SPV property investments, and dividend payouts</p>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab('transactions')}
-                        className="text-xs font-bold text-white hover:text-[#00D2FF] flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        All Transactions ({transactions.length}) <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    <TransactionTable transactions={transactions} maxRows={5} />
-                  </div>
+                    </section>
+                  )}
                 </div>
               );
             })()}
