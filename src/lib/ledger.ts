@@ -5,6 +5,7 @@ import { Investment } from '../types/investment';
 import { INITIAL_PROPERTIES } from '../data/properties';
 import { MembershipTier, UserMembership, MembershipApplication, MembershipTierId, MembershipBillingCycle, INITIAL_MEMBERSHIP_TIERS } from '../types/membership';
 import { formatCurrency } from './utils';
+import { isValidIBAN, isValidCryptoAddress } from './validation';
 import { CompanyNewsItem } from '../types/news';
 import { INITIAL_COMPANY_NEWS } from '../data/companyNews';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
@@ -1499,7 +1500,13 @@ class LedgerService {
     paymentMethod: string,
     details: { bankIban?: string; cryptoAddress?: string; network?: string; token?: string }
   ): Promise<Transaction> {
-    if (amount <= 0) throw new Error('Withdrawal amount must be greater than zero.');
+    if (!Number.isFinite(amount) || amount < 10) throw new Error('Withdrawal amount must be at least €10.00.');
+    if (paymentMethod.toLowerCase().includes('sepa') && !isValidIBAN(details.bankIban || '')) {
+      throw new Error('A valid IBAN is required for SEPA withdrawals.');
+    }
+    if (paymentMethod.toLowerCase().includes('crypto') && !isValidCryptoAddress(details.cryptoAddress || '')) {
+      throw new Error('A valid BNB Smart Chain wallet address is required for crypto withdrawals.');
+    }
     if (this.isProcessingLock) throw new Error('Ledger is busy processing another transaction.');
 
     try {
