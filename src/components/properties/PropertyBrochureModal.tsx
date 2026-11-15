@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Property } from '../../types/property';
+import { BrochureData, PropertyBrochureService } from '../../lib/propertyBrochureService';
 import { FileText, Download, Printer, X, Share2, Check, Building2, Archive } from 'lucide-react';
 interface PropertyBrochureModalProps {
   property: Property;
