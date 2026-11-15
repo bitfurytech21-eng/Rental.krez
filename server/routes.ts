@@ -13,6 +13,7 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
 import { verifyTurnstileToken, requireTurnstile } from './turnstile';
+import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp } from './emailOtp';
 import {
   handleTranslationRequest,
   handleGetProviders,
@@ -67,6 +68,37 @@ import {
 } from './supabaseDatabase';
 
 const router = Router();
+const maskLoginEmail = (email: string) => {
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return 'your registered email';
+  return `${local.slice(0, 1)}${'*'.repeat(Math.max(2, Math.min(6, local.length - 1)))}@${domain}`;
+};
+
+async function sendLoginEmailCode(email: string, purpose: 'investor_login' | 'admin_login') {
+  const issued = await issueEmailOtp(email, purpose);
+  if (!issued.ok) {
+    return { success: false as const, reason: issued.reason, retryAfter: issued.retryAfter };
+  }
+  const delivery = await sendEmail({
+    templateId: 'email_verification',
+    recipient: email,
+    data: {
+      user_name: email.split('@')[0],
+      verification_code: issued.code,
+      expires_in_minutes: 5,
+      action_url: 'https://kretzdespain.com/#login'
+    },
+    commandName: 'send_verification_email',
+    idempotencyKey: `login-otp-${issued.challengeId}`,
+    bypassAutomationCheck: true
+  });
+  if (!delivery.success) {
+    await cancelEmailOtp(issued.challengeId);
+    throw new Error('LOGIN_CODE_DELIVERY_FAILED');
+  }
+  return { success: true as const, maskedEmail: maskLoginEmail(email) };
+}
+
 
 // Server-side Switch Translation API endpoints (independent multi-provider translation engine)
 router.post('/translate', handleTranslationRequest);
@@ -397,12 +429,20 @@ const authLimiter = rateLimiter({
  * POST /api/v1/auth/login
  * Production-grade customer authentication with bcrypt validation, brute-force lockout, and HttpOnly session cookie
  */
-router.post('/auth/login', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
   const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || req.body?.pass || '');
+  const emailCode = String(req.body?.emailCode || '').trim();
   if (!normalizedEmail || !password) return res.status(400).json({ success: false, error: 'Please provide both email address and password.', code: 'MISSING_FIELDS', requestId: req.id });
   if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Customer authentication is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
   try {
+    if (!emailCode) {
+      const challenge = await sendLoginEmailCode(normalizedEmail, 'investor_login');
+      if (!challenge.success) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached. Please wait before requesting another.', code: challenge.reason, retryAfter: challenge.retryAfter, requestId: req.id });
+      return res.json({ success: true, requiresEmailCode: true, maskedEmail: challenge.maskedEmail, expiresInSeconds: 300, message: 'A six-digit security code has been sent to your email address.', requestId: req.id });
+    }
+    const codeResult = await verifyEmailOtp(normalizedEmail, 'investor_login', emailCode);
+    if (!codeResult.valid) return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
     const result = await signInCustomer(normalizedEmail, password);
     return res.json({
       success: true,
@@ -470,6 +510,23 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
 
   // 3. Load administrator configuration from environment
   const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
+
+  // Send a one-time email code before completing the password-authenticated session.
+  if (normalizedEmail !== config.adminEmail) {
+    return res.status(401).json({ success: false, error: 'Invalid administrator email or security credentials.', code: 'INVALID_CREDENTIALS', requestId: req.id });
+  }
+  const emailCode = String(req.body?.emailCode || '').trim();
+  if (!emailCode) {
+    try {
+      const challenge = await sendLoginEmailCode(normalizedEmail, 'admin_login');
+      if (!challenge.success) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached. Please wait before requesting another.', code: challenge.reason, retryAfter: challenge.retryAfter, requestId: req.id });
+      return res.json({ success: true, requiresEmailCode: true, maskedEmail: challenge.maskedEmail, expiresInSeconds: 300, message: 'A six-digit administrator security code has been sent to your registered email address.', requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Unable to send the administrator security code. Please try again later.', code: 'EMAIL_CODE_DELIVERY_FAILED', requestId: req.id });
+    }
+  }
+  const codeResult = await verifyEmailOtp(normalizedEmail, 'admin_login', emailCode);
+  if (!codeResult.valid) return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
 
   // 4. Validate credentials
   const emailMatches = normalizedEmail === config.adminEmail;
@@ -569,7 +626,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   });
 };
 
-router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, requireTurnstile, handleAdminLogin);
+router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, handleAdminLogin);
 
 /**
  * POST /api/v1/auth/admin-customize
