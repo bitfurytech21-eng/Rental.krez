@@ -11,7 +11,6 @@ compatibility_flags = [
 ]
 workers_dev = true
 
-# ...
 [vars]
 AUTH_SESSION_STORE = "supabase"
 ALLOWED_ORIGINS = "https://rental-krez.pages.dev,https://kretzdespain.com,https://www.kretzdespain.com"
@@ -25,9 +24,18 @@ ENVIRONMENT = "production"
 TURNSTILE_ALLOWED_HOSTNAMES = "kretzdespain.com,www.kretzdespain.com,rental-krez.pages.dev,rental-krez-api"
 NODE_ENV = "production"
 PUBLIC_APP_URL = "https://kretzdespain.com"
-# SESSION_SECRET and CLOUDFLARE_TURNSTILE_SECRET_KEY must be configured as encrypted Worker secrets, never in this file.
-# nodejs_compat_populate_process_env exposes these Worker bindings to the existing process.env readers.
-# ...
+
+# Keep the Supabase project URL explicit for Worker-side process.env readers.
+# The VITE_ variant is retained for compatibility with existing deployments.
+SUPABASE_URL = "https://mpwsbepgnxvritrnchdg.supabase.co"
+VITE_SUPABASE_URL = "https://mpwsbepgnxvritrnchdg.supabase.co/"
+
+# Configure these as encrypted Cloudflare Worker secrets; never put key values here:
+# SUPABASE_ANON_KEY (or the supported publishable-key binding)
+# SUPABASE_SERVICE_ROLE_KEY
+# SESSION_SECRET
+# CLOUDFLARE_TURNSTILE_SECRET_KEY
+# nodejs_compat_populate_process_env exposes Worker bindings to existing process.env readers.
 
 # Express imports body-parser internally during module initialization. The Worker
 # uses its own bounded parser, so alias the unused package to avoid pulling in
