@@ -51,7 +51,7 @@ export async function issueDashboardActionOtp(email: string, userId: string, act
 }
 
 export async function verifyDashboardActionOtp(email: string, userId: string, actionScope: string, code: string) {
-  if (!/^\\d{6}$/.test(code)) return { valid: false as const, reason: 'INVALID' };
+  if (!/^\d{6}$/.test(code)) return { valid: false as const, reason: 'INVALID' };
   const normalizedEmail = email.toLowerCase().trim();
   const digest = codeDigest(normalizedEmail, 'dashboard_action', code);
   const { data, error } = await getSupabaseAdmin().rpc('kretz_verify_dashboard_action_otp', {
