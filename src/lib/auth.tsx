@@ -981,7 +981,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     } catch (err: any) {
       if (import.meta.env.PROD) {
-        throw new Error('Administrator authentication service is unavailable. Please try again shortly.');
+        // The API wrapper already exposes safe server error messages and codes.
+        // Preserve those messages so configuration, access and credential failures
+        // are distinguishable from an actual network outage.
+        throw new Error(err?.message || 'Administrator authentication service is unavailable. Please try again shortly.');
       }
       if (err?.status === 405 || err?.status === 404 || String(err?.message || '').includes('405') || String(err?.message || '').includes('Failed to fetch')) {
         const localAdmin = ledger.getUserByEmail(cleanEmail) || ledger.getUsers().find(u => u.role === 'admin');
