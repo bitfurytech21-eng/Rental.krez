@@ -95,7 +95,7 @@ async function parseRequestBody(req: Request, res: Response, next: NextFunction)
     return next();
   } catch (error) {
     logger.log({
-      level: 'warning',
+      level: 'warn',
       category: 'security',
       requestId: 'request-body-parser',
       eventType: 'INVALID_REQUEST_BODY',
