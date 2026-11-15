@@ -346,7 +346,7 @@ export const authApi = {
     api.post<{ success: boolean; message: string }>('/auth/admin-logout', {}, { skipAuth: true }),
 
   getAdminSession: () =>
-    api.get<{ user: any }>('/auth/admin-session'),
+    api.get<{ user: any }>('/auth/admin/session'),
 };
 
 /**
