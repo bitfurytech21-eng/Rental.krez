@@ -301,8 +301,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setSession(null);
         setToken(null);
+        setAuthToken(null);
         localStorage.removeItem(CURRENT_USER_KEY);
-        localStorage.removeItem('kretz_auth_token');
       }
 
       setIsLoading(false);
