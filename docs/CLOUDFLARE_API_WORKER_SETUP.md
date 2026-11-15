@@ -20,7 +20,7 @@ Configure these as encrypted Worker secrets in the Cloudflare dashboard or with 
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD_HASH` (bcrypt hash; production must not use `ADMIN_PASSWORD` plaintext)
 
-For Turnstile, keep the public `VITE_CLOUDFLARE_TURNSTILE_SITE_KEY` in the Cloudflare Pages frontend build environment, and keep `CLOUDFLARE_TURNSTILE_SECRET_KEY` only as an encrypted secret on the `rental-krez-api` Worker. Do not place the secret in `[vars]`, source control, or a `VITE_*` variable. The Worker configuration includes `nodejs_compat_populate_process_env`, which makes Worker bindings available to the existing `process.env`-based server code. The allowed production challenge hostnames are listed in `TURNSTILE_ALLOWED_HOSTNAMES` in `wrangler.api.toml`.
+The application does not use Cloudflare Turnstile or any CAPTCHA challenge. Authentication and public submission endpoints rely on their existing authentication, email verification, validation, and rate-limiting controls.
 
 The public non-secret settings and CORS allowlist are in `wrangler.api.toml`. Add any production custom frontend domain to `ALLOWED_ORIGINS` before switching traffic.
 
