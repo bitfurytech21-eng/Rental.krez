@@ -832,21 +832,21 @@ Need help? Contact support at ${settings.supportEmail}.
     id: 'email_verification',
     name: 'Email Verification',
     category: 'account',
-    description: 'Sent when a user requests verification or registers. Features the prominent 4-digit verification code boxes ([ 4 ] [ 8 ] [ 6 ] [ 2 ]) inspired by the reference design.',
+    description: 'Sends a six-digit, time-limited account and login verification code.',
     defaultSubject: 'Confirm Your Email Address & Verification Code',
     supportedCommand: 'send_verification_email',
     defaultVariables: ['user_name', 'user_email', 'verification_code', 'action_url', 'expires_in_minutes'],
     sampleData: {
       user_name: 'Jack Davies',
       user_email: 'j.davies@notable-invest.com',
-      verification_code: '4862',
+      verification_code: '486201',
       action_url: 'https://kretzdespain.com/auth/verify?code=4862',
-      expires_in_minutes: 15
+      expires_in_minutes: 5
     },
     generateHtml: (data, settings) => {
-      const codeDigits = String(data.verification_code || '4862').split('').slice(0, 4);
+      const codeDigits = String(data.verification_code || '486201').split('').slice(0, 6);
       return wrapMasterLayout({
-        preheader: `Confirm your verification code: ${data.verification_code || '4862'} to activate your account.`,
+        preheader: `Confirm your verification code: ${data.verification_code || '486201'} to activate your account.`,
         headline: 'Confirm Verification Code',
         badge: 'Security Code',
         bodyHtml: `
