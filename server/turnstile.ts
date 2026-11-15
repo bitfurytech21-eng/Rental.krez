@@ -18,7 +18,7 @@ import crypto from 'crypto';
 const CLOUDFLARE_SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
 // Official Cloudflare Dummy Secret Key (Always Passes for testing and local development)
-const DEFAULT_TEST_SECRET_KEY = '1x0000000000000000000000000000000AA';
+const DEFAULT_TEST_SECRET_KEY = '0x4AAAAAAGAW1784af_x5_XR8C_W7iiiyJE';
 
 // Replay Prevention: Cache of consumed token hashes with 10-minute expiry
 interface ConsumedToken {
@@ -67,7 +67,7 @@ export function isFallbackOrTestToken(token: string): boolean {
     token.startsWith('cf-test-') ||
     token.startsWith('fallback-') ||
     token === 'XXXX.DUMMY.TOKEN.XXXX' ||
-    token === '1x00000000000000000000AA' ||
+    token === '0x4AAAAAAGAW1784af_x5_XR8C_W7iiiyJE' ||
     token === DEFAULT_TEST_SECRET_KEY
   );
 }
