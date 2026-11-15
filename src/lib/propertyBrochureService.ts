@@ -266,13 +266,12 @@ DATE OF GENERATION: ${formatDate(new Date().toISOString())}
 --------------------------------------------------------------------------------
 PACKAGE CONTENTS
 --------------------------------------------------------------------------------
-1. ${data.sanitizedFilename}.pdf
-   - Print-ready, high-resolution A4 multi-page property brochure.
-   - Includes architectural specifications, financial pro-forma, and agent details.
+1. ${data.sanitizedFilename}-brochure.html
+   - Four-page A4 editorial property brochure using the KRETZ SPAIN paper, typography, gallery and contact layout.
+   - Open in a modern browser and use Print → Save as PDF to preserve the exact design.
 
-2. ${data.sanitizedFilename}-brochure.html
-   - Standalone, self-contained interactive brochure viewable in any modern web browser.
-   - Supports offline viewing, responsive mobile/tablet formatting, and browser printing.
+2. PRINT-TO-PDF.txt
+   - Instructions for exporting the HTML brochure to PDF without changing its page layout.
 
 3. README.txt
    - Asset documentation overview, rights management, and contact credentials.
@@ -749,16 +748,10 @@ All rights reserved (c) ${new Date().getFullYear()} ${agency.name}.
   ): Promise<void> {
     const zip = new JSZip();
 
-    if (onProgress) onProgress('Compiling verified high-res PDF brochure...');
-    const pdfBlob = await this.generatePdfBlob(data, pagesToInclude);
-    const suffix = pagesToInclude && pagesToInclude.length > 0 && pagesToInclude.length < 4
-      ? `-pages-${pagesToInclude.join('-')}`
-      : '';
-    zip.file(`${data.sanitizedFilename}${suffix}.pdf`, pdfBlob);
-
-    if (onProgress) onProgress('Generating standalone responsive HTML brochure...');
+    if (onProgress) onProgress('Generating the four-page A4 editorial brochure...');
     const htmlContent = this.generateStandaloneHtml(data);
     zip.file(`${data.sanitizedFilename}-brochure.html`, htmlContent);
+    zip.file('PRINT-TO-PDF.txt', 'Open the HTML brochure in a modern browser and choose Print → Save as PDF. This preserves the exact four-page A4 editorial layout.');
 
     if (onProgress) onProgress('Creating asset documentation & license README...');
     const readmeContent = this.generateReadme(data);
