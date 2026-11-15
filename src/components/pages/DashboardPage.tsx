@@ -2230,20 +2230,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        if (typeof window !== 'undefined' && (window as any).smartsupp) {
-                          try {
-                            (window as any).smartsupp('chat:open');
-                            toast.info('Opening live concierge chat window.');
-                            return;
-                          } catch {}
-                        }
-                        supportSubjectRef.current?.focus();
-                        setSupportFeedback('Live chat widget is currently offline in this browser session. Submit a priority inquiry below or email info@kretz.site.');
+                        window.dispatchEvent(new CustomEvent('kretz:open-support'));
                       }}
                       className="px-3 py-1.5 rounded-lg bg-white text-black font-semibold text-xs hover:bg-[#E5E5E5] transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer shrink-0"
                     >
                       <MessageCircle className="w-3.5 h-3.5 text-black" />
-                      <span>Open Concierge Desk</span>
+                      <span>Open Smartsupp Live Chat</span>
                     </button>
                   </div>
                 </div>
