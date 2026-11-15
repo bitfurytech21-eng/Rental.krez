@@ -882,9 +882,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* Mobile Menu Toggle Button */}
             <button
+              type="button"
               onClick={() => setMobileHeaderMenuOpen(!mobileHeaderMenuOpen)}
-              className="lg:hidden p-1.5 rounded-lg bg-[var(--dash-header-controls)] text-[var(--dash-text)] border border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)] cursor-pointer"
-              title="Toggle Menu"
+              className="lg:hidden p-1.5 rounded-lg bg-[var(--dash-header-controls)] text-[var(--dash-text)] border border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--dash-header)] cursor-pointer"
+              title={mobileHeaderMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-label={mobileHeaderMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileHeaderMenuOpen}
+              aria-controls="dashboard-mobile-navigation"
             >
               {mobileHeaderMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
@@ -893,7 +897,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         {/* Mobile Collapsible Navigation Menu */}
         {mobileHeaderMenuOpen && (
-          <div className="lg:hidden bg-[var(--dash-header)] border-b border-[var(--dash-header-border)] px-4 py-3 space-y-2 z-30 animate-in slide-in-from-top-2 duration-150 shadow-lg">
+          <div id="dashboard-mobile-navigation" role="region" aria-label="Dashboard mobile navigation" className="lg:hidden bg-[var(--dash-header)] border-b border-[var(--dash-header-border)] px-4 py-3 space-y-2 z-30 animate-in slide-in-from-top-2 duration-150 shadow-lg">
             {/* Mobile Quick Search */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-[var(--dash-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -977,7 +981,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <button
                   key={item.id}
                   onClick={() => { setActiveTab(item.id); setMobileHeaderMenuOpen(false); }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  type="button"
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--dash-header)] cursor-pointer ${
                     isActive
                       ? 'bg-[var(--dash-sidebar-active-bg)] text-[var(--dash-sidebar-active-text)] shadow-xs'
                       : 'text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)]'
@@ -2252,7 +2258,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       </div>
 
       {/* Mobile Bottom Navigation Bar - Refined Institutional Layout */}
-      <nav className="mobile-bottom-nav">
+      <nav aria-label="Primary mobile dashboard navigation" className="mobile-bottom-nav">
         {[
           { id: 'overview', label: 'Overview', icon: LayoutDashboard },
           { id: 'portfolio', label: 'Portfolio', icon: Building2 },
@@ -2265,6 +2271,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           return (
             <button
               key={tab.id}
+              type="button"
+              aria-current={isActive ? 'page' : undefined}
+              aria-haspopup={tab.isMore ? 'dialog' : undefined}
+              aria-expanded={tab.isMore ? isMoreMenuOpen : undefined}
               onClick={() => {
                 if (tab.isMore) {
                   setIsMoreMenuOpen(true);
@@ -2290,10 +2300,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* More Menu Modal / Bottom Sheet for Mobile */}
       {isMoreMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 md:hidden flex flex-col justify-end animate-in fade-in duration-200">
-          <div className="bg-[#151515] border-t border-[#303030] rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto space-y-3">
+          <div role="dialog" aria-modal="true" aria-labelledby="dashboard-more-title" className="bg-[#151515] border-t border-[#303030] rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto space-y-3">
             <div className="flex items-center justify-between border-b border-[#303030] pb-2.5">
-              <h3 className="font-bold text-xs text-white">All Dashboard Sections</h3>
-              <button onClick={() => setIsMoreMenuOpen(false)} className="text-xs font-semibold text-[#999999] hover:text-white cursor-pointer">Close</button>
+              <h3 id="dashboard-more-title" className="font-bold text-xs text-white">All Dashboard Sections</h3>
+              <button type="button" onClick={() => setIsMoreMenuOpen(false)} aria-label="Close all dashboard sections" className="text-xs font-semibold text-[#999999] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] rounded-md cursor-pointer">Close</button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {navItems.map((item) => {
@@ -2302,6 +2312,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 return (
                   <button
                     key={item.id}
+                    type="button"
+                    aria-current={isActive ? 'page' : undefined}
                     onClick={() => {
                       setActiveTab(item.id);
                       setIsMoreMenuOpen(false);
