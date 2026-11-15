@@ -12,6 +12,7 @@ In the Supabase Dashboard, open **SQL Editor** and apply the migrations in the c
 - Apply `supabase/migrations/20261113000002_durable_server_sessions.sql` for the durable API session store.
 - Apply `supabase/migrations/20261113000003_durable_admin_auth.sql` for persistent administrator credentials, sessions and login lockouts.
 - Apply `supabase/migrations/20261113000004_customer_auth_profile_metadata.sql` for customer signup profile metadata.
+- Apply `supabase/migrations/20261115000001_email_otp_challenges.sql` before enabling email-code login. It creates private, service-role-only storage and atomic issue/verify RPCs for five-minute, six-digit one-time codes.
 - The file `supabase/migrations/20261018_admin_security_schema.sql` is a compatibility hardening script. It no longer creates a second `profiles` table or grants administrator access based on email domains. If you previously ran the old version of that script, run the updated version after the enterprise schema to restore the read-only compatibility view safely.
 
 The new financial migration:
