@@ -3643,10 +3643,8 @@ section[class*="bg-[#0B1B30]"] h3 {
   }
 }
 
-/* Footer-end cleanup: prevent third-party chat overlays from painting a
-   full-viewport panel behind their launcher on mobile browsers. The site's
-   own support panel is rendered by React and remains available from the
-   footer's "Open support chat" action. */
+/* Footer-end surface cleanup: keep the page canvas consistent while
+   allowing the official Smartsupp launcher and iframe to render normally. */
 html,
 body,
 #root {
@@ -3655,18 +3653,4 @@ body,
 
 #root {
   min-height: 100%;
-}
-
-/* Smartsupp's injected launcher/iframe is not used by the current React
-   support flow. Hide stale vendor-injected surfaces without affecting the
-   in-app support dialog. */
-#smartsupp-widget-container,
-#smartsupp-widget,
-.smartsupp-widget,
-iframe[src*="smartsupp"],
-iframe[title*="Smartsupp"],
-div[id^="smartsupp"] {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
 }
