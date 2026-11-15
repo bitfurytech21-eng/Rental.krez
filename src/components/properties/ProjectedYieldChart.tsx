@@ -224,10 +224,16 @@ export const ProjectedYieldChart: React.FC<ProjectedYieldChartProps> = ({
     path
       .attr('stroke-dasharray', `${totalLength} ${totalLength}`)
       .attr('stroke-dashoffset', totalLength)
-      .transition()
-      .duration(1000)
-      .ease(d3.easeCubicOut)
-      .attr('stroke-dashoffset', 0);
+      .style('transition', 'stroke-dashoffset 1000ms cubic-bezier(0.22, 1, 0.36, 1)');
+
+    // Animate with the browser's native SVG/CSS transition API. D3's
+    // transition extension is not guaranteed to be registered by the
+    // bundled d3 entry point, so avoid calling selection.transition().
+    if (totalLength > 0) {
+      requestAnimationFrame(() => {
+        path.attr('stroke-dashoffset', 0);
+      });
+    }
 
     // Append Data Points (Circles)
     g.selectAll('.data-circle')
