@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, ShieldCheck, Loader2, ExternalLink } from 'lucide-react';
 import { isValidEmail } from '../../lib/validation';
-import { TurnstileWidget } from '../security/TurnstileWidget';
 import { contactApi } from '../../lib/api';
 
 export const ContactPage: React.FC = () => {
@@ -9,7 +8,6 @@ export const ContactPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [topic, setTopic] = useState('Investor Inquiries');
   const [message, setMessage] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,12 +36,10 @@ export const ContactPage: React.FC = () => {
         email: email.trim().toLowerCase(),
         topic,
         message: message.trim(),
-        turnstileToken,
       });
       setSubmitted(true);
     } catch (err: any) {
       setError(err?.message || 'Failed to submit inquiry. Please complete the security check again.');
-      setTurnstileToken(null);
     } finally {
       setLoading(false);
     }
@@ -186,23 +182,12 @@ export const ContactPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Cloudflare Turnstile Human Verification Widget */}
-                <div className="pt-2">
-                  <TurnstileWidget
-                    onVerify={(token) => {
-                      setTurnstileToken(token);
-                      setError(null);
-                    }}
-                    onExpire={() => setTurnstileToken(null)}
-                    onError={(msg) => setError(msg)}
-                    action="contact"
-                    theme="dark"
-                  />
-                </div>
+                {}
+                
 
                 <button
                   type="submit"
-                  disabled={loading || !turnstileToken}
+                  disabled={loading}
                   className="bg-[#BEE179] hover:bg-[#aed860] text-[#0B1B30] font-black text-xs px-8 py-3.5 rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-lg"
                 >
                   {loading ? (
