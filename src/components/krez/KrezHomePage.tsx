@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, FileSearch, Building2, ChartNoAxesCombined } from 'lucide-react';
-import { FeaturedPropertiesCarousel } from '../home/FeaturedPropertiesCarousel';
 import { CaseStudiesCarousel } from '../home/CaseStudiesCarousel';
 
 import { useReducedMotion } from 'motion/react';
@@ -273,14 +272,6 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
           </div>
         </section>
       </div>
-
-      {/* Featured investment opportunities — live approved property records */}
-      <FeaturedPropertiesCarousel
-        onSelectProperty={(property) => onNavigate(`/property/${property.slug}?dossier=full`)}
-        onInvestProperty={(property) => onNavigate(`/property/${property.slug}?dossier=full`)}
-        onExploreAll={() => onNavigate('/properties')}
-        onHowItWorks={() => onNavigate('/how-it-works')}
-      />
 
       {/* How fractional ownership works — concise homepage introduction */}
       <section className="bg-[#EFF4F2] border-y border-[#DCE7E1] py-16 sm:py-20">
