@@ -22,7 +22,10 @@ import { logger } from './logger';
 import { UserRoleType } from './middleware';
 import { getSupabaseAdmin, isSupabaseServerConfigured } from './supabaseDatabase';
 
-const usePersistentSessionStore = () => process.env.AUTH_SESSION_STORE === 'supabase';
+// Production must never rely on isolate-local session state. Supabase is the default
+// durable store in production; the explicit flag also enables it in staging.
+const usePersistentSessionStore = () =>
+  process.env.NODE_ENV === 'production' || process.env.AUTH_SESSION_STORE === 'supabase';
 
 export interface ServerSession {
   id: string;              // Cryptographic session token (hex)
