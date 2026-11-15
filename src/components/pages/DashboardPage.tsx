@@ -3,6 +3,7 @@ import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../context/NavigationContext';
 import { useToast } from '../../context/ToastContext';
 import { ledger } from '../../lib/ledger';
+import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { contactApi, userApi } from '../../lib/api';
 import { BalanceCard } from '../dashboard/BalanceCard';
 import { PortfolioOverview } from '../dashboard/PortfolioOverview';
@@ -131,6 +132,64 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       setLedgerVersion((v) => v + 1);
     });
   }, []);
+
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'live' | 'offline'>('offline');
+  const realtimeSeenRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user?.id || !isSupabaseConfigured()) {
+      setRealtimeStatus('offline');
+      return;
+    }
+
+    setRealtimeStatus('connecting');
+    const channel = supabase
+      .channel(`investor-live-${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'investments', filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        const row = (payload.new || payload.old || {}) as Record<string, any>;
+        const eventKey = `investment:${payload.eventType}:${row.id || ''}`;
+        if (realtimeSeenRef.current.has(eventKey)) return;
+        realtimeSeenRef.current.add(eventKey);
+        if (realtimeSeenRef.current.size > 80) realtimeSeenRef.current.clear();
+        const title = payload.eventType === 'INSERT' ? 'Investment recorded' : 'Investment updated';
+        const amount = Number(row.total_amount_invested || 0);
+        const message = row.property_title
+          ? `${row.property_title}${amount > 0 ? ` · €${amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}` : ''}`
+          : 'Your investment record has changed.';
+        ledger.addUserNotification(user.id, title, message, 'financial');
+        toast.info(title + ': ' + message);
+        setLedgerVersion((version) => version + 1);
+      })
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'ledger_transactions', filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        const row = (payload.new || payload.old || {}) as Record<string, any>;
+        const eventKey = `transaction:${payload.eventType}:${row.id || ''}:${row.status || ''}`;
+        if (realtimeSeenRef.current.has(eventKey)) return;
+        realtimeSeenRef.current.add(eventKey);
+        if (realtimeSeenRef.current.size > 80) realtimeSeenRef.current.clear();
+        const type = String(row.type || 'account').replace(/_/g, ' ');
+        const title = payload.eventType === 'INSERT' ? 'New account activity' : 'Transaction status updated';
+        const amount = Number(row.amount || 0);
+        const status = row.status ? ` · ${String(row.status).replace(/_/g, ' ')}` : '';
+        const message = `${type}${amount > 0 ? ` · €${amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}` : ''}${status}`;
+        ledger.addUserNotification(user.id, title, message, 'financial');
+        toast.info(title + ': ' + message);
+        setLedgerVersion((version) => version + 1);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setRealtimeStatus('live');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setRealtimeStatus('offline');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+      setRealtimeStatus('offline');
+    };
+  }, [user?.id]);
+
 
   useEffect(() => {
     const handleThemeChange = (e: any) => {
