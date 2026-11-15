@@ -51,8 +51,10 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   const [status, setStatus] = useState<'loading' | 'ready' | 'verified' | 'error' | 'expired'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const siteKey =
-    import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || DEFAULT_TEST_SITEKEY;
+  const configuredSiteKey = String(import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || '').trim();
+  // Test keys are allowed only in non-production builds. Production must use
+  // the public site key paired with the secret configured on the API Worker.
+  const siteKey = configuredSiteKey || (!import.meta.env.PROD ? DEFAULT_TEST_SITEKEY : '');
 
   const handleVerified = useCallback(
     (token: string) => {
@@ -80,6 +82,13 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
 
   useEffect(() => {
     let isMounted = true;
+
+    if (!siteKey) {
+      handleError('Cloudflare Turnstile is not configured for this production build. Please contact support.');
+      return () => {
+        isMounted = false;
+      };
+    }
 
     // Load Cloudflare Turnstile Script if not already loaded
     const loadScript = () => {
