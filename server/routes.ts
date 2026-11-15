@@ -9,11 +9,11 @@
  * - /api/v1/deposits, withdrawals, investments, payments/webhooks
  */
 
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
 import { verifyTurnstileToken, requireTurnstile } from './turnstile';
-import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp } from './emailOtp';
+import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
 import {
   handleTranslationRequest,
   handleGetProviders,
@@ -68,6 +68,35 @@ import {
 } from './supabaseDatabase';
 
 const router = Router();
+const DASHBOARD_ACTION_SCOPES = new Set([
+  'investor.withdrawal.create',
+  'investor.investment.create',
+  'admin.deposit.approve',
+  'admin.deposit.reject',
+  'admin.withdrawal.approve',
+  'admin.withdrawal.reject',
+  'admin.user.credit',
+  'admin.user.kyc',
+  'admin.user.status'
+]);
+
+const requireActionEmailVerification = (actionScope: string) =>
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user?.id || !req.user.email) return res.status(401).json({ success: false, error: 'Authentication required.', code: 'AUTH_REQUIRED', requestId: req.id });
+    const grantId = String(req.headers['x-action-verification'] || '');
+    if (!/^[0-9a-f-]{36}$/i.test(grantId)) {
+      return res.status(428).json({ success: false, error: 'Email verification is required for this action.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', actionScope, requestId: req.id });
+    }
+    try {
+      const consumed = await consumeDashboardActionGrant(grantId, req.user.id, actionScope);
+      if (!consumed) return res.status(428).json({ success: false, error: 'The verification has expired or does not match this action. Request a new code.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', actionScope, requestId: req.id });
+      return next();
+    } catch {
+      return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
+    }
+  };
+
+
 const maskLoginEmail = (email: string) => {
   const [local, domain] = email.split('@');
   if (!local || !domain) return 'your registered email';
@@ -186,6 +215,44 @@ router.get('/team', (req: AuthenticatedRequest, res: Response) => {
     total: members.length,
     requestId: req.id
   });
+});
+
+
+router.post('/security/action-code/request', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const actionScope = String(req.body?.actionScope || '');
+  if (!DASHBOARD_ACTION_SCOPES.has(actionScope)) return res.status(400).json({ success: false, error: 'Unsupported protected action.', code: 'INVALID_ACTION_SCOPE', requestId: req.id });
+  try {
+    const issued = await issueDashboardActionOtp(req.user!.email, req.user!.id, actionScope);
+    if (!issued.ok) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached.', code: issued.reason, retryAfter: issued.retryAfter, requestId: req.id });
+    const delivery = await sendEmail({
+      templateId: 'email_verification',
+      recipient: req.user!.email,
+      data: { user_name: req.user!.fullName || req.user!.email.split('@')[0], verification_code: issued.code, expires_in_minutes: 5, action_url: 'https://kretzdespain.com/dashboard' },
+      commandName: 'send_verification_email',
+      idempotencyKey: `dashboard-action-otp-${issued.challengeId}`,
+      bypassAutomationCheck: true
+    });
+    if (!delivery.success) {
+      await cancelEmailOtp(issued.challengeId);
+      return res.status(503).json({ success: false, error: 'Unable to deliver the security code. Please try again later.', code: 'ACTION_EMAIL_DELIVERY_FAILED', requestId: req.id });
+    }
+    return res.json({ success: true, maskedEmail: maskLoginEmail(req.user!.email), expiresInSeconds: 300, actionScope, message: 'A security code has been sent to your registered email address.', requestId: req.id });
+  } catch {
+    return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
+  }
+});
+
+router.post('/security/action-code/verify', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const actionScope = String(req.body?.actionScope || '');
+  const code = String(req.body?.code || '').trim();
+  if (!DASHBOARD_ACTION_SCOPES.has(actionScope)) return res.status(400).json({ success: false, error: 'Unsupported protected action.', code: 'INVALID_ACTION_SCOPE', requestId: req.id });
+  try {
+    const verified = await verifyDashboardActionOtp(req.user!.email, req.user!.id, actionScope, code);
+    if (!verified.valid || !verified.grantId) return res.status(401).json({ success: false, error: 'The code is invalid or expired. Request a new code and try again.', code: 'INVALID_ACTION_EMAIL_CODE', requestId: req.id });
+    return res.json({ success: true, grantId: verified.grantId, expiresInSeconds: 120, actionScope, requestId: req.id });
+  } catch {
+    return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
+  }
 });
 
 const contactLimiter = rateLimiter({
@@ -2000,7 +2067,7 @@ router.patch('/admin/users/:id/profile', requireAdmin, async (req: Authenticated
   }
 });
 
-router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/kyc', requireAdmin, requireActionEmailVerification('admin.user.kyc'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const { id } = req.params;
   const { kycStatus = 'approved', notes } = req.body || {};
@@ -2046,12 +2113,12 @@ const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) 
 };
 
 router.patch('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
-router.post('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
+router.post('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 
 /**
  * POST /api/v1/admin/users/:id/credit
  */
-router.post('/admin/users/:id/credit', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/credit', requireAdmin, requireActionEmailVerification('admin.user.credit'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { amount, currency = 'EUR', method = 'Direct Wire Received', reference, notes } = req.body || {};
   const numericAmount = Number(amount);
@@ -3074,7 +3141,7 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
 /**
  * POST /api/v1/withdrawals
  */
-router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/withdrawals', requireAuth, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.withdrawalsEnabled) {
     return res.status(403).json({
       success: false,
@@ -3257,7 +3324,7 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
@@ -4015,7 +4082,7 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
   });
 });
 
-router.post('/admin/deposits/:depositId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEmailVerification('admin.deposit.approve'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
@@ -4027,7 +4094,7 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, async (req: Auth
   }
 });
 
-router.post('/admin/deposits/:depositId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/reject', requireAdmin, requireActionEmailVerification('admin.deposit.reject'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Transfer verification could not be matched.' });
@@ -4039,7 +4106,7 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, async (req: Authe
   }
 });
 
-router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, requireActionEmailVerification('admin.withdrawal.approve'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
@@ -4051,7 +4118,7 @@ router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, async (req
   }
 });
 
-router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, requireActionEmailVerification('admin.withdrawal.reject'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Withdrawal rejected by finance review.' });
