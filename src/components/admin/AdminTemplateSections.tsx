@@ -559,7 +559,7 @@ export const AdminTemplateSectionView: React.FC<TemplateSectionProps> = ({
   const [baseCurrency, setBaseCurrency] = useState('EUR');
   const [minInvestGlobal, setMinInvestGlobal] = useState('500');
   const [turnstileEnabled, setTurnstileEnabled] = useState(true);
-  const [crispEnabled, setCrispEnabled] = useState(true);
+  const smartsuppConfigured = Boolean(import.meta.env.VITE_SMARTSUPP_KEY?.trim());
   const [gaMeasurementId, setGaMeasurementId] = useState('G-KRETZ202688');
   const [sentryDsn, setSentryDsn] = useState('https://kretz@sentry.io/450912');
   const [metaTitle, setMetaTitle] = useState('Kretz Real Estate | Luxury European SPV Tokenization');
@@ -1836,20 +1836,12 @@ export const AdminTemplateSectionView: React.FC<TemplateSectionProps> = ({
               </div>
               <div className="p-3.5 rounded-xl bg-[#f9faf8] border border-[#e4e6e1] flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-gray-800">Crisp Live Concierge Widget</span>
-                  <p className="text-gray-500 text-[11px]">Direct private chat for high-net-worth investors.</p>
+                  <span className="font-bold text-gray-800">Smartsupp Live Concierge</span>
+                  <p className="text-gray-500 text-[11px]">Official visitor and investor live chat. Hidden on isolated admin routes.</p>
                 </div>
-                <button
-                  onClick={() => {
-                    setCrispEnabled(!crispEnabled);
-                    triggerSuccess(`Crisp Concierge ${!crispEnabled ? 'enabled' : 'disabled'}.`);
-                  }}
-                  className={`px-3 py-1 rounded-lg font-bold cursor-pointer ${
-                    crispEnabled ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-700'
-                  }`}
-                >
-                  {crispEnabled ? 'Active' : 'Disabled'}
-                </button>
+                <span className={`px-3 py-1 rounded-lg text-[11px] font-bold ${smartsuppConfigured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {smartsuppConfigured ? 'Build key configured' : 'Build key not configured'}
+                </span>
               </div>
               <div className="p-3.5 rounded-xl bg-[#f9faf8] border border-[#e4e6e1] space-y-2">
                 <span className="font-bold text-gray-800">Google Analytics 4 Tracking ID</span>
