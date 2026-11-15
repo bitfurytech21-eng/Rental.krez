@@ -1681,22 +1681,15 @@ class LedgerService {
           user.kycDocumentType = doc.documentType;
         }
 
-        // If Deposit Proof with linked reference, auto-credit matching deposit if pending
+        // Deposit proof approval only validates the uploaded document.
+        // Wallet credit must be performed through the explicit administrator deposit approval flow.
         if (doc.category === 'deposit_proof' && doc.transactionReference) {
-          const matchingTx = this.transactions.find(
-            t => t.reference === doc.transactionReference && t.type === 'deposit' && t.status === 'pending'
+          this.createNotification(
+            user.id,
+            'Deposit Proof Approved',
+            'Your payment receipt document was approved. The deposit request still requires a separate administrator deposit approval before wallet credit.',
+            'info'
           );
-          if (matchingTx) {
-            matchingTx.status = 'completed';
-            user.walletBalance = Number((user.walletBalance + matchingTx.amount).toFixed(2));
-            matchingTx.balanceAfter = user.walletBalance;
-            this.createNotification(
-              user.id,
-              'Deposit Confirmed & Credited',
-              `Payment receipt confirmed! €${matchingTx.amount.toFixed(2)} has been credited to your available wallet balance.`,
-              'success'
-            );
-          }
         }
 
         this.createNotification(
