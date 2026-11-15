@@ -48,11 +48,46 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const coordinates = useMemo(() => resolveCoordinates(property), [
-    property.latitude, property.longitude, property.city, property.location,
-  ]);
+  const [geocodedCoordinates, setGeocodedCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const coordinates = useMemo(() => {
+    if (Number.isFinite(property.latitude) && Number.isFinite(property.longitude)) {
+      return { lat: property.latitude as number, lng: property.longitude as number, exact: true };
+    }
+    if (geocodedCoordinates) return { ...geocodedCoordinates, exact: false, geocoded: true };
+    return resolveCoordinates(property);
+  }, [property.latitude, property.longitude, property.city, property.location, geocodedCoordinates]);
   const mapSearch = encodeURIComponent([property.title, property.location, property.city, property.country].filter(Boolean).join(', '));
   const externalMapUrl = `https://www.openstreetmap.org/search?query=${mapSearch}`;
+
+  // Reuse the already-configured public MapTiler key for address geocoding.
+  // No new credential is introduced; verified record coordinates always take priority.
+  useEffect(() => {
+    if ((Number.isFinite(property.latitude) && Number.isFinite(property.longitude))) {
+      setGeocodedCoordinates(null);
+      return;
+    }
+    const mapTilerKey = import.meta.env.VITE_MAPTILER_API_KEY?.trim();
+    const query = [property.location, property.city, property.country].filter(Boolean).join(', ');
+    if (!mapTilerKey || !query) return;
+
+    const controller = new AbortController();
+    const endpoint = `https://api.maptiler.com/geocoding/${encodeURIComponent(query)}.json?limit=1&language=en&key=${encodeURIComponent(mapTilerKey)}`;
+    fetch(endpoint, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Map geocoding failed: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        const point = data?.features?.[0]?.geometry?.coordinates;
+        if (Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1])) {
+          setGeocodedCoordinates({ lng: point[0], lat: point[1] });
+        }
+      })
+      .catch((error) => {
+        if (error?.name !== 'AbortError') console.warn('[PropertyLocationMap] Geocoding unavailable; using the existing approximate location.', error);
+      });
+    return () => controller.abort();
+  }, [property.latitude, property.longitude, property.location, property.city, property.country]);
 
   useEffect(() => {
     if (!mapContainerRef.current || !coordinates) {
@@ -138,7 +173,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
           <div ref={mapContainerRef} className="h-[340px] w-full bg-[#eef2ef] sm:h-[440px]" aria-label={`Map showing ${property.title}`} />
           <div className="flex items-start gap-2 border-t border-[#e5ebe7] bg-[#fbfcfb] px-5 py-3 text-xs text-[#66716b]">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#477a63]" />
-            <span>{coordinates.exact ? 'Pin uses the property coordinates supplied in its record.' : 'Approximate city-centre location. Add verified latitude and longitude to the property record for an exact pin.'} Map data © MapTiler / OpenStreetMap contributors.</span>
+            <span>{coordinates.exact ? 'Pin uses verified coordinates supplied in the property record.' : coordinates.geocoded ? 'Location was resolved through MapTiler Geocoding. Confirm the exact property entrance before relying on this pin.' : 'Approximate city-centre location. Add verified latitude and longitude to the property record for an exact pin.'} Map tiles © MapTiler / OpenStreetMap contributors. Geocoding © MapTiler.</span>
           </div>
         </>
       ) : (
