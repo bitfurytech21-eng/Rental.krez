@@ -24,10 +24,6 @@ export const ContactPage: React.FC = () => {
       setError('Please provide a descriptive inquiry message (min 10 characters).');
       return;
     }
-    if (!turnstileToken) {
-      setError('Please complete the Cloudflare Turnstile human security verification check.');
-      return;
-    }
 
     setLoading(true);
     try {
@@ -39,7 +35,7 @@ export const ContactPage: React.FC = () => {
       });
       setSubmitted(true);
     } catch (err: any) {
-      setError(err?.message || 'Failed to submit inquiry. Please complete the security check again.');
+      setError(err?.message || 'Failed to submit inquiry. Please try again.');
     } finally {
       setLoading(false);
     }
