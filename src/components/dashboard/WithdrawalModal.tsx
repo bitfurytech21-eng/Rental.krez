@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
 import { formatCurrency } from '../../lib/utils';
-import { isValidIBAN } from '../../lib/validation';
+import { isValidIBAN, isValidCryptoAddress } from '../../lib/validation';
 import { ButtonLoader } from '../common/ButtonLoader';
 import { ArrowUpRight, ShieldAlert, CheckCircle2, Building2, Coins, Sparkles, AlertCircle } from 'lucide-react';
 
