@@ -19,20 +19,27 @@ function loadSmartsupp(): boolean {
 
   // Preserve Smartsupp's command queue so chat:open can be called before
   // the vendor script has finished loading.
-  if (typeof window.smartsupp !== 'function') {
+  if (!window.smartsupp) {
     const queue: any = function (...args: any[]) {
-      queue.q.push(args);
+      queue._.push(args);
     };
-    queue.q = [];
+    queue._ = [];
     window.smartsupp = queue;
   }
 
   if (!document.getElementById(SMARTSUPP_SCRIPT_ID)) {
     const script = document.createElement('script');
     script.id = SMARTSUPP_SCRIPT_ID;
+    script.type = 'text/javascript';
+    script.charset = 'utf-8';
     script.async = true;
     script.src = 'https://www.smartsuppchat.com/loader.js?';
-    document.head.appendChild(script);
+    const firstScript = document.getElementsByTagName('script')[0];
+    if (firstScript?.parentNode) {
+      firstScript.parentNode.insertBefore(script, firstScript);
+    } else {
+      document.head.appendChild(script);
+    }
   }
 
   return true;
