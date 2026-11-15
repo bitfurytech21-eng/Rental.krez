@@ -2116,6 +2116,10 @@ router.post('/admin/users/:id/credit', requireAdmin, requireActionEmailVerificat
  * GET /api/v1/marketplace/listings
  */
 router.get(['/marketplace/listings', '/properties', '/listings'], async (req: AuthenticatedRequest, res: Response) => {
+  // Never expose the in-memory demonstration catalogue to production investors.
+  if (process.env.NODE_ENV === 'production' && !isSupabaseServerConfigured()) {
+    return res.status(503).json({ success: false, error: 'The verified property catalogue is not configured.', code: 'PROPERTY_DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
   const { search, type, status, location, minPrice, maxPrice, sortBy, page, limit } = req.query;
   let items = [...mockListings];
   if (isSupabaseServerConfigured()) {
@@ -2207,6 +2211,10 @@ router.get(['/marketplace/listings', '/properties', '/listings'], async (req: Au
  * GET /api/v1/marketplace/listings/:id
  */
 router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: AuthenticatedRequest, res: Response) => {
+  // Never expose in-memory demonstration property details in production.
+  if (process.env.NODE_ENV === 'production' && !isSupabaseServerConfigured()) {
+    return res.status(503).json({ success: false, error: 'The verified property catalogue is not configured.', code: 'PROPERTY_DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
   const { id } = req.params;
   let found = mockListings.find(p => p.id === id || p.slug === id);
   if (isSupabaseServerConfigured()) {
