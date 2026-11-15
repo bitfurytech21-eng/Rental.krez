@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../context/NavigationContext';
 import { useToast } from '../../context/ToastContext';
+import { showPlatformNotification } from '../../lib/browserNotifications';
 import { ledger } from '../../lib/ledger';
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { contactApi, userApi } from '../../lib/api';
@@ -159,7 +160,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           ? `${row.property_title}${amount > 0 ? ` · €${amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}` : ''}`
           : 'Your investment record has changed.';
         ledger.addUserNotification(user.id, title, message, 'financial');
-        toast.info(title + ': ' + message);
+        if (!showPlatformNotification(title, message)) toast.info(title + ': ' + message);
         setLedgerVersion((version) => version + 1);
       })
       .on('postgres_changes', {
@@ -176,7 +177,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         const status = row.status ? ` · ${String(row.status).replace(/_/g, ' ')}` : '';
         const message = `${type}${amount > 0 ? ` · €${amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}` : ''}${status}`;
         ledger.addUserNotification(user.id, title, message, 'financial');
-        toast.info(title + ': ' + message);
+        if (!showPlatformNotification(title, message)) toast.info(title + ': ' + message);
         setLedgerVersion((version) => version + 1);
       })
       .subscribe((status) => {
