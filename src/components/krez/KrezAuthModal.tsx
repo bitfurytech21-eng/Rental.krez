@@ -113,12 +113,7 @@ export const KrezAuthModal: React.FC = () => {
           setBusy(false);
           return;
         }
-        if (!turnstileToken) {
-          setError('Please complete the Cloudflare security check.');
-          setBusy(false);
-          return;
-        }
-        const res = await register(cleanEmail, password, cleanName, 'investor', 'individual_investor', undefined, undefined, undefined, turnstileToken);
+        const res = await register(cleanEmail, password, cleanName, 'investor', 'individual_investor');
         if (res.requiresVerification) {
           setNotice('Account created. Check your inbox to confirm your email address, or sign in once verified.');
           setMode('login');
@@ -286,17 +281,6 @@ export const KrezAuthModal: React.FC = () => {
             />
           )}
 
-          {mode === 'register' && (
-            <TurnstileWidget
-              action="register"
-              theme="light"
-              label="Security verification"
-              onVerify={setTurnstileToken}
-              onExpire={() => setTurnstileToken('')}
-              onError={() => setTurnstileToken('')}
-            />
-          )}
-
           {mode === 'login' && requiresEmailCode && (
             <div>
               <label htmlFor="krez-auth-email-code" className="block text-xs font-semibold tracking-widest uppercase text-muted">
@@ -333,7 +317,7 @@ export const KrezAuthModal: React.FC = () => {
 
           <button
             type="submit"
-            disabled={busy || ((mode === 'register' || mode === 'login') && !turnstileToken)}
+            disabled={busy || (mode === 'login' && !turnstileToken)}
             className="w-full rounded-pill bg-primary px-6 py-3.5 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
           >
             {busy
