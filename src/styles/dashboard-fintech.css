@@ -243,3 +243,202 @@
     border-radius: 14px;
   }
 }
+
+
+/* L'Agence-inspired investor portal refinement */
+.app-shell {
+  --dash-bg: #0b0f10;
+  --dash-bg-gradient: linear-gradient(180deg, #0b0f10 0%, #0d1315 100%);
+  --dash-sidebar: #0e1315;
+  --dash-sidebar-border: #1f2c33;
+  --dash-sidebar-card: #121a1f;
+  --dash-sidebar-active-bg: #17382f;
+  --dash-sidebar-active-text: #f2f5f4;
+  --dash-sidebar-hover-bg: #172226;
+  --dash-header: rgba(11, 15, 16, .94);
+  --dash-header-border: #1f2c33;
+  --dash-header-controls: #121a1f;
+  --dash-header-controls-border: #1f2c33;
+  --dash-card: #121a1f;
+  --dash-card-border: #1f2c33;
+  --dash-card-hover: #172329;
+  --dash-card-shadow: 0 10px 28px rgba(0,0,0,.16);
+  --dash-inner: #10191d;
+  --dash-inner-border: #25353b;
+  --dash-elevated: #19262b;
+  --dash-text: #f2f5f4;
+  --dash-text-secondary: #aebdc1;
+  --dash-text-muted: #8fa1a8;
+  --dash-hover: rgba(111,216,176,.08);
+  --dash-accent: #6fd8b0;
+  --dash-cyan: #85c9d5;
+  --dash-verification: #6fd8b0;
+  --dash-positive: #6fd8b0;
+  --dash-info: #85c9d5;
+  --dash-chart-secondary: #9ca8c9;
+  --dash-warm: #d8b77c;
+  --dash-negative: #e58d91;
+  --dash-accent-gold: #d8b77c;
+  --dash-highlight: rgba(111,216,176,.09);
+}
+.app-shell.dashboard-light {
+  --dash-bg: #f4f7f6;
+  --dash-bg-gradient: linear-gradient(180deg, #f7faf9 0%, #edf3f1 100%);
+  --dash-sidebar: #ffffff;
+  --dash-sidebar-border: #e2eae7;
+  --dash-sidebar-card: #f3f7f5;
+  --dash-sidebar-active-bg: #e4f5ed;
+  --dash-sidebar-active-text: #153a2d;
+  --dash-sidebar-hover-bg: #f0f6f3;
+  --dash-header: rgba(255,255,255,.94);
+  --dash-header-border: #e2eae7;
+  --dash-header-controls: #f4f8f6;
+  --dash-header-controls-border: #e2eae7;
+  --dash-card: #ffffff;
+  --dash-card-border: #e1e9e6;
+  --dash-card-hover: #f8fbfa;
+  --dash-card-shadow: 0 8px 24px rgba(18,52,42,.055);
+  --dash-inner: #f5f8f7;
+  --dash-inner-border: #e3ebe7;
+  --dash-elevated: #edf4f1;
+  --dash-text: #172b28;
+  --dash-text-secondary: #536b65;
+  --dash-text-muted: #7b918a;
+  --dash-hover: rgba(15,111,80,.06);
+  --dash-accent: #16865f;
+  --dash-cyan: #267e91;
+  --dash-verification: #16865f;
+  --dash-positive: #16865f;
+  --dash-info: #267e91;
+  --dash-chart-secondary: #756eaa;
+  --dash-warm: #986a2c;
+  --dash-negative: #b94f5a;
+  --dash-accent-gold: #986a2c;
+  --dash-highlight: #e6f4ed;
+}
+.app-shell .app-content-scroll {
+  background: var(--dash-bg-gradient);
+}
+.app-shell .app-content-scroll > div {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding: 22px clamp(14px, 2.4vw, 28px) 36px;
+}
+.app-shell .app-sidebar,
+.app-shell header,
+.app-shell .mobile-bottom-nav {
+  box-shadow: none;
+  backdrop-filter: blur(16px);
+}
+.app-shell .app-sidebar {
+  border-right: 1px solid var(--dash-sidebar-border);
+}
+.app-shell .app-sidebar nav {
+  gap: 4px;
+  padding: 12px 10px;
+}
+.app-shell .app-sidebar nav button {
+  min-height: 42px;
+  border-radius: 12px;
+  font-size: 12px;
+  transition: background-color .16s ease, color .16s ease;
+}
+.app-shell .cinematic-card,
+.app-shell .dashboard-panel,
+.app-shell .dash-card {
+  border: 1px solid var(--dash-card-border);
+  border-radius: 18px;
+  background: var(--dash-card);
+  box-shadow: var(--dash-card-shadow);
+}
+.app-shell .cinematic-card {
+  background: linear-gradient(135deg, #14251f 0%, #121a1f 75%);
+  border-color: rgba(111,216,176,.2);
+}
+.app-shell .cinematic-btn-primary {
+  background: var(--dash-accent);
+  color: #08251b;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  box-shadow: none;
+  font-weight: 700;
+  transition: filter .16s ease, transform .16s ease;
+}
+.app-shell .cinematic-btn-primary:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+.app-shell .cinematic-btn,
+.app-shell .dashboard-secondary-action {
+  border-radius: 13px;
+  background: transparent;
+  border: 1px solid var(--dash-inner-border);
+  color: var(--dash-text);
+}
+.app-shell button,
+.app-shell a,
+.app-shell input,
+.app-shell select,
+.app-shell textarea {
+  transition-duration: .16s;
+}
+.app-shell .mobile-bottom-nav {
+  border-top: 1px solid var(--dash-sidebar-border);
+  background: rgba(14,19,21,.96);
+  padding-top: 9px;
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+.app-shell.dashboard-light .mobile-bottom-nav {
+  background: rgba(255,255,255,.96);
+}
+.app-shell .mobile-bottom-nav button {
+  min-height: 46px;
+  font-size: 11px;
+}
+.app-shell .mobile-bottom-nav button[aria-current="page"] {
+  color: var(--dash-accent) !important;
+}
+.app-shell .dashboard-section {
+  gap: 18px;
+}
+.app-shell .dashboard-section-heading {
+  padding: 2px 1px 6px;
+}
+.app-shell .dashboard-eyebrow {
+  color: var(--dash-accent);
+  letter-spacing: .12em;
+}
+.app-shell .dashboard-panel {
+  padding: clamp(14px, 2vw, 20px);
+}
+.app-shell :is(.rounded-2xl, .rounded-xl) {
+  scroll-margin-top: 84px;
+}
+@media (max-width: 767px) {
+  .app-shell .app-content-scroll > div {
+    padding: 14px 14px 24px;
+  }
+  .app-shell .dashboard-section {
+    gap: 14px;
+  }
+  .app-shell .dashboard-panel,
+  .app-shell .cinematic-card,
+  .app-shell .dash-card {
+    border-radius: 16px;
+  }
+  .app-shell .mobile-bottom-nav {
+    position: sticky;
+    bottom: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
