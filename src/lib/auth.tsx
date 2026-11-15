@@ -39,7 +39,8 @@ interface AuthContextType {
     accountType?: AccountType,
     country?: string,
     phoneNumber?: string,
-    countryCode?: string
+    countryCode?: string,
+    turnstileToken?: string
   ) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   refreshUser: () => void;
