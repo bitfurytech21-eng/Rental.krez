@@ -105,65 +105,7 @@ let emailSettings: EmailSenderSettings = {
 };
 
 // Activity logs with rich initial records
-const emailLogs: EmailLogEntry[] = [
-  {
-    id: 'log-eml-init-01',
-    eventId: 'evt-reg-98124',
-    commandName: 'send_welcome_email',
-    templateId: 'welcome',
-    templateName: 'Welcome Email',
-    recipient: 'investor@kretz.com',
-    subject: "Welcome to L'Agence Kretz — Let's Get Started",
-    status: 'delivered',
-    deliveryMode: 'sandbox',
-    provider: 'Sandbox Engine',
-    sentAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-    deliveredAt: new Date(Date.now() - 3600000 * 24 + 1800).toISOString(),
-    deliveryTimeMs: 142,
-    previewSnippet: "Welcome to L'Agence Kretz! You're already on your way to building a high-yielding real estate portfolio.",
-    idempotencyKey: 'idemp-welcome-usr-1',
-    retryCount: 0,
-    reference: 'KZ-WELCOME-INIT'
-  },
-  {
-    id: 'log-eml-init-02',
-    eventId: 'evt-verif-741920',
-    commandName: 'send_verification_email',
-    templateId: 'email_verification',
-    templateName: 'Email Verification',
-    recipient: 'investor@kretz.com',
-    subject: 'Confirm Your Email Address & Verification Code',
-    status: 'delivered',
-    deliveryMode: 'sandbox',
-    provider: 'Sandbox Engine',
-    sentAt: new Date(Date.now() - 3600000 * 18).toISOString(),
-    deliveredAt: new Date(Date.now() - 3600000 * 18 + 1200).toISOString(),
-    deliveryTimeMs: 98,
-    previewSnippet: 'This is your verification code: 4 8 6 2. Enter this code within the next 15 minutes.',
-    idempotencyKey: 'idemp-verif-usr-1',
-    retryCount: 0,
-    reference: 'KZ-VERIF-CODE'
-  },
-  {
-    id: 'log-eml-init-03',
-    eventId: 'evt-tx-48102',
-    commandName: 'send_transaction_receipt',
-    templateId: 'transaction_receipt',
-    templateName: 'Transaction Confirmation',
-    recipient: 'investor@kretz.com',
-    subject: 'Transaction Confirmation: €10,000.00 SPV Fractional Allocation',
-    status: 'delivered',
-    deliveryMode: 'sandbox',
-    provider: 'Sandbox Engine',
-    sentAt: new Date(Date.now() - 3600000 * 6).toISOString(),
-    deliveredAt: new Date(Date.now() - 3600000 * 6 + 1500).toISOString(),
-    deliveryTimeMs: 112,
-    previewSnippet: 'Thank you for your purchase! Your fractional SPV token allocation in Villa El Mirador has been confirmed.',
-    idempotencyKey: 'idemp-tx-48102',
-    retryCount: 0,
-    reference: 'KZ-CERT-VILLA-001'
-  }
-];
+const emailLogs: EmailLogEntry[] = []
 
 // Idempotency cache to prevent duplicate dispatches
 const processedIdempotencyKeys = new Map<string, { timestamp: number; logId: string }>();
