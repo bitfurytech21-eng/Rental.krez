@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
           </button>
 
           {/* Complete Desktop Horizontal Navigation Bar */}
-          <nav aria-label="Desktop primary navigation" className="hidden lg:flex items-center gap-4.5 xl:gap-6">
+          <nav aria-label="Desktop primary navigation" className="hidden 2xl:flex items-center gap-3 xl:gap-4">
             {PRIMARY_NAV_ITEMS.map((item) => {
               const isActive =
                 cleanPath === item.to ||
@@ -111,7 +111,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                   key={item.to}
                   type="button"
                   onClick={() => handleNav(item.to)}
-                  className={`text-xs uppercase font-heading font-bold tracking-widest transition-all cursor-pointer relative py-1.5 ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`text-xs uppercase font-heading font-bold tracking-widest transition-all cursor-pointer relative py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c59b4c] ${
                     isActive
                       ? 'text-[#c59b4c]'
                       : 'hover:text-[#c59b4c] opacity-90 hover:opacity-100'
@@ -206,7 +207,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                   key={item.to}
                   type="button"
                   onClick={() => handleNav(item.to)}
-                  className={`text-3xl sm:text-4xl font-heading font-light tracking-widest uppercase transition-colors duration-fast cursor-pointer ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`text-3xl sm:text-4xl font-heading font-light tracking-widest uppercase transition-colors duration-fast cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c59b4c] ${
                     isActive
                       ? 'text-accent font-normal'
                       : 'text-foreground hover:text-accent'
