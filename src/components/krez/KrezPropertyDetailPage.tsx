@@ -61,6 +61,13 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
     if (!lightboxOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [lightboxOpen]);
+
+  React.useEffect(() => {
+    if (!lightboxOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setLightboxOpen(false);
       if (event.key === 'ArrowLeft' && galleryPhotos.length > 1) {
@@ -71,10 +78,7 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, galleryPhotos, activePhotoIndex]);
 
   const openGallery = (photo: string) => {
