@@ -158,7 +158,7 @@ alter table public.investments
 -- Backfill the columns needed by the current investment service. Preserve existing
 -- values; historical rows whose property_id is not an investment_plans.id remain
 -- readable with a null plan_id rather than being assigned to the wrong property.
-do $
+do $$
 begin
   if exists (
     select 1 from information_schema.columns
@@ -172,7 +172,7 @@ begin
     $sql$;
   end if;
 end;
-$;
+$$;
 
 update public.investments
 set monthly_target_rate = coalesce(monthly_target_rate, round(coalesce(estimated_annual_yield, 0) / 12, 2)),
@@ -192,7 +192,7 @@ alter table public.investments
 
 -- For legacy tables retain the old required columns and populate them on new
 -- inserts made by the current RPC, which writes the normalized plan_id fields.
-do $
+do $$
 begin
   if exists (
     select 1 from information_schema.columns
@@ -242,7 +242,7 @@ begin
     end if;
   end if;
 end;
-$;
+$$;
 
 create index if not exists idx_investments_user_id on public.investments(user_id);
 create index if not exists idx_investments_plan_id on public.investments(plan_id);
