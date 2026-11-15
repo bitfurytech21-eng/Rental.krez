@@ -1073,6 +1073,46 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                   </div>
 
+                  {/* Fast paths to the investor's most-used account areas */}
+                  <section aria-label="Dashboard quick access" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('portfolio')}
+                      className="cinematic-card group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-[#35C9F5]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#35C9F5]"
+                      aria-label={`Open portfolio, ${investments.length} holdings`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#35C9F5]/10 text-[#35C9F5]"><Building2 className="h-4 w-4" /></span>
+                        <span className="min-w-0"><span className="block text-xs font-semibold text-white">My portfolio</span><span className="block text-[11px] text-[#999999]">View holdings</span></span>
+                      </span>
+                      <span className="text-sm font-bold tabular-nums text-[#35C9F5]">{investments.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('transactions')}
+                      className="cinematic-card group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-[#35C9F5]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#35C9F5]"
+                      aria-label={`Open transaction history, ${transactions.length} records`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#35C9F5]/10 text-[#35C9F5]"><History className="h-4 w-4" /></span>
+                        <span className="min-w-0"><span className="block text-xs font-semibold text-white">Transactions</span><span className="block text-[11px] text-[#999999]">Account activity</span></span>
+                      </span>
+                      <span className="text-sm font-bold tabular-nums text-[#35C9F5]">{transactions.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('notifications')}
+                      className="cinematic-card group flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-[#35C9F5]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#35C9F5]"
+                      aria-label={`Open notifications, ${notifications.filter(n => !n.read).length} unread`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#35C9F5]/10 text-[#35C9F5]"><Bell className="h-4 w-4" /></span>
+                        <span className="min-w-0"><span className="block text-xs font-semibold text-white">Notifications</span><span className="block text-[11px] text-[#999999]">Updates and alerts</span></span>
+                      </span>
+                      <span className="text-sm font-bold tabular-nums text-[#35C9F5]">{notifications.filter(n => !n.read).length}</span>
+                    </button>
+                  </section>
+
                   {notifications.filter(n => !n.read).length > 0 && (() => {
                     const unreadList = notifications.filter(n => !n.read);
                     const firstUnread = unreadList[0];
