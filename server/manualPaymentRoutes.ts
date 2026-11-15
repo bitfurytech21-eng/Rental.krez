@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import crypto from 'crypto';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin } from './middleware';
-import { getSupabaseAdmin, isSupabaseServerConfigured, runFinancialRpc, toApiTransaction } from './supabaseDatabase';
+import { getSupabaseAdmin, isSupabaseServerConfigured } from './supabaseDatabase';
 import { consumeDashboardActionGrant } from './emailOtp';
 import { sendEmail } from './emailService';
 import { logger } from './logger';
@@ -125,20 +125,21 @@ manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: Au
     const { error: uploadError } = await client.storage.from('manual-payment-proofs').upload(uploadedPath, bytes, { contentType: mimeType, upsert: false });
     if (uploadError) throw uploadError;
     const fee = method.fee_type === 'fixed' ? Number(method.fee_value) : method.fee_type === 'percent' ? amount * Number(method.fee_value) / 100 : 0;
-    const { data: row, error: insertError } = await client.from('payment_transactions').insert({
-      id: crypto.randomUUID(), user_id: userId, type: 'deposit', amount, currency: 'EUR',
-      status: 'pending', payment_method: method.name, provider: 'manual', reference,
+    const { data: row, error: insertError } = await client.from('manual_deposit_submissions').insert({
+      id: crypto.randomUUID(), user_id: userId, amount, currency: 'EUR',
+      status: 'pending', payment_method: method.name, reference,
       fee_amount: Number(fee.toFixed(2)), gross_amount: Number((amount + fee).toFixed(2)),
       manual_transaction_id: transactionId, sender_name: senderName, payment_date: paymentDate,
-      proof_storage_path: uploadedPath,
-      notes: JSON.stringify({ extraValues, fee: Number(fee.toFixed(2)), methodId: method.id })
-    }).select('*,user_profiles(email,full_name)').single();
+      proof_storage_path: uploadedPath, fee_amount: Number(fee.toFixed(2)),
+      gross_amount: Number((amount + fee).toFixed(2)), extra_values: extraValues,
+      method_id: method.id
+    }).select('*,profiles(email,full_name)').single();
     if (insertError) throw insertError;
     sendEmail({
       templateId: 'deposit_received', recipient: req.user!.email,
       data: { fullName: req.user!.fullName || 'Valued Investor', amount: amount.toFixed(2), currency: 'EUR', reference, method: method.name, status: 'Pending verification' }
     }).catch(error => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'manual-deposit-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: error?.message || 'Manual deposit email failed.' }));
-    return res.status(201).json({ success: true, data: toApiTransaction(row), message: 'Payment proof received. Your deposit remains pending until finance verification.', requestId: req.id });
+    return res.status(201).json({ success: true, data: row, message: 'Payment proof received. Your deposit remains pending until finance verification.', requestId: req.id });
   } catch (error: any) {
     if (uploadedPath) await client.storage.from('manual-payment-proofs').remove([uploadedPath]).catch(() => undefined);
     const duplicate = String(error?.code || '') === '23505' || String(error?.message || '').toLowerCase().includes('duplicate');
@@ -186,8 +187,7 @@ manualPaymentRouter.patch('/admin/methods/:id', requireAdmin, async (req: Authen
 manualPaymentRouter.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   if (!configured(res, req)) return;
   try {
-    let query = getSupabaseAdmin().from('payment_transactions').select('*,user_profiles(email,full_name)')
-      .eq('type', 'deposit').eq('provider', 'manual').order('created_at', { ascending: false }).limit(300);
+    let query = getSupabaseAdmin().from('manual_deposit_submissions').select('*,profiles(email,full_name)').order('created_at', { ascending: false }).limit(300);
     if (typeof req.query.status === 'string' && ['pending','completed','rejected'].includes(req.query.status)) query = query.eq('status', req.query.status);
     const { data, error } = await query;
     if (error) throw error;
@@ -198,8 +198,8 @@ manualPaymentRouter.get('/admin/deposits', requireAdmin, async (req: Authenticat
 manualPaymentRouter.get('/admin/deposits/:id/proof', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   if (!configured(res, req)) return;
   try {
-    const { data: row, error } = await getSupabaseAdmin().from('payment_transactions')
-      .select('proof_storage_path').eq('id', req.params.id).eq('provider', 'manual').maybeSingle();
+    const { data: row, error } = await getSupabaseAdmin().from('manual_deposit_submissions')
+      .select('proof_storage_path').eq('id', req.params.id).maybeSingle();
     if (error) throw error;
     if (!row?.proof_storage_path) return res.status(404).json({ success: false, error: 'Proof file not found.', code: 'PROOF_NOT_FOUND', requestId: req.id });
     const { data, error: signedError } = await getSupabaseAdmin().storage.from('manual-payment-proofs').createSignedUrl(row.proof_storage_path, 60);
@@ -221,22 +221,21 @@ manualPaymentRouter.post('/admin/deposits/:id/review', requireAdmin, async (req:
     const verified = await consumeDashboardActionGrant(grantId, req.user!.id, actionScope);
     if (!verified) return res.status(428).json({ success: false, error: 'The email verification has expired or does not match this action.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', requestId: req.id });
     const client = getSupabaseAdmin();
-    const { data: current, error: readError } = await client.from('payment_transactions')
-      .select('*,user_profiles(email,full_name)').eq('id', req.params.id).eq('type', 'deposit').eq('provider', 'manual').maybeSingle();
+    const { data: current, error: readError } = await client.from('manual_deposit_submissions')
+      .select('*,profiles(email,full_name)').eq('id', req.params.id).maybeSingle();
     if (readError) throw readError;
     if (!current) return res.status(404).json({ success: false, error: 'Manual deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
     if (current.status !== 'pending') return res.status(409).json({ success: false, error: 'This deposit has already been reviewed.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
-    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: current.id, p_admin_id: req.user!.id, p_approve: approve, p_reason: approve ? null : reason });
-    const { error: auditError } = await client.from('payment_transactions').update({
-      reviewed_by: req.user!.id, reviewed_at: new Date().toISOString(), rejection_reason: approve ? null : reason
-    }).eq('id', current.id).eq('status', approve ? 'completed' : 'rejected');
-    if (auditError) throw auditError;
-    const recipient = current.user_profiles?.email;
+    const { data: reviewResult, error: reviewError } = await client.rpc('kretz_review_manual_deposit', {
+      p_submission_id: current.id, p_admin_id: req.user!.id, p_approve: approve, p_reason: approve ? null : reason
+    });
+    if (reviewError) throw reviewError;
+    const recipient = current.profiles?.email;
     if (recipient) sendEmail({
       templateId: approve ? 'deposit_confirmed' : 'deposit_received', recipient,
-      data: { fullName: current.user_profiles?.full_name || 'Valued Investor', amount: Number(current.amount).toFixed(2), currency: current.currency || 'EUR', reference: current.reference, reason }
+      data: { fullName: current.profiles?.full_name || 'Valued Investor', amount: Number(current.amount).toFixed(2), currency: current.currency || 'EUR', reference: current.reference, reason }
     }).catch(error => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'manual-review-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: error?.message || 'Manual deposit decision email failed.' }));
-    return res.json({ success: true, data: toApiTransaction(row), message: approve ? 'Deposit approved and wallet credited.' : 'Deposit rejected.', requestId: req.id });
+    return res.json({ success: true, data: reviewResult, message: approve ? 'Deposit approved and wallet credited.' : 'Deposit rejected.', requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
     const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
