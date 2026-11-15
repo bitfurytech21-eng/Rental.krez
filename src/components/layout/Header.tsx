@@ -169,7 +169,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               onClick={() => setMenuOpen((prev) => !prev)}
               aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={menuOpen}
-              className="flex flex-col justify-center gap-[6px] p-2 cursor-pointer transition-opacity hover:opacity-75"
+              aria-controls="krez-navigation-drawer"
+              className="flex min-h-11 min-w-11 flex-col justify-center gap-[6px] p-2 cursor-pointer transition-opacity hover:opacity-75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c59b4c]"
             >
               <span
                 className={`block h-[2px] w-7 bg-current transition-all duration-300 ${
@@ -189,7 +190,8 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
       {/* Expanded Full-Screen Overlay Navigation Drawer */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-40 flex flex-col justify-between bg-background px-gutter pt-28 pb-10 md:px-gutter-md lg:px-gutter-lg"
+          id="krez-navigation-drawer"
+          className="fixed inset-0 z-40 flex min-h-[100dvh] max-h-[100dvh] flex-col justify-between overflow-y-auto overscroll-contain bg-background px-gutter pt-[calc(7rem+env(safe-area-inset-top))] pb-[calc(2.5rem+env(safe-area-inset-bottom))] md:px-gutter-md lg:px-gutter-lg"
           role="dialog"
           aria-modal="true"
           aria-label="Site navigation"
@@ -226,7 +228,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
                 <button
                   type="button"
                   onClick={() => handleNav('/dashboard')}
-                  className="font-medium uppercase tracking-widest text-foreground hover:text-accent transition-colors duration-fast cursor-pointer"
+                  className="min-h-11 font-medium uppercase tracking-widest text-foreground hover:text-accent transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c59b4c] cursor-pointer"
                 >
                   Investor Dashboard
                 </button>
@@ -234,35 +236,35 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
               <button
                 type="button"
                 onClick={() => handleNav('/club')}
-                className="uppercase tracking-widest text-[#c59b4c] hover:text-foreground transition-colors duration-fast cursor-pointer font-bold"
+                className="min-h-11 uppercase tracking-widest text-[#c59b4c] hover:text-foreground transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c59b4c] cursor-pointer font-bold"
               >
                 Club Privé
               </button>
               <button
                 type="button"
                 onClick={() => handleNav('/insights')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+                className="min-h-11 uppercase tracking-widest hover:text-foreground transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c59b4c] cursor-pointer"
               >
                 Insights
               </button>
               <button
                 type="button"
                 onClick={() => handleNav('/trust')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+                className="min-h-11 uppercase tracking-widest hover:text-foreground transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c59b4c] cursor-pointer"
               >
                 Trust Centre
               </button>
               <button
                 type="button"
                 onClick={() => handleNav('/legal')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+                className="min-h-11 uppercase tracking-widest hover:text-foreground transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c59b4c] cursor-pointer"
               >
                 Legal
               </button>
               <button
                 type="button"
                 onClick={() => handleNav('/token')}
-                className="uppercase tracking-widest hover:text-foreground transition-colors duration-fast cursor-pointer"
+                className="min-h-11 uppercase tracking-widest hover:text-foreground transition-colors duration-fast focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c59b4c] cursor-pointer"
               >
                 Solana Infrastructure
               </button>
