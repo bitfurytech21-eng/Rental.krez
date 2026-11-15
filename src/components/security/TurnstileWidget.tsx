@@ -33,7 +33,7 @@ interface TurnstileWidgetProps {
   label?: string;
 }
 
-const DEFAULT_TEST_SITEKEY = '0x4AAAAAAGAW16GKNQCPgkic';
+const DEFAULT_SITEKEY = '0x4AAAAAAGCDaa0rYy7lvf9a';
 const SCRIPT_ID = 'cf-turnstile-script';
 const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 let scriptPromise: Promise<void> | null = null;
@@ -120,8 +120,10 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   callbacksRef.current = { onVerify, onExpire, onError };
 
   const configuredSiteKey = String(import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || '').trim();
-  // Never use a test sitekey in production.
-  const siteKey = configuredSiteKey || (!import.meta.env.PROD ? DEFAULT_TEST_SITEKEY : '');
+  // Public sitekey for the newly created production Turnstile widget.
+  // A deployment-specific VITE_CLOUDFLARE_TURNSTILE_SITE_KEY may override it.
+  // The matching secret key is only configured on the API Worker.
+  const siteKey = configuredSiteKey || DEFAULT_SITEKEY;
 
   useEffect(() => {
     let cancelled = false;
