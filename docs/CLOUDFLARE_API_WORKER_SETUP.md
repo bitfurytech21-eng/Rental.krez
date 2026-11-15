@@ -56,6 +56,10 @@ Do not set `AUTH_SESSION_STORE=supabase` before the migration is applied and the
 When the frontend is configured with Supabase Auth, the browser's Supabase sign-up is the account-creation authority. The frontend must not submit the same credentials a second time to the legacy `/auth/register` endpoint. If Supabase requires email confirmation, the UI must remain unauthenticated until a real Supabase session is issued; never substitute a locally fabricated `sess_*` token.
 
 
+## Email OTP login verification
+
+Apply `supabase/migrations/20261115000001_email_otp_challenges.sql` before deploying the email-code login flow. Apply `supabase/migrations/20261115000002_dashboard_action_email_otp.sql` before enabling action verification. The API issues a five-minute code for each specific protected action and returns a two-minute single-use grant after successful verification. Protected endpoints consume a grant bound to the authenticated user and exact action scope. Investor and administrator login now request a six-digit code through the existing Resend email service. Codes expire after five minutes, are single-use, have a five-attempt limit, and are rate-limited per email and purpose. The Worker uses the existing `SESSION_SECRET` to HMAC code digests; do not add or expose a new key. The existing Resend sender configuration must be live and verified.
+
 ## Durable administrator authentication
 
 Apply `supabase/migrations/20261113000003_durable_admin_auth.sql` before deploying the API Worker changes. The migration creates private tables for the single administrator credential record, signed-session revocation/expiry, and persistent login lockouts. Browser roles cannot read or write these tables; only the Worker service-role client has grants.
