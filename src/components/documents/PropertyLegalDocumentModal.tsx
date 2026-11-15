@@ -148,11 +148,39 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
   const notarizationDate = document.updatedAt || '2026-02-14';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div className="kretz-legal-document fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      <style>{`
+        .kretz-legal-document { --legal-ink:#23272f; --legal-navy:#14213d; --legal-gold:#a8864f; --legal-paper:#f7f2e8; }
+        .kretz-legal-document .legal-toolbar { background:#14213d; border-color:rgba(168,134,79,.55); }
+        .kretz-legal-document .legal-paper { background:var(--legal-paper); color:var(--legal-ink); border:1px solid rgba(168,134,79,.55); box-shadow:0 12px 28px rgba(60,45,20,.22),inset 0 0 40px rgba(120,95,50,.10); }
+        .kretz-legal-document .legal-paper h1 { color:var(--legal-navy); letter-spacing:.01em; }
+        .kretz-legal-document .legal-paper h3 { color:var(--legal-navy)!important; border-color:rgba(168,134,79,.65)!important; letter-spacing:.035em; }
+        .kretz-legal-document .legal-paper table thead tr { background:#eee6d7!important; color:var(--legal-navy)!important; }
+        .kretz-legal-document .legal-paper table th,.kretz-legal-document .legal-paper table td { border-color:rgba(168,134,79,.42)!important; }
+        .kretz-legal-document .legal-paper .legal-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:1.5rem 0; border-top:1px solid var(--legal-gold); border-bottom:1px solid var(--legal-gold); }
+        .kretz-legal-document .legal-paper .legal-meta > div { padding:12px 5px; text-align:center; border-right:1px solid rgba(168,134,79,.35); min-width:0; }
+        .kretz-legal-document .legal-paper .legal-meta > div:last-child { border-right:0; }
+        .kretz-legal-document .legal-paper .legal-meta strong { display:block; color:var(--legal-navy); font:700 14px Georgia,serif; overflow-wrap:anywhere; }
+        .kretz-legal-document .legal-paper .legal-meta small { display:block; margin-top:4px; color:#6b665c; font:8px Arial,sans-serif; letter-spacing:1.5px; text-transform:uppercase; }
+        .kretz-legal-document .legal-paper .legal-section-label { color:var(--legal-gold); font:700 9px Arial,sans-serif; letter-spacing:2px; text-transform:uppercase; }
+        @media print {
+          @page { size:${paperSize === 'A4' ? 'A4' : 'legal'}; margin:0; }
+          body { background:#f7f2e8!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+          .kretz-legal-document { position:static!important; display:block!important; padding:0!important; overflow:visible!important; background:none!important; }
+          .kretz-legal-document > div { width:100%!important; max-width:none!important; max-height:none!important; overflow:visible!important; border:0!important; border-radius:0!important; box-shadow:none!important; }
+          .kretz-legal-document .legal-toolbar,.kretz-legal-document .legal-modal-footer { display:none!important; }
+          .kretz-legal-document .legal-scroll { overflow:visible!important; padding:0!important; background:none!important; }
+          .kretz-legal-document .legal-paper { width:100%!important; max-width:none!important; min-height:0!important; margin:0!important; padding:16mm 18mm!important; border:0!important; border-radius:0!important; box-shadow:none!important; }
+          .kretz-legal-document .legal-paper section { break-inside:avoid-page; }
+          .kretz-legal-document .legal-paper table { break-inside:auto; }
+          .kretz-legal-document .legal-paper tr { break-inside:avoid; }
+        }
+        @media(max-width:520px) { .kretz-legal-document .legal-paper .legal-meta strong { font-size:11px; } .kretz-legal-document .legal-paper .legal-meta small { font-size:7px; letter-spacing:1px; } }
+      `}</style>
       <div className="bg-[#e5e7eb] w-full max-w-5xl max-h-[96vh] rounded-3xl shadow-2xl border border-[#cbd5e1] relative flex flex-col overflow-hidden my-auto">
         
         {/* Modal Header Actions */}
-        <div className="bg-[#18211F] text-white px-6 py-4 flex items-center justify-between shrink-0 border-b border-[#2d3732]">
+        <div className="legal-toolbar bg-[#14213d] text-white px-6 py-4 flex items-center justify-between shrink-0 border-b border-[#a8864f]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#27845D]/30 border border-[#27845D] text-[#00FF9D] flex items-center justify-center">
               <FileText className="w-5 h-5" />
@@ -211,14 +239,14 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
         </div>
 
         {/* Scrollable Light-Gray Background Container for Paper Sheet */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#e5e7eb]">
+        <div className="legal-scroll flex-1 overflow-y-auto p-4 sm:p-8 bg-[#cfc8b8]">
           {/* Realistic Full-Page Paper Sheet (A4 or US Legal) */}
-          <div className={`bg-white w-full mx-auto shadow-2xl border border-[#cbd5e1] p-[16mm] sm:p-[22mm] space-y-8 text-[#1d2321] font-serif relative transition-all duration-300 ${
+          <div className={`legal-paper bg-[#f7f2e8] w-full mx-auto shadow-2xl border border-[#a8864f] p-[16mm] sm:p-[22mm] space-y-8 text-[#23272f] font-serif relative transition-all duration-300 ${
             paperSize === 'A4' ? 'max-w-[210mm] min-h-[297mm]' : 'max-w-[216mm] min-h-[356mm]'
           }`}>
             
             {/* Top Center Company Logo & Institutional Header */}
-            <div className="text-center space-y-3 pb-6 border-b-2 border-[#1d2321]">
+            <div className="text-center space-y-3 pb-6 border-b border-[#a8864f]">
               <div className="flex justify-center">
                 <img 
                   src="/assets/aistudio/IMG_7224_18c2474c.jpeg" 
@@ -242,12 +270,18 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
               </div>
 
               <div className="pt-3">
-                <h1 className="text-xl sm:text-2xl font-black text-[#1d2321] uppercase tracking-wide font-serif">
+                <h1 className="text-xl sm:text-2xl font-black text-[#14213d] uppercase tracking-wide font-serif">
                   {isMandateTitle ? "Mandat Exclusif & Examen des Titres de Propriété" : isValuation ? "Rapport d'Expertise & de Diagnostic Certifié Indépendant" : "Prospectus de Tokenisation SPV & Modèle de Rendement"}
                 </h1>
                 <p className="text-xs text-[#4a5568] font-serif italic mt-1">
                   Émis en vertu du Code Civil français, des Directives Immobilières de l'UE et du Règlement eIDAS (UE) n° 910/2014
                 </p>
+                <div className="legal-meta">
+                  <div><strong>{notarizationDate}</strong><small>Record date</small></div>
+                  <div><strong>{document.category || 'Legal'}</strong><small>Document class</small></div>
+                  <div><strong>{property.ref || property.tokenTicker || 'Pending reference'}</strong><small>Property reference</small></div>
+                </div>
+                <div className="legal-section-label">Official legal record · KRETZ SPAIN</div>
               </div>
             </div>
 
@@ -556,7 +590,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
           )}
 
           {/* Footer Seals, Official Stamp & Signature with Image B */}
-          <div className="pt-8 border-t border-[#E3E8E3] flex flex-col sm:flex-row items-center justify-between gap-6 font-sans">
+          <div className="pt-8 border-t border-[#a8864f] flex flex-col sm:flex-row items-center justify-between gap-6 font-sans">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#18211F] p-2 flex items-center justify-center shadow-md border border-[#27845D] shrink-0">
                 <img 
@@ -589,7 +623,7 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
         </div>
 
         {/* Modal Footer */}
-        <div className="bg-[#F6F7F4] px-6 py-4 border-t border-[#E3E8E3] flex justify-end shrink-0">
+        <div className="legal-modal-footer bg-[#f7f2e8] px-6 py-4 border-t border-[#a8864f] flex justify-end shrink-0">
           <button
             onClick={onClose}
             className="btn btn-primary text-xs font-bold px-6 cursor-pointer"
