@@ -40,9 +40,6 @@ export const PropertyBrochureModal: React.FC<PropertyBrochureModalProps> = ({
   onClose,
 }) => {
   const [data, setData] = useState<BrochureData | null>(null);
-  const [activePage, setActivePage] = useState<number>(1);
-  const [viewMode, setViewMode] = useState<'paginated' | 'continuous'>('paginated');
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [zipProgressStatus, setZipProgressStatus] = useState<string | null>(null);
@@ -55,7 +52,6 @@ export const PropertyBrochureModal: React.FC<PropertyBrochureModalProps> = ({
       PropertyBrochureService.prepareBrochureData(property).then((d) => {
         setData(d);
       });
-      setActivePage(1);
     }
   }, [isOpen, property]);
 
@@ -125,63 +121,11 @@ export const PropertyBrochureModal: React.FC<PropertyBrochureModalProps> = ({
           </div>
         </div>
 
-        {/* Center: Page Controls (for paginated mode) */}
-        <div className="hidden lg:flex items-center gap-1.5 bg-[#142924] p-1 rounded-xl border border-[#23423B]">
-          <button
-            onClick={() => setActivePage(prev => Math.max(1, prev - 1))}
-            disabled={activePage === 1}
-            className="p-1.5 rounded-lg text-gray-300 hover:text-white disabled:opacity-30 disabled:hover:text-gray-300 cursor-pointer"
-            title="Previous Page"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          {[1, 2, 3, 4].map((pNum) => (
-            <button
-              key={pNum}
-              onClick={() => setActivePage(pNum)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activePage === pNum
-                  ? 'bg-[#B7E36A] text-[#0E201C] shadow-sm'
-                  : 'text-gray-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              Page {pNum}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setActivePage(prev => Math.min(4, prev + 1))}
-            disabled={activePage === 4}
-            className="p-1.5 rounded-lg text-gray-300 hover:text-white disabled:opacity-30 disabled:hover:text-gray-300 cursor-pointer"
-            title="Next Page"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+        <span className="hidden lg:inline text-[10px] uppercase tracking-[0.18em] text-[#D8C9A8]">Four-page A4 editorial brochure</span>
 
         {/* Right: Actions (Download PDF, Download ZIP, Print, Close) */}
         <div className="flex items-center gap-2 shrink-0">
           
-          {/* Zoom controls */}
-          <div className="hidden md:flex items-center gap-1 bg-[#142924] px-2 py-1 rounded-xl border border-[#23423B] text-xs text-gray-300">
-            <button
-              onClick={() => setZoomLevel(prev => Math.max(70, prev - 10))}
-              className="p-1 hover:text-white cursor-pointer"
-              title="Zoom out"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <span className="font-mono text-[11px] w-9 text-center">{zoomLevel}%</span>
-            <button
-              onClick={() => setZoomLevel(prev => Math.min(130, prev + 10))}
-              className="p-1 hover:text-white cursor-pointer"
-              title="Zoom in"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
           {/* Copy link */}
           <button
             onClick={handleCopyLink}
