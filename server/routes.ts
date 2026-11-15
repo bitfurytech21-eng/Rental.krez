@@ -3172,6 +3172,16 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
 
   if (isSupabaseServerConfigured()) {
     try {
+      // Enforce KYC and registered-bank ownership on the server, not only in the client.
+      const investorProfile = await getUserProfile(req.user!.id);
+      if (!investorProfile || investorProfile.kyc_status !== 'verified') {
+        return res.status(403).json({ success: false, error: 'Complete identity verification before requesting a withdrawal.', code: 'WITHDRAWAL_KYC_REQUIRED', requestId: req.id });
+      }
+      const registeredIban = String(investorProfile.bank_iban || '').replace(/\\s/g, '').toUpperCase();
+      const requestedIban = destination.replace(/\\s/g, '').toUpperCase();
+      if (!registeredIban || requestedIban !== registeredIban) {
+        return res.status(403).json({ success: false, error: 'Withdrawals can only be sent to the bank account registered on your verified profile.', code: 'WITHDRAWAL_DESTINATION_MISMATCH', requestId: req.id });
+      }
       const ref = `KZ-WTH-${crypto.randomInt(100000, 1000000)}`;
       const idempotencyKey = String(req.headers['idempotency-key'] || req.body?.idempotencyKey || crypto.randomUUID()).slice(0, 128);
       const row = await runFinancialRpc('kretz_request_withdrawal', {
