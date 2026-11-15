@@ -295,6 +295,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(synced);
         setSession(currentSession);
         setToken(currentSession.access_token);
+        setAuthToken(currentSession.access_token);
         localStorage.setItem(CURRENT_USER_KEY, synced.id);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -367,6 +368,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const serverUser = (res as any)?.user || (res as any)?.data?.user;
       const serverToken = (res as any)?.token || (res as any)?.data?.token;
+      const serverRefreshToken = (res as any)?.refreshToken || (res as any)?.data?.refreshToken;
 
       if (!serverToken || !serverUser) {
         throw new Error('Authentication failed. Invalid email address or password.');
@@ -393,6 +395,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(synced);
       setToken(serverToken);
       setAuthToken(serverToken);
+
+      // The API returns the Supabase refresh token as well as the access token.
+      // Persist both in the Supabase client so AuthProvider can restore the same
+      // API-authenticated session after a page reload and keep token rotation in sync.
+      if (isConfigured && serverRefreshToken) {
+        try {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: serverToken,
+            refresh_token: serverRefreshToken,
+          });
+          if (sessionError) {
+            console.warn('[auth] API login succeeded, but Supabase session persistence needs a retry:', sessionError.message);
+          }
+        } catch (sessionError: any) {
+          console.warn('[auth] API login succeeded, but Supabase session persistence failed:', sessionError?.message || sessionError);
+        }
+      }
+
       localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
       localStorage.setItem(CURRENT_USER_KEY, synced.id);
 
