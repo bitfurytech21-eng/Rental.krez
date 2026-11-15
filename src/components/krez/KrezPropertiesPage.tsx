@@ -42,7 +42,7 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
         new Set(
           buildings
             .map((building) => building.linkedLedgerProperty?.type)
-            .filter((type): type is string => Boolean(type))
+            .filter((type): type is Exclude<typeof type, undefined> => Boolean(type))
         )
       ).sort(),
     [buildings]
