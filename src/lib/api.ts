@@ -118,6 +118,16 @@ export const getApiUrl = (endpoint: string): string => {
   return `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 };
 
+export async function withActionEmailVerification<T>(actionScope: string, action: (grantId: string) => Promise<T>): Promise<T> {
+  if (typeof window === 'undefined') throw new Error('Email verification requires a browser session.');
+  const issued: any = await apiRequest('/security/action-code/request', { method: 'POST', body: { actionScope } });
+  const code = window.prompt(`A security code was sent to ${issued?.maskedEmail || 'your registered email'}. Enter the six-digit code to continue:`);
+  if (!code) throw new ApiError('Verification cancelled. No action was taken.', 400, 'ACTION_VERIFICATION_CANCELLED');
+  const verified: any = await apiRequest('/security/action-code/verify', { method: 'POST', body: { actionScope, code: code.trim() } });
+  if (!verified?.grantId) throw new ApiError('The security code could not be verified.', 401, 'INVALID_ACTION_EMAIL_CODE');
+  return action(String(verified.grantId));
+}
+
 /**
  * Core HTTP Request Wrapper
  */
@@ -305,8 +315,8 @@ export const api = {
  * Authentication Endpoints with Cloudflare Turnstile bot verification
  */
 export const authApi = {
-  login: (email: string, pass: string, turnstileToken?: string) =>
-    api.post<{ user: any; token: string; refreshToken?: string; data?: { user: any; token: string; refreshToken?: string } }>('/auth/login', { email, pass, turnstileToken }, { skipAuth: true }),
+  login: (email: string, pass: string, turnstileToken?: string, emailCode?: string) =>
+    api.post<{ user?: any; token?: string; refreshToken?: string; requiresEmailCode?: boolean; maskedEmail?: string; data?: { user?: any; token?: string; refreshToken?: string } }>('/auth/login', { email, pass, turnstileToken, emailCode }, { skipAuth: true }),
 
   register: (payload: {
     email: string;
@@ -335,11 +345,9 @@ export const authApi = {
   updatePassword: (password: string, token?: string) =>
     api.post<{ success: boolean; message: string }>('/auth/password/reset', { newPassword: password, token }),
 
-  adminLogin: (email: string, pass: string, turnstileToken?: string) =>
-    api.post<{ user: any; token: string; message?: string }>('/auth/admin-login', {
-      email,
-      password: pass,
-      turnstileToken
+  adminLogin: (email: string, pass: string, turnstileToken?: string, emailCode?: string) =>
+    api.post<{ user?: any; token?: string; message?: string; requiresEmailCode?: boolean; maskedEmail?: string }>('/auth/admin-login', {
+      email, password: pass, turnstileToken, emailCode
     }, { skipAuth: true }),
 
   adminLogout: () =>
@@ -546,10 +554,10 @@ export const financialApi = {
     api.post<any>('/deposits', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   withdraw: (payload: { amount: number; destination: string; method?: string; idempotencyKey?: string }) =>
-    api.post<any>('/withdrawals', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
+    withActionEmailVerification('investor.withdrawal.create', (grantId) => apiRequest<any>('/withdrawals', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
 
   invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
+    withActionEmailVerification('investor.investment.create', (grantId) => apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
 };
 
 export const investmentsApi = {
