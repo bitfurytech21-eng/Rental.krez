@@ -3,6 +3,8 @@
 alter table public.payment_transactions
   add column if not exists manual_transaction_id text,
   add column if not exists sender_name text,
+  add column if not exists fee_amount numeric(14,2) not null default 0 check (fee_amount >= 0),
+  add column if not exists gross_amount numeric(14,2) check (gross_amount is null or gross_amount > 0),
   add column if not exists payment_date date,
   add column if not exists proof_storage_path text,
   add column if not exists rejection_reason text,
