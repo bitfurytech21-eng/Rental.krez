@@ -71,7 +71,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               onClick={() => window.dispatchEvent(new CustomEvent('kretz:open-support'))}
               className="mt-3 block text-sm font-medium text-white/80 underline underline-offset-4 hover:text-white"
             >
-              Open support chat
+              Open Smartsupp live chat
             </button>
           </div>
         </div>
