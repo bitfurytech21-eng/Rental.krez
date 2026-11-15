@@ -128,6 +128,7 @@ manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: Au
     const { data: row, error: insertError } = await client.from('payment_transactions').insert({
       id: crypto.randomUUID(), user_id: userId, type: 'deposit', amount, currency: 'EUR',
       status: 'pending', payment_method: method.name, provider: 'manual', reference,
+      fee_amount: Number(fee.toFixed(2)), gross_amount: Number((amount + fee).toFixed(2)),
       manual_transaction_id: transactionId, sender_name: senderName, payment_date: paymentDate,
       proof_storage_path: uploadedPath,
       notes: JSON.stringify({ extraValues, fee: Number(fee.toFixed(2)), methodId: method.id })
