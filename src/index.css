@@ -3240,3 +3240,45 @@ section[class*="bg-[#0B1B30]"] h3 {
     transition: none;
   }
 }
+
+/* Stage 5: safer mobile viewport handling and consistent reduced-motion support. */
+@media (max-width: 768px) {
+  html {
+    scroll-padding-top: 76px;
+  }
+
+  .site-header {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .hero {
+    padding-block: clamp(3.5rem, 10vw, 5rem);
+  }
+
+  .section-heading {
+    margin-bottom: 32px;
+  }
+
+  .section-heading p {
+    font-size: 1rem;
+  }
+
+  .hero-media {
+    border-radius: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
