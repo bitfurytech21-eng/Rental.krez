@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FileSearch, Building2, ChartNoAxesCombined } from 'lucide-react';
+import { FeaturedPropertiesCarousel } from '../home/FeaturedPropertiesCarousel';
+import { CaseStudiesCarousel } from '../home/CaseStudiesCarousel';
+import { KREZ_HOW_IT_WORKS_STEPS, KREZ_IMAGES } from '../../data/krezTemplateData';
 import { useReducedMotion } from 'motion/react';
 import {
   KREZ_GALLERY_ITEMS,
@@ -270,6 +273,68 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
         </section>
       </div>
 
+      {/* Featured investment opportunities — live approved property records */}
+      <FeaturedPropertiesCarousel
+        onSelectProperty={(property) => onNavigate(`/property/${property.slug}?dossier=full`)}
+        onInvestProperty={(property) => onNavigate(`/property/${property.slug}?dossier=full`)}
+        onExploreAll={() => onNavigate('/properties')}
+        onHowItWorks={() => onNavigate('/how-it-works')}
+      />
+
+      {/* How fractional ownership works — concise homepage introduction */}
+      <section className="bg-[#EFF4F2] border-y border-[#DCE7E1] py-16 sm:py-20">
+        <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
+          <KrezReveal>
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold tracking-[.18em] uppercase text-[#927447]">The process</p>
+              <h2 className="mt-3 text-3xl md:text-4xl font-heading font-bold uppercase tracking-tight text-[#172A23]">A clearer way to participate in property</h2>
+              <p className="mt-4 text-sm sm:text-base leading-relaxed text-[#53645C]">Explore a building, review its documents and financial terms, choose the number of shares available, then follow your holding and its recorded activity through your investor account.</p>
+            </div>
+          </KrezReveal>
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {KREZ_HOW_IT_WORKS_STEPS.map((step, index) => (
+              <KrezReveal key={step.id} delay={index * 0.05}>
+                <article className="h-full rounded-2xl border border-[#D6E2DC] bg-white p-5 shadow-sm">
+                  <span className="font-mono text-xs tracking-widest text-[#A18453]">0{index + 1}</span>
+                  <h3 className="mt-3 text-lg font-heading font-semibold text-[#1B3028]">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-[#617168]">{step.body}</p>
+                </article>
+              </KrezReveal>
+            ))}
+          </div>
+          <button type="button" onClick={() => onNavigate('/how-it-works')} className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#19352B] px-6 py-3.5 text-xs font-semibold tracking-widest uppercase text-white hover:bg-[#25483A]">
+            Read how it works <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+
+      {/* Why invest through KRETZ — evidence-led platform overview */}
+      <section className="bg-[#FAF8F5] py-16 sm:py-20">
+        <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg grid gap-10 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
+          <KrezReveal>
+            <div className="relative overflow-hidden rounded-2xl aspect-[4/3] bg-[#E7E0D4]">
+              <KrezImage src={KREZ_IMAGES.portfolioOverview} alt="European property portfolio architecture" className="w-full h-full object-cover" />
+            </div>
+          </KrezReveal>
+          <KrezReveal delay={0.06}>
+            <div>
+              <p className="text-xs font-semibold tracking-[.18em] uppercase text-[#927447]">A considered property platform</p>
+              <h2 className="mt-3 text-3xl md:text-4xl font-heading font-bold uppercase tracking-tight text-[#1C2925]">Why invest through KRETZ</h2>
+              <p className="mt-4 text-sm sm:text-base leading-relaxed text-[#5F6964]">The platform brings property information, offering terms and investor records into one place. Review each building individually and make decisions using its published documentation and disclosed risks.</p>
+              <div className="mt-7 grid gap-4 sm:grid-cols-2">
+                <div className="flex gap-3"><FileSearch className="w-5 h-5 text-[#9A7A45] shrink-0"/><div><h3 className="text-sm font-bold text-[#24342D]">Property-level information</h3><p className="mt-1 text-xs leading-relaxed text-[#66736B]">Review the individual asset, documents, costs and offering details.</p></div></div>
+                <div className="flex gap-3"><Building2 className="w-5 h-5 text-[#9A7A45] shrink-0"/><div><h3 className="text-sm font-bold text-[#24342D]">Building-specific structure</h3><p className="mt-1 text-xs leading-relaxed text-[#66736B]">Understand the structure and terms associated with each listed building.</p></div></div>
+                <div className="flex gap-3"><ChartNoAxesCombined className="w-5 h-5 text-[#9A7A45] shrink-0"/><div><h3 className="text-sm font-bold text-[#24342D]">Portfolio visibility</h3><p className="mt-1 text-xs leading-relaxed text-[#66736B]">Follow holdings, transactions and recorded distributions in your account.</p></div></div>
+                <div className="flex gap-3"><CheckCircle2 className="w-5 h-5 text-[#9A7A45] shrink-0"/><div><h3 className="text-sm font-bold text-[#24342D]">Document-led review</h3><p className="mt-1 text-xs leading-relaxed text-[#66736B]">Read the available legal, financial and property materials before deciding.</p></div></div>
+              </div>
+              <button type="button" onClick={() => onNavigate('/why-kretz')} className="mt-8 inline-flex items-center gap-2 rounded-full border border-[#B9A27B] px-6 py-3.5 text-xs font-semibold tracking-widest uppercase text-[#26372F] hover:bg-[#F0EBDD]">
+                Read more about KRETZ <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </KrezReveal>
+        </div>
+      </section>
+
       {/* Section 3: Overlapping Expanding Architectural Gallery & Typography Ticker */}
       <section
         className="s3-gallery-section"
@@ -304,6 +369,9 @@ export const KrezHomePage: React.FC<KrezHomePageProps> = ({ onNavigate }) => {
           </div>
         </div>
       </section>
+
+      {/* Case studies slideshow — sourced from the existing case-study register */}
+      <CaseStudiesCarousel onViewAll={() => onNavigate('/success-stories')} />
 
       {/* Section 3.5: Kretz Family & Executive Team Spotlight */}
       <section className="bg-[#0B1B30] text-white py-section-sm md:py-section-spacing border-t border-[#1D3860]">
