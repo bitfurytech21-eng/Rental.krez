@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { Property } from '../../types/property';
 import { formatCurrency, formatPercent } from '../../lib/utils';
-import { TrendingUp, DollarSign, Calendar, Info, Layers, RefreshCw, Sparkles } from 'lucide-react';
+import { TrendingUp, Info } from 'lucide-react';
 
 interface ProjectedYieldChartProps {
   property: Property;
@@ -371,11 +371,13 @@ export const ProjectedYieldChart: React.FC<ProjectedYieldChartProps> = ({
             <button
               key={m.id}
               onClick={() => setMetricMode(m.id as MetricMode)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#43836A] focus-visible:ring-offset-2 ${
                 metricMode === m.id
                   ? 'bg-[#182D2A] text-white shadow-xs'
-                  : 'text-[#52605C] hover:text-[#18211F] hover:bg-gray-200/60'
+                  : 'text-[#52605C] hover:text-[#18211F] hover:bg-white'
               }`}
+              type="button"
+              aria-pressed={metricMode === m.id}
             >
               {m.label}
             </button>
@@ -409,12 +411,12 @@ export const ProjectedYieldChart: React.FC<ProjectedYieldChartProps> = ({
           <span className="text-[10px] text-emerald-700 font-bold block">100% Cash Paid Out</span>
         </div>
 
-        <div className="bg-[#182D2A] text-white p-3.5 rounded-2xl border border-[#182D2A] space-y-0.5">
-          <span className="text-[10px] font-bold text-emerald-300 uppercase block">10-Yr Total ROI</span>
-          <div className="text-lg font-black text-white">
+        <div className="bg-[#F0F6F1] text-[#202A27] p-3.5 rounded-2xl border border-[#CFE1D5] space-y-0.5">
+          <span className="text-[10px] font-bold text-[#43836A] uppercase block">10-Yr Total ROI</span>
+          <div className="text-lg font-black text-[#234D40]">
             {formatPercent(totalReturnPercent)}
           </div>
-          <span className="text-[10px] text-emerald-200 block">Valuation: {formatCurrency(year10Data.totalAssetValue)}</span>
+          <span className="text-[10px] text-[#60766B] block">Valuation: {formatCurrency(year10Data.totalAssetValue)}</span>
         </div>
       </div>
 
@@ -491,15 +493,15 @@ export const ProjectedYieldChart: React.FC<ProjectedYieldChartProps> = ({
 
         {/* Hover Detail Panel */}
         {hoveredPoint && (
-          <div className="mt-3 p-3.5 bg-[#182D2A] text-white rounded-2xl border border-emerald-500/30 flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
+          <div className="mt-3 p-3.5 bg-[#F0F6F1] text-[#202A27] rounded-2xl border border-[#CFE1D5] flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#B7E36A] animate-pulse" />
-              <span className="font-extrabold text-[#B7E36A] uppercase tracking-wider">{hoveredPoint.yearLabel} Inspection</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#43836A] animate-pulse" />
+              <span className="font-extrabold text-[#43836A] uppercase tracking-wider">{hoveredPoint.yearLabel} Inspection</span>
             </div>
-            <div className="flex flex-wrap items-center gap-4 text-emerald-100">
+            <div className="flex flex-wrap items-center gap-4 text-[#52685D]">
               <div>
-                <span className="text-[10px] text-emerald-300/80 block uppercase">Net Yield Rate</span>
-                <span className="font-bold text-white text-sm">{formatPercent(hoveredPoint.yieldPercent)}</span>
+                <span className="text-[10px] text-[#73847A] block uppercase">Net Yield Rate</span>
+                <span className="font-bold text-[#202A27] text-sm">{formatPercent(hoveredPoint.yieldPercent)}</span>
               </div>
               <div>
                 <span className="text-[10px] text-emerald-300/80 block uppercase">Annual Rent Payout</span>
@@ -511,7 +513,7 @@ export const ProjectedYieldChart: React.FC<ProjectedYieldChartProps> = ({
               </div>
               <div>
                 <span className="text-[10px] text-emerald-300/80 block uppercase">Total Portfolio Position</span>
-                <span className="font-extrabold text-[#B7E36A] text-sm">{formatCurrency(hoveredPoint.totalAssetValue)}</span>
+                <span className="font-extrabold text-[#234D40] text-sm">{formatCurrency(hoveredPoint.totalAssetValue)}</span>
               </div>
             </div>
           </div>
