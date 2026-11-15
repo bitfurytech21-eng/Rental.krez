@@ -847,6 +847,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
             </button>
 
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[var(--dash-header-controls-border)] px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--dash-text-secondary)]"
+              title={realtimeStatus === 'live' ? 'Supabase realtime activity stream connected' : realtimeStatus === 'connecting' ? 'Connecting to live activity stream' : 'Live activity stream unavailable; dashboard remains usable'}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${realtimeStatus === 'live' ? 'bg-emerald-500' : realtimeStatus === 'connecting' ? 'bg-amber-400 animate-pulse' : 'bg-slate-400'}`} />
+              {realtimeStatus === 'live' ? 'Live' : realtimeStatus === 'connecting' ? 'Connecting' : 'Offline'}
+            </span>
             {/* Notification Bell with Real Unread-Count Badge */}
             <button
               onClick={() => setActiveTab('notifications')}
