@@ -79,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
   return (
     <>
       <header
-        className={`fixed inset-x-0 top-0 z-50 transition-colors duration-base ${
+        className={`sticky top-0 z-50 transition-colors duration-base ${
           useDarkPalette ? 'krez-header-dark backdrop-blur-md bg-black/30' : 'krez-header-light backdrop-blur-md bg-white/60'
         }`}
       >

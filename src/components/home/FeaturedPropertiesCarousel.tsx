@@ -216,7 +216,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               <span className="text-[#C5A880]">Investment Opportunities</span>
             </h2>
             <p className="text-sm sm:text-base text-[#D1E2F7] leading-relaxed">
-              Inspect live fractional property offerings backed by notarized SPV deeds, RICS appraisals, and Solana SPL ownership records.
+              Explore current public property offerings, compare their published share terms and review the supporting documents available for each building.
             </p>
           </div>
 
@@ -574,7 +574,7 @@ export const FeaturedPropertiesCarousel: React.FC<FeaturedPropertiesCarouselProp
               <div className="flex items-center gap-2 text-xs text-[#8EA7C7]">
                 <ShieldCheck className="w-4 h-4 text-[#C5A880] shrink-0" />
                 <span>
-                  Every listing reflects real platform ledger availability and notarized European SPV custody.
+                  Availability and offering details are drawn from the platform's public property records.
                 </span>
               </div>
             </div>

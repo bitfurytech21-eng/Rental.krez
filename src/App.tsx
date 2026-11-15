@@ -15,6 +15,7 @@ import { KrezHomePage } from './components/krez/KrezHomePage';
 import { KrezPropertiesPage } from './components/krez/KrezPropertiesPage';
 import { KrezPropertyDetailPage } from './components/krez/KrezPropertyDetailPage';
 import { KrezHowItWorksPage } from './components/krez/KrezHowItWorksPage';
+import { WhyKretzPage } from './components/krez/WhyKretzPage';
 import { KrezPortfolioPage } from './components/krez/KrezPortfolioPage';
 import { KrezJournalPage } from './components/krez/KrezJournalPage';
 import { KrezContactPage } from './components/krez/KrezContactPage';
@@ -367,6 +368,9 @@ function MainApp() {
       case '/how-it-works':
       case '/investing':
         return <KrezHowItWorksPage onNavigate={navigateTo} />;
+
+      case '/why-kretz':
+        return <WhyKretzPage onNavigate={navigateTo} />;
 
       case '/portfolio':
         if (user) {

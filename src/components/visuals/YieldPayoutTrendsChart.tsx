@@ -5,7 +5,6 @@ import { Transaction } from '../../types/transaction';
 import { Investment } from '../../types/investment';
 import { AnimatedNumericValue } from '../dashboard/AnimatedNumericValue';
 
-import { RAINBOW_COLORS } from '../../lib/chartTheme';
 
 export interface MonthlyPayout {
   month: string;
@@ -80,40 +79,40 @@ export const YieldPayoutTrendsChart: React.FC<{
 
   return (
     <div
-      className={`cinematic-card rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 text-white ${className}`}
+      className={`rounded-2xl border border-[#E2EAE5] bg-white p-4 sm:p-5 shadow-sm space-y-4 text-[#202A27] ${className}`}
     >
       {/* Chart Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.08]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E7ECE8]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-[#141515] border border-white/[0.08] text-[#55BDE8]">
+            <span className="p-1.5 rounded-lg bg-[#F1F6F2] border border-[#E2EAE5] text-[#43836A]">
               <BarChart3 className="w-4 h-4" />
             </span>
-            <h3 className="text-sm sm:text-base font-bold text-[#F5F5F2] tracking-tight">
+            <h3 className="text-sm sm:text-base font-bold text-[#202A27] tracking-tight">
               Monthly Dividend Payout &amp; APY Yield Trends
             </h3>
           </div>
-          <p className="text-xs text-[#777979] mt-0.5">
+          <p className="text-xs text-[#737D78] mt-0.5">
             Settled rental distribution payouts verified on your account ledger
           </p>
         </div>
 
         <div className="flex items-center gap-3 text-xs font-mono">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#35C9F5]" />
-            <span className="text-[#A0A0A0]">Settled Payout (€)</span>
+            <span className="w-2.5 h-2.5 rounded-xs bg-[#43836A]" />
+            <span className="text-[#737D78]">Settled Payout (€)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-0.5 bg-[#FFD93D]" />
+            <span className="w-2.5 h-0.5 bg-[#A8864F]" />
             <span className="text-[#A0A0A0]">Underwritten APY %</span>
           </div>
         </div>
       </div>
 
       {resolvedPayouts.length === 0 ? (
-        <div className="py-8 px-4 rounded-lg bg-[#202020] border border-[#303030] text-center space-y-1.5">
+        <div className="py-8 px-4 rounded-xl bg-[#F4F8F5] border border-[#E2EAE5] text-center space-y-1.5">
           <Calendar className="w-6 h-6 text-[#35C9F5] mx-auto opacity-80" />
-          <p className="text-xs font-semibold text-white">
+          <p className="text-xs font-semibold text-[#202A27]">
             No settled monthly rental distributions on record yet
           </p>
           <p className="text-[11px] text-[#A0A0A0] max-w-md mx-auto">
@@ -129,7 +128,7 @@ export const YieldPayoutTrendsChart: React.FC<{
       ) : (
         <div className="relative pt-4 pb-2">
           <div
-            className="grid gap-2 sm:gap-4 items-end h-44 border-b border-[#303030] px-2"
+            className="grid gap-2 sm:gap-4 items-end h-44 border-b border-[#E2EAE5] px-2"
             style={{
               gridTemplateColumns: `repeat(${Math.max(1, resolvedPayouts.length)}, minmax(0, 1fr))`,
             }}
@@ -137,7 +136,7 @@ export const YieldPayoutTrendsChart: React.FC<{
             {resolvedPayouts.map((p, idx) => {
               const heightPercent = Math.max(8, Math.round((p.amount / maxAmount) * 100));
               const isHovered = hoveredMonth?.month === p.month;
-              const barColor = RAINBOW_COLORS[idx % RAINBOW_COLORS.length];
+              const barColor = '#43836A';
 
               return (
                 <div
@@ -163,7 +162,7 @@ export const YieldPayoutTrendsChart: React.FC<{
                   </div>
 
                   <div
-                    className="absolute w-2.5 h-2.5 rounded-full bg-[#FFD93D] border-2 border-[#151515] z-10 transition-all duration-200"
+                    className="absolute w-2.5 h-2.5 rounded-full bg-[#A8864F] border-2 border-white z-10 transition-all duration-200"
                     style={{ bottom: `${Math.min(95, Math.round((p.apy / maxApy) * 100))}%` }}
                     title={`${p.apy}% APY`}
                   />
@@ -173,7 +172,7 @@ export const YieldPayoutTrendsChart: React.FC<{
                   </span>
 
                   {isHovered && (
-                    <div className="absolute bottom-full mb-2 w-48 z-30 p-2.5 rounded-lg bg-[#151515] text-white text-xs shadow-2xl border border-[#303030] font-mono">
+                    <div className="absolute bottom-full mb-2 w-48 z-30 p-2.5 rounded-lg bg-white text-[#202A27] text-xs shadow-xl border border-[#E2EAE5] font-mono">
                       <div className="text-[10px] text-[#A0A0A0] pb-1 border-b border-[#303030]">
                         {p.month} Distribution Record
                       </div>
@@ -198,7 +197,7 @@ export const YieldPayoutTrendsChart: React.FC<{
       )}
 
       {/* Footer Stats Summary */}
-      <div className="flex flex-wrap items-center justify-between text-xs financial-num pt-1 text-[#777979]">
+      <div className="flex flex-wrap items-center justify-between text-xs financial-num pt-1 text-[#737D78]">
         <div>
           Settled Distributions Tracked:{' '}
           <AnimatedNumericValue value={totalEarned} formatAsCurrency={true} variant="positive" className="font-[600]" />

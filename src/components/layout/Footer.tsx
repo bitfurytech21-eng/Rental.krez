@@ -66,6 +66,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             >
               info@kretzdespain.com
             </a>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('kretz:open-support'))}
+              className="mt-3 block text-sm font-medium text-white/80 underline underline-offset-4 hover:text-white"
+            >
+              Open support chat
+            </button>
           </div>
         </div>
 

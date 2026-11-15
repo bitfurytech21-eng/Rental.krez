@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Property } from '../../types/property';
 import {
   PropertyDocumentType,
@@ -11,6 +11,7 @@ import {
   DOCUMENT_TITLES
 } from '../../lib/documentGenerator';
 import { formatCurrency, formatDate } from '../../lib/utils';
+import { PropertyBrochureService } from '../../lib/propertyBrochureService';
 import {
   Printer,
   Download,
@@ -64,6 +65,18 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [showQualityReport, setShowQualityReport] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [brochureHtml, setBrochureHtml] = useState('');
+  const brochureFrameRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (isOpen && selectedType === 'brochure') {
+      PropertyBrochureService.prepareBrochureData(property)
+        .then((data) => { if (active) setBrochureHtml(PropertyBrochureService.generateStandaloneHtml(data)); })
+        .catch(() => { if (active) setBrochureHtml(''); });
+    }
+    return () => { active = false; };
+  }, [isOpen, property, selectedType]);
 
   // Edit form state
   const [editBuyerName, setEditBuyerName] = useState(docRecord.customization?.buyerName || '');
@@ -99,6 +112,11 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
 
   // Print / Save as PDF
   const handlePrint = () => {
+    if (selectedType === 'brochure' && brochureFrameRef.current?.contentWindow) {
+      brochureFrameRef.current.contentWindow.focus();
+      brochureFrameRef.current.contentWindow.print();
+      return;
+    }
     window.print();
   };
 
@@ -328,497 +346,515 @@ export const PropertyDocumentViewer: React.FC<PropertyDocumentViewerProps> = ({
       {/* ========================================================================= */}
       {/* REMODELED LUXURY PROPERTY BROCHURE CONTAINER (Architectural Monograph)     */}
       {/* ========================================================================= */}
-      <article
-        id="property-printable-document"
-        className="w-full max-w-5xl bg-white text-[#111A18] rounded-3xl shadow-2xl border border-[#E1E6E1] overflow-hidden p-5 sm:p-10 lg:p-14 mb-10 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:rounded-none"
-      >
-        {/* ========================================================================= */}
-        {/* COVER PAGE / PAGE 1: PRESTIGE EDITORIAL PRESENTATION                      */}
-        {/* ========================================================================= */}
-        <section className="flex flex-col justify-between border-b border-[#E1E6E1] pb-10 mb-10 print:border-none print:pb-0 print:mb-0 print:page-break-after">
-          {/* Remodeled Luxury Brand Header (Responsive & Zero Clumsy Wraps) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E1E6E1] pb-6">
-            {/* Left: Brand Identity with Gold/Emerald Monogram */}
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-[#091714] text-[#C8A97E] border border-[#C8A97E]/30 flex items-center justify-center font-serif text-lg font-bold tracking-wider shrink-0 shadow-sm">
-                KZ
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <h1 className="font-serif text-lg sm:text-xl font-bold tracking-[0.12em] text-[#0E201C] uppercase leading-none">
-                    L'Agence
-                  </h1>
-                  <span className="text-xs font-serif italic text-[#8B9B95] tracking-wide">
-                    Prestige Real Estate
-                  </span>
-                </div>
-                <p className="text-[10px] text-[#63726D] uppercase tracking-[0.2em] font-medium">
-                  Family Real Estate · Paris · French Riviera · Monaco
-                </p>
-              </div>
-            </div>
-
-            {/* Right: Editorial Mandate Reference (Unboxed Typography, No Clunky Pills) */}
-            <div className="sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-[#F0F3F0]">
-              <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#7D8C86]">
-                Confidential Property Mandate
-              </div>
-              <div className="text-sm font-mono font-bold text-[#0E201C] tracking-wider mt-0.5">
-                Nº {propertyRef}
-              </div>
-            </div>
-          </div>
-
-          {/* ========================================================================= */}
-          {/* HERO PROPERTY COVER PHOTOGRAPHY (Zero-Pill Discipline & Scrim Alignment)   */}
-          {/* ========================================================================= */}
-          <div className="my-6 relative aspect-[16/10] sm:aspect-[16/9] max-h-[460px] w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-[#F2F5F2] border border-[#E1E6E1] shadow-inner group">
-            <img
-              src={property.images[0] || property.bannerImage}
-              alt={property.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-              referrerPolicy="no-referrer"
+      {selectedType === 'brochure' ? (
+        <section className="w-full max-w-5xl min-h-[1100px] overflow-hidden rounded-2xl border border-[#E1E6E1] bg-[#f7f2e8] shadow-2xl print:max-w-none print:min-h-0 print:rounded-none print:border-0 print:shadow-none">
+          {brochureHtml ? (
+            <iframe
+              ref={brochureFrameRef}
+              title={`${property.title} — KRETZ SPAIN property brochure`}
+              srcDoc={brochureHtml}
+              className="block w-full h-[calc(100vh-190px)] min-h-[1100px] border-0 print:h-auto print:min-h-0"
+              sandbox="allow-same-origin allow-modals"
             />
-            {/* Measured luxury scrim */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/5" />
-            
-            {/* Floating Luxury Watermark Stamp (Top Right) */}
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 text-right pointer-events-none">
-              <span className="text-[10px] font-mono tracking-widest uppercase text-white/70 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-                Official Portfolio Monograph
-              </span>
-            </div>
-
-            {/* Hero Architectural Typography */}
-            <div className="absolute bottom-5 left-5 right-5 sm:bottom-8 sm:left-8 sm:right-8 text-white space-y-2">
-              {/* Clean unboxed metadata with typographic separators (NO PILLS) */}
-              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium tracking-wide text-white/90">
-                <span className="uppercase tracking-[0.18em] text-[#A7F3D0] font-semibold">
-                  {property.type}
-                </span>
-                <span aria-hidden="true" className="text-white/40">·</span>
-                <span className="text-white/95">
-                  {property.city}, {property.country}
-                </span>
-                {property.isExclusive && (
-                  <>
-                    <span aria-hidden="true" className="text-white/40">·</span>
-                    <span className="text-[#FCD34D] font-medium tracking-wide">
-                      Exclusive Mandate
-                    </span>
-                  </>
-                )}
-                <span aria-hidden="true" className="text-white/40">·</span>
-                <span className="text-white/80 font-mono text-xs">
-                  Ref: {propertyRef}
-                </span>
-              </div>
-
-              {/* Title with balanced line wrapping */}
-              <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-normal tracking-tight text-white leading-[1.15] text-balance drop-shadow-md">
-                {property.title}
-              </h2>
-
-              <p className="text-xs sm:text-sm text-gray-200/90 font-light tracking-wide flex items-center gap-1.5 pt-0.5">
-                <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>{property.location}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* ========================================================================= */}
-          {/* CURATED ARCHITECTURAL SPECIFICATIONS STRIP (Page 1 Focal Ribbon)          */}
-          {/* ========================================================================= */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 p-4 sm:p-6 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1]">
-            <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
-                Acquisition Valuation
-              </span>
-              <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block tabular-nums">
-                {formatCurrency(effectivePrice)}
-              </span>
-              <span className="text-[11px] text-emerald-700 font-medium block">
-                Token Unit: €{property.tokenPrice || 364}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
-                Built Living Surface
-              </span>
-              <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block tabular-nums">
-                {property.surfaceAreaM2 ? `${property.surfaceAreaM2} m²` : '850 m²'}
-              </span>
-              <span className="text-[11px] text-gray-500 font-medium block">
-                {property.surfaceAreaM2 ? `${Math.round(property.surfaceAreaM2 * 10.764)} sq ft` : '9,149 sq ft'}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
-                Bedrooms & Layout
-              </span>
-              <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block">
-                {property.bedrooms ? `${property.bedrooms} Suites` : '6 Suites'}
-              </span>
-              <span className="text-[11px] text-gray-500 font-medium block">
-                {property.bathrooms ? `${property.bathrooms} En-Suite Baths` : '7 Baths'}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
-                Private Advisory Desk
-              </span>
-              <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block truncate">
-                {designatedAdvisorName}
-              </span>
-              <span className="text-[11px] text-gray-500 font-medium block truncate">
-                {designatedAdvisorRole}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* PAGE 2: ARCHITECTURAL PROFILE, SPATIAL DIMENSIONS & NARRATIVE             */}
-        {/* ========================================================================= */}
-        <section className="pt-8 border-b border-[#E1E6E1] pb-10 mb-10 print:pt-4 print:border-none print:pb-0 print:mb-0 print:page-break-after">
-          <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
-            <div className="flex items-center gap-2.5">
-              <Building2 className="w-4 h-4 text-[#10B981]" />
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
-                Architectural Specifications & Spatial Dimensions
-              </h3>
-            </div>
-            <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 02</span>
-          </div>
-
-          {/* Specifications Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Total Habitable Area</span>
-              <span className="text-sm font-bold text-[#0E201C] tabular-nums">
-                {property.surfaceAreaM2 ? `${property.surfaceAreaM2} m²` : '850 m²'}
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Land & Plot Area</span>
-              <span className="text-sm font-bold text-[#0E201C] tabular-nums">
-                {(property as any).specs?.plotAreaM2 ? `${(property as any).specs.plotAreaM2.toLocaleString()} m²` : '5,200 m²'}
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Year Built / Restored</span>
-              <span className="text-sm font-bold text-[#0E201C] tabular-nums">
-                {property.yearBuilt || 2024}
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Architectural Style</span>
-              <span className="text-sm font-bold text-[#0E201C]">
-                {property.type || 'Contemporary Villa'}
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Cadastral Reference</span>
-              <span className="text-sm font-mono font-bold text-[#0E201C]">
-                {property.cadastralReference || '06-CAN-2024-8841B'}
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Energy Performance (DPE)</span>
-              <span className="text-sm font-bold text-emerald-700">
-                Class A · High Efficiency
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">SPV Legal Holding</span>
-              <span className="text-sm font-bold text-[#0E201C]">
-                Sociedad Limitada (S.L.)
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Statutory Jurisdiction</span>
-              <span className="text-sm font-bold text-[#0E201C]">
-                France / European Union
-              </span>
-            </div>
-          </div>
-
-          {/* Architectural Description */}
-          <div className="mb-8">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#0E201C] mb-2.5">
-              Curated Concept & Architectural Narrative
-            </h4>
-            <div className="p-5 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1] text-xs sm:text-sm text-[#475450] leading-relaxed whitespace-pre-line font-light">
-              {property.description || 
-                `Positioned in an ultra-prime residential enclave, this exceptional estate exemplifies contemporary Mediterranean architecture. Designed to maximize panoramic sea perspectives and natural solar orientation, the property combines floor-to-ceiling glass fenestration, solid travertine stone finishes, and bespoke Italian craftsmanship.\n\nThe ground level features grand double-height reception salons opening directly onto an expansive teak terrace and heated overflow infinity pool. The private master sanctuary commands the entire upper wing, complete with dressing rooms, an en-suite marble bath, and private sunset solarium.`}
-            </div>
-          </div>
-
-          {/* Luxury Amenities */}
-          {property.amenities && property.amenities.length > 0 && (
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#0E201C] mb-3">
-                Registered Interior & Exterior Distinctions
-              </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-                {property.amenities.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-[#E1E6E1] font-medium text-[#111A18]"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-                    <span className="truncate">{item}</span>
-                  </div>
-                ))}
-              </div>
+          ) : (
+            <div className="flex min-h-[600px] items-center justify-center text-sm text-[#6b665c]" role="status">
+              Preparing the property brochure…
             </div>
           )}
         </section>
-
-        {/* ========================================================================= */}
-        {/* PAGE 3: HIGH-RESOLUTION CURATED PHOTOGRAPHIC SHOWCASE                     */}
-        {/* ========================================================================= */}
-        <section className="pt-8 border-b border-[#E1E6E1] pb-10 mb-10 print:pt-4 print:border-none print:pb-0 print:mb-0 print:page-break-after">
-          <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
-            <div className="flex items-center gap-2.5">
-              <Eye className="w-4 h-4 text-[#10B981]" />
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
-                Curated Photographic Showcase & Perspective
-              </h3>
-            </div>
-            <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 03</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {(property.images && property.images.length > 0 ? property.images.slice(0, 6) : [property.bannerImage]).map((img, idx) => (
-              <div key={idx} className="aspect-[4/3] rounded-2xl overflow-hidden bg-[#F2F5F2] border border-[#E1E6E1] relative group">
-                <img
-                  src={img}
-                  alt={`${property.title} perspective ${idx + 1}`}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-                <span className="absolute bottom-3 left-3 text-white text-[10px] font-mono tracking-wider font-semibold">
-                  Plate 0{idx + 1} · Architectural View
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-[11px] text-[#7D8C86] italic text-center font-light">
-            *High-resolution architectural plates recorded on site. Verified cadastral land surveys and confidential blueprints available upon execution of confidentiality deed.
-          </p>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* PAGE 4: PAYMENT SCHEDULE & ESCROW RECONCILIATION                          */}
-        {/* ========================================================================= */}
-        <section className="pt-8 border-b border-[#E1E6E1] pb-10 mb-10 print:pt-4 print:border-none print:pb-0 print:mb-0 print:page-break-after">
-          <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
-            <div className="flex items-center gap-2.5">
-              <CreditCard className="w-4 h-4 text-[#10B981]" />
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
-                Acquisition Structure & Escrow Reconciliation
-              </h3>
-            </div>
-            <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 04</span>
-          </div>
-
-          {/* Pricing & Fee Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="p-5 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
-                Underwritten Purchase Price
-              </span>
-              <span className="text-xl font-serif font-bold text-[#0E201C] tabular-nums mt-1 block">
-                {formatCurrency(paymentPlan.purchasePrice)}
-              </span>
-              <span className="text-[11px] text-gray-500 block mt-1">Excludes statutory buyer closing fees</span>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1]">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
-                Notarial & Agency Fees (Est.)
-              </span>
-              <span className="text-xl font-serif font-bold text-[#B88728] tabular-nums mt-1 block">
-                {formatCurrency(paymentPlan.totalAdditionalFees)}
-              </span>
-              <span className="text-[11px] text-gray-500 block mt-1">
-                Notary: {paymentPlan.notarialAndTaxPercent}% · Agency: {paymentPlan.agencyFeePercent}%
-              </span>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[#091714] text-white border border-[#23423B] shadow-sm">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-[#6EE7B7] block">
-                Total Acquisition Capital
-              </span>
-              <span className="text-xl font-serif font-bold text-white tabular-nums mt-1 block">
-                {formatCurrency(paymentPlan.totalTransactionAmount)}
-              </span>
-              <span className="text-[11px] text-emerald-300/80 block mt-1">
-                All-inclusive settlement estimate
-              </span>
-            </div>
-          </div>
-
-          {/* Installments Table */}
-          <div className="border border-[#E1E6E1] rounded-2xl overflow-hidden mb-6">
-            <div className="bg-[#F2F5F2] px-4 py-3 border-b border-[#E1E6E1] flex justify-between items-center text-xs font-bold text-[#0E201C]">
-              <span>Milestone & Escrow Call</span>
-              <div className="flex gap-6 sm:gap-10 pr-2">
-                <span className="hidden sm:inline">Timeline</span>
-                <span>Portion</span>
-                <span>Amount (EUR)</span>
-              </div>
-            </div>
-
-            <div className="divide-y divide-[#E1E6E1] text-xs">
-              {paymentPlan.installments.map((inst) => (
-                <div key={inst.installmentNumber} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#F8FAF8] transition-colors">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-[#0E201C] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                        {inst.installmentNumber}
-                      </span>
-                      <strong className="text-xs font-bold text-[#0E201C]">{inst.label}</strong>
+      ) : (
+              <article
+                id="property-printable-document"
+                className="w-full max-w-5xl bg-white text-[#111A18] rounded-3xl shadow-2xl border border-[#E1E6E1] overflow-hidden p-5 sm:p-10 lg:p-14 mb-10 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:rounded-none"
+              >
+                {/* ========================================================================= */}
+                {/* COVER PAGE / PAGE 1: PRESTIGE EDITORIAL PRESENTATION                      */}
+                {/* ========================================================================= */}
+                <section className="flex flex-col justify-between border-b border-[#E1E6E1] pb-10 mb-10 print:border-none print:pb-0 print:mb-0 print:page-break-after">
+                  {/* Remodeled Luxury Brand Header (Responsive & Zero Clumsy Wraps) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E1E6E1] pb-6">
+                    {/* Left: Brand Identity with Gold/Emerald Monogram */}
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-[#091714] text-[#C8A97E] border border-[#C8A97E]/30 flex items-center justify-center font-serif text-lg font-bold tracking-wider shrink-0 shadow-sm">
+                        KZ
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <h1 className="font-serif text-lg sm:text-xl font-bold tracking-[0.12em] text-[#0E201C] uppercase leading-none">
+                            L'Agence
+                          </h1>
+                          <span className="text-xs font-serif italic text-[#8B9B95] tracking-wide">
+                            Prestige Real Estate
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#63726D] uppercase tracking-[0.2em] font-medium">
+                          Family Real Estate · Paris · French Riviera · Monaco
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-[#63726D] pl-7">{inst.description}</p>
+        
+                    {/* Right: Editorial Mandate Reference (Unboxed Typography, No Clunky Pills) */}
+                    <div className="sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-[#F0F3F0]">
+                      <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#7D8C86]">
+                        Confidential Property Mandate
+                      </div>
+                      <div className="text-sm font-mono font-bold text-[#0E201C] tracking-wider mt-0.5">
+                        Nº {propertyRef}
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-10 pl-7 sm:pl-0">
-                    <span className="text-[11px] text-gray-500 font-medium hidden sm:inline">{inst.dueDate}</span>
-                    <span className="font-bold text-[#0E201C] w-12 text-right tabular-nums">{inst.percentage}%</span>
-                    <span className="text-xs font-serif font-bold text-[#10B981] w-32 text-right tabular-nums">
-                      {formatCurrency(inst.amount)}
-                    </span>
+        
+                  {/* ========================================================================= */}
+                  {/* HERO PROPERTY COVER PHOTOGRAPHY (Zero-Pill Discipline & Scrim Alignment)   */}
+                  {/* ========================================================================= */}
+                  <div className="my-6 relative aspect-[16/10] sm:aspect-[16/9] max-h-[460px] w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-[#F2F5F2] border border-[#E1E6E1] shadow-inner group">
+                    <img
+                      src={property.images[0] || property.bannerImage}
+                      alt={property.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                      referrerPolicy="no-referrer"
+                    />
+                    {/* Measured luxury scrim */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/5" />
+                    
+                    {/* Floating Luxury Watermark Stamp (Top Right) */}
+                    <div className="absolute top-4 right-4 sm:top-6 sm:right-6 text-right pointer-events-none">
+                      <span className="text-[10px] font-mono tracking-widest uppercase text-white/70 bg-black/30 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                        Official Portfolio Monograph
+                      </span>
+                    </div>
+        
+                    {/* Hero Architectural Typography */}
+                    <div className="absolute bottom-5 left-5 right-5 sm:bottom-8 sm:left-8 sm:right-8 text-white space-y-2">
+                      {/* Clean unboxed metadata with typographic separators (NO PILLS) */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm font-medium tracking-wide text-white/90">
+                        <span className="uppercase tracking-[0.18em] text-[#A7F3D0] font-semibold">
+                          {property.type}
+                        </span>
+                        <span aria-hidden="true" className="text-white/40">·</span>
+                        <span className="text-white/95">
+                          {property.city}, {property.country}
+                        </span>
+                        {property.isExclusive && (
+                          <>
+                            <span aria-hidden="true" className="text-white/40">·</span>
+                            <span className="text-[#FCD34D] font-medium tracking-wide">
+                              Exclusive Mandate
+                            </span>
+                          </>
+                        )}
+                        <span aria-hidden="true" className="text-white/40">·</span>
+                        <span className="text-white/80 font-mono text-xs">
+                          Ref: {propertyRef}
+                        </span>
+                      </div>
+        
+                      {/* Title with balanced line wrapping */}
+                      <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-normal tracking-tight text-white leading-[1.15] text-balance drop-shadow-md">
+                        {property.title}
+                      </h2>
+        
+                      <p className="text-xs sm:text-sm text-gray-200/90 font-light tracking-wide flex items-center gap-1.5 pt-0.5">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>{property.location}</span>
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Reconciliation Balance Bar */}
-            <div className="bg-[#F8FAF8] p-3.5 border-t border-[#E1E6E1] flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
-                <span className="font-bold text-[#0E201C]">
-                  Reconciled Balance:
-                </span>
-                <span className="text-[#10B981] font-bold">
-                  {formatCurrency(paymentPlan.purchasePrice)} = 100.0% Verified
-                </span>
-              </div>
-              <span className="text-[11px] text-gray-500 font-mono">
-                Variance: €0.00
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* PAGE 5: NOTARIAL SIGN-OFF & MANDATE AUTHORIZATION                         */}
-        {/* ========================================================================= */}
-        <section className="pt-8 print:pt-4">
-          <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
-            <div className="flex items-center gap-2.5">
-              <Award className="w-4 h-4 text-[#10B981]" />
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
-                Authorized Representation & Legal Seal
-              </h3>
-            </div>
-            <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 05</span>
-          </div>
-
-          {/* Representation Details */}
-          <div className="p-6 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1] mb-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
-              <div>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">
-                  Exclusive Mandate Agency
-                </span>
-                <span className="text-sm font-serif font-bold text-[#0E201C] block">
-                  L'Agence Family Real Estate
-                </span>
-                <span className="text-gray-500 block">
-                  Designated Partner: {designatedAdvisorName}
-                </span>
-                <div className="mt-2.5 space-y-1 text-gray-600 text-[11px]">
-                  <p>Direct Tel: {designatedAdvisorPhone}</p>
-                  <p>Inquiries: {designatedAdvisorEmail}</p>
-                  <p>Offices: 95 Avenue des Champs-Élysées, 75008 Paris</p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">
-                  Prospective Investor / Subscriber
-                </span>
-                <span className="text-sm font-serif font-bold text-[#0E201C] block">
-                  {docRecord.customization?.buyerName || 'Private Wealth Subscriber'}
-                </span>
-                <span className="text-gray-500 block">
-                  {docRecord.customization?.buyerEmail || 'Mandate registered on file'}
-                </span>
-                <p className="mt-2.5 text-[11px] text-gray-600">
-                  Compliance Status: Level 2 Verified Institutional Investor
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Formal Seal & Signatures */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 border-t border-[#E1E6E1]">
-            <div className="space-y-6">
-              <div className="border-b border-[#CCD4D0] pb-2">
-                <span className="text-[10px] uppercase font-bold text-[#7D8C86] block">
-                  For L'Agence Prestige Real Estate
-                </span>
-                <span className="text-xs font-bold text-[#0E201C]">
-                  {designatedAdvisorName} · Authorized Signatory
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full border-2 border-[#10B981]/40 flex items-center justify-center font-serif text-[9px] text-[#10B981] font-bold uppercase tracking-wider text-center rotate-[-8deg]">
-                  SEALED<br />L'AGENCE
-                </div>
-                <div className="text-[11px] text-gray-500 italic">
-                  Electronically authenticated with notary timestamp
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="border-b border-[#CCD4D0] pb-2">
-                <span className="text-[10px] uppercase font-bold text-[#7D8C86] block">
-                  For the Subscribing Investor
-                </span>
-                <span className="text-xs font-bold text-[#0E201C]">
-                  {docRecord.customization?.buyerName || '[Awaiting Execution]'}
-                </span>
-              </div>
-              <div className="text-[11px] text-gray-500 italic pt-3">
-                Signature & Date: __________________________________
-              </div>
-            </div>
-          </div>
-
-          {/* Document Footer */}
-          <footer className="mt-10 pt-4 border-t border-[#E1E6E1] flex flex-wrap items-center justify-between text-[10px] text-[#7D8C86]">
-            <span>L'Agence Real Estate Dossier Engine · {formatDate(docRecord.updatedAt)}</span>
-            <span>Ref: {propertyRef} · ID: {docRecord.id.slice(0, 16)}</span>
-          </footer>
-        </section>
-      </article>
+        
+                  {/* ========================================================================= */}
+                  {/* CURATED ARCHITECTURAL SPECIFICATIONS STRIP (Page 1 Focal Ribbon)          */}
+                  {/* ========================================================================= */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 p-4 sm:p-6 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
+                        Acquisition Valuation
+                      </span>
+                      <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block tabular-nums">
+                        {formatCurrency(effectivePrice)}
+                      </span>
+                      <span className="text-[11px] text-emerald-700 font-medium block">
+                        Token Unit: €{property.tokenPrice || 364}
+                      </span>
+                    </div>
+        
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
+                        Built Living Surface
+                      </span>
+                      <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block tabular-nums">
+                        {property.surfaceAreaM2 ? `${property.surfaceAreaM2} m²` : '850 m²'}
+                      </span>
+                      <span className="text-[11px] text-gray-500 font-medium block">
+                        {property.surfaceAreaM2 ? `${Math.round(property.surfaceAreaM2 * 10.764)} sq ft` : '9,149 sq ft'}
+                      </span>
+                    </div>
+        
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
+                        Bedrooms & Layout
+                      </span>
+                      <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block">
+                        {property.bedrooms ? `${property.bedrooms} Suites` : '6 Suites'}
+                      </span>
+                      <span className="text-[11px] text-gray-500 font-medium block">
+                        {property.bathrooms ? `${property.bathrooms} En-Suite Baths` : '7 Baths'}
+                      </span>
+                    </div>
+        
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
+                        Private Advisory Desk
+                      </span>
+                      <span className="text-base sm:text-lg font-serif font-bold text-[#0E201C] block truncate">
+                        {designatedAdvisorName}
+                      </span>
+                      <span className="text-[11px] text-gray-500 font-medium block truncate">
+                        {designatedAdvisorRole}
+                      </span>
+                    </div>
+                  </div>
+                </section>
+        
+                {/* ========================================================================= */}
+                {/* PAGE 2: ARCHITECTURAL PROFILE, SPATIAL DIMENSIONS & NARRATIVE             */}
+                {/* ========================================================================= */}
+                <section className="pt-8 border-b border-[#E1E6E1] pb-10 mb-10 print:pt-4 print:border-none print:pb-0 print:mb-0 print:page-break-after">
+                  <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <Building2 className="w-4 h-4 text-[#10B981]" />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
+                        Architectural Specifications & Spatial Dimensions
+                      </h3>
+                    </div>
+                    <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 02</span>
+                  </div>
+        
+                  {/* Specifications Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Total Habitable Area</span>
+                      <span className="text-sm font-bold text-[#0E201C] tabular-nums">
+                        {property.surfaceAreaM2 ? `${property.surfaceAreaM2} m²` : '850 m²'}
+                      </span>
+                    </div>
+        
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Land & Plot Area</span>
+                      <span className="text-sm font-bold text-[#0E201C] tabular-nums">
+                        {(property as any).specs?.plotAreaM2 ? `${(property as any).specs.plotAreaM2.toLocaleString()} m²` : '5,200 m²'}
+                      </span>
+                    </div>
+        
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Year Built / Restored</span>
+                      <span className="text-sm font-bold text-[#0E201C] tabular-nums">
+                        {property.yearBuilt || 2024}
+                      </span>
+                    </div>
+        
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Architectural Style</span>
+                      <span className="text-sm font-bold text-[#0E201C]">
+                        {property.type || 'Contemporary Villa'}
+                      </span>
+                    </div>
+        
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Cadastral Reference</span>
+                      <span className="text-sm font-mono font-bold text-[#0E201C]">
+                        {property.cadastralReference || '06-CAN-2024-8841B'}
+                      </span>
+                    </div>
+        
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Energy Performance (DPE)</span>
+                      <span className="text-sm font-bold text-emerald-700">
+                        Class A · High Efficiency
+                      </span>
+                    </div>
+        
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">SPV Legal Holding</span>
+                      <span className="text-sm font-bold text-[#0E201C]">
+                        Sociedad Limitada (S.L.)
+                      </span>
+                    </div>
+        
+                    <div className="p-4 rounded-xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">Statutory Jurisdiction</span>
+                      <span className="text-sm font-bold text-[#0E201C]">
+                        France / European Union
+                      </span>
+                    </div>
+                  </div>
+        
+                  {/* Architectural Description */}
+                  <div className="mb-8">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#0E201C] mb-2.5">
+                      Curated Concept & Architectural Narrative
+                    </h4>
+                    <div className="p-5 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1] text-xs sm:text-sm text-[#475450] leading-relaxed whitespace-pre-line font-light">
+                      {property.description || 
+                        `Positioned in an ultra-prime residential enclave, this exceptional estate exemplifies contemporary Mediterranean architecture. Designed to maximize panoramic sea perspectives and natural solar orientation, the property combines floor-to-ceiling glass fenestration, solid travertine stone finishes, and bespoke Italian craftsmanship.\n\nThe ground level features grand double-height reception salons opening directly onto an expansive teak terrace and heated overflow infinity pool. The private master sanctuary commands the entire upper wing, complete with dressing rooms, an en-suite marble bath, and private sunset solarium.`}
+                    </div>
+                  </div>
+        
+                  {/* Luxury Amenities */}
+                  {property.amenities && property.amenities.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#0E201C] mb-3">
+                        Registered Interior & Exterior Distinctions
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                        {property.amenities.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-[#E1E6E1] font-medium text-[#111A18]"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
+                            <span className="truncate">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+        
+                {/* ========================================================================= */}
+                {/* PAGE 3: HIGH-RESOLUTION CURATED PHOTOGRAPHIC SHOWCASE                     */}
+                {/* ========================================================================= */}
+                <section className="pt-8 border-b border-[#E1E6E1] pb-10 mb-10 print:pt-4 print:border-none print:pb-0 print:mb-0 print:page-break-after">
+                  <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <Eye className="w-4 h-4 text-[#10B981]" />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
+                        Curated Photographic Showcase & Perspective
+                      </h3>
+                    </div>
+                    <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 03</span>
+                  </div>
+        
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {(property.images && property.images.length > 0 ? property.images.slice(0, 6) : [property.bannerImage]).map((img, idx) => (
+                      <div key={idx} className="aspect-[4/3] rounded-2xl overflow-hidden bg-[#F2F5F2] border border-[#E1E6E1] relative group">
+                        <img
+                          src={img}
+                          alt={`${property.title} perspective ${idx + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
+                        <span className="absolute bottom-3 left-3 text-white text-[10px] font-mono tracking-wider font-semibold">
+                          Plate 0{idx + 1} · Architectural View
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+        
+                  <p className="text-[11px] text-[#7D8C86] italic text-center font-light">
+                    *High-resolution architectural plates recorded on site. Verified cadastral land surveys and confidential blueprints available upon execution of confidentiality deed.
+                  </p>
+                </section>
+        
+                {/* ========================================================================= */}
+                {/* PAGE 4: PAYMENT SCHEDULE & ESCROW RECONCILIATION                          */}
+                {/* ========================================================================= */}
+                <section className="pt-8 border-b border-[#E1E6E1] pb-10 mb-10 print:pt-4 print:border-none print:pb-0 print:mb-0 print:page-break-after">
+                  <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <CreditCard className="w-4 h-4 text-[#10B981]" />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
+                        Acquisition Structure & Escrow Reconciliation
+                      </h3>
+                    </div>
+                    <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 04</span>
+                  </div>
+        
+                  {/* Pricing & Fee Summary */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div className="p-5 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
+                        Underwritten Purchase Price
+                      </span>
+                      <span className="text-xl font-serif font-bold text-[#0E201C] tabular-nums mt-1 block">
+                        {formatCurrency(paymentPlan.purchasePrice)}
+                      </span>
+                      <span className="text-[11px] text-gray-500 block mt-1">Excludes statutory buyer closing fees</span>
+                    </div>
+        
+                    <div className="p-5 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1]">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block">
+                        Notarial & Agency Fees (Est.)
+                      </span>
+                      <span className="text-xl font-serif font-bold text-[#B88728] tabular-nums mt-1 block">
+                        {formatCurrency(paymentPlan.totalAdditionalFees)}
+                      </span>
+                      <span className="text-[11px] text-gray-500 block mt-1">
+                        Notary: {paymentPlan.notarialAndTaxPercent}% · Agency: {paymentPlan.agencyFeePercent}%
+                      </span>
+                    </div>
+        
+                    <div className="p-5 rounded-2xl bg-[#091714] text-white border border-[#23423B] shadow-sm">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#6EE7B7] block">
+                        Total Acquisition Capital
+                      </span>
+                      <span className="text-xl font-serif font-bold text-white tabular-nums mt-1 block">
+                        {formatCurrency(paymentPlan.totalTransactionAmount)}
+                      </span>
+                      <span className="text-[11px] text-emerald-300/80 block mt-1">
+                        All-inclusive settlement estimate
+                      </span>
+                    </div>
+                  </div>
+        
+                  {/* Installments Table */}
+                  <div className="border border-[#E1E6E1] rounded-2xl overflow-hidden mb-6">
+                    <div className="bg-[#F2F5F2] px-4 py-3 border-b border-[#E1E6E1] flex justify-between items-center text-xs font-bold text-[#0E201C]">
+                      <span>Milestone & Escrow Call</span>
+                      <div className="flex gap-6 sm:gap-10 pr-2">
+                        <span className="hidden sm:inline">Timeline</span>
+                        <span>Portion</span>
+                        <span>Amount (EUR)</span>
+                      </div>
+                    </div>
+        
+                    <div className="divide-y divide-[#E1E6E1] text-xs">
+                      {paymentPlan.installments.map((inst) => (
+                        <div key={inst.installmentNumber} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-[#F8FAF8] transition-colors">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-[#0E201C] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                                {inst.installmentNumber}
+                              </span>
+                              <strong className="text-xs font-bold text-[#0E201C]">{inst.label}</strong>
+                            </div>
+                            <p className="text-[11px] text-[#63726D] pl-7">{inst.description}</p>
+                          </div>
+        
+                          <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-10 pl-7 sm:pl-0">
+                            <span className="text-[11px] text-gray-500 font-medium hidden sm:inline">{inst.dueDate}</span>
+                            <span className="font-bold text-[#0E201C] w-12 text-right tabular-nums">{inst.percentage}%</span>
+                            <span className="text-xs font-serif font-bold text-[#10B981] w-32 text-right tabular-nums">
+                              {formatCurrency(inst.amount)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+        
+                    {/* Reconciliation Balance Bar */}
+                    <div className="bg-[#F8FAF8] p-3.5 border-t border-[#E1E6E1] flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-[#10B981]" />
+                        <span className="font-bold text-[#0E201C]">
+                          Reconciled Balance:
+                        </span>
+                        <span className="text-[#10B981] font-bold">
+                          {formatCurrency(paymentPlan.purchasePrice)} = 100.0% Verified
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-500 font-mono">
+                        Variance: €0.00
+                      </span>
+                    </div>
+                  </div>
+                </section>
+        
+                {/* ========================================================================= */}
+                {/* PAGE 5: NOTARIAL SIGN-OFF & MANDATE AUTHORIZATION                         */}
+                {/* ========================================================================= */}
+                <section className="pt-8 print:pt-4">
+                  <div className="flex items-center justify-between border-b border-[#E1E6E1] pb-3 mb-6">
+                    <div className="flex items-center gap-2.5">
+                      <Award className="w-4 h-4 text-[#10B981]" />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0E201C]">
+                        Authorized Representation & Legal Seal
+                      </h3>
+                    </div>
+                    <span className="text-xs font-mono text-[#7D8C86]">Dossier Page 05</span>
+                  </div>
+        
+                  {/* Representation Details */}
+                  <div className="p-6 rounded-2xl bg-[#F8FAF8] border border-[#E1E6E1] mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">
+                          Exclusive Mandate Agency
+                        </span>
+                        <span className="text-sm font-serif font-bold text-[#0E201C] block">
+                          L'Agence Family Real Estate
+                        </span>
+                        <span className="text-gray-500 block">
+                          Designated Partner: {designatedAdvisorName}
+                        </span>
+                        <div className="mt-2.5 space-y-1 text-gray-600 text-[11px]">
+                          <p>Direct Tel: {designatedAdvisorPhone}</p>
+                          <p>Inquiries: {designatedAdvisorEmail}</p>
+                          <p>Offices: 95 Avenue des Champs-Élysées, 75008 Paris</p>
+                        </div>
+                      </div>
+        
+                      <div>
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-[#7D8C86] block mb-1">
+                          Prospective Investor / Subscriber
+                        </span>
+                        <span className="text-sm font-serif font-bold text-[#0E201C] block">
+                          {docRecord.customization?.buyerName || 'Private Wealth Subscriber'}
+                        </span>
+                        <span className="text-gray-500 block">
+                          {docRecord.customization?.buyerEmail || 'Mandate registered on file'}
+                        </span>
+                        <p className="mt-2.5 text-[11px] text-gray-600">
+                          Compliance Status: Level 2 Verified Institutional Investor
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+        
+                  {/* Formal Seal & Signatures */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4 border-t border-[#E1E6E1]">
+                    <div className="space-y-6">
+                      <div className="border-b border-[#CCD4D0] pb-2">
+                        <span className="text-[10px] uppercase font-bold text-[#7D8C86] block">
+                          For L'Agence Prestige Real Estate
+                        </span>
+                        <span className="text-xs font-bold text-[#0E201C]">
+                          {designatedAdvisorName} · Authorized Signatory
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full border-2 border-[#10B981]/40 flex items-center justify-center font-serif text-[9px] text-[#10B981] font-bold uppercase tracking-wider text-center rotate-[-8deg]">
+                          SEALED<br />L'AGENCE
+                        </div>
+                        <div className="text-[11px] text-gray-500 italic">
+                          Electronically authenticated with notary timestamp
+                        </div>
+                      </div>
+                    </div>
+        
+                    <div className="space-y-6">
+                      <div className="border-b border-[#CCD4D0] pb-2">
+                        <span className="text-[10px] uppercase font-bold text-[#7D8C86] block">
+                          For the Subscribing Investor
+                        </span>
+                        <span className="text-xs font-bold text-[#0E201C]">
+                          {docRecord.customization?.buyerName || '[Awaiting Execution]'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-gray-500 italic pt-3">
+                        Signature & Date: __________________________________
+                      </div>
+                    </div>
+                  </div>
+        
+                  {/* Document Footer */}
+                  <footer className="mt-10 pt-4 border-t border-[#E1E6E1] flex flex-wrap items-center justify-between text-[10px] text-[#7D8C86]">
+                    <span>L'Agence Real Estate Dossier Engine · {formatDate(docRecord.updatedAt)}</span>
+                    <span>Ref: {propertyRef} · ID: {docRecord.id.slice(0, 16)}</span>
+                  </footer>
+                </section>
+              </article>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL 1: EDIT CUSTOMIZATION & PAYMENT PLAN (Hidden in Print)              */}

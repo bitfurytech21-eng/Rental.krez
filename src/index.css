@@ -3512,3 +3512,161 @@ section[class*="bg-[#0B1B30]"] h3 {
     transition-duration: 0.01ms;
   }
 }
+
+
+/* Mobile homepage spacing: keep the philosophy and metrics in normal flow. */
+@media (max-width: 767px) {
+  .s2-spacer {
+    height: 0;
+  }
+
+  .s2-wrapper {
+    height: auto;
+  }
+
+  .s2-section {
+    position: relative;
+    top: auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .s2-content {
+    height: auto;
+    padding: 52px 20px 56px;
+  }
+
+  .s2-inner {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .s2-statement {
+    max-width: 34rem;
+    color: #25312f;
+    font-size: clamp(20px, 5.1vw, 26px);
+    font-weight: 400;
+    line-height: 1.32;
+    letter-spacing: -0.035em;
+    white-space: normal;
+    text-wrap: balance;
+  }
+
+  .s2-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 9px;
+    margin-top: 28px;
+  }
+
+  .s2-stat {
+    min-width: 0;
+    padding: 13px 9px 14px;
+    border: 1px solid rgba(42, 57, 53, .13);
+    border-radius: 15px;
+    background: rgba(255, 255, 255, .78);
+    box-shadow: 0 7px 18px rgba(36, 48, 43, .045);
+  }
+
+  .s2-stat + .s2-stat {
+    border-left: 1px solid rgba(42, 57, 53, .13);
+    padding-left: 9px;
+  }
+
+  .s2-stat-value {
+    font-size: clamp(25px, 7.1vw, 34px);
+    line-height: 1.05;
+    letter-spacing: -.055em;
+    white-space: nowrap;
+  }
+
+  .s2-stat-label {
+    margin-top: 7px;
+    color: #59645f;
+    font-size: clamp(9px, 2.65vw, 11px);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .s2-wrapper {
+    height: auto;
+  }
+
+  .s2-section {
+    position: relative;
+    height: auto;
+    min-height: 70vh;
+  }
+
+  .s2-content {
+    min-height: 70vh;
+    height: auto;
+    padding-block: 64px;
+  }
+
+  .s2-inner {
+    padding-left: 8%;
+  }
+
+  .s2-statement {
+    color: #25312f;
+    white-space: normal;
+  }
+}
+
+
+/* The mobile gallery follows the metrics instead of overlapping a full viewport. */
+@media (max-width: 767px) {
+  .s3-gallery-section {
+    margin-top: 0;
+    min-height: 0;
+    height: auto;
+  }
+
+  .s3-ticker-wrap {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    margin-bottom: 0;
+    opacity: .18;
+  }
+
+  .s3-gallery-content {
+    position: relative;
+    height: auto;
+    padding: 44px 16px 48px;
+  }
+}
+
+/* Footer-end cleanup: prevent third-party chat overlays from painting a
+   full-viewport panel behind their launcher on mobile browsers. The site's
+   own support panel is rendered by React and remains available from the
+   footer's "Open support chat" action. */
+html,
+body,
+#root {
+  background-color: #f5f0ea;
+}
+
+#root {
+  min-height: 100%;
+}
+
+/* Smartsupp's injected launcher/iframe is not used by the current React
+   support flow. Hide stale vendor-injected surfaces without affecting the
+   in-app support dialog. */
+#smartsupp-widget-container,
+#smartsupp-widget,
+.smartsupp-widget,
+iframe[src*="smartsupp"],
+iframe[title*="Smartsupp"],
+div[id^="smartsupp"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
