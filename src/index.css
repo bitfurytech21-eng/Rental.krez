@@ -3355,3 +3355,94 @@ section[class*="bg-[#0B1B30]"] h3 {
     transition: none !important;
   }
 }
+
+/* Stage 8: investor dashboard layout and small-screen usability refinements.
+   Presentation-only rules; existing navigation, data, and actions remain unchanged. */
+.app-shell .app-main-area,
+.app-shell .app-content-scroll,
+.app-shell .app-content-scroll > div {
+  min-width: 0;
+}
+
+.app-shell .app-content-scroll {
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+
+.app-shell .app-content-scroll .grid,
+.app-shell .app-content-scroll .flex {
+  min-width: 0;
+}
+
+.app-shell .app-content-scroll .grid > *,
+.app-shell .app-content-scroll .flex > * {
+  min-width: 0;
+}
+
+.app-shell .app-content-scroll :where(.overflow-x-auto, .overflow-auto) {
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-shell .app-content-scroll :where(input, select, textarea, button) {
+  max-width: 100%;
+}
+
+.mobile-bottom-nav {
+  padding-left: max(8px, env(safe-area-inset-left, 0px));
+  padding-right: max(8px, env(safe-area-inset-right, 0px));
+  border-top-color: rgba(182, 154, 99, 0.24);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.28);
+}
+
+.mobile-bottom-nav button {
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 10px;
+  touch-action: manipulation;
+}
+
+.mobile-bottom-nav button:focus-visible {
+  outline: 2px solid var(--platform-accent, #b69a63);
+  outline-offset: -2px;
+}
+
+@media (min-width: 1025px) {
+  .app-shell .app-content-scroll {
+    padding: clamp(18px, 2vw, 30px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-shell .app-content-scroll {
+    padding: 12px 12px calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-shell .app-content-scroll > div {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell .app-content-scroll {
+    padding: 10px 8px calc(86px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-shell .app-content-scroll > div {
+    gap: 1rem;
+  }
+
+  .mobile-bottom-nav {
+    min-height: calc(58px + env(safe-area-inset-bottom, 0px));
+    padding-top: 5px;
+    padding-bottom: calc(5px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-bottom-nav button {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+}
+
