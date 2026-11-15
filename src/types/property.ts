@@ -64,6 +64,9 @@ export interface Property {
   location: string;
   city: string;
   country: string;
+  /** Verified WGS84 property coordinates; omit when only city-level location is known. */
+  latitude?: number;
+  longitude?: number;
   type: PropertyType;
   status: PropertyStatus;
   images: string[];
