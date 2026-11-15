@@ -24,8 +24,9 @@ EMAIL_TEST_MODE = "false"
 ENVIRONMENT = "production"
 TURNSTILE_ALLOWED_HOSTNAMES = "kretzdespain.com,www.kretzdespain.com,rental-krez.pages.dev"
 NODE_ENV = "production"
-PUBLIC_APP_URL = "https://rental-krez.pages.dev"
-# SESSION_SECRET must be configured as an encrypted Worker secret, never in this file.
+PUBLIC_APP_URL = "https://kretzdespain.com"
+# SESSION_SECRET and CLOUDFLARE_TURNSTILE_SECRET_KEY must be configured as encrypted Worker secrets, never in this file.
+# nodejs_compat_populate_process_env exposes these Worker bindings to the existing process.env readers.
 # ...
 
 # Express imports body-parser internally during module initialization. The Worker
