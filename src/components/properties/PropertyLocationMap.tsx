@@ -67,9 +67,8 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
       scrollWheelZoom: false,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-      subdomains: 'abc',
       maxZoom: 19,
       updateWhenIdle: true,
       keepBuffer: 2,
