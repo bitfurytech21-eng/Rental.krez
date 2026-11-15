@@ -43,7 +43,7 @@ export const FirstTimeOnboardingModal: React.FC<FirstTimeOnboardingModalProps> =
     {
       id: 1,
       title: "SPV Security & Encryption",
-      description: "Argon2id session credentials & Cloudflare Turnstile token security active.",
+      description: "Argon2id session credentials and encrypted authentication controls active.",
       icon: Lock,
       status: "completed",
     },
