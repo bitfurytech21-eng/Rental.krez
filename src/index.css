@@ -3618,3 +3618,27 @@ section[class*="bg-[#0B1B30]"] h3 {
     white-space: normal;
   }
 }
+
+
+/* The mobile gallery follows the metrics instead of overlapping a full viewport. */
+@media (max-width: 767px) {
+  .s3-gallery-section {
+    margin-top: 0;
+    min-height: 0;
+    height: auto;
+  }
+
+  .s3-ticker-wrap {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    margin-bottom: 0;
+    opacity: .18;
+  }
+
+  .s3-gallery-content {
+    position: relative;
+    height: auto;
+    padding: 44px 16px 48px;
+  }
+}
