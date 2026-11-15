@@ -81,7 +81,12 @@ export async function verifyTurnstileToken(
   expectedActions: string[] = []
 ): Promise<TurnstileVerificationResult> {
   pruneConsumedTokens();
-  const configuredSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || process.env.TURNSTILE_SECRET_KEY || '';
+  // Cloudflare Worker bindings can arrive as empty/whitespace strings when a
+  // secret was not attached to the active environment. Normalize before use.
+  // Never log or return the secret value itself.
+  const cloudflareSecret = String(process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || '').trim();
+  const legacySecret = String(process.env.TURNSTILE_SECRET_KEY || '').trim();
+  const configuredSecret = cloudflareSecret || legacySecret;
   const secretKey = configuredSecret || DEFAULT_TEST_SECRET_KEY;
   const isDevOrPreview = !isProduction();
 
@@ -93,7 +98,12 @@ export async function verifyTurnstileToken(
       requestId: 'req-turnstile-config',
       eventType: 'BOT_CHALLENGE_MISCONFIGURED',
       outcome: 'failure',
-      message: 'Turnstile secret is unavailable to the Worker. Configure CLOUDFLARE_TURNSTILE_SECRET_KEY (or TURNSTILE_SECRET_KEY) on the rental-krez-api Worker; rejecting request.'
+      message: 'Turnstile secret is unavailable to the Worker. Configure CLOUDFLARE_TURNSTILE_SECRET_KEY (or TURNSTILE_SECRET_KEY) on the active rental-krez-api Worker environment; rejecting request.',
+      metadata: {
+        hasCloudflareSecretBinding: Boolean(cloudflareSecret),
+        hasLegacySecretBinding: Boolean(legacySecret),
+        environment: process.env.NODE_ENV || 'unset'
+      }
     });
     return {
       success: false,
