@@ -93,7 +93,8 @@ export const KrezAuthModal: React.FC = () => {
           setBusy(false);
           return;
         }
-        await login(cleanEmail, password, emailCode || undefined);
+        if (!turnstileToken) throw new Error('Please complete the Cloudflare security check.');
+        await login(cleanEmail, password, turnstileToken, emailCode || undefined);
         setIsOpen(false);
         setPassword('');
         if (redirectTo) {
@@ -136,6 +137,7 @@ export const KrezAuthModal: React.FC = () => {
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
+        setTurnstileToken('');
         setNotice(err?.message || 'A six-digit security code has been sent to your email address.');
         setError(null);
         return;
@@ -270,6 +272,17 @@ export const KrezAuthModal: React.FC = () => {
             </div>
           )}
 
+          {mode === 'login' && (
+            <TurnstileWidget
+              action="investor_login"
+              theme="light"
+              label="Security verification"
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken('')}
+              onError={() => setTurnstileToken('')}
+            />
+          )}
+
           {mode === 'register' && (
             <TurnstileWidget
               action="register"
@@ -317,7 +330,7 @@ export const KrezAuthModal: React.FC = () => {
 
           <button
             type="submit"
-            disabled={busy || (mode === 'register' && !turnstileToken)}
+            disabled={busy || ((mode === 'register' || mode === 'login') && !turnstileToken)}
             className="w-full rounded-pill bg-primary px-6 py-3.5 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
           >
             {busy
