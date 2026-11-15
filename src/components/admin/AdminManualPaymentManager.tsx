@@ -4,7 +4,7 @@ import { getApiUrl, getAuthToken, withActionEmailVerification } from '../../lib/
 type Method = {
   id: string; name: string; instructions: string; account_details: Record<string, string>;
   minimum_amount: number; maximum_amount: number | null; fee_type: 'none' | 'fixed' | 'percent';
-  fee_value: number; enabled: boolean; logo_url?: string | null;
+  fee_value: number; enabled: boolean; logo_url?: string | null; extra_fields?: Array<{key:string;label:string;required?:boolean}>;
 };
 
 export const AdminManualPaymentManager: React.FC = () => {
@@ -19,6 +19,8 @@ export const AdminManualPaymentManager: React.FC = () => {
   const [maximum, setMaximum] = useState('');
   const [feeType, setFeeType] = useState<'none' | 'fixed' | 'percent'>('none');
   const [feeValue, setFeeValue] = useState('0');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [extraFields, setExtraFields] = useState('[]');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -42,7 +44,7 @@ export const AdminManualPaymentManager: React.FC = () => {
   const reset = () => {
     setEditing(null); setName(''); setInstructions('');
     setAccountDetails('{"Bank name":"","Account name":"","Account number":""}');
-    setMinimum('100'); setMaximum(''); setFeeType('none'); setFeeValue('0');
+    setMinimum('100'); setMaximum(''); setFeeType('none'); setFeeValue('0'); setLogoUrl(''); setExtraFields('[]');
   };
 
   const save = async (e: React.FormEvent) => {
@@ -50,7 +52,9 @@ export const AdminManualPaymentManager: React.FC = () => {
     try {
       const parsedDetails = JSON.parse(accountDetails);
       if (!parsedDetails || typeof parsedDetails !== 'object' || Array.isArray(parsedDetails)) throw new Error('Account details must be a JSON object.');
-      const body = { name, instructions, accountDetails: parsedDetails, minimumAmount: Number(minimum), maximumAmount: maximum ? Number(maximum) : null, feeType, feeValue: Number(feeValue), enabled: true };
+      const parsedExtraFields = JSON.parse(extraFields);
+      if (!Array.isArray(parsedExtraFields)) throw new Error('Extra required fields must be a JSON array.');
+      const body = { name, logoUrl, extraFields: parsedExtraFields, instructions, accountDetails: parsedDetails, minimumAmount: Number(minimum), maximumAmount: maximum ? Number(maximum) : null, feeType, feeValue: Number(feeValue), enabled: true };
       const response = await fetch(getApiUrl(editing ? `/manual-payments/admin/methods/${editing}` : '/manual-payments/admin/methods'), {
         method: editing ? 'PATCH' : 'POST', headers: headers(), body: JSON.stringify(body)
       });
@@ -112,6 +116,8 @@ export const AdminManualPaymentManager: React.FC = () => {
         <label className="text-xs font-semibold text-[#46534e]">Maximum amount (optional)<input type="number" min="0.01" step="0.01" value={maximum} onChange={e=>setMaximum(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" /></label>
         <label className="text-xs font-semibold text-[#46534e]">Fee type<select value={feeType} onChange={e=>setFeeType(e.target.value as any)} className="mt-1 w-full rounded-lg border p-2.5 text-sm"><option value="none">No fee</option><option value="fixed">Fixed fee (EUR)</option><option value="percent">Percentage fee</option></select></label>
         <label className="text-xs font-semibold text-[#46534e]">Fee value<input type="number" min="0" step="0.01" value={feeValue} onChange={e=>setFeeValue(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" /></label>
+        <label className="text-xs font-semibold text-[#46534e]">Logo URL (optional)<input value={logoUrl} onChange={e=>setLogoUrl(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" placeholder="https://..." /></label>
+        <label className="text-xs font-semibold text-[#46534e] md:col-span-2">Extra required fields (JSON array)<textarea value={extraFields} onChange={e=>setExtraFields(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border p-2.5 font-mono text-xs" placeholder='[{"key":"reference","label":"Transfer reference","required":true}]' /></label>
         <label className="text-xs font-semibold text-[#46534e] md:col-span-2">Account details (JSON object)<textarea value={accountDetails} onChange={e=>setAccountDetails(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border p-2.5 font-mono text-xs" /></label>
         <label className="text-xs font-semibold text-[#46534e] md:col-span-2">Payment instructions<textarea required value={instructions} onChange={e=>setInstructions(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border p-2.5 text-sm" /></label>
         <div className="md:col-span-2 flex gap-2"><button disabled={busy} className="rounded-lg bg-[#1e3a34] text-white px-4 py-2.5 text-sm font-bold disabled:opacity-50">{editing ? 'Update method' : 'Create method'}</button>{editing && <button type="button" onClick={reset} className="rounded-lg border px-4 py-2.5 text-sm">Cancel edit</button>}</div>
@@ -119,7 +125,7 @@ export const AdminManualPaymentManager: React.FC = () => {
       <div className="mt-6 space-y-2">
         {methods.map(method => <div key={method.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3">
           <div><b className="text-sm">{method.name}</b><p className="text-xs text-gray-500">Min €{Number(method.minimum_amount).toFixed(2)} · {method.maximum_amount ? `Max €${Number(method.maximum_amount).toFixed(2)}` : 'No maximum'} · {method.fee_type} fee</p></div>
-          <div className="flex gap-2"><button onClick={()=>{setEditing(method.id);setName(method.name);setInstructions(method.instructions);setAccountDetails(JSON.stringify(method.account_details || {},null,2));setMinimum(String(method.minimum_amount));setMaximum(method.maximum_amount ? String(method.maximum_amount) : '');setFeeType(method.fee_type);setFeeValue(String(method.fee_value));}} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">Edit</button><button disabled={busy} onClick={()=>toggle(method)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">{method.enabled ? 'Disable' : 'Enable'}</button></div>
+          <div className="flex gap-2"><button onClick={()=>{setEditing(method.id);setName(method.name);setInstructions(method.instructions);setAccountDetails(JSON.stringify(method.account_details || {},null,2));setMinimum(String(method.minimum_amount));setMaximum(method.maximum_amount ? String(method.maximum_amount) : '');setFeeType(method.fee_type);setFeeValue(String(method.fee_value));setLogoUrl(method.logo_url || '');setExtraFields(JSON.stringify(method.extra_fields || [],null,2));}} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">Edit</button><button disabled={busy} onClick={()=>toggle(method)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold">{method.enabled ? 'Disable' : 'Enable'}</button></div>
         </div>)}
         {!methods.length && <p className="text-sm text-gray-500">No manual payment methods configured yet.</p>}
       </div>
