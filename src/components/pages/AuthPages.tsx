@@ -72,6 +72,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [referralCode, setReferralCode] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -120,6 +121,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
         setTurnstileToken(null);
+        setTurnstileResetKey((key) => key + 1);
         setError(err?.message || 'A six-digit security code has been sent to your email address.');
         return;
       }
@@ -426,6 +428,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <div className="pt-1">
                 <TurnstileWidget
+                  key={turnstileResetKey}
                   onVerify={(token) => { setTurnstileToken(token); setError(null); }}
                   onExpire={() => setTurnstileToken(null)}
                   onError={(msg) => setError(msg)}
@@ -445,7 +448,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     maxLength={6}
                     required
                     value={emailCode}
-                    onChange={(e) => setEmailCode(e.target.value.replace(/\\D/g, '').slice(0, 6))}
+                    onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="Enter 6-digit code"
                     className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium tracking-[0.35em] text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
