@@ -4738,7 +4738,7 @@ router.post('/webhooks/email', (req, res) => {
   const timestamp = Number(svixTimestamp);
   const nowSeconds = Math.floor(Date.now() / 1000);
 
-  if (!svixId || !/^\\d+$/.test(svixTimestamp) || !svixSignature || typeof rawBody !== 'string' ||
+  if (!svixId || !/^\d+$/.test(svixTimestamp) || !svixSignature || typeof rawBody !== 'string' ||
       !Number.isFinite(timestamp) || Math.abs(nowSeconds - timestamp) > 300 ||
       !webhookSecret.startsWith('whsec_')) {
     return res.status(401).json({ success: false, error: 'Invalid email webhook signature.', code: 'INVALID_EMAIL_WEBHOOK_SIGNATURE' });
@@ -4755,7 +4755,7 @@ router.post('/webhooks/email', (req, res) => {
   const expected = crypto.createHmac('sha256', signingKey)
     .update(`${svixId}.${svixTimestamp}.${rawBody}`, 'utf8')
     .digest();
-  const signatures = svixSignature.split(/\\s+/).flatMap((part) => {
+  const signatures = svixSignature.split(/\s+/).flatMap((part) => {
     const match = /^v1,([A-Za-z0-9+/=]+)$/.exec(part);
     return match ? [match[1]] : [];
   });
