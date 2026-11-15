@@ -50,7 +50,7 @@ export const SmartsuppWidget: React.FC = () => {
         c.charset = 'utf-8';
         c.async = true;
         c.onerror = () => {
-          // Suppress cross-origin error if external script host is blocked by environment
+          // Keep the in-app support fallback available if the provider is blocked.
         };
         c.src = 'https://www.smartsuppchat.com/loader.js?';
         if (s && s.parentNode) {
@@ -60,6 +60,10 @@ export const SmartsuppWidget: React.FC = () => {
         }
       })(document);
     }
+
+    // Keep the provider's floating launcher hidden until a visitor explicitly
+    // opens support. This prevents an unused chat bubble following every page.
+    window.smartsupp('chat:hide');
 
     if (window.smartsupp) {
       try {
@@ -81,6 +85,7 @@ export const SmartsuppWidget: React.FC = () => {
     const handleOpenSupportEvent = () => {
       if (typeof window !== 'undefined' && window.smartsupp) {
         try {
+          window.smartsupp('chat:show');
           window.smartsupp('chat:open');
           return;
         } catch {
