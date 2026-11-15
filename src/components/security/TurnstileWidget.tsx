@@ -1,26 +1,25 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+
+type TurnstileErrorCallback = (errorCode?: string | number) => boolean;
 
 declare global {
   interface Window {
     turnstile?: {
-      render: (
-        container: HTMLElement | string,
-        params: {
-          sitekey: string;
-          callback?: (token: string) => void;
-          'error-callback'?: (error: any) => void;
-          'expired-callback'?: () => void;
-          theme?: 'light' | 'dark' | 'auto';
-          size?: 'normal' | 'compact' | 'flexible';
-          action?: string;
-          cData?: string;
-        }
-      ) => string;
+      ready: (callback: () => void) => void;
+      render: (container: HTMLElement | string, params: {
+        sitekey: string;
+        callback?: (token: string) => void;
+        'error-callback'?: TurnstileErrorCallback;
+        'expired-callback'?: () => void;
+        'timeout-callback'?: () => void;
+        theme?: 'light' | 'dark' | 'auto';
+        size?: 'normal' | 'compact' | 'flexible';
+        action?: string;
+      }) => string;
       reset: (widgetId?: string) => void;
       remove: (widgetId?: string) => void;
     };
-    onloadTurnstileCallback?: () => void;
   }
 }
 
@@ -34,8 +33,65 @@ interface TurnstileWidgetProps {
   label?: string;
 }
 
-// Official Cloudflare Dummy Sitekey: Always Passes in development/testing
 const DEFAULT_TEST_SITEKEY = '0x4AAAAAAGAW16GKNQCPgkic';
+const SCRIPT_ID = 'cf-turnstile-script';
+const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+let scriptPromise: Promise<void> | null = null;
+
+function loadTurnstileScript(): Promise<void> {
+  if (window.turnstile) return Promise.resolve();
+  if (scriptPromise) return scriptPromise;
+
+  scriptPromise = new Promise<void>((resolve, reject) => {
+    let script = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
+    const created = !script;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = SCRIPT_ID;
+      script.src = SCRIPT_URL;
+      script.async = true;
+      script.defer = true;
+    }
+
+    const activeScript = script;
+    let settled = false;
+    const cleanup = () => {
+      activeScript.removeEventListener('load', onLoad);
+      activeScript.removeEventListener('error', onError);
+    };
+    const onLoad = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (window.turnstile) resolve();
+      else {
+        activeScript.remove();
+        scriptPromise = null;
+        reject(new Error('Cloudflare Turnstile loaded but its API was unavailable. Please retry.'));
+      }
+    };
+    const onError = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      activeScript.remove();
+      scriptPromise = null;
+      reject(new Error('Cloudflare Turnstile could not load. Check your connection and retry.'));
+    };
+
+    activeScript.addEventListener('load', onLoad, { once: true });
+    activeScript.addEventListener('error', onError, { once: true });
+    if (created) document.head.appendChild(activeScript);
+
+    // Covers the case where the API becomes available while listeners are attached.
+    if (window.turnstile) onLoad();
+  }).catch((error: unknown) => {
+    scriptPromise = null;
+    throw error;
+  });
+
+  return scriptPromise;
+}
 
 export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
   onVerify,
@@ -48,149 +104,113 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const callbacksRef = useRef({ onVerify, onExpire, onError });
   const [status, setStatus] = useState<'loading' | 'ready' | 'verified' | 'error' | 'expired'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  callbacksRef.current = { onVerify, onExpire, onError };
 
   const configuredSiteKey = String(import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY || '').trim();
-  // Test keys are allowed only in non-production builds. Production must use
-  // the public site key paired with the secret configured on the API Worker.
+  // Never use a test sitekey in production.
   const siteKey = configuredSiteKey || (!import.meta.env.PROD ? DEFAULT_TEST_SITEKEY : '');
 
-  const handleVerified = useCallback(
-    (token: string) => {
-      setStatus('verified');
-      setErrorMessage(null);
-      onVerify(token);
-    },
-    [onVerify]
-  );
-
-  const handleExpired = useCallback(() => {
-    setStatus('expired');
-    if (onExpire) onExpire();
-  }, [onExpire]);
-
-  const handleError = useCallback(
-    (err: any) => {
-      setStatus('error');
-      const msg = typeof err === 'string' ? err : 'Security challenge check failed.';
-      setErrorMessage(msg);
-      if (onError) onError(msg);
-    },
-    [onError]
-  );
-
   useEffect(() => {
-    let isMounted = true;
+    let cancelled = false;
+    let localWidgetId: string | null = null;
 
-    if (!siteKey) {
-      handleError('Cloudflare Turnstile is not configured for this production build. Please contact support.');
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    // Load Cloudflare Turnstile Script if not already loaded
-    const loadScript = () => {
-      const existingScript = document.getElementById('cf-turnstile-script') as HTMLScriptElement | null;
-      if (existingScript) {
-        if (window.turnstile) {
-          renderWidget();
-        } else {
-          existingScript.addEventListener('load', () => {
-            if (isMounted) renderWidget();
-          }, { once: true });
-          existingScript.addEventListener('error', () => {
-            if (isMounted) handleError('Cloudflare Turnstile could not load. Check your connection and try again.');
-          }, { once: true });
-        }
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.id = 'cf-turnstile-script';
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      script.async = true;
-      script.defer = true;
-
-      script.addEventListener('load', () => {
-        if (isMounted) renderWidget();
-      }, { once: true });
-
-      script.addEventListener('error', () => {
-        if (isMounted) {
-          handleError('Cloudflare Turnstile could not load. Check your connection and try again.');
-        }
-      }, { once: true });
-
-      document.head.appendChild(script);
+    const showError = (message: string) => {
+      setStatus('error');
+      setErrorMessage(message);
+      callbacksRef.current.onError?.(message);
     };
 
     const renderWidget = () => {
-      if (!containerRef.current || !window.turnstile) return;
+      if (cancelled || !containerRef.current || !window.turnstile) return;
 
       try {
-        if (widgetIdRef.current) {
-          window.turnstile.remove(widgetIdRef.current);
-        }
-
-        widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        containerRef.current.replaceChildren();
+        const id = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
+          theme,
+          size: 'flexible',
+          action,
           callback: (token: string) => {
-            if (isMounted) handleVerified(token);
+            if (cancelled) return;
+            setStatus('verified');
+            setErrorMessage(null);
+            callbacksRef.current.onVerify(token);
           },
           'expired-callback': () => {
-            if (isMounted) handleExpired();
+            if (cancelled) return;
+            setStatus('expired');
+            callbacksRef.current.onExpire?.();
           },
-          'error-callback': (err: any) => {
-            if (isMounted) {
-              handleError(err);
+          'timeout-callback': () => {
+            if (cancelled) return;
+            setStatus('expired');
+            callbacksRef.current.onExpire?.();
+          },
+          'error-callback': (code?: string | number) => {
+            if (!cancelled) {
+              const suffix = code === undefined ? '' : ' (' + String(code) + ')';
+              showError('The security check could not complete' + suffix + '. Please retry.');
             }
+            return true;
           },
-          theme: theme,
-          size: 'flexible',
-          action: action,
         });
-
-        if (isMounted) {
-          setStatus('ready');
-        }
-      } catch (e: any) {
-        console.error('Turnstile render exception:', e);
-        if (isMounted) {
-          handleError(e?.message || 'Verification initialization error');
-        }
+        localWidgetId = id;
+        widgetIdRef.current = id;
+        if (!cancelled) setStatus('ready');
+      } catch (error) {
+        showError(error instanceof Error ? error.message : 'Verification could not be initialized.');
       }
     };
 
-    if (window.turnstile) {
-      renderWidget();
+    if (!siteKey) {
+      showError('Cloudflare Turnstile is not configured for this production build. Please contact support.');
     } else {
-      loadScript();
+      setStatus('loading');
+      setErrorMessage(null);
+      loadTurnstileScript()
+        .then(() => {
+          if (!cancelled) window.turnstile?.ready(renderWidget);
+        })
+        .catch((error: unknown) => {
+          if (!cancelled) showError(error instanceof Error ? error.message : 'Cloudflare Turnstile could not load. Please retry.');
+        });
     }
 
     return () => {
-      isMounted = false;
-      if (widgetIdRef.current && window.turnstile) {
+      cancelled = true;
+      if (localWidgetId && window.turnstile) {
         try {
-          window.turnstile.remove(widgetIdRef.current);
-        } catch {}
+          window.turnstile.remove(localWidgetId);
+        } catch {
+          // Cloudflare may already have removed the widget during navigation.
+        }
       }
+      if (widgetIdRef.current === localWidgetId) widgetIdRef.current = null;
     };
-  }, [siteKey, theme, action, handleVerified, handleExpired, handleError]);
+  }, [siteKey, theme, action, retryCount]);
 
   const handleManualReset = () => {
-    setStatus('loading');
     setErrorMessage(null);
+    setStatus('loading');
     if (widgetIdRef.current && window.turnstile) {
       try {
         window.turnstile.reset(widgetIdRef.current);
-      } catch {}
+        return;
+      } catch {
+        widgetIdRef.current = null;
+      }
     }
+    // Re-run script loading and widget rendering if no usable widget exists.
+    setRetryCount((count) => count + 1);
   };
 
   return (
-    <div className={`turnstile-security-wrapper space-y-2 ${className}`}>
+    <div className={'turnstile-security-wrapper space-y-2 ' + className}>
       {label && (
         <div className="flex items-center justify-between text-[11px] font-bold text-[#D1E2F7]">
           <span className="flex items-center gap-1.5">
@@ -206,39 +226,36 @@ export const TurnstileWidget: React.FC<TurnstileWidgetProps> = ({
         </div>
       )}
 
-      {/* Cloudflare Turnstile mount element */}
       <div
         ref={containerRef}
-        className="min-h-[65px] flex items-center justify-center rounded-xl bg-black/10 border border-slate-700/30 overflow-hidden"
+        aria-live="polite"
+        className="min-h-[65px] w-full flex items-center justify-center rounded-xl bg-black/10 border border-slate-700/30 overflow-hidden"
       />
 
-      {/* Error or Network Block Alert with retry/fallback */}
       {status === 'error' && (
-        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+        <div role="alert" className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-            <span>{errorMessage || 'Challenge check timed out.'}</span>
+            <span>{errorMessage || 'The security check could not complete.'}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleManualReset}
-              className="text-xs font-semibold px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 rounded flex items-center gap-1 cursor-pointer text-amber-200"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Retry
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleManualReset}
+            className="shrink-0 text-xs font-semibold px-2 py-1 bg-amber-500/20 hover:bg-amber-500/30 rounded flex items-center gap-1 cursor-pointer text-amber-200"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Retry
+          </button>
         </div>
       )}
 
       {status === 'expired' && (
-        <div className="p-2 rounded-lg bg-red-950/40 border border-red-500/30 text-red-300 text-[11px] flex items-center justify-between">
-          <span>Verification token expired. Please refresh the security check.</span>
+        <div role="status" className="p-2 rounded-lg bg-red-950/40 border border-red-500/30 text-red-300 text-[11px] flex items-center justify-between gap-2">
+          <span>Verification expired or timed out. Please refresh the security check.</span>
           <button
             type="button"
             onClick={handleManualReset}
-            className="text-[11px] font-bold text-red-200 underline cursor-pointer"
+            className="shrink-0 text-[11px] font-bold text-red-200 underline cursor-pointer"
           >
             Refresh Challenge
           </button>
