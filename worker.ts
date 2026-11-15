@@ -69,6 +69,13 @@ async function parseRequestBody(req: Request, res: Response, next: NextFunction)
     }
     raw += decoder.decode();
 
+    // Preserve the exact UTF-8 request body for Resend Svix signature verification.
+    // Only the email webhook needs the raw payload; ordinary API routes retain parsed JSON only.
+    const requestPath = String(req.originalUrl || req.url || '').split('?', 1)[0];
+    if (requestPath.endsWith('/webhooks/email')) {
+      (req as any).rawBody = raw;
+    }
+
     if (!raw.trim()) {
       req.body = {};
     } else if (isJson) {

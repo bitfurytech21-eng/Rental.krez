@@ -30,11 +30,19 @@ Verify `kretzdespain.com` in the selected provider and add the exact SPF/DKIM (a
 
 In the provider dashboard, add the sending domain and publish the exact DNS records it supplies (typically SPF and DKIM; add DMARC for domain policy/reporting). Do not copy generic SPF/DKIM values from an example: use the provider-specific records and ensure there is only one valid SPF record for the domain. Wait for provider verification before testing delivery.
 
-## 3. Configure the app
+## 3. Configure the Resend delivery webhook
+
+After creating a webhook in Resend, subscribe to the delivery events you need and use this endpoint:
+
+`https://api.kretzdespain.com/api/v1/webhooks/email`
+
+Copy the webhook signing secret shown by Resend (the `whsec_...` value) into the API Worker's protected secret named `RESEND_WEBHOOK_SECRET`. This is separate from `RESEND_API_KEY`. Never put either secret in frontend variables, source control, or chat. The endpoint rejects unsigned, invalid, and timestamp-expired requests; configure the secret before enabling the Resend webhook.
+
+## 4. Configure the app
 
 Set `PUBLIC_APP_URL` to the exact production origin. Register the corresponding auth redirect URLs in Supabase if Supabase Auth is used for password recovery. Ensure the platform's production environment contains the provider secrets and `NODE_ENV=production`.
 
-## 4. Event triggers already present
+## 5. Event triggers already present
 
 | User/system event | Existing email behaviour |
 | --- | --- |
@@ -49,7 +57,7 @@ Set `PUBLIC_APP_URL` to the exact production origin. Register the corresponding 
 
 The automation rules registry also defines welcome, verification, password reset, command confirmation, transaction receipt, payment, security, status, report and custom notification rules. A rule being enabled does not prove that a corresponding business event is wired to it; verify each path with the test checklist below.
 
-## 5. Production test checklist
+## 6. Production test checklist
 
 Before enabling live delivery, add the provider API key as a protected Cloudflare Worker secret. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
 
@@ -62,7 +70,7 @@ Before enabling live delivery, add the provider API key as a protected Cloudflar
 7. Confirm duplicate event retries do not send duplicate transactional emails.
 8. Confirm no real customer email is sent during tests without consent.
 
-## Security and operational notes
+## 7. Security and operational notes
 
 - Do not use a real customer's address for test messages.
 - Do not send sensitive KYC documents, passwords, full payment credentials, or secret tokens in email.

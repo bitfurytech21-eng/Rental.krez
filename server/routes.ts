@@ -104,6 +104,12 @@ const maskLoginEmail = (email: string) => {
 };
 
 async function sendLoginEmailCode(email: string, purpose: 'investor_login' | 'admin_login') {
+  // Login codes must never be reported as sent by the local sandbox or SMTP in Workers.
+  const provider = getProviderConfig();
+  if ((provider.type !== 'resend' && provider.type !== 'sendgrid') || getEmailSettings().testMode) {
+    throw new Error('EMAIL_PROVIDER_NOT_CONFIGURED');
+  }
+
   const issued = await issueEmailOtp(email, purpose);
   if (!issued.ok) {
     return { success: false as const, reason: issued.reason, retryAfter: issued.retryAfter };
@@ -123,7 +129,7 @@ async function sendLoginEmailCode(email: string, purpose: 'investor_login' | 'ad
   });
   if (!delivery.success) {
     await cancelEmailOtp(issued.challengeId);
-    throw new Error('LOGIN_CODE_DELIVERY_FAILED');
+    throw new Error('EMAIL_PROVIDER_DELIVERY_FAILED');
   }
   return { success: true as const, maskedEmail: maskLoginEmail(email) };
 }
@@ -525,7 +531,7 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
     if (message === 'ADMIN_LOGIN_REQUIRED') return res.status(403).json({ success: false, error: 'Administrator accounts must sign in through the Administrator Gateway.', code: 'ADMIN_LOGIN_REQUIRED', requestId: req.id });
     if (/email not confirmed/i.test(message)) return res.status(403).json({ success: false, error: 'Email not confirmed yet. Please verify your email before signing in.', code: 'EMAIL_NOT_CONFIRMED', requestId: req.id });
     if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
-    if (message === 'LOGIN_CODE_DELIVERY_FAILED' || message === 'EMAIL_OTP_STORAGE_UNAVAILABLE' || message === 'EMAIL_OTP_SIGNING_SECRET_NOT_CONFIGURED') return res.status(503).json({ success: false, error: 'Email security verification is temporarily unavailable. Please try again later.', code: 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
+    if (message === 'EMAIL_PROVIDER_NOT_CONFIGURED' || message === 'EMAIL_PROVIDER_DELIVERY_FAILED' || message === 'EMAIL_OTP_STORAGE_UNAVAILABLE' || message === 'EMAIL_OTP_SIGNING_SECRET_NOT_CONFIGURED') return res.status(503).json({ success: false, error: message === 'EMAIL_PROVIDER_NOT_CONFIGURED' ? 'Email delivery is not configured for production. Please contact support.' : 'We could not deliver your security code. Please try again later.', code: message === 'EMAIL_PROVIDER_NOT_CONFIGURED' ? 'EMAIL_PROVIDER_NOT_CONFIGURED' : 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
     logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
     return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
   }
@@ -4721,8 +4727,59 @@ router.get('/admin/email/verify-provider', requireAdmin, async (req: Authenticat
  * Ingest delivery status webhooks from Resend, SendGrid, or local simulation
  */
 router.post('/webhooks/email', (req, res) => {
+  const webhookSecret = String(process.env.RESEND_WEBHOOK_SECRET || '').trim();
+  if (!webhookSecret) {
+    return res.status(503).json({
+      success: false,
+      error: 'Email webhook verification is not configured.',
+      code: 'EMAIL_WEBHOOK_NOT_CONFIGURED'
+    });
+  }
+
+  // Resend uses Svix headers and signs: "{svix-id}.{svix-timestamp}.{raw request body}".
+  const svixId = String(req.headers['svix-id'] || '');
+  const svixTimestamp = String(req.headers['svix-timestamp'] || '');
+  const svixSignature = String(req.headers['svix-signature'] || '');
+  const rawBody = (req as any).rawBody;
+  const timestamp = Number(svixTimestamp);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  if (!svixId || !/^\d+$/.test(svixTimestamp) || !svixSignature || typeof rawBody !== 'string' ||
+      !Number.isFinite(timestamp) || Math.abs(nowSeconds - timestamp) > 300 ||
+      !webhookSecret.startsWith('whsec_')) {
+    return res.status(401).json({ success: false, error: 'Invalid email webhook signature.', code: 'INVALID_EMAIL_WEBHOOK_SIGNATURE' });
+  }
+
+  let signingKey: Buffer;
+  try {
+    signingKey = Buffer.from(webhookSecret.slice('whsec_'.length), 'base64');
+    if (!signingKey.length) throw new Error('invalid signing key');
+  } catch {
+    return res.status(503).json({ success: false, error: 'Email webhook verification is not configured correctly.', code: 'EMAIL_WEBHOOK_NOT_CONFIGURED' });
+  }
+
+  const expected = crypto.createHmac('sha256', signingKey)
+    .update(`${svixId}.${svixTimestamp}.${rawBody}`, 'utf8')
+    .digest();
+  const signatures = svixSignature.split(/\s+/).flatMap((part) => {
+    const match = /^v1,([A-Za-z0-9+/=]+)$/.exec(part);
+    return match ? [match[1]] : [];
+  });
+  const validSignature = signatures.some((candidate) => {
+    try {
+      const supplied = Buffer.from(candidate, 'base64');
+      return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+    } catch {
+      return false;
+    }
+  });
+
+  if (!validSignature) {
+    return res.status(401).json({ success: false, error: 'Invalid email webhook signature.', code: 'INVALID_EMAIL_WEBHOOK_SIGNATURE' });
+  }
+
   const result = handleEmailWebhook(req.body);
-  res.json({
+  return res.status(200).json({
     success: true,
     processed: result.processed,
     updatedCount: result.updatedCount,
