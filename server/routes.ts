@@ -104,6 +104,12 @@ const maskLoginEmail = (email: string) => {
 };
 
 async function sendLoginEmailCode(email: string, purpose: 'investor_login' | 'admin_login') {
+  // Login codes must never be reported as sent by the local sandbox or SMTP in Workers.
+  const provider = getProviderConfig();
+  if ((provider.type !== 'resend' && provider.type !== 'sendgrid') || getEmailSettings().testMode) {
+    throw new Error('EMAIL_PROVIDER_NOT_CONFIGURED');
+  }
+
   const issued = await issueEmailOtp(email, purpose);
   if (!issued.ok) {
     return { success: false as const, reason: issued.reason, retryAfter: issued.retryAfter };
@@ -123,7 +129,7 @@ async function sendLoginEmailCode(email: string, purpose: 'investor_login' | 'ad
   });
   if (!delivery.success) {
     await cancelEmailOtp(issued.challengeId);
-    throw new Error('LOGIN_CODE_DELIVERY_FAILED');
+    throw new Error('EMAIL_PROVIDER_DELIVERY_FAILED');
   }
   return { success: true as const, maskedEmail: maskLoginEmail(email) };
 }
@@ -525,7 +531,7 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
     if (message === 'ADMIN_LOGIN_REQUIRED') return res.status(403).json({ success: false, error: 'Administrator accounts must sign in through the Administrator Gateway.', code: 'ADMIN_LOGIN_REQUIRED', requestId: req.id });
     if (/email not confirmed/i.test(message)) return res.status(403).json({ success: false, error: 'Email not confirmed yet. Please verify your email before signing in.', code: 'EMAIL_NOT_CONFIRMED', requestId: req.id });
     if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
-    if (message === 'LOGIN_CODE_DELIVERY_FAILED' || message === 'EMAIL_OTP_STORAGE_UNAVAILABLE' || message === 'EMAIL_OTP_SIGNING_SECRET_NOT_CONFIGURED') return res.status(503).json({ success: false, error: 'Email security verification is temporarily unavailable. Please try again later.', code: 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
+    if (message === 'EMAIL_PROVIDER_NOT_CONFIGURED' || message === 'EMAIL_PROVIDER_DELIVERY_FAILED' || message === 'EMAIL_OTP_STORAGE_UNAVAILABLE' || message === 'EMAIL_OTP_SIGNING_SECRET_NOT_CONFIGURED') return res.status(503).json({ success: false, error: message === 'EMAIL_PROVIDER_NOT_CONFIGURED' ? 'Email delivery is not configured for production. Please contact support.' : 'We could not deliver your security code. Please try again later.', code: message === 'EMAIL_PROVIDER_NOT_CONFIGURED' ? 'EMAIL_PROVIDER_NOT_CONFIGURED' : 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
     logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
     return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
   }
