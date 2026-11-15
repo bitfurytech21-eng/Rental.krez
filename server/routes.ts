@@ -4721,8 +4721,59 @@ router.get('/admin/email/verify-provider', requireAdmin, async (req: Authenticat
  * Ingest delivery status webhooks from Resend, SendGrid, or local simulation
  */
 router.post('/webhooks/email', (req, res) => {
+  const webhookSecret = String(process.env.RESEND_WEBHOOK_SECRET || '').trim();
+  if (!webhookSecret) {
+    return res.status(503).json({
+      success: false,
+      error: 'Email webhook verification is not configured.',
+      code: 'EMAIL_WEBHOOK_NOT_CONFIGURED'
+    });
+  }
+
+  // Resend uses Svix headers and signs: "{svix-id}.{svix-timestamp}.{raw request body}".
+  const svixId = String(req.headers['svix-id'] || '');
+  const svixTimestamp = String(req.headers['svix-timestamp'] || '');
+  const svixSignature = String(req.headers['svix-signature'] || '');
+  const rawBody = (req as any).rawBody;
+  const timestamp = Number(svixTimestamp);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  if (!svixId || !/^\\d+$/.test(svixTimestamp) || !svixSignature || typeof rawBody !== 'string' ||
+      !Number.isFinite(timestamp) || Math.abs(nowSeconds - timestamp) > 300 ||
+      !webhookSecret.startsWith('whsec_')) {
+    return res.status(401).json({ success: false, error: 'Invalid email webhook signature.', code: 'INVALID_EMAIL_WEBHOOK_SIGNATURE' });
+  }
+
+  let signingKey: Buffer;
+  try {
+    signingKey = Buffer.from(webhookSecret.slice('whsec_'.length), 'base64');
+    if (!signingKey.length) throw new Error('invalid signing key');
+  } catch {
+    return res.status(503).json({ success: false, error: 'Email webhook verification is not configured correctly.', code: 'EMAIL_WEBHOOK_NOT_CONFIGURED' });
+  }
+
+  const expected = crypto.createHmac('sha256', signingKey)
+    .update(`${svixId}.${svixTimestamp}.${rawBody}`, 'utf8')
+    .digest();
+  const signatures = svixSignature.split(/\\s+/).flatMap((part) => {
+    const match = /^v1,([A-Za-z0-9+/=]+)$/.exec(part);
+    return match ? [match[1]] : [];
+  });
+  const validSignature = signatures.some((candidate) => {
+    try {
+      const supplied = Buffer.from(candidate, 'base64');
+      return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+    } catch {
+      return false;
+    }
+  });
+
+  if (!validSignature) {
+    return res.status(401).json({ success: false, error: 'Invalid email webhook signature.', code: 'INVALID_EMAIL_WEBHOOK_SIGNATURE' });
+  }
+
   const result = handleEmailWebhook(req.body);
-  res.json({
+  return res.status(200).json({
     success: true,
     processed: result.processed,
     updatedCount: result.updatedCount,
