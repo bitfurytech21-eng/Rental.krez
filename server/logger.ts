@@ -95,8 +95,8 @@ export function sanitizeLogData(data: any): any {
 class SystemLogger {
   private buffer: StructuredLog[] = [];
   private maxBufferSize: number = 2000;
-  // A monotonic sequence keeps log IDs unique without calling Math.random()
-  // during module initialization, which Cloudflare Workers prohibit.
+  // A monotonic sequence keeps log IDs unique without nondeterministic
+  // identifier generation during module initialization.
   private logSequence: number = 0;
   private environment: string = process.env.NODE_ENV || 'development';
   private serviceName: string = 'kretz-backend-api';
