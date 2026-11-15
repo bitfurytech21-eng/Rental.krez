@@ -456,6 +456,7 @@ router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: R
     if (message === 'ADMIN_LOGIN_REQUIRED') return res.status(403).json({ success: false, error: 'Administrator accounts must sign in through the Administrator Gateway.', code: 'ADMIN_LOGIN_REQUIRED', requestId: req.id });
     if (/email not confirmed/i.test(message)) return res.status(403).json({ success: false, error: 'Email not confirmed yet. Please verify your email before signing in.', code: 'EMAIL_NOT_CONFIRMED', requestId: req.id });
     if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
+    if (message === 'LOGIN_CODE_DELIVERY_FAILED' || message === 'EMAIL_OTP_STORAGE_UNAVAILABLE' || message === 'EMAIL_OTP_SIGNING_SECRET_NOT_CONFIGURED') return res.status(503).json({ success: false, error: 'Email security verification is temporarily unavailable. Please try again later.', code: 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
     logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
     return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
   }
