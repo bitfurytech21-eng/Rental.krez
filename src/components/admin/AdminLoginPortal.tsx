@@ -281,9 +281,19 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
               </div>
             )}
 
+            <TurnstileWidget
+              key={turnstileResetKey}
+              action="admin_login"
+              theme="dark"
+              label="Administrator security verification"
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="w-full mt-2 py-3.5 px-4 bg-[#087F5B] hover:bg-[#066548] text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
             >
               {loading ? (
