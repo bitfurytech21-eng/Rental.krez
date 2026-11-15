@@ -315,7 +315,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string, emailCode?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
 
-    if (import.meta.env.PROD || !isConfigured) {
+    // When Supabase is configured, use its Auth signup directly in every environment.\n    // The legacy server registration route is only a fallback for unconfigured development.\n    if (!isConfigured) {
       let res: any;
       try {
         res = await authApi.login(cleanEmail, pass, emailCode);
