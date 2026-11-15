@@ -327,38 +327,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // every production failure behind one generic message.
           throw new Error(err?.message || 'Authentication service is unavailable. Please try again shortly.');
         }
-        // Development preview fallback only for static hosts without the API.
+        // Only use the generic outage response for transport/server failures.
+        // Never create or restore a local session when authentication cannot be verified.
         if (
           err?.status === 405 ||
           err?.status === 404 ||
           err?.status === 0 ||
           err?.status >= 500 ||
-          String(err?.message || '').includes('405') ||
           String(err?.message || '').includes('Failed to fetch') ||
           String(err?.message || '').includes('Network request failed') ||
           String(err?.message || '').includes('temporarily unavailable')
         ) {
-          let localUser = ledger.getUserByEmail(cleanEmail);
-          if (!localUser && pass && pass.length >= 4) {
-            localUser = ledger.createUser({
-              email: cleanEmail,
-              fullName: cleanEmail.split('@')[0] || 'Investor',
-              role: 'investor'
-            });
-          }
-          if (localUser) {
-            if (localUser.role === 'admin') {
-              throw new Error('Administrator accounts must authenticate via the Administrator Gateway at /admin/login.');
-            }
-            const fallbackToken = `kz_sess_local_${Math.random().toString(36).substring(2)}${Date.now()}`;
-            setUser(localUser);
-            setToken(fallbackToken);
-            setAuthToken(fallbackToken);
-            localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
-            localStorage.setItem(CURRENT_USER_KEY, localUser.id);
-            return localUser;
-          }
-          throw new Error('Invalid email address or password.');
+          throw new Error('Authentication service is unavailable. Please try again shortly.');
         }
         const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Invalid email address or password.';
         throw new Error(errMsg);
@@ -447,21 +427,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (import.meta.env.PROD) {
         throw new Error('Authentication service is unavailable. Please try again shortly.');
       }
-      console.warn('[auth] Supabase sign-in network error, falling back to local ledger:', networkErr?.message || networkErr);
-      let found = ledger.getUserByEmail(cleanEmail);
-      if (!found) {
-        found = ledger.createUser({
-          email: cleanEmail,
-          fullName: cleanEmail.split('@')[0],
-          role: 'investor'
-        });
-      }
-      setUser(found);
-      const localTok = 'local_sess_' + found.id;
-      setToken(localTok);
-      setAuthToken(localTok);
-      localStorage.setItem(CURRENT_USER_KEY, found.id);
-      return found;
+      // Do not mint a local session without validating credentials against the auth provider.
+      throw new Error('Authentication service is unavailable. Please try again shortly.');
     }
 
     if (error) {
