@@ -81,11 +81,13 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
     setError(null);
 
     try {
-      await adminLogin(email.trim(), password, emailCode || undefined);
+      await adminLogin(email.trim(), password, turnstileToken || undefined, emailCode || undefined);
       onLoginSuccess(false);
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
+        setTurnstileToken(null);
+        setTurnstileResetKey((k) => k + 1);
         setError(err?.message || 'A six-digit security code has been sent to your registered email.');
       } else {
         setError(err?.message || 'Authentication failed: Invalid administrator credentials.');
