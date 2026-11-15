@@ -29,6 +29,9 @@ export const KrezAuthModal: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+  const [emailCode, setEmailCode] = useState('');
+  const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -41,6 +44,8 @@ export const KrezAuthModal: React.FC = () => {
       setError(null);
       setNotice(null);
       setTurnstileToken('');
+      setEmailCode('');
+      setRequiresEmailCode(false);
       setIsOpen(true);
     };
     window.addEventListener(OPEN_AUTH_EVENT, handleOpen);
@@ -65,6 +70,8 @@ export const KrezAuthModal: React.FC = () => {
     setError(null);
     setNotice(null);
     setTurnstileToken('');
+    setEmailCode('');
+    setRequiresEmailCode(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,17 +89,13 @@ export const KrezAuthModal: React.FC = () => {
     setBusy(true);
     try {
       if (mode === 'login') {
-        if (!turnstileToken) {
-          setError('Please complete the Cloudflare security check.');
-          setBusy(false);
-          return;
-        }
         if (!password) {
           setError('Please enter your password.');
           setBusy(false);
           return;
         }
-        await login(cleanEmail, password, turnstileToken);
+        if (!turnstileToken) throw new Error('Please complete the Cloudflare security check.');
+        await login(cleanEmail, password, turnstileToken, emailCode || undefined);
         setIsOpen(false);
         setPassword('');
         if (redirectTo) {
@@ -133,6 +136,14 @@ export const KrezAuthModal: React.FC = () => {
         setNotice('If an account exists for that email, password reset instructions have been sent.');
       }
     } catch (err: any) {
+      if (err?.code === 'EMAIL_CODE_REQUIRED') {
+        setRequiresEmailCode(true);
+        setTurnstileToken('');
+        setTurnstileResetKey((key) => key + 1);
+        setNotice(err?.message || 'A six-digit security code has been sent to your email address.');
+        setError(null);
+        return;
+      }
       const rawMsg = String(err?.message || '');
       if (
         rawMsg.includes('405') ||
@@ -263,15 +274,49 @@ export const KrezAuthModal: React.FC = () => {
             </div>
           )}
 
-          {(mode === 'login' || mode === 'register') && (
+          {mode === 'login' && (
             <TurnstileWidget
-              action={mode === 'login' ? 'investor_login' : 'register'}
+              key={turnstileResetKey}
+              action="investor_login"
               theme="light"
               label="Security verification"
               onVerify={setTurnstileToken}
               onExpire={() => setTurnstileToken('')}
               onError={() => setTurnstileToken('')}
             />
+          )}
+
+          {mode === 'register' && (
+            <TurnstileWidget
+              action="register"
+              theme="light"
+              label="Security verification"
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken('')}
+              onError={() => setTurnstileToken('')}
+            />
+          )}
+
+          {mode === 'login' && requiresEmailCode && (
+            <div>
+              <label htmlFor="krez-auth-email-code" className="block text-xs font-semibold tracking-widest uppercase text-muted">
+                Email security code
+              </label>
+              <input
+                id="krez-auth-email-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required
+                value={emailCode}
+                onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter 6-digit code"
+                className="mt-2 w-full rounded-input border border-border bg-white px-4 py-3 text-sm tracking-[0.35em] text-foreground focus:border-primary focus:outline-none"
+              />
+              <p className="mt-1 text-xs text-muted">The code expires in five minutes.</p>
+            </div>
           )}
 
           {error && (
@@ -288,13 +333,13 @@ export const KrezAuthModal: React.FC = () => {
 
           <button
             type="submit"
-            disabled={busy || (mode === 'login' && !turnstileToken)}
+            disabled={busy || ((mode === 'register' || mode === 'login') && !turnstileToken)}
             className="w-full rounded-pill bg-primary px-6 py-3.5 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
           >
             {busy
               ? 'Please wait...'
               : mode === 'login'
-              ? 'Sign in'
+              ? (requiresEmailCode ? 'Verify code & sign in' : 'Continue with email code')
               : mode === 'register'
               ? 'Create account'
               : 'Send reset link'}

@@ -21,8 +21,8 @@ interface AuthContextType {
   isConfigured: boolean;
   isRecoveryMode: boolean;
   setIsRecoveryMode: (val: boolean) => void;
-  login: (email: string, pass: string, turnstileToken?: string) => Promise<User>;
-  adminLogin: (email: string, pass: string, turnstileToken?: string) => Promise<User>;
+  login: (email: string, pass: string, turnstileToken?: string, emailCode?: string) => Promise<User>;
+  adminLogin: (email: string, pass: string, turnstileToken?: string, emailCode?: string) => Promise<User>;
   customizeAdminCredentials: (params: {
     currentEmail: string;
     currentPassword: string;
@@ -314,15 +314,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isConfigured]);
 
   // Connect Customer Login form strictly to investor accounts (Administrator login is isolated at /admin/login)
-  const login = async (email: string, pass: string, turnstileToken?: string): Promise<User> => {
+  const login = async (email: string, pass: string, turnstileToken?: string, emailCode?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
 
     if (import.meta.env.PROD || !isConfigured) {
       let res: any;
       try {
         if (!turnstileToken) throw new Error('Please complete the Cloudflare security check.');
-        res = await authApi.login(cleanEmail, pass, turnstileToken);
+        res = await authApi.login(cleanEmail, pass, turnstileToken, emailCode);
       } catch (err: any) {
+        if (err?.code === 'EMAIL_CODE_REQUIRED') throw err;
         if (import.meta.env.PROD) {
           // Preserve the API's safe, actionable error response (for example,
           // Turnstile configuration or Supabase auth setup) instead of hiding
@@ -366,6 +367,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error(errMsg);
       }
 
+      if ((res as any)?.requiresEmailCode || (res as any)?.data?.requiresEmailCode) {
+        const challengeError: any = new Error('A six-digit security code has been sent to your email address.');
+        challengeError.code = 'EMAIL_CODE_REQUIRED';
+        challengeError.maskedEmail = (res as any)?.maskedEmail || (res as any)?.data?.maskedEmail;
+        throw challengeError;
+      }
       const serverUser = (res as any)?.user || (res as any)?.data?.user;
       const serverToken = (res as any)?.token || (res as any)?.data?.token;
       const serverRefreshToken = (res as any)?.refreshToken || (res as any)?.data?.refreshToken;
@@ -964,7 +971,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Dedicated Server-Side Administrator Authentication
-  const adminLogin = async (email: string, pass: string, turnstileToken?: string): Promise<User> => {
+  const adminLogin = async (email: string, pass: string, turnstileToken?: string, emailCode?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
     let res: any;
     try {
@@ -973,9 +980,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: {
           email: cleanEmail,
           password: pass,
-          turnstileToken:
-            turnstileToken ||
-            `fallback-admin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+          turnstileToken,
+          emailCode
         },
         skipAuth: true
       });
@@ -1012,6 +1018,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw err;
     }
 
+    if (res?.requiresEmailCode) {
+      const challengeError: any = new Error('A six-digit administrator security code has been sent to your registered email address.');
+      challengeError.code = 'EMAIL_CODE_REQUIRED';
+      challengeError.maskedEmail = res.maskedEmail;
+      throw challengeError;
+    }
     if (!res.success || !res.token) {
       throw new Error(res.error || 'Invalid administrator email or security credentials.');
     }

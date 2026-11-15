@@ -9,10 +9,11 @@
  * - /api/v1/deposits, withdrawals, investments, payments/webhooks
  */
 
-import { Router, Response } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
 import { verifyTurnstileToken, requireTurnstile } from './turnstile';
+import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
 import {
   handleTranslationRequest,
   handleGetProviders,
@@ -67,6 +68,66 @@ import {
 } from './supabaseDatabase';
 
 const router = Router();
+const DASHBOARD_ACTION_SCOPES = new Set([
+  'investor.withdrawal.create',
+  'investor.investment.create',
+  'admin.deposit.approve',
+  'admin.deposit.reject',
+  'admin.withdrawal.approve',
+  'admin.withdrawal.reject',
+  'admin.user.credit',
+  'admin.user.kyc',
+  'admin.user.status'
+]);
+
+const requireActionEmailVerification = (actionScope: string) =>
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user?.id || !req.user.email) return res.status(401).json({ success: false, error: 'Authentication required.', code: 'AUTH_REQUIRED', requestId: req.id });
+    const grantId = String(req.headers['x-action-verification'] || '');
+    if (!/^[0-9a-f-]{36}$/i.test(grantId)) {
+      return res.status(428).json({ success: false, error: 'Email verification is required for this action.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', actionScope, requestId: req.id });
+    }
+    try {
+      const consumed = await consumeDashboardActionGrant(grantId, req.user.id, actionScope);
+      if (!consumed) return res.status(428).json({ success: false, error: 'The verification has expired or does not match this action. Request a new code.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', actionScope, requestId: req.id });
+      return next();
+    } catch {
+      return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
+    }
+  };
+
+
+const maskLoginEmail = (email: string) => {
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return 'your registered email';
+  return `${local.slice(0, 1)}${'*'.repeat(Math.max(2, Math.min(6, local.length - 1)))}@${domain}`;
+};
+
+async function sendLoginEmailCode(email: string, purpose: 'investor_login' | 'admin_login') {
+  const issued = await issueEmailOtp(email, purpose);
+  if (!issued.ok) {
+    return { success: false as const, reason: issued.reason, retryAfter: issued.retryAfter };
+  }
+  const delivery = await sendEmail({
+    templateId: 'email_verification',
+    recipient: email,
+    data: {
+      user_name: email.split('@')[0],
+      verification_code: issued.code,
+      expires_in_minutes: 5,
+      action_url: 'https://kretzdespain.com/#login'
+    },
+    commandName: 'send_verification_email',
+    idempotencyKey: `login-otp-${issued.challengeId}`,
+    bypassAutomationCheck: true
+  });
+  if (!delivery.success) {
+    await cancelEmailOtp(issued.challengeId);
+    throw new Error('LOGIN_CODE_DELIVERY_FAILED');
+  }
+  return { success: true as const, maskedEmail: maskLoginEmail(email) };
+}
+
 
 // Server-side Switch Translation API endpoints (independent multi-provider translation engine)
 router.post('/translate', handleTranslationRequest);
@@ -154,6 +215,44 @@ router.get('/team', (req: AuthenticatedRequest, res: Response) => {
     total: members.length,
     requestId: req.id
   });
+});
+
+
+router.post('/security/action-code/request', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const actionScope = String(req.body?.actionScope || '');
+  if (!DASHBOARD_ACTION_SCOPES.has(actionScope)) return res.status(400).json({ success: false, error: 'Unsupported protected action.', code: 'INVALID_ACTION_SCOPE', requestId: req.id });
+  try {
+    const issued = await issueDashboardActionOtp(req.user!.email, req.user!.id, actionScope);
+    if (!issued.ok) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached.', code: issued.reason, retryAfter: issued.retryAfter, requestId: req.id });
+    const delivery = await sendEmail({
+      templateId: 'email_verification',
+      recipient: req.user!.email,
+      data: { user_name: req.user!.fullName || req.user!.email.split('@')[0], verification_code: issued.code, expires_in_minutes: 5, action_url: 'https://kretzdespain.com/dashboard' },
+      commandName: 'send_verification_email',
+      idempotencyKey: `dashboard-action-otp-${issued.challengeId}`,
+      bypassAutomationCheck: true
+    });
+    if (!delivery.success) {
+      await cancelEmailOtp(issued.challengeId);
+      return res.status(503).json({ success: false, error: 'Unable to deliver the security code. Please try again later.', code: 'ACTION_EMAIL_DELIVERY_FAILED', requestId: req.id });
+    }
+    return res.json({ success: true, maskedEmail: maskLoginEmail(req.user!.email), expiresInSeconds: 300, actionScope, message: 'A security code has been sent to your registered email address.', requestId: req.id });
+  } catch {
+    return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
+  }
+});
+
+router.post('/security/action-code/verify', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const actionScope = String(req.body?.actionScope || '');
+  const code = String(req.body?.code || '').trim();
+  if (!DASHBOARD_ACTION_SCOPES.has(actionScope)) return res.status(400).json({ success: false, error: 'Unsupported protected action.', code: 'INVALID_ACTION_SCOPE', requestId: req.id });
+  try {
+    const verified = await verifyDashboardActionOtp(req.user!.email, req.user!.id, actionScope, code);
+    if (!verified.valid || !verified.grantId) return res.status(401).json({ success: false, error: 'The code is invalid or expired. Request a new code and try again.', code: 'INVALID_ACTION_EMAIL_CODE', requestId: req.id });
+    return res.json({ success: true, grantId: verified.grantId, expiresInSeconds: 120, actionScope, requestId: req.id });
+  } catch {
+    return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
+  }
 });
 
 const contactLimiter = rateLimiter({
@@ -400,9 +499,19 @@ const authLimiter = rateLimiter({
 router.post('/auth/login', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
   const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || req.body?.pass || '');
+  const emailCode = String(req.body?.emailCode || '').trim();
   if (!normalizedEmail || !password) return res.status(400).json({ success: false, error: 'Please provide both email address and password.', code: 'MISSING_FIELDS', requestId: req.id });
   if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Customer authentication is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
   try {
+    if (!emailCode) {
+      // Validate the password first; never send a code to an arbitrary address.
+      await signInCustomer(normalizedEmail, password);
+      const challenge = await sendLoginEmailCode(normalizedEmail, 'investor_login');
+      if (!challenge.success) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached. Please wait before requesting another.', code: challenge.reason, retryAfter: challenge.retryAfter, requestId: req.id });
+      return res.json({ success: true, requiresEmailCode: true, maskedEmail: challenge.maskedEmail, expiresInSeconds: 300, message: 'A six-digit security code has been sent to your email address.', requestId: req.id });
+    }
+    const codeResult = await verifyEmailOtp(normalizedEmail, 'investor_login', emailCode);
+    if (!codeResult.valid) return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
     const result = await signInCustomer(normalizedEmail, password);
     return res.json({
       success: true,
@@ -416,6 +525,7 @@ router.post('/auth/login', authLimiter, requireTurnstile, async (req: Authentica
     if (message === 'ADMIN_LOGIN_REQUIRED') return res.status(403).json({ success: false, error: 'Administrator accounts must sign in through the Administrator Gateway.', code: 'ADMIN_LOGIN_REQUIRED', requestId: req.id });
     if (/email not confirmed/i.test(message)) return res.status(403).json({ success: false, error: 'Email not confirmed yet. Please verify your email before signing in.', code: 'EMAIL_NOT_CONFIRMED', requestId: req.id });
     if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
+    if (message === 'LOGIN_CODE_DELIVERY_FAILED' || message === 'EMAIL_OTP_STORAGE_UNAVAILABLE' || message === 'EMAIL_OTP_SIGNING_SECRET_NOT_CONFIGURED') return res.status(503).json({ success: false, error: 'Email security verification is temporarily unavailable. Please try again later.', code: 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
     logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
     return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
   }
@@ -471,35 +581,40 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   // 3. Load administrator configuration from environment
   const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
 
-  // 4. Validate credentials
+  // 4. Validate both administrator factors before issuing any email challenge.
   const emailMatches = normalizedEmail === config.adminEmail;
-  const passwordMatches = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(normalizedEmail, inputPass) : await verifyAdminCredentials(inputPass);
+  const passwordMatches = emailMatches && (process.env.NODE_ENV === 'production'
+    ? await verifyPersistentAdminCredentials(normalizedEmail, inputPass)
+    : await verifyAdminCredentials(inputPass));
 
   if (!emailMatches || !passwordMatches) {
     const failureRecord = process.env.NODE_ENV === 'production' ? await recordPersistentAdminFailure(ip) : recordAdminFailedAttempt(ip);
-
     logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-admin-fail',
-      method: 'POST',
-      route: req.originalUrl,
-      statusCode: 401,
-      eventType: 'ADMIN_LOGIN_FAILED',
-      outcome: 'failure',
+      level: 'warn', category: 'security', requestId: req.id || 'req-admin-fail',
+      method: 'POST', route: req.originalUrl, statusCode: 401,
+      eventType: 'ADMIN_LOGIN_FAILED', outcome: 'failure',
       message: `Failed admin login attempt from ${ip} for account ${normalizedEmail}. Failed attempts: ${failureRecord.attempts}`,
       errorCode: 'INVALID_CREDENTIALS',
       metadata: { ip, attempts: failureRecord.attempts, isLocked: failureRecord.isLocked }
     });
-
     return res.status(401).json({
-      success: false,
-      error: 'Invalid administrator email or security credentials.',
-      code: 'INVALID_CREDENTIALS',
-      remainingAttempts: Math.max(0, 5 - failureRecord.attempts),
-      requestId: req.id
+      success: false, error: 'Invalid administrator email or security credentials.',
+      code: 'INVALID_CREDENTIALS', remainingAttempts: Math.max(0, 5 - failureRecord.attempts), requestId: req.id
     });
   }
+
+  const emailCode = String(req.body?.emailCode || '').trim();
+  if (!emailCode) {
+    try {
+      const challenge = await sendLoginEmailCode(normalizedEmail, 'admin_login');
+      if (!challenge.success) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached. Please wait before requesting another.', code: challenge.reason, retryAfter: challenge.retryAfter, requestId: req.id });
+      return res.json({ success: true, requiresEmailCode: true, maskedEmail: challenge.maskedEmail, expiresInSeconds: 300, message: 'A six-digit administrator security code has been sent to your registered email address.', requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Unable to send the administrator security code. Please try again later.', code: 'EMAIL_CODE_DELIVERY_FAILED', requestId: req.id });
+    }
+  }
+  const codeResult = await verifyEmailOtp(normalizedEmail, 'admin_login', emailCode);
+  if (!codeResult.valid) return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
 
   // Production administrator credentials must map to an explicitly provisioned database role.
   if (process.env.NODE_ENV === 'production') {
@@ -1952,7 +2067,7 @@ router.patch('/admin/users/:id/profile', requireAdmin, async (req: Authenticated
   }
 });
 
-router.post('/admin/users/:id/kyc', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/kyc', requireAdmin, requireActionEmailVerification('admin.user.kyc'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const { id } = req.params;
   const { kycStatus = 'approved', notes } = req.body || {};
@@ -1997,13 +2112,13 @@ const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) 
   }
 };
 
-router.patch('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
-router.post('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
+router.patch('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
+router.post('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 
 /**
  * POST /api/v1/admin/users/:id/credit
  */
-router.post('/admin/users/:id/credit', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/credit', requireAdmin, requireActionEmailVerification('admin.user.credit'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { amount, currency = 'EUR', method = 'Direct Wire Received', reference, notes } = req.body || {};
   const numericAmount = Number(amount);
@@ -3026,7 +3141,7 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
 /**
  * POST /api/v1/withdrawals
  */
-router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/withdrawals', requireAuth, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.withdrawalsEnabled) {
     return res.status(403).json({
       success: false,
@@ -3209,7 +3324,7 @@ router.post('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: 
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
@@ -3967,7 +4082,7 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
   });
 });
 
-router.post('/admin/deposits/:depositId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEmailVerification('admin.deposit.approve'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
@@ -3979,7 +4094,7 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, async (req: Auth
   }
 });
 
-router.post('/admin/deposits/:depositId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/reject', requireAdmin, requireActionEmailVerification('admin.deposit.reject'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Transfer verification could not be matched.' });
@@ -3991,7 +4106,7 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, async (req: Authe
   }
 });
 
-router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, requireActionEmailVerification('admin.withdrawal.approve'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
@@ -4003,7 +4118,7 @@ router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, async (req
   }
 });
 
-router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, requireActionEmailVerification('admin.withdrawal.reject'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Withdrawal rejected by finance review.' });

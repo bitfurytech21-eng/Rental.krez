@@ -5,7 +5,7 @@ import { ledger, CryptoNetworkConfig, VerificationDocument } from '../../lib/led
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import { Property, PropertyType, PropertyStatus } from '../../types/property';
 import { User as PlatformUser, UserRole, AccountType } from '../../types/user';
-import { getAuthToken, getApiUrl } from '../../lib/api';
+import { getAuthToken, getApiUrl, withActionEmailVerification } from '../../lib/api';
 import {
   Shield,
   Plus,
@@ -455,16 +455,19 @@ export const AdminPanel: React.FC = () => {
     setIsSubmittingCredit(true);
     try {
       const token = getAuthToken();
-      const response = await fetch(getApiUrl(`/admin/users/${selectedUserId}/credit`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({
-          amount: manualAmount, currency: manualCurrency, method: manualMethod,
-          reference: manualReference.trim() || undefined, notes: manualNotes.trim() || undefined
-        })
+      const payload: any = await withActionEmailVerification('admin.user.credit', async (grantId) => {
+        const response = await fetch(getApiUrl(`/admin/users/${selectedUserId}/credit`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Action-Verification': grantId, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({
+            amount: manualAmount, currency: manualCurrency, method: manualMethod,
+            reference: manualReference.trim() || undefined, notes: manualNotes.trim() || undefined
+          })
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body.error || 'The wallet credit could not be saved.');
+        return body;
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'The wallet credit could not be saved.');
       const targetInvestor = users.find(u => u.id === selectedUserId);
       setActionSuccess(`Credited ${formatCurrency(manualAmount)} (${manualCurrency}) to ${targetInvestor?.fullName || 'investor'} in the database. Ref: ${payload.data?.transaction?.reference || manualReference || 'recorded'}`);
       setActionError(null);
@@ -504,22 +507,19 @@ export const AdminPanel: React.FC = () => {
 
   const handleReviewDeposit = async (txId: string, approved: boolean) => {
     try {
-      await ledger.reviewDeposit(
-        txId,
-        approved,
-        approved ? undefined : 'Bank transfer wire reference or blockchain transaction could not be verified in treasury feed.'
-      );
-      try {
-        const token = getAuthToken();
-        const endpoint = approved ? `/api/v1/admin/deposits/${txId}/approve` : `/api/v1/admin/deposits/${txId}/reject`;
-        await fetch(endpoint, {
+      const token = getAuthToken();
+      const endpoint = approved ? `/api/v1/admin/deposits/${txId}/approve` : `/api/v1/admin/deposits/${txId}/reject`;
+      const scope = approved ? 'admin.deposit.approve' : 'admin.deposit.reject';
+      await withActionEmailVerification(scope, async (grantId) => {
+        const response = await fetch(endpoint, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          }
+          headers: { 'Content-Type': 'application/json', 'X-Action-Verification': grantId, ...(token ? { Authorization: `Bearer ${token}` } : {}) }
         });
-      } catch (e) {}
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || 'The deposit decision could not be saved.');
+        return payload;
+      });
+      await ledger.reviewDeposit(txId, approved, approved ? undefined : 'Bank transfer wire reference or blockchain transaction could not be verified in treasury feed.');
       setActionSuccess(`Deposit request ${approved ? 'approved and credited to wallet balance' : 'declined'}.`);
       setActionError(null);
       refreshAll();
@@ -531,22 +531,19 @@ export const AdminPanel: React.FC = () => {
 
   const handleReviewWithdrawal = async (txId: string, approved: boolean) => {
     try {
-      await ledger.reviewWithdrawal(
-        txId,
-        approved,
-        approved ? undefined : 'Compliance review flagged incomplete banking or wallet verification documentation.'
-      );
-      try {
-        const token = getAuthToken();
-        const endpoint = approved ? `/api/v1/admin/withdrawals/${txId}/approve` : `/api/v1/admin/withdrawals/${txId}/reject`;
-        await fetch(endpoint, {
+      const token = getAuthToken();
+      const endpoint = approved ? `/api/v1/admin/withdrawals/${txId}/approve` : `/api/v1/admin/withdrawals/${txId}/reject`;
+      const scope = approved ? 'admin.withdrawal.approve' : 'admin.withdrawal.reject';
+      await withActionEmailVerification(scope, async (grantId) => {
+        const response = await fetch(endpoint, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          }
+          headers: { 'Content-Type': 'application/json', 'X-Action-Verification': grantId, ...(token ? { Authorization: `Bearer ${token}` } : {}) }
         });
-      } catch (e) {}
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || 'The withdrawal decision could not be saved.');
+        return payload;
+      });
+      await ledger.reviewWithdrawal(txId, approved, approved ? undefined : 'Compliance review flagged incomplete banking or wallet verification documentation.');
       setActionSuccess(`Withdrawal ${approved ? 'approved and transfer executed' : 'declined and capital refunded to investor'}.`);
       setActionError(null);
       refreshAll();
@@ -581,15 +578,18 @@ export const AdminPanel: React.FC = () => {
   const handleReviewKYC = async (userId: string, approved: boolean) => {
     try {
       const token = getAuthToken();
-      const response = await fetch(getApiUrl(`/admin/users/${userId}/kyc`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ kycStatus: approved ? 'approved' : 'rejected' })
+      await withActionEmailVerification('admin.user.kyc', async (grantId) => {
+        const response = await fetch(getApiUrl(`/admin/users/${userId}/kyc`), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Action-Verification': grantId, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ kycStatus: approved ? 'approved' : 'rejected' })
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'The KYC decision could not be saved.');
+        }
+        return response;
       });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'The KYC decision could not be saved.');
-      }
       await loadUsers();
       setActionSuccess(`User KYC ${approved ? 'approved' : 'rejected'} and saved to the database.`);
       setActionError(null);

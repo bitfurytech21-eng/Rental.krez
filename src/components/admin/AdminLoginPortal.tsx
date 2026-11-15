@@ -54,6 +54,8 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   const [showNewPass, setShowNewPass] = useState(false);
 
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [emailCode, setEmailCode] = useState('');
+  const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +65,8 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
     setError(null);
     setSuccessMsg(null);
     setTurnstileToken(null);
+    setEmailCode('');
+    setRequiresEmailCode(false);
     setTurnstileResetKey((k) => k + 1);
   }, [portalMode]);
 
@@ -77,12 +81,17 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
     setError(null);
 
     try {
-      await adminLogin(email.trim(), password, turnstileToken || undefined);
+      await adminLogin(email.trim(), password, turnstileToken || undefined, emailCode || undefined);
       onLoginSuccess(false);
     } catch (err: any) {
-      setError(err?.message || 'Authentication failed: Invalid administrator credentials.');
-      setTurnstileToken(null);
-      setTurnstileResetKey((k) => k + 1);
+      if (err?.code === 'EMAIL_CODE_REQUIRED') {
+        setRequiresEmailCode(true);
+        setTurnstileToken(null);
+        setTurnstileResetKey((k) => k + 1);
+        setError(err?.message || 'A six-digit security code has been sent to your registered email.');
+      } else {
+        setError(err?.message || 'Authentication failed: Invalid administrator credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -251,23 +260,40 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
               </div>
             </div>
 
-            <div className="pt-1">
-              <TurnstileWidget
-                key={`signin-${turnstileResetKey}`}
-                onVerify={(token) => {
-                  setTurnstileToken(token);
-                  setError(null);
-                }}
-                onExpire={() => setTurnstileToken(null)}
-                onError={(msg) => setError(msg)}
-                action="admin_login"
-                theme="dark"
-              />
-            </div>
+            {requiresEmailCode && (
+              <div>
+                <label className="block text-xs font-semibold text-[#8A9C96] mb-1.5 uppercase tracking-wider">
+                  Email security code
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                  value={emailCode}
+                  onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Enter 6-digit code"
+                  className="w-full px-4 py-3 rounded-xl bg-[#0B1513] border border-[#233530] text-white placeholder-gray-600 text-sm tracking-[0.35em] focus:outline-none focus:border-[#087F5B]"
+                />
+                <p className="mt-1 text-[11px] text-[#8A9C96]">The code expires in five minutes.</p>
+              </div>
+            )}
+
+            <TurnstileWidget
+              key={turnstileResetKey}
+              action="admin_login"
+              theme="dark"
+              label="Administrator security verification"
+              onVerify={setTurnstileToken}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="w-full mt-2 py-3.5 px-4 bg-[#087F5B] hover:bg-[#066548] text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
             >
               {loading ? (
@@ -275,7 +301,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Sign In to Admin Console</span>
+                  <span>{requiresEmailCode ? 'Verify Code & Sign In' : 'Continue with Email Code'}</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </>
               )}
