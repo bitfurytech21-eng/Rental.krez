@@ -186,8 +186,9 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveHeroPhoto(building.photos[0])}
-                className="aspect-[4/3] overflow-hidden rounded-card bg-secondary text-left cursor-pointer"
+                className="aspect-[4/3] overflow-hidden rounded-card bg-secondary text-left cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 aria-label={`View ${building.name} interior photograph`}
+                aria-pressed={activeHeroPhoto === building.photos[0]}
               >
                 <KrezImage
                   src={building.photos[0]}
@@ -198,8 +199,9 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveHeroPhoto(building.photos[1])}
-                className="aspect-[4/3] overflow-hidden rounded-card bg-secondary text-left cursor-pointer"
+                className="aspect-[4/3] overflow-hidden rounded-card bg-secondary text-left cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 aria-label={`View ${building.name} architectural detail`}
+                aria-pressed={activeHeroPhoto === building.photos[1]}
               >
                 <KrezImage
                   src={building.photos[1]}
@@ -238,7 +240,8 @@ export const KrezPropertyDetailPage: React.FC<KrezPropertyDetailPageProps> = ({
                         type="button"
                         onClick={() => setActiveHeroPhoto(photoUrl)}
                         aria-label={`Select photograph ${idx + 1} of ${building.name}`}
-                        className={`aspect-[4/3] overflow-hidden rounded-input bg-secondary transition-opacity duration-fast cursor-pointer ${
+                        aria-pressed={isSelected}
+                        className={`aspect-[4/3] overflow-hidden rounded-input bg-secondary transition-opacity duration-fast cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${
                           isSelected
                             ? 'ring-2 ring-primary opacity-100'
                             : 'opacity-75 hover:opacity-100'
