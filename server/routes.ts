@@ -1135,7 +1135,7 @@ router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest
  * Production-grade registration with email validation, password strength enforcement,
  * duplicate prevention, bcrypt password hashing, and HttpOnly session establishment.
  */
-router.post('/auth/register', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/register', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || req.body?.pass || '');
   const fullName = String(req.body?.fullName || '').trim();
