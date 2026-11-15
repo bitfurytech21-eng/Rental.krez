@@ -108,13 +108,18 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please enter your password.');
       return;
     }
+    if (!turnstileToken) {
+      setError('Please complete the Cloudflare security check.');
+      return;
+    }
     setLoading(true);
     try {
-      await login(email, password, emailCode || undefined);
+      await login(email, password, turnstileToken, emailCode || undefined);
       onSuccess();
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
+        setTurnstileToken(null);
         setError(err?.message || 'A six-digit security code has been sent to your email address.');
         return;
       }
@@ -419,6 +424,16 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 />
               </div>
 
+              <div className="pt-1">
+                <TurnstileWidget
+                  onVerify={(token) => { setTurnstileToken(token); setError(null); }}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={(msg) => setError(msg)}
+                  action="login"
+                  theme="dark"
+                />
+              </div>
+
               {requiresEmailCode && (
                 <div className="form-field space-y-1">
                   <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email security code</label>
@@ -440,7 +455,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !turnstileToken}
                 className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? (
