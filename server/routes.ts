@@ -496,7 +496,7 @@ const authLimiter = rateLimiter({
  * POST /api/v1/auth/login
  * Production-grade customer authentication with bcrypt validation, brute-force lockout, and HttpOnly session cookie
  */
-router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/login', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
   const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || req.body?.pass || '');
   const emailCode = String(req.body?.emailCode || '').trim();
@@ -684,7 +684,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   });
 };
 
-router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, handleAdminLogin);
+router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, requireTurnstile, handleAdminLogin);
 
 /**
  * POST /api/v1/auth/admin-customize
