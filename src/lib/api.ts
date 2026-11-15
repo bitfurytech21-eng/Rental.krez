@@ -565,10 +565,10 @@ export const investmentsApi = {
     api.get<any>('/portfolio'),
 
   executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
+    withActionEmailVerification('investor.investment.create', (grantId) => apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
 
   reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
+    withActionEmailVerification('investor.investment.create', (grantId) => apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }, headers: { 'X-Action-Verification': grantId } })),
 };
 
 /**
@@ -585,7 +585,7 @@ export const walletApi = {
     api.post<any>('/deposits', { ...payload, idempotencyKey: createIdempotencyKey() }),
 
   createWithdrawalRequest: (payload: { amount: number; destination: string; method: string; idempotencyKey?: string }) =>
-    api.post<any>('/withdrawals', { ...payload, idempotencyKey: createIdempotencyKey() }),
+    withActionEmailVerification('investor.withdrawal.create', (grantId) => apiRequest<any>('/withdrawals', { method: 'POST', body: { ...payload, idempotencyKey: createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
 };
 
 /**
