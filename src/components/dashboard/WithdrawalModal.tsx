@@ -44,8 +44,8 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
       return;
     }
 
-    if (amount <= 0) {
-      setError('Withdrawal amount must be greater than €0.00.');
+    if (!Number.isFinite(amount) || amount < 10) {
+      setError('Withdrawal amount must be at least €10.00.');
       return;
     }
 
@@ -55,13 +55,13 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
     }
 
     if (method === 'sepa') {
-      if (!iban || iban.trim().length < 8) {
-        setError('Please provide a valid European IBAN format.');
+      if (!isValidIBAN(iban)) {
+        setError('Please provide a valid IBAN (15–34 letters and digits).');
         return;
       }
     } else {
       const cleanAddr = cryptoAddress.trim();
-      if (!cleanAddr || !cleanAddr.startsWith('0x') || cleanAddr.length !== 42) {
+      if (!isValidCryptoAddress(cleanAddr)) {
         setError('Please provide a valid BNB Smart Chain BEP20 address (starts with 0x, 42 characters).');
         return;
       }
@@ -274,7 +274,7 @@ export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
             <div className="pt-1 flex flex-col gap-1.5">
               <button
                 type="submit"
-                disabled={isSubmitting || user.walletBalance <= 0 || amount <= 0 || amount > user.walletBalance}
+                disabled={isSubmitting || user.walletBalance < 10 || amount < 10 || amount > user.walletBalance}
                 className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold flex items-center justify-center cursor-pointer transition-colors disabled:opacity-50"
               >
                 {isSubmitting ? (
