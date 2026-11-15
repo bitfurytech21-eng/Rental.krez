@@ -4,7 +4,8 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [production-hardening]
+    branches: [main, production-hardening]
+  workflow_dispatch:
 
 permissions:
   contents: read
