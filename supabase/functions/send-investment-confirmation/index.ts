@@ -10,6 +10,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+// Keep the sender aligned with the application's verified-domain configuration.
+// Override EMAIL_FROM only with an address whose domain is verified in Resend.
+const EMAIL_FROM = Deno.env.get('EMAIL_FROM') || 'Kretz Investor Relations <info@kretzdespain.com>'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 
@@ -64,13 +67,14 @@ serve(async (req) => {
     }
 
     if (!RESEND_API_KEY) {
-      console.warn('RESEND_API_KEY environment variable is not configured in Supabase Edge Function secrets.')
-      return new Response(JSON.stringify({ 
-        success: true, 
-        warning: 'Email provider API key not configured, simulation mode active.' 
+      console.error('RESEND_API_KEY is not configured for the investment confirmation function.')
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Email provider is not configured. Investment confirmation email was not sent.',
+        code: 'EMAIL_PROVIDER_NOT_CONFIGURED',
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        status: 503,
       })
     }
 
@@ -81,7 +85,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Kretz Investor Relations <investors@kretz.com>',
+        from: EMAIL_FROM,
         to: [email],
         subject: `Investment Confirmed: ${tokensPurchased} tokens in ${propertyTitle}`,
         html: `
@@ -111,16 +115,44 @@ serve(async (req) => {
       }),
     })
 
-    const data = await emailResponse.json()
+    let data: any = null
+    try {
+      data = await emailResponse.json()
+    } catch {
+      data = { message: 'Resend returned a non-JSON response.' }
+    }
+
+    if (!emailResponse.ok) {
+      // Do not report provider rejection as successful delivery.
+      console.error('Resend rejected investment confirmation email.', {
+        status: emailResponse.status,
+        providerError: data,
+      })
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Email provider rejected the investment confirmation email.',
+        code: 'EMAIL_PROVIDER_DELIVERY_FAILED',
+        providerStatus: emailResponse.status,
+        data,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 502,
+      })
+    }
 
     return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Investment confirmation email function failed.', error)
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Investment confirmation email could not be sent.',
+      code: 'EMAIL_FUNCTION_FAILED',
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 500,
     })
   }
 })
