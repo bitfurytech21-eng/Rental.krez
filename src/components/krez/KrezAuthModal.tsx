@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
-import { TurnstileWidget } from '../security/TurnstileWidget';
 
 export type KrezAuthMode = 'login' | 'register' | 'forgot';
 
@@ -28,8 +27,6 @@ export const KrezAuthModal: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,7 +40,6 @@ export const KrezAuthModal: React.FC = () => {
       setRedirectTo(custom.detail?.redirectTo);
       setError(null);
       setNotice(null);
-      setTurnstileToken('');
       setEmailCode('');
       setRequiresEmailCode(false);
       setIsOpen(true);
@@ -69,7 +65,6 @@ export const KrezAuthModal: React.FC = () => {
     setMode(nextMode);
     setError(null);
     setNotice(null);
-    setTurnstileToken('');
     setEmailCode('');
     setRequiresEmailCode(false);
   };
@@ -94,8 +89,7 @@ export const KrezAuthModal: React.FC = () => {
           setBusy(false);
           return;
         }
-        if (!turnstileToken) throw new Error('Please complete the Cloudflare security check.');
-        await login(cleanEmail, password, turnstileToken, emailCode || undefined);
+        await login(cleanEmail, password, emailCode || undefined);
         setIsOpen(false);
         setPassword('');
         if (redirectTo) {
@@ -133,8 +127,6 @@ export const KrezAuthModal: React.FC = () => {
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
-        setTurnstileToken('');
-        setTurnstileResetKey((key) => key + 1);
         setNotice(err?.message || 'A six-digit security code has been sent to your email address.');
         setError(null);
         return;
@@ -270,15 +262,7 @@ export const KrezAuthModal: React.FC = () => {
           )}
 
           {mode === 'login' && (
-            <TurnstileWidget
-              key={turnstileResetKey}
-              action="investor_login"
-              theme="light"
-              label="Security verification"
-              onVerify={setTurnstileToken}
-              onExpire={() => setTurnstileToken('')}
-              onError={() => setTurnstileToken('')}
-            />
+            
           )}
 
           {mode === 'login' && requiresEmailCode && (
@@ -317,7 +301,7 @@ export const KrezAuthModal: React.FC = () => {
 
           <button
             type="submit"
-            disabled={busy || (mode === 'login' && !turnstileToken)}
+            disabled={busy}
             className="w-full rounded-pill bg-primary px-6 py-3.5 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
           >
             {busy

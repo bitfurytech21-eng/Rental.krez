@@ -208,7 +208,7 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
         bullets: [
           'Identity & KYC Data: Full legal name, nationality, date of birth, government-issued ID/passport scan, and proof of residential address.',
           'Financial & Settlement Data: SEPA IBAN details, deposit receipts, transaction ledger history, and whitelisted public Solana wallet addresses.',
-          'Technical Telemetry: Session authentication identifiers, IP rate-limiting logs, and Cloudflare Turnstile anti-bot verification tokens.',
+          'Technical Telemetry: Session authentication identifiers, IP rate-limiting logs, and IP-based rate-limiting records.',
         ],
       },
       {
@@ -240,7 +240,7 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
         ],
         bullets: [
           'Authentication & Session State: Encrypted bearer tokens and session identifiers maintaining secure investor portal access.',
-          'Security & Bot Mitigation: Cloudflare Turnstile challenge tokens protecting login, registration, and contact endpoints.',
+          'Security & Bot Mitigation: Rate limiting and encrypted session controls protecting public and authenticated endpoints.',
           'Interface Preferences: Selected display language, cookie consent acknowledgement, and dashboard theme preference (light/dark).',
         ],
       },
@@ -696,7 +696,7 @@ export const TRUST_CENTRE_ITEMS: TrustVerificationItem[] = [
     status: 'COMPLETED',
     verificationBadge: 'Verified & Tested (97+ Automated Checks)',
     detail:
-      'Isolated /admin/login portal, RBAC middleware, brute-force lockouts, Cloudflare Turnstile verification, Ed25519 wallet ownership attestation, and server-side API secret isolation.',
+      'Isolated /admin/login portal, RBAC middleware, brute-force lockouts, Ed25519 wallet ownership attestation, and server-side API secret isolation.',
     internalRoute: '/guide',
   },
   {

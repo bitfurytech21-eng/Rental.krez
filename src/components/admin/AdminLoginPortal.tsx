@@ -12,7 +12,6 @@ import {
   EyeOff,
   User,
 } from 'lucide-react';
-import { TurnstileWidget } from '../security/TurnstileWidget';
 
 interface AdminLoginPortalProps {
   onLoginSuccess: (openSecurityTab?: boolean) => void;
@@ -52,11 +51,8 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
-
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
-  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -64,10 +60,8 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
   useEffect(() => {
     setError(null);
     setSuccessMsg(null);
-    setTurnstileToken(null);
     setEmailCode('');
     setRequiresEmailCode(false);
-    setTurnstileResetKey((k) => k + 1);
   }, [portalMode]);
 
   const handleSignInSubmit = async (e: React.FormEvent) => {
@@ -81,13 +75,11 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
     setError(null);
 
     try {
-      await adminLogin(email.trim(), password, turnstileToken || undefined, emailCode || undefined);
+      await adminLogin(email.trim(), password, emailCode || undefined);
       onLoginSuccess(false);
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
-        setTurnstileToken(null);
-        setTurnstileResetKey((k) => k + 1);
         setError(err?.message || 'A six-digit security code has been sent to your registered email.');
       } else {
         setError(err?.message || 'Authentication failed: Invalid administrator credentials.');
@@ -131,7 +123,6 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
         newEmail: newEmail.trim(),
         newPassword,
         fullName: newFullName.trim() || 'Executive Administrator',
-        turnstileToken: turnstileToken || undefined,
       });
 
       setSuccessMsg(
@@ -149,8 +140,6 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
         err?.message ||
           'Unable to update administrator credentials. Verify your current email and password.'
       );
-      setTurnstileToken(null);
-      setTurnstileResetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -281,19 +270,11 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
               </div>
             )}
 
-            <TurnstileWidget
-              key={turnstileResetKey}
-              action="admin_login"
-              theme="dark"
-              label="Administrator security verification"
-              onVerify={setTurnstileToken}
-              onExpire={() => setTurnstileToken(null)}
-              onError={() => setTurnstileToken(null)}
-            />
+            
 
             <button
               type="submit"
-              disabled={loading || !turnstileToken}
+              disabled={loading}
               className="w-full mt-2 py-3.5 px-4 bg-[#087F5B] hover:bg-[#066548] text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
             >
               {loading ? (
@@ -462,19 +443,7 @@ export const AdminLoginPortal: React.FC<AdminLoginPortalProps> = ({
               </div>
             </div>
 
-            <div className="pt-1">
-              <TurnstileWidget
-                key={`customize-${turnstileResetKey}`}
-                onVerify={(token) => {
-                  setTurnstileToken(token);
-                  setError(null);
-                }}
-                onExpire={() => setTurnstileToken(null)}
-                onError={(msg) => setError(msg)}
-                action="admin_customize"
-                theme="dark"
-              />
-            </div>
+            
 
             <button
               type="submit"

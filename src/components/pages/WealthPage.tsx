@@ -3,7 +3,6 @@ import { Crown, ShieldCheck, CheckCircle2, ArrowRight, Building2, TrendingUp, Us
 import { CompoundYieldVisualizer } from '../visuals/CompoundYieldVisualizer';
 import { useAuth } from '../../lib/auth';
 import { contactApi } from '../../lib/api';
-import { TurnstileWidget } from '../security/TurnstileWidget';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -21,7 +20,6 @@ export const WealthPage: React.FC<WealthPageProps> = ({ onExplore }) => {
     investmentCapacity: '€50,000 - €250,000',
     country: user?.country || 'Spain',
   });
-  const [turnstileToken, setTurnstileToken] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -65,7 +63,6 @@ export const WealthPage: React.FC<WealthPageProps> = ({ onExplore }) => {
         investmentCapacity: formData.investmentCapacity,
         country: formData.country.trim() || 'Spain',
         message: `Private Wealth Advisory Consultation Request · Target Capacity: ${formData.investmentCapacity} · Tax Residency: ${formData.country.trim() || 'Spain'}${formData.phone.trim() ? ` · Phone: ${formData.phone.trim()}` : ''}`,
-        turnstileToken: turnstileToken || undefined,
       });
       setTicketId(response.data?.ticketId || null);
       setSubmitted(true);
@@ -331,14 +328,7 @@ export const WealthPage: React.FC<WealthPageProps> = ({ onExplore }) => {
                       </div>
                     </div>
 
-                    {!user && (
-                      <TurnstileWidget
-                        theme="dark"
-                        action="wealth_advisory"
-                        onVerify={(token) => setTurnstileToken(token)}
-                        onExpire={() => setTurnstileToken('')}
-                      />
-                    )}
+                    
 
                     <button
                       type="submit"

@@ -8,7 +8,6 @@ import {
 } from '../../data/krezTemplateData';
 import { useAuth } from '../../lib/auth';
 import { contactApi } from '../../lib/api';
-import { TurnstileWidget } from '../security/TurnstileWidget';
 import { KrezImage, KrezReveal } from './KrezReveal';
 
 interface KrezPropertiesPageProps {
@@ -63,7 +62,6 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
   );
   const [regRange, setRegRange] = useState<string>(KREZ_INVESTMENT_RANGES[1].label);
   const [regNotes, setRegNotes] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submittedTicket, setSubmittedTicket] = useState<string | null>(null);
@@ -191,7 +189,6 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
         message:
           regNotes.trim() ||
           `Registered investor interest for ${chosenBuilding} (${regRange}). Please send the offering memorandum and share subscription schedule.`,
-        turnstileToken: turnstileToken || undefined,
       });
       setSubmittedTicket(response.data?.ticketId || 'REGISTERED');
       setRegNotes('');
@@ -775,13 +772,7 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
                       />
                     </div>
 
-                    {!user && (
-                      <TurnstileWidget
-                        theme="light"
-                        action="register_interest"
-                        onVerify={(tok) => setTurnstileToken(tok)}
-                      />
-                    )}
+                    
 
                     {submitError && (
                       <p className="rounded-input border border-red-300 bg-red-50 px-3.5 py-2.5 text-xs text-red-800" role="alert">

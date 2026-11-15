@@ -82,7 +82,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-[#8EA7C7] leading-relaxed">
-                    Kretz uses strictly necessary cookies to deliver secure authentication, double-entry financial ledger integrity, and Cloudflare Turnstile bot verification. Optional cookies for analytics, embedded media, and the Smartsupp live-chat service require your consent.{' '}
+                    Kretz uses strictly necessary cookies to deliver secure authentication and double-entry financial ledger integrity. Optional cookies for analytics, embedded media, and the Smartsupp live-chat service require your consent.{' '}
                     {onNavigatePrivacy && (
                       <button
                         onClick={onNavigatePrivacy}

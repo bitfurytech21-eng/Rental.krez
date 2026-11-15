@@ -21,15 +21,14 @@ interface AuthContextType {
   isConfigured: boolean;
   isRecoveryMode: boolean;
   setIsRecoveryMode: (val: boolean) => void;
-  login: (email: string, pass: string, turnstileToken?: string, emailCode?: string) => Promise<User>;
-  adminLogin: (email: string, pass: string, turnstileToken?: string, emailCode?: string) => Promise<User>;
+  login: (email: string, pass: string, emailCode?: string) => Promise<User>;
+  adminLogin: (email: string, pass: string, emailCode?: string) => Promise<User>;
   customizeAdminCredentials: (params: {
     currentEmail: string;
     currentPassword: string;
     newEmail: string;
     newPassword: string;
     fullName?: string;
-    turnstileToken?: string;
   }) => Promise<User>;
   register: (
     email: string,
@@ -313,19 +312,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isConfigured]);
 
   // Connect Customer Login form strictly to investor accounts (Administrator login is isolated at /admin/login)
-  const login = async (email: string, pass: string, turnstileToken?: string, emailCode?: string): Promise<User> => {
+  const login = async (email: string, pass: string, emailCode?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
 
     if (import.meta.env.PROD || !isConfigured) {
       let res: any;
       try {
-        if (!turnstileToken) throw new Error('Please complete the Cloudflare security check.');
-        res = await authApi.login(cleanEmail, pass, turnstileToken, emailCode);
+        res = await authApi.login(cleanEmail, pass, emailCode);
       } catch (err: any) {
         if (err?.code === 'EMAIL_CODE_REQUIRED') throw err;
         if (import.meta.env.PROD) {
           // Preserve the API's safe, actionable error response (for example,
-          // Turnstile configuration or Supabase auth setup) instead of hiding
+          // Supabase auth setup) instead of hiding
           // every production failure behind one generic message.
           throw new Error(err?.message || 'Authentication service is unavailable. Please try again shortly.');
         }
@@ -967,7 +965,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Dedicated Server-Side Administrator Authentication
-  const adminLogin = async (email: string, pass: string, turnstileToken?: string, emailCode?: string): Promise<User> => {
+  const adminLogin = async (email: string, pass: string, emailCode?: string): Promise<User> => {
     const cleanEmail = email.trim().toLowerCase();
     let res: any;
     try {
@@ -976,7 +974,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: {
           email: cleanEmail,
           password: pass,
-          turnstileToken,
           emailCode
         },
         skipAuth: true
@@ -1081,7 +1078,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     newEmail: string;
     newPassword: string;
     fullName?: string;
-    turnstileToken?: string;
   }): Promise<User> => {
     const res = await apiRequest<{
       success: boolean;
@@ -1096,9 +1092,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newEmail: params.newEmail.trim().toLowerCase(),
         newPassword: params.newPassword,
         fullName: params.fullName?.trim() || 'Executive Administrator',
-        turnstileToken:
-          params.turnstileToken ||
-          `fallback-admin-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       },
       skipAuth: true,
     });

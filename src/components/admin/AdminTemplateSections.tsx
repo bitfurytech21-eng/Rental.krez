@@ -558,7 +558,6 @@ export const AdminTemplateSectionView: React.FC<TemplateSectionProps> = ({
   const [legalEntity, setLegalEntity] = useState('Kretz Capital SAS - Paris, France');
   const [baseCurrency, setBaseCurrency] = useState('EUR');
   const [minInvestGlobal, setMinInvestGlobal] = useState('500');
-  const [turnstileEnabled, setTurnstileEnabled] = useState(true);
   const smartsuppConfigured = Boolean(import.meta.env.VITE_SMARTSUPP_KEY?.trim());
   const [gaMeasurementId, setGaMeasurementId] = useState('G-KRETZ202688');
   const [sentryDsn, setSentryDsn] = useState('https://kretz@sentry.io/450912');
@@ -1817,23 +1816,6 @@ export const AdminTemplateSectionView: React.FC<TemplateSectionProps> = ({
           <div className="p-5 rounded-2xl bg-white border border-[#e4e6e1] space-y-4 text-xs">
             <h3 className="text-sm font-bold text-[#1f2b28]">Active Security & Analytics Plugins</h3>
             <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-[#f9faf8] border border-[#e4e6e1] flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-gray-800">Cloudflare Turnstile Bot Defense</span>
-                  <p className="text-gray-500 text-[11px]">Non-intrusive CAPTCHA protection on login and deposit forms.</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setTurnstileEnabled(!turnstileEnabled);
-                    triggerSuccess(`Turnstile ${!turnstileEnabled ? 'enabled' : 'disabled'}.`);
-                  }}
-                  className={`px-3 py-1 rounded-lg font-bold cursor-pointer ${
-                    turnstileEnabled ? 'bg-emerald-600 text-white' : 'bg-gray-300 text-gray-700'
-                  }`}
-                >
-                  {turnstileEnabled ? 'Active' : 'Disabled'}
-                </button>
-              </div>
               <div className="p-3.5 rounded-xl bg-[#f9faf8] border border-[#e4e6e1] flex items-center justify-between">
                 <div>
                   <span className="font-bold text-gray-800">Smartsupp Live Concierge</span>

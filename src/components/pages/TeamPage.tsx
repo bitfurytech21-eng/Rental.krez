@@ -7,7 +7,6 @@ import {
 import { ALL_KRETZ_MEMBERS, TeamMember } from '../../data/kretzTeam';
 import { useAuth } from '../../lib/auth';
 import { contactApi, teamApi } from '../../lib/api';
-import { TurnstileWidget } from '../security/TurnstileWidget';
 import { AnimatedArchitecturalSketch } from '../visuals/AnimatedArchitecturalSketch';
 
 const kretzHeadquartersImg = '/src/assets/images/private_wealth_advisory_1794021672991.jpg';
@@ -71,7 +70,6 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
   const [inquiryEmail, setInquiryEmail] = useState<string>(user?.email || '');
   const [inquirySubject, setInquirySubject] = useState<string>('private_consultation');
   const [inquiryMessage, setInquiryMessage] = useState<string>('');
-  const [turnstileToken, setTurnstileToken] = useState<string>('');
   const [inquiryError, setInquiryError] = useState<string | null>(null);
   const [inquiryTicketId, setInquiryTicketId] = useState<string | null>(null);
   const [inquirySuccess, setInquirySuccess] = useState<boolean>(false);
@@ -164,7 +162,6 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
         advisorName: contactingMember.name,
         topic: `Direct Mandate (${contactingMember.name}) — ${subjectLabels[inquirySubject] || inquirySubject}`,
         message: `[Advisor: ${contactingMember.name} · ${contactingMember.role}]\n[Phone: ${trimmedPhone}]\n${trimmedNote}`,
-        turnstileToken: turnstileToken || undefined,
       });
 
       setInquiryTicketId(response.data?.ticketId || null);
@@ -704,14 +701,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ onExplore, onContact }) => {
                     />
                   </div>
 
-                  {!user && (
-                    <TurnstileWidget
-                      theme="light"
-                      action="advisor_contact"
-                      onVerify={(token) => setTurnstileToken(token)}
-                      onExpire={() => setTurnstileToken('')}
-                    />
-                  )}
+                  
 
                   <div className="pt-1">
                     <button

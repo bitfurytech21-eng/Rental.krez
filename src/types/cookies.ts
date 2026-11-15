@@ -45,8 +45,8 @@ export const COOKIE_CATEGORIES: CookieCategoryDefinition[] = [
         provider: 'Kretz Platform First-Party',
       },
       {
-        name: 'cf_clearance / __cf_bm',
-        purpose: 'Cloudflare Turnstile bot detection and malicious traffic mitigation.',
+        name: '__cf_bm',
+        purpose: 'Cloudflare edge bot management and traffic classification.',
         duration: 'Session / 1 Year',
         provider: 'Cloudflare Security',
       },

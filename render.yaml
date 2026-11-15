@@ -8,7 +8,6 @@ services:
       - fromGroup: kretz-core-runtime
       - fromGroup: kretz-admin-security
       - fromGroup: kretz-supabase-client
-      - fromGroup: kretz-cloudflare-turnstile
       - fromGroup: kretz-transactional-email
       - fromGroup: kretz-optional-integrations
 
@@ -50,16 +49,6 @@ envVarGroups:
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
-
-  # 4. Cloudflare Turnstile Bot Protection
-  - name: kretz-cloudflare-turnstile
-    envVars:
-      - key: VITE_CLOUDFLARE_TURNSTILE_SITE_KEY
-        sync: false
-      - key: CLOUDFLARE_TURNSTILE_SECRET_KEY
-        sync: false
-      - key: SKIP_TURNSTILE
-        value: "false"
 
   # 5. Transactional Email Delivery (Resend / SendGrid / SMTP)
   - name: kretz-transactional-email

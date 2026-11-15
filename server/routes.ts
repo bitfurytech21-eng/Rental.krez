@@ -12,7 +12,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
-import { verifyTurnstileToken, requireTurnstile } from './turnstile';
 import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
 import {
   handleTranslationRequest,
@@ -275,13 +274,6 @@ const publicSubmissionLimiter = rateLimiter({
   message: 'Too many submissions from this IP address. Please wait 1 minute.'
 });
 
-const securityLimiter = rateLimiter({
-  windowMs: 60 * 1000,
-  max: 10,
-  category: 'security',
-  message: 'Too many security checks. Please wait 1 minute.'
-});
-
 export interface UserRecord {
   id: string;
   email: string;
@@ -502,7 +494,7 @@ const authLimiter = rateLimiter({
  * POST /api/v1/auth/login
  * Production-grade customer authentication with bcrypt validation, brute-force lockout, and HttpOnly session cookie
  */
-router.post('/auth/login', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
   const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || req.body?.pass || '');
   const emailCode = String(req.body?.emailCode || '').trim();
@@ -690,7 +682,7 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   });
 };
 
-router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, requireTurnstile, handleAdminLogin);
+router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimiter, handleAdminLogin);
 
 /**
  * POST /api/v1/auth/admin-customize
@@ -700,7 +692,6 @@ router.post(['/admin/login', '/auth/admin/login', '/auth/admin-login'], authLimi
 router.post(
   ['/admin/customize', '/auth/admin-customize'],
   authLimiter,
-  requireTurnstile,
   async (req: AuthenticatedRequest, res: Response) => {
     const ip =
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -1190,7 +1181,7 @@ router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => 
 /**
  * POST /api/v1/auth/password/forgot
  */
-router.post('/auth/password/forgot', authLimiter, requireTurnstile, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/auth/password/forgot', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   if (!email || !validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL', requestId: req.id });
   if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Password recovery is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
@@ -1206,16 +1197,9 @@ router.post('/auth/password/forgot', authLimiter, requireTurnstile, async (req: 
 
 /**
  * POST /api/v1/contact
- * Enforces Turnstile human verification on public requests; allows authenticated session requests directly
+ * Accepts public inquiries with rate limiting; authenticated session requests are also supported
  */
-const requireTurnstileUnlessAuthed = (req: AuthenticatedRequest, res: Response, next: any) => {
-  if (req.user && req.user.id) {
-    return next();
-  }
-  return requireTurnstile(req, res, next);
-};
-
-router.post('/contact', contactLimiter, requireTurnstileUnlessAuthed, (req: AuthenticatedRequest, res: Response) => {
+router.post('/contact', contactLimiter, (req: AuthenticatedRequest, res: Response) => {
   const { fullName, name, email, phone, topic, subject, message, advisorName, investmentCapacity, country } = req.body || {};
   const resolvedName = String(fullName || name || '').trim();
   const resolvedTopic = String(topic || subject || 'Investor Inquiries').trim();
@@ -1385,7 +1369,7 @@ router.post('/newsletter/subscribe', publicSubmissionLimiter, (req: Authenticate
  * POST /api/v1/memberships/apply
  * Records and validates L'Agence Club Privé membership applications
  */
-router.post('/memberships/apply', publicSubmissionLimiter, requireTurnstileUnlessAuthed, (req: AuthenticatedRequest, res: Response) => {
+router.post('/memberships/apply', publicSubmissionLimiter, (req: AuthenticatedRequest, res: Response) => {
   const {
     fullName,
     email,
@@ -1600,33 +1584,6 @@ router.post('/user/referrals/invite', requireAuth, async (req: AuthenticatedRequ
     success: true,
     data: { referral, referrals: updated },
     message: `VIP invitation dispatched to ${normalizedEmail}.`,
-    requestId: req.id,
-  });
-});
-
-/**
- * POST /api/v1/security/verify-turnstile
- * Standalone verification endpoint for testing and client verification checks
- */
-router.post('/security/verify-turnstile', securityLimiter, async (req: AuthenticatedRequest, res: Response) => {
-  const token = req.body?.turnstileToken || req.headers['x-turnstile-token'] || req.body?.['cf-turnstile-response'];
-  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
-
-  const result = await verifyTurnstileToken(token, ip);
-  if (!result.success) {
-    return res.status(403).json({
-      success: false,
-      error: result.error,
-      code: result.code,
-      requestId: req.id,
-    });
-  }
-
-  return res.json({
-    success: true,
-    message: 'Turnstile human verification succeeded.',
-    challengeTs: result.challengeTs,
-    hostname: result.hostname,
     requestId: req.id,
   });
 });
@@ -4945,7 +4902,6 @@ router.get('/trust-center', (_req, res) => {
       securityControls: {
         adminRouteIsolation: true,
         rbacEnforcement: true,
-        turnstileBotProtection: true,
         rateLimitingActive: true,
         nonCustodialSolanaSigning: true
       },
