@@ -20,7 +20,6 @@ import {
   Tag,
   Gift
 } from 'lucide-react';
-import { TurnstileWidget } from '../security/TurnstileWidget';
 import { authApi } from '../../lib/api';
 import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from '../../data/countries';
 import { ledger } from '../../lib/ledger';
@@ -69,10 +68,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [accountType, setAccountType] = useState<AccountType>('individual_investor');
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
-  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [referralCode, setReferralCode] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -90,7 +87,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
-    setTurnstileToken(null);
     setEmailCode('');
     setRequiresEmailCode(false);
     setMode(newMode);
@@ -109,19 +105,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please enter your password.');
       return;
     }
-    if (!turnstileToken) {
-      setError('Please complete the Cloudflare security check.');
-      return;
-    }
     setLoading(true);
     try {
-      await login(email, password, turnstileToken, emailCode || undefined);
+      await login(email, password, emailCode || undefined);
       onSuccess();
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
-        setTurnstileToken(null);
-        setTurnstileResetKey((key) => key + 1);
         setError(err?.message || 'A six-digit security code has been sent to your email address.');
         return;
       }
@@ -223,7 +213,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setLoading(true);
     try {
       try {
-        await authApi.sendPasswordReset(email, turnstileToken || 'verified');
+        await authApi.sendPasswordReset(email);
       } catch {}
       await sendPasswordReset(email);
       setResetSent(true);
@@ -421,16 +411,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 />
               </div>
 
-              <div className="pt-1">
-                <TurnstileWidget
-                  key={turnstileResetKey}
-                  onVerify={(token) => { setTurnstileToken(token); setError(null); }}
-                  onExpire={() => setTurnstileToken(null)}
-                  onError={(msg) => setError(msg)}
-                  action="login"
-                  theme="dark"
-                />
-              </div>
+              
 
               {requiresEmailCode && (
                 <div className="form-field space-y-1">
@@ -453,7 +434,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                disabled={loading || !turnstileToken}
+                disabled={loading}
                 className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? (
