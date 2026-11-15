@@ -321,6 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         res = await authApi.login(cleanEmail, pass, emailCode);
       } catch (err: any) {
+        if (err?.code === 'EMAIL_CODE_REQUIRED') throw err;
         if (import.meta.env.PROD) {
           // Preserve the API's safe, actionable error response (for example,
           // Turnstile configuration or Supabase auth setup) instead of hiding
