@@ -49,11 +49,19 @@ function loadTurnstileScript(): Promise<void> {
       script = document.createElement('script');
       script.id = SCRIPT_ID;
       script.src = SCRIPT_URL;
-      script.async = true;
-      script.defer = true;
+      // Load the API in ordered mode: Cloudflare requires the script to be
+      // available before calling turnstile.ready().
+      script.async = false;
+      script.removeAttribute('async');
+      script.removeAttribute('defer');
     }
 
     const activeScript = script;
+    // Also normalize a script tag that may already have been inserted by an
+    // earlier mount or by static HTML. Never leave async/defer on api.js.
+    activeScript.removeAttribute('async');
+    activeScript.removeAttribute('defer');
+    activeScript.async = false;
     let settled = false;
     const cleanup = () => {
       activeScript.removeEventListener('load', onLoad);
