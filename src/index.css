@@ -3355,3 +3355,160 @@ section[class*="bg-[#0B1B30]"] h3 {
     transition: none !important;
   }
 }
+
+
+/* Stage 8: dashboard hierarchy, responsive workspace layout and touch-friendly mobile surfaces.
+   Presentation-only rules: preserve existing navigation, data and action behavior. */
+.app-shell,
+.app-shell .app-main-area,
+.app-shell .app-content-scroll,
+.kretz-admin-scope {
+  min-width: 0;
+}
+
+.app-shell .app-main-area {
+  flex: 1 1 auto;
+}
+
+.app-shell .app-content-scroll {
+  padding: clamp(14px, 2vw, 26px);
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  overscroll-behavior-y: contain;
+}
+
+.app-shell .app-content-scroll > * {
+  min-width: 0;
+}
+
+.app-shell .cinematic-card,
+.app-shell .dash-card,
+.kretz-admin-scope .kretz-admin-card {
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+.app-shell :where(.overflow-x-auto, .dashboard-table-wrapper) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-shell table,
+.kretz-admin-scope table {
+  max-width: 100%;
+}
+
+.kretz-admin-scope main {
+  min-width: 0;
+  width: 100%;
+}
+
+.kretz-admin-scope .kretz-admin-top {
+  position: sticky;
+  top: 0;
+  z-index: 24;
+  min-height: 64px;
+  padding: 12px clamp(14px, 2vw, 26px);
+}
+
+.kretz-admin-scope .kretz-admin-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kretz-admin-scope :where(input, select, textarea) {
+  max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .app-shell .app-sidebar {
+    width: 224px;
+  }
+
+  .app-shell .app-content-scroll {
+    padding: 24px clamp(20px, 2.2vw, 34px);
+  }
+
+  .kretz-admin-scope main {
+    max-width: 1440px;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .app-shell .app-main-area {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .app-shell .app-content-scroll {
+    padding: 12px 12px calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .app-shell .app-content-scroll > div {
+    max-width: 100%;
+  }
+
+  .app-shell .mobile-bottom-nav {
+    padding-bottom: max(3px, env(safe-area-inset-bottom));
+  }
+
+  .app-shell :where(button, [role="button"]) {
+    touch-action: manipulation;
+  }
+
+  .kretz-admin-scope main {
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+  }
+
+  .kretz-admin-scope .kretz-admin-top {
+    min-height: 58px;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .kretz-admin-scope .kretz-admin-card {
+    padding: 15px;
+    border-radius: 16px;
+  }
+
+  .kretz-admin-scope .kretz-admin-side {
+    width: min(310px, 88vw);
+    max-width: 88vw;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell .app-content-scroll {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .kretz-admin-scope main {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .kretz-admin-scope .kretz-admin-card {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .cinematic-card,
+  .app-shell .dash-card,
+  .kretz-admin-scope .kretz-admin-card {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+  }
+}
