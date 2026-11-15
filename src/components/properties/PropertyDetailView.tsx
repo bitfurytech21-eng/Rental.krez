@@ -921,10 +921,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                   ? 'border-[#234D40] bg-[#234D40] text-white shadow-sm'
                   : 'border-[#E1E9E4] bg-white text-[#69736F] hover:border-[#B8D7C9] hover:bg-[#F2F8F4] hover:text-[#18211F]'
               }`}
-            >
-              {tab.label}
-              aria-pressed={activeTab === tab.id}
               type="button"
+              aria-pressed={activeTab === tab.id}
             >
               {tab.label}
             </button>
