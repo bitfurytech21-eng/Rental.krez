@@ -178,6 +178,22 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
         .kretz-legal-document .valuation-contents-title { margin-bottom:5px; color:var(--legal-gold); font:700 9px Arial,sans-serif; letter-spacing:3px; text-transform:uppercase; }
         .kretz-legal-document .valuation-contents > div:not(:first-child) { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dotted rgba(168,134,79,.7); color:#3a3d44; font:11px Arial,sans-serif; }
         .kretz-legal-document .valuation-contents em { flex:0 0 auto; color:#9a9384; font:italic 10px Georgia,serif; }
+        .kretz-legal-document .prospectus-report .prospectus-masthead { padding-bottom:1.4rem; border-bottom:1px solid var(--legal-gold); }
+        .kretz-legal-document .prospectus-brand-row { display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--legal-gold); padding-bottom:9px; }
+        .kretz-legal-document .prospectus-brand { color:var(--legal-navy); font:700 11px Georgia,serif; letter-spacing:5px; }
+        .kretz-legal-document .prospectus-tag { color:var(--legal-gold); font:9px Arial,sans-serif; letter-spacing:2px; text-transform:uppercase; text-align:right; }
+        .kretz-legal-document .prospectus-masthead h1 { max-width:650px; margin:2rem 0 .7rem; color:var(--legal-navy); font:700 clamp(25px,3vw,34px)/1.16 Georgia,serif; }
+        .kretz-legal-document .prospectus-gold-rule { width:28mm; height:3px; background:var(--legal-gold); margin:1rem 0 1.4rem; }
+        .kretz-legal-document .prospectus-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-top:1px solid var(--legal-gold); border-bottom:1px solid var(--legal-gold); margin:1rem 0 1.3rem; }
+        .kretz-legal-document .prospectus-meta > div { min-width:0; padding:12px 5px; text-align:center; border-right:1px solid rgba(168,134,79,.35); }
+        .kretz-legal-document .prospectus-meta > div:last-child { border:0; }
+        .kretz-legal-document .prospectus-meta strong { display:block; color:var(--legal-navy); font:700 14px Georgia,serif; overflow-wrap:anywhere; }
+        .kretz-legal-document .prospectus-meta small { display:block; margin-top:4px; color:#6b665c; font:8px Arial,sans-serif; letter-spacing:1.5px; text-transform:uppercase; }
+        .kretz-legal-document .prospectus-contents { margin-top:1rem; }
+        .kretz-legal-document .prospectus-contents-title { margin-bottom:5px; color:var(--legal-gold); font:700 9px Arial,sans-serif; letter-spacing:3px; text-transform:uppercase; }
+        .kretz-legal-document .prospectus-contents > div:not(:first-child) { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px dotted rgba(168,134,79,.7); color:#3a3d44; font:11px Arial,sans-serif; }
+        .kretz-legal-document .prospectus-contents em { flex:0 0 auto; color:#9a9384; font:italic 10px Georgia,serif; }
+        @media(max-width:520px) { .kretz-legal-document .prospectus-brand { letter-spacing:3px; }.kretz-legal-document .prospectus-tag { font-size:7px; letter-spacing:1px; }.kretz-legal-document .prospectus-meta strong { font-size:10px; }.kretz-legal-document .prospectus-meta small { font-size:7px; letter-spacing:.7px; } }
         @media(max-width:520px) { .kretz-legal-document .valuation-brand { letter-spacing:3px; }.kretz-legal-document .valuation-tag { font-size:7px; letter-spacing:1px; }.kretz-legal-document .valuation-meta strong { font-size:10px; }.kretz-legal-document .valuation-meta small { font-size:7px; letter-spacing:.7px; } }
         @media print {
           @page { size:${paperSize === 'A4' ? 'A4' : 'legal'}; margin:0; }
@@ -541,7 +557,27 @@ export const PropertyLegalDocumentModal: React.FC<PropertyLegalDocumentModalProp
 
           {/* DOCUMENT 3: SPV TOKENIZATION PROSPECTUS & YIELD MODEL */}
           {isProspectus && (
-            <div className="space-y-6 font-serif text-sm leading-relaxed text-[#1d2321]">
+            <div className="prospectus-report space-y-6 font-serif text-sm leading-relaxed text-[#23272f]">
+              <div className="prospectus-masthead">
+                <div className="prospectus-brand-row">
+                  <span className="prospectus-brand">KRETZ SPAIN</span>
+                  <span className="prospectus-tag">Official Legal Documents · Financial</span>
+                </div>
+                <h1>SPV Tokenization Prospectus &amp; Yield Model</h1>
+                <div className="prospectus-gold-rule" />
+                <div className="prospectus-meta">
+                  <div><strong>{notarizationDate}</strong><small>Report date</small></div>
+                  <div><strong>{formatCurrency(property.targetAmount)}</strong><small>Offering target</small></div>
+                  <div><strong>{property.ref || property.tokenTicker || 'Pending reference'}</strong><small>Reference</small></div>
+                </div>
+                <div className="prospectus-contents">
+                  <div className="prospectus-contents-title">Contents</div>
+                  <div><span>Issuer and SPV structure</span><em>Article 1</em></div>
+                  <div><span>Offering terms and token details</span><em>Offering</em></div>
+                  <div><span>Yield model and financial assumptions</span><em>Article 2</em></div>
+                  <div><span>Risk disclosures and legal notices</span><em>Article 3</em></div>
+                </div>
+              </div>
               <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-sans">
                 <div>
                   <span className="text-[#64748b] block font-semibold uppercase tracking-wider">Émetteur Juridique SPV :</span>
