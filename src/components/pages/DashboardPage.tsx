@@ -2450,9 +2450,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         onSuccess={() => {
           refreshUser();
         }}
-        onNavigateAdmin={() => {
-          navigateTo('/admin#deposits');
-        }}
         onNavigateTransactions={() => setActiveTab('transactions')}
       />
 
