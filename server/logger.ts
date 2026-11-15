@@ -95,6 +95,9 @@ export function sanitizeLogData(data: any): any {
 class SystemLogger {
   private buffer: StructuredLog[] = [];
   private maxBufferSize: number = 2000;
+  // A monotonic sequence keeps log IDs unique without nondeterministic
+  // identifier generation during module initialization.
+  private logSequence: number = 0;
   private environment: string = process.env.NODE_ENV || 'development';
   private serviceName: string = 'kretz-backend-api';
 
@@ -135,7 +138,7 @@ class SystemLogger {
 
   public log(entry: Omit<StructuredLog, 'id' | 'timestamp' | 'environment' | 'serviceName'>): StructuredLog {
     const completeLog: StructuredLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: `log-${Date.now()}-${++this.logSequence}`,
       timestamp: new Date().toISOString(),
       environment: this.environment,
       serviceName: this.serviceName,
