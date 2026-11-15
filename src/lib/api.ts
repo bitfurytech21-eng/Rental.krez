@@ -565,10 +565,14 @@ export const financialApi = {
     api.post<any>('/deposits', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
   withdraw: (payload: { amount: number; destination: string; method?: string; idempotencyKey?: string }) =>
-    api.post<any>('/withdrawals', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
+    withActionEmailVerification('investor.withdrawal.create', (grantId) =>
+      apiRequest<any>('/withdrawals', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })
+    ),
 
   invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
+    withActionEmailVerification('investor.investment.create', (grantId) =>
+      apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })
+    ),
 };
 
 export const investmentsApi = {
