@@ -204,6 +204,8 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
             <button
               onClick={onRefreshAll}
               className="p-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-slate-300 hover:text-white transition-all cursor-pointer"
+              type="button"
+              aria-label="Refresh dashboard metrics"
               title="Refresh all metrics"
             >
               <RefreshCw className="w-4 h-4" />
@@ -259,10 +261,19 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
         </div>
 
         {/* Metric 3: Liquid Investor Reserves */}
-        <div 
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`Open user registry. ${users.length} registered users and ${formatCurrency(totalInvestorWalletBalances)} in displayed wallet balances.`}
           onClick={() => onNavigateTab('users')}
-          className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/60 transition-all cursor-pointer group"
-          title="Click to view and manage registered users"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onNavigateTab('users');
+            }
+          }}
+          className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs text-left space-y-2 hover:border-emerald-600/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 transition-all cursor-pointer group"
+          title="Open the user registry"
         >
           <div className="flex items-center justify-between text-[#69736F]">
             <span className="text-xs font-bold uppercase tracking-wider group-hover:text-emerald-800 transition-colors">Investor Balances ({users.length})</span>
