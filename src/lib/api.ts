@@ -311,12 +311,10 @@ export const api = {
 // Specialized API Services for Client & Admin Separation
 // ============================================================================
 
-/**
- * Authentication endpoints; Turnstile remains enabled for login and protected routes.
- */
+/** Authentication endpoints. */
 export const authApi = {
-  login: (email: string, pass: string, turnstileToken?: string, emailCode?: string) =>
-    api.post<{ user?: any; token?: string; refreshToken?: string; requiresEmailCode?: boolean; maskedEmail?: string; data?: { user?: any; token?: string; refreshToken?: string } }>('/auth/login', { email, pass, turnstileToken, emailCode }, { skipAuth: true }),
+  login: (email: string, pass: string, emailCode?: string) =>
+    api.post<{ user?: any; token?: string; refreshToken?: string; requiresEmailCode?: boolean; maskedEmail?: string; data?: { user?: any; token?: string; refreshToken?: string } }>('/auth/login', { email, pass, emailCode }, { skipAuth: true }),
 
   register: (payload: {
     email: string;
@@ -338,15 +336,15 @@ export const authApi = {
   logout: () =>
     api.post<{ success: boolean }>('/auth/logout'),
 
-  sendPasswordReset: (email: string, turnstileToken?: string) =>
-    api.post<{ success: boolean; message: string }>('/auth/password/forgot', { email, turnstileToken }, { skipAuth: true }),
+  sendPasswordReset: (email: string) =>
+    api.post<{ success: boolean; message: string }>('/auth/password/forgot', { email }, { skipAuth: true }),
 
   updatePassword: (password: string, token?: string) =>
     api.post<{ success: boolean; message: string }>('/auth/password/reset', { newPassword: password, token }),
 
-  adminLogin: (email: string, pass: string, turnstileToken?: string, emailCode?: string) =>
+  adminLogin: (email: string, pass: string, emailCode?: string) =>
     api.post<{ user?: any; token?: string; message?: string; requiresEmailCode?: boolean; maskedEmail?: string }>('/auth/admin-login', {
-      email, password: pass, turnstileToken, emailCode
+      email, password: pass, emailCode
     }, { skipAuth: true }),
 
   adminLogout: () =>
@@ -369,7 +367,6 @@ export const contactApi = {
     investmentCapacity?: string;
     country?: string;
     message: string;
-    turnstileToken?: string;
   }) =>
     api.post<{ success: boolean; data?: { ticketId: string; createdAt?: string }; message: string }>('/contact', payload),
 };
@@ -394,7 +391,6 @@ export const membershipApi = {
     preferredRegion?: string;
     invitationCode?: string;
     specialRequests?: string;
-    turnstileToken?: string;
   }) =>
     api.post<{
       success: boolean;
@@ -408,14 +404,6 @@ export const membershipApi = {
       };
       message: string;
     }>('/memberships/apply', payload),
-};
-
-/**
- * Security & Human Verification API
- */
-export const securityApi = {
-  verifyTurnstile: (turnstileToken: string) =>
-    api.post<{ success: boolean; message: string; challengeTs?: string; hostname?: string }>('/security/verify-turnstile', { turnstileToken }),
 };
 
 /**
