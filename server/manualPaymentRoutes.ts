@@ -1,0 +1,234 @@
+import { Router, Response } from 'express';
+import crypto from 'crypto';
+import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin } from './middleware';
+import { getSupabaseAdmin, isSupabaseServerConfigured, runFinancialRpc, toApiTransaction } from './supabaseDatabase';
+import { consumeDashboardActionGrant } from './emailOtp';
+import { sendEmail } from './emailService';
+import { logger } from './logger';
+
+export const manualPaymentRouter = Router();
+const submitLimiter = rateLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  category: 'payments',
+  message: 'Too many manual deposit submissions. Please try again later.'
+});
+const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const MAX_PROOF_BYTES = 5 * 1024 * 1024;
+
+function configured(res: Response, req: AuthenticatedRequest) {
+  if (isSupabaseServerConfigured()) return true;
+  res.status(503).json({ success: false, error: 'Persistent payment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  return false;
+}
+
+function safeMethodInput(body: any, actorId: string, existing?: any) {
+  const name = String(body?.name ?? existing?.name ?? '').trim();
+  const instructions = String(body?.instructions ?? existing?.instructions ?? '').trim();
+  const minimum = Number(body?.minimumAmount ?? existing?.minimum_amount ?? 100);
+  const maximumRaw = body?.maximumAmount ?? existing?.maximum_amount ?? null;
+  const maximum = maximumRaw === null || maximumRaw === '' ? null : Number(maximumRaw);
+  const feeType = String(body?.feeType ?? existing?.fee_type ?? 'none');
+  const feeValue = Number(body?.feeValue ?? existing?.fee_value ?? 0);
+  if (name.length < 2 || name.length > 100 || instructions.length > 10000 ||
+      !Number.isFinite(minimum) || minimum <= 0 ||
+      (maximum !== null && (!Number.isFinite(maximum) || maximum < minimum)) ||
+      !['none', 'fixed', 'percent'].includes(feeType) ||
+      !Number.isFinite(feeValue) || feeValue < 0 ||
+      feeValue > (feeType === 'percent' ? 100 : 1000000)) {
+    throw new Error('INVALID_MANUAL_PAYMENT_METHOD');
+  }
+  const extraFields = Array.isArray(body?.extraFields) ? body.extraFields : (existing?.extra_fields || []);
+  if (extraFields.length > 10 || extraFields.some((field: any) =>
+    !field || typeof field.label !== 'string' || field.label.trim().length < 2 ||
+    field.label.length > 80 || typeof field.key !== 'string' ||
+    !/^[a-z][a-z0-9_]{1,39}$/.test(field.key)
+  )) throw new Error('INVALID_EXTRA_FIELDS');
+  return {
+    name,
+    logo_url: typeof (body?.logoUrl ?? existing?.logo_url) === 'string' ? String(body?.logoUrl ?? existing?.logo_url).slice(0, 1000) : null,
+    instructions,
+    account_details: body?.accountDetails && typeof body.accountDetails === 'object' ? body.accountDetails : (existing?.account_details || {}),
+    minimum_amount: minimum,
+    maximum_amount: maximum,
+    fee_type: feeType,
+    fee_value: feeValue,
+    extra_fields: extraFields,
+    enabled: typeof body?.enabled === 'boolean' ? body.enabled : (existing?.enabled ?? true),
+    sort_order: Number.isInteger(body?.sortOrder) ? body.sortOrder : (existing?.sort_order || 0),
+    updated_by: actorId
+  };
+}
+
+manualPaymentRouter.get('/methods', async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  try {
+    const { data, error } = await getSupabaseAdmin().from('manual_payment_methods')
+      .select('id,name,logo_url,instructions,account_details,minimum_amount,maximum_amount,fee_type,fee_value,extra_fields')
+      .eq('enabled', true).order('sort_order').order('created_at');
+    if (error) throw error;
+    return res.json({ success: true, data: data || [], requestId: req.id });
+  } catch {
+    return res.status(503).json({ success: false, error: 'Manual payment methods are temporarily unavailable.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
+  }
+});
+
+manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  const body = req.body || {};
+  const amount = Number(body.amount);
+  const transactionId = String(body.transactionId || '').trim();
+  const senderName = String(body.senderName || '').trim();
+  const paymentDate = String(body.paymentDate || '').trim();
+  const proofBase64 = String(body.proofBase64 || '');
+  const mimeType = String(body.proofMimeType || '').toLowerCase();
+  const extraValues = body.extraValues && typeof body.extraValues === 'object' ? body.extraValues : {};
+  if (!Number.isFinite(amount) || amount <= 0 || transactionId.length < 4 || transactionId.length > 120 ||
+      senderName.length < 2 || senderName.length > 120 || !/^\d{4}-\d{2}-\d{2}$/.test(paymentDate) ||
+      !allowedMimeTypes.has(mimeType) || !proofBase64) {
+    return res.status(400).json({ success: false, error: 'Enter a valid amount, transaction ID, sender name, payment date, and proof file.', code: 'INVALID_MANUAL_DEPOSIT', requestId: req.id });
+  }
+  let bytes: Buffer;
+  try { bytes = Buffer.from(proofBase64.replace(/^data:[^;]+;base64,/, ''), 'base64'); }
+  catch { return res.status(400).json({ success: false, error: 'The proof file could not be read.', code: 'INVALID_PROOF_FILE', requestId: req.id }); }
+  if (!bytes.length || bytes.length > MAX_PROOF_BYTES) return res.status(413).json({ success: false, error: 'Proof files must be 5 MB or smaller.', code: 'PROOF_FILE_TOO_LARGE', requestId: req.id });
+  const userId = req.user!.id;
+  const client = getSupabaseAdmin();
+  let uploadedPath: string | null = null;
+  try {
+    const { data: method, error: methodError } = await client.from('manual_payment_methods')
+      .select('*').eq('id', String(body.methodId)).eq('enabled', true).maybeSingle();
+    if (methodError) throw methodError;
+    if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
+    if (amount < Number(method.minimum_amount) || (method.maximum_amount && amount > Number(method.maximum_amount))) {
+      return res.status(400).json({ success: false, error: 'The amount is outside this payment method’s allowed limits.', code: 'AMOUNT_OUT_OF_RANGE', requestId: req.id });
+    }
+    const requiredFields = Array.isArray(method.extra_fields) ? method.extra_fields : [];
+    for (const field of requiredFields) {
+      if (field.required && (typeof extraValues[field.key] !== 'string' || !extraValues[field.key].trim())) {
+        return res.status(400).json({ success: false, error: `Please complete: ${field.label}`, code: 'MISSING_EXTRA_FIELD', requestId: req.id });
+      }
+    }
+    const reference = `KZ-MAN-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+    const extension = mimeType === 'application/pdf' ? 'pdf' : mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    uploadedPath = `${userId}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await client.storage.from('manual-payment-proofs').upload(uploadedPath, bytes, { contentType: mimeType, upsert: false });
+    if (uploadError) throw uploadError;
+    const fee = method.fee_type === 'fixed' ? Number(method.fee_value) : method.fee_type === 'percent' ? amount * Number(method.fee_value) / 100 : 0;
+    const { data: row, error: insertError } = await client.from('payment_transactions').insert({
+      id: crypto.randomUUID(), user_id: userId, type: 'deposit', amount, currency: 'EUR',
+      status: 'pending', payment_method: method.name, provider: 'manual', reference,
+      manual_transaction_id: transactionId, sender_name: senderName, payment_date: paymentDate,
+      proof_storage_path: uploadedPath,
+      notes: JSON.stringify({ extraValues, fee: Number(fee.toFixed(2)), methodId: method.id })
+    }).select('*,user_profiles(email,full_name)').single();
+    if (insertError) throw insertError;
+    sendEmail({
+      templateId: 'deposit_received', recipient: req.user!.email,
+      data: { fullName: req.user!.fullName || 'Valued Investor', amount: amount.toFixed(2), currency: 'EUR', reference, method: method.name, status: 'Pending verification' }
+    }).catch(error => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'manual-deposit-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: error?.message || 'Manual deposit email failed.' }));
+    return res.status(201).json({ success: true, data: toApiTransaction(row), message: 'Payment proof received. Your deposit remains pending until finance verification.', requestId: req.id });
+  } catch (error: any) {
+    if (uploadedPath) await client.storage.from('manual-payment-proofs').remove([uploadedPath]).catch(() => undefined);
+    const duplicate = String(error?.code || '') === '23505' || String(error?.message || '').toLowerCase().includes('duplicate');
+    return res.status(duplicate ? 409 : 503).json({ success: false, error: duplicate ? 'This payment transaction ID has already been submitted.' : 'The manual deposit could not be saved. Please retry.', code: duplicate ? 'DUPLICATE_PAYMENT_TRANSACTION' : 'MANUAL_DEPOSIT_FAILED', requestId: req.id });
+  }
+});
+
+manualPaymentRouter.get('/admin/methods', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  try {
+    const { data, error } = await getSupabaseAdmin().from('manual_payment_methods').select('*').order('sort_order').order('created_at');
+    if (error) throw error;
+    return res.json({ success: true, data: data || [], requestId: req.id });
+  } catch { return res.status(503).json({ success: false, error: 'Unable to load manual payment methods.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id }); }
+});
+
+manualPaymentRouter.post('/admin/methods', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  try {
+    const payload = safeMethodInput(req.body, req.user!.id);
+    const { data, error } = await getSupabaseAdmin().from('manual_payment_methods').insert(payload).select('*').single();
+    if (error) throw error;
+    return res.status(201).json({ success: true, data, requestId: req.id });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, error: error?.message === 'INVALID_MANUAL_PAYMENT_METHOD' || error?.message === 'INVALID_EXTRA_FIELDS' ? error.message : 'The payment method could not be created.', code: 'INVALID_MANUAL_METHOD', requestId: req.id });
+  }
+});
+
+manualPaymentRouter.patch('/admin/methods/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  try {
+    const client = getSupabaseAdmin();
+    const { data: existing, error: readError } = await client.from('manual_payment_methods').select('*').eq('id', req.params.id).maybeSingle();
+    if (readError) throw readError;
+    if (!existing) return res.status(404).json({ success: false, error: 'Payment method not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
+    const payload = safeMethodInput(req.body, req.user!.id, existing);
+    const { data, error } = await client.from('manual_payment_methods').update(payload).eq('id', existing.id).select('*').single();
+    if (error) throw error;
+    return res.json({ success: true, data, requestId: req.id });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, error: 'The payment method could not be updated.', code: 'MANUAL_METHOD_UPDATE_FAILED', requestId: req.id });
+  }
+});
+
+manualPaymentRouter.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  try {
+    let query = getSupabaseAdmin().from('payment_transactions').select('*,user_profiles(email,full_name)')
+      .eq('type', 'deposit').eq('provider', 'manual').order('created_at', { ascending: false }).limit(300);
+    if (typeof req.query.status === 'string' && ['pending','completed','rejected'].includes(req.query.status)) query = query.eq('status', req.query.status);
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json({ success: true, data: data || [], total: data?.length || 0, requestId: req.id });
+  } catch { return res.status(503).json({ success: false, error: 'Manual deposit queue is unavailable.', code: 'MANUAL_DEPOSIT_QUEUE_UNAVAILABLE', requestId: req.id }); }
+});
+
+manualPaymentRouter.get('/admin/deposits/:id/proof', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  try {
+    const { data: row, error } = await getSupabaseAdmin().from('payment_transactions')
+      .select('proof_storage_path').eq('id', req.params.id).eq('provider', 'manual').maybeSingle();
+    if (error) throw error;
+    if (!row?.proof_storage_path) return res.status(404).json({ success: false, error: 'Proof file not found.', code: 'PROOF_NOT_FOUND', requestId: req.id });
+    const { data, error: signedError } = await getSupabaseAdmin().storage.from('manual-payment-proofs').createSignedUrl(row.proof_storage_path, 60);
+    if (signedError) throw signedError;
+    return res.json({ success: true, data: { url: data.signedUrl, expiresInSeconds: 60 }, requestId: req.id });
+  } catch { return res.status(503).json({ success: false, error: 'Proof file could not be opened.', code: 'PROOF_ACCESS_FAILED', requestId: req.id }); }
+});
+
+manualPaymentRouter.post('/admin/deposits/:id/review', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (!configured(res, req)) return;
+  const approve = req.body?.decision === 'approve';
+  if (!approve && req.body?.decision !== 'reject') return res.status(400).json({ success: false, error: 'Choose approve or reject.', code: 'INVALID_REVIEW_DECISION', requestId: req.id });
+  const reason = String(req.body?.reason || '').trim().slice(0, 1000);
+  if (!approve && reason.length < 3) return res.status(400).json({ success: false, error: 'A rejection reason is required.', code: 'REJECTION_REASON_REQUIRED', requestId: req.id });
+  const actionScope = approve ? 'admin.deposit.approve' : 'admin.deposit.reject';
+  const grantId = String(req.headers['x-action-verification'] || '');
+  if (!/^[0-9a-f-]{36}$/i.test(grantId)) return res.status(428).json({ success: false, error: 'Email action verification is required.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', requestId: req.id });
+  try {
+    const verified = await consumeDashboardActionGrant(grantId, req.user!.id, actionScope);
+    if (!verified) return res.status(428).json({ success: false, error: 'The email verification has expired or does not match this action.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', requestId: req.id });
+    const client = getSupabaseAdmin();
+    const { data: current, error: readError } = await client.from('payment_transactions')
+      .select('*,user_profiles(email,full_name)').eq('id', req.params.id).eq('type', 'deposit').eq('provider', 'manual').maybeSingle();
+    if (readError) throw readError;
+    if (!current) return res.status(404).json({ success: false, error: 'Manual deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
+    if (current.status !== 'pending') return res.status(409).json({ success: false, error: 'This deposit has already been reviewed.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: current.id, p_admin_id: req.user!.id, p_approve: approve, p_reason: approve ? null : reason });
+    const { error: auditError } = await client.from('payment_transactions').update({
+      reviewed_by: req.user!.id, reviewed_at: new Date().toISOString(), rejection_reason: approve ? null : reason
+    }).eq('id', current.id).eq('status', approve ? 'completed' : 'rejected');
+    if (auditError) throw auditError;
+    const recipient = current.user_profiles?.email;
+    if (recipient) sendEmail({
+      templateId: approve ? 'deposit_approved' : 'deposit_rejected', recipient,
+      data: { fullName: current.user_profiles?.full_name || 'Valued Investor', amount: Number(current.amount).toFixed(2), currency: current.currency || 'EUR', reference: current.reference, reason }
+    }).catch(error => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'manual-review-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: error?.message || 'Manual deposit decision email failed.' }));
+    return res.json({ success: true, data: toApiTransaction(row), message: approve ? 'Deposit approved and wallet credited.' : 'Deposit rejected.', requestId: req.id });
+  } catch (error: any) {
+    const message = String(error?.message || '');
+    const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
+    return res.status(status).json({ success: false, error: status === 503 ? 'The deposit review could not be completed. Please retry.' : message, code: 'MANUAL_DEPOSIT_REVIEW_FAILED', requestId: req.id });
+  }
+});
