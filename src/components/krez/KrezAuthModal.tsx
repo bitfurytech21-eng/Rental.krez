@@ -29,6 +29,7 @@ export const KrezAuthModal: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -138,6 +139,7 @@ export const KrezAuthModal: React.FC = () => {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
         setTurnstileToken('');
+        setTurnstileResetKey((key) => key + 1);
         setNotice(err?.message || 'A six-digit security code has been sent to your email address.');
         setError(null);
         return;
@@ -274,6 +276,7 @@ export const KrezAuthModal: React.FC = () => {
 
           {mode === 'login' && (
             <TurnstileWidget
+              key={turnstileResetKey}
               action="investor_login"
               theme="light"
               label="Security verification"
@@ -308,7 +311,7 @@ export const KrezAuthModal: React.FC = () => {
                 maxLength={6}
                 required
                 value={emailCode}
-                onChange={(e) => setEmailCode(e.target.value.replace(/\\D/g, '').slice(0, 6))}
+                onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="Enter 6-digit code"
                 className="mt-2 w-full rounded-input border border-border bg-white px-4 py-3 text-sm tracking-[0.35em] text-foreground focus:border-primary focus:outline-none"
               />
