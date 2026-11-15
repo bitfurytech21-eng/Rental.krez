@@ -22,7 +22,7 @@ export const AdminManualPaymentManager: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
-  const headers = useCallback((): HeadersInit => {
+  const headers = useCallback((): Record<string, string> => {
     const token = getAuthToken();
     return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
   }, []);
