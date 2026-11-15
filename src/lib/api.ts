@@ -118,6 +118,25 @@ export const getApiUrl = (endpoint: string): string => {
   return `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 };
 
+export async function withActionEmailVerification<T>(
+  actionScope: string,
+  action: (grantId: string) => Promise<T>
+): Promise<T> {
+  if (typeof window === 'undefined') throw new Error('Email verification requires a browser session.');
+  const issued: any = await apiRequest('/security/action-code/request', {
+    method: 'POST',
+    body: { actionScope }
+  });
+  const code = window.prompt(`A security code was sent to ${issued?.maskedEmail || 'your registered email'}. Enter the six-digit code to continue:`);
+  if (!code) throw new ApiError('Verification cancelled. No action was taken.', 400, 'ACTION_VERIFICATION_CANCELLED');
+  const verified: any = await apiRequest('/security/action-code/verify', {
+    method: 'POST',
+    body: { actionScope, code: code.trim() }
+  });
+  if (!verified?.grantId) throw new ApiError('The security code could not be verified.', 401, 'INVALID_ACTION_EMAIL_CODE');
+  return action(String(verified.grantId));
+}
+
 /**
  * Core HTTP Request Wrapper
  */
@@ -557,10 +576,14 @@ export const investmentsApi = {
     api.get<any>('/portfolio'),
 
   executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; feePercent?: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
+    withActionEmailVerification('investor.investment.create', (grantId) =>
+      apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })
+    ),
 
   reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
-    api.post<any>('/investments', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }),
+    withActionEmailVerification('investor.investment.create', (grantId) =>
+      apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }, headers: { 'X-Action-Verification': grantId } })
+    ),
 };
 
 /**
@@ -577,7 +600,9 @@ export const walletApi = {
     api.post<any>('/deposits', { ...payload, idempotencyKey: createIdempotencyKey() }),
 
   createWithdrawalRequest: (payload: { amount: number; destination: string; method: string; idempotencyKey?: string }) =>
-    api.post<any>('/withdrawals', { ...payload, idempotencyKey: createIdempotencyKey() }),
+    withActionEmailVerification('investor.withdrawal.create', (grantId) =>
+      apiRequest<any>('/withdrawals', { method: 'POST', body: { ...payload, idempotencyKey: createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })
+    ),
 };
 
 /**
