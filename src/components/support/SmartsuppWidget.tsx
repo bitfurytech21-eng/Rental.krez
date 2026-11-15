@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../lib/auth';
-import { X, Send, Building2, Mail, ExternalLink, Clock } from 'lucide-react';
+import { X, Send, Building2, Mail, Clock } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -31,92 +31,20 @@ export const SmartsuppWidget: React.FC = () => {
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Inject real Smartsupp JS SDK loader and sync user metadata
+  // Use the in-app support panel only. The third-party launcher injected a
+  // full-screen overlay on some mobile browsers, leaving a blank panel after
+  // the page footer. Support remains available from the footer contact action.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const smartsuppKey = (import.meta.env.VITE_SMARTSUPP_KEY as string) || (window as any)._smartsupp_key || '61033062bd34d55a58c3546d5b618ead716fb2a3';
-    window._smartsupp = window._smartsupp || {};
-    window._smartsupp.key = smartsuppKey;
-
-    if (!window.smartsupp) {
-      window.smartsupp = function () {
-        (window.smartsupp._ = window.smartsupp._ || []).push(arguments);
-      };
-      (function (d: Document) {
-        const s = d.getElementsByTagName('script')[0];
-        const c = d.createElement('script');
-        c.type = 'text/javascript';
-        c.charset = 'utf-8';
-        c.async = true;
-        c.onerror = () => {
-          // Keep the in-app support fallback available if the provider is blocked.
-        };
-        c.src = 'https://www.smartsuppchat.com/loader.js?';
-        if (s && s.parentNode) {
-          s.parentNode.insertBefore(c, s);
-        } else {
-          d.head.appendChild(c);
-        }
-      })(document);
-    }
-
-    // Keep the provider's floating launcher hidden until a visitor explicitly
-    // opens support. This prevents an unused chat bubble following every page.
-    window.smartsupp('chat:hide');
-
-    if (window.smartsupp) {
-      try {
-        if (user) {
-          window.smartsupp('name', user.fullName);
-          window.smartsupp('email', user.email);
-          window.smartsupp('variables', {
-            accountType: user.accountType || 'individual',
-            role: user.role,
-            kycStatus: user.kycStatus,
-          });
-        }
-      } catch (e) {
-        console.log('Smartsupp SDK sync note:', e);
-      }
-    }
-
-    // Listen for custom open-support event from anywhere in the app
-    const handleOpenSupportEvent = () => {
-      if (typeof window !== 'undefined' && window.smartsupp) {
-        try {
-          window.smartsupp('chat:show');
-          window.smartsupp('chat:open');
-          return;
-        } catch {
-          // Fall through to internal fallback
-        }
-      }
-      setIsOpen(true);
-    };
-
+    const handleOpenSupportEvent = () => setIsOpen(true);
     window.addEventListener('kretz:open-support', handleOpenSupportEvent);
-    return () => {
-      window.removeEventListener('kretz:open-support', handleOpenSupportEvent);
-    };
-  }, [user]);
+    return () => window.removeEventListener('kretz:open-support', handleOpenSupportEvent);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen]);
-
-  const triggerOfficialSmartsupp = () => {
-    if (typeof window !== 'undefined' && window.smartsupp) {
-      try {
-        window.smartsupp('chat:show');
-        window.smartsupp('chat:open');
-      } catch {
-        console.log('Smartsupp native chat open fallback');
-      }
-    }
-  };
 
   const handleSendMessage = (customText?: string) => {
     const textToSend = customText || inputMessage;
@@ -132,15 +60,6 @@ export const SmartsuppWidget: React.FC = () => {
     setMessages((prev) => [...prev, userMsg]);
     if (!customText) setInputMessage('');
     setIsTyping(true);
-
-    // Forward to native Smartsupp JS if active
-    if (typeof window !== 'undefined' && window.smartsupp) {
-      try {
-        window.smartsupp('send', 'chat:message', { text: textToSend });
-      } catch (e) {
-        // Fallthrough
-      }
-    }
 
     // Smartsupp Automated Support Responses
     setTimeout(() => {
@@ -190,7 +109,7 @@ export const SmartsuppWidget: React.FC = () => {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-xs text-white">Smartsupp Support</h3>
+                  <h3 className="font-bold text-xs text-white">KRETZ Support</h3>
                   <span className="bg-emerald-500/20 text-[#B7E36A] text-[9px] font-extrabold px-2 py-0.2 rounded-full border border-[#B7E36A]/30">
                     Live
                   </span>
@@ -219,13 +138,7 @@ export const SmartsuppWidget: React.FC = () => {
               <Clock className="w-3 h-3" />
               <span>Response time: &lt; 2 mins</span>
             </span>
-            <button
-              onClick={triggerOfficialSmartsupp}
-              className="text-[10px] font-bold text-[#182D2A] hover:underline flex items-center gap-1"
-            >
-              <span>Smartsupp Engine</span>
-              <ExternalLink className="w-2.5 h-2.5" />
-            </button>
+            <span className="text-[10px] text-slate-500">KRETZ Client Advisory</span>
           </div>
 
           {/* Chat Messages Body */}
