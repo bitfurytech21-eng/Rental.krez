@@ -35,16 +35,15 @@ VITE_SUPABASE_URL = "https://mpwsbepgnxvritrnchdg.supabase.co/"
 # SESSION_SECRET
 # nodejs_compat_populate_process_env exposes Worker bindings to existing process.env readers.
 
+# Worker Previews are enabled for Wrangler preview builds.
+[previews]
+
 # Express imports body-parser internally during module initialization. The Worker
 # uses its own bounded parser, so alias the unused package to avoid pulling in
 # raw-body/iconv-lite, which is incompatible with this Worker bundle.
 [alias]
 "body-parser" = "./cloudflare/body-parser-shim.js"
 "iconv-lite" = "./cloudflare/iconv-lite-shim.js"
-
-# Worker Previews are created from this separate API configuration.
-# Keep this empty until preview-safe bindings/secrets are configured in Cloudflare.
-previews = {}
 
 # Cloudflare Worker observability settings.
 [observability.logs]
@@ -57,6 +56,3 @@ persist = true
 enabled = false
 head_sampling_rate = 1
 persist = true
-
-[observability.issue_detection]
-enabled = false
