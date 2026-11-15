@@ -13,6 +13,19 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 // Keep the sender aligned with the application's verified-domain configuration.
 // Override EMAIL_FROM only with an address whose domain is verified in Resend.
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') || 'Kretz Investor Relations <info@kretzdespain.com>'
+
+// Escape dynamic values before inserting them into an HTML email template.
+const escapeHtml = (value: unknown): string => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+
+// Prevent untrusted values from injecting line breaks into email subjects.
+const safeSubjectText = (value: unknown): string => String(value ?? '')
+  .replace(/[\\r\\n\\u0000-\\u001f\\u007f]/g, ' ')
+  .trim()
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 
@@ -87,24 +100,24 @@ serve(async (req) => {
       body: JSON.stringify({
         from: EMAIL_FROM,
         to: [email],
-        subject: `Investment Confirmed: ${tokensPurchased} tokens in ${propertyTitle}`,
+        subject: safeSubjectText(`Investment Confirmed: ${escapeHtml(tokensPurchased)} tokens in ${escapeHtml(propertyTitle)}`),
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #F6F7F4; padding: 20px; border-radius: 12px;">
             <h2 style="color: #182D2A; margin-bottom: 4px;">Investment Confirmation</h2>
             <p style="color: #69736F; font-size: 14px;">Kretz Institutional Real Estate & Asset Tokenization</p>
             
             <div style="background: white; padding: 24px; border-radius: 12px; border: 1px solid #E3E8E3; margin-top: 16px;">
-              <p style="font-size: 14px; color: #18211F;">Dear <strong>${fullName || 'Valued Investor'}</strong>,</p>
+              <p style="font-size: 14px; color: #18211F;">Dear <strong>${escapeHtml(fullName || 'Valued Investor')}</strong>,</p>
               <p style="font-size: 14px; color: #18211F;">Your investment transaction has been successfully recorded in the immutable database ledger and SPV ownership register.</p>
               
               <div style="background: #F6F7F4; padding: 16px; border-radius: 8px; margin: 16px 0;">
-                <p style="margin: 4px 0; font-size: 13px;"><strong>Property:</strong> ${propertyTitle}</p>
-                <p style="margin: 4px 0; font-size: 13px;"><strong>Location:</strong> ${propertyLocation || 'European Prime Asset'}</p>
-                <p style="margin: 4px 0; font-size: 13px;"><strong>Tokens Acquired:</strong> ${tokensPurchased}</p>
-                <p style="margin: 4px 0; font-size: 13px;"><strong>Total Amount:</strong> €${Number(totalAmountInvested || 0).toLocaleString()} EUR</p>
-                <p style="margin: 4px 0; font-size: 13px;"><strong>Certificate ID:</strong> ${certificateId || 'CERT-REG-SECURE'}</p>
-                <p style="margin: 4px 0; font-size: 13px;"><strong>Polygon Tx Hash:</strong> ${transactionHash || '0x-ledger-recorded'}</p>
-                <p style="margin: 4px 0; font-size: 13px;"><strong>Timestamp:</strong> ${purchasedAt || new Date().toISOString()}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Property:</strong> ${escapeHtml(propertyTitle)}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Location:</strong> ${escapeHtml(propertyLocation || 'European Prime Asset')}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Tokens Acquired:</strong> ${escapeHtml(tokensPurchased)}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Total Amount:</strong> €${escapeHtml(Number(totalAmountInvested || 0).toLocaleString())} EUR</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Certificate ID:</strong> ${escapeHtml(certificateId || 'CERT-REG-SECURE')}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Polygon Tx Hash:</strong> ${escapeHtml(transactionHash || '0x-ledger-recorded')}</p>
+                <p style="margin: 4px 0; font-size: 13px;"><strong>Timestamp:</strong> ${escapeHtml(purchasedAt || new Date().toISOString())}</p>
               </div>
 
               <p style="font-size: 12px; color: #69736F;">You can view your portfolio, ownership certificates, and automated monthly rental dividend distributions anytime in your Kretz Investor Dashboard.</p>
