@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowRight, Building2, FileCheck2, ChartNoAxesCombined, ClipboardList, ShieldCheck } from 'lucide-react';
-import { KrezReveal } from './KrezReveal';
+import { KrezImage, KrezReveal } from './KrezReveal';
 
 interface WhyKretzPageProps {
   onNavigate: (path: string) => void;
@@ -27,6 +27,15 @@ export const WhyKretzPage: React.FC<WhyKretzPageProps> = ({ onNavigate }) => (
     </section>
     <section className="py-14 sm:py-20">
       <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
+        <KrezReveal>
+          <figure className="mb-12 overflow-hidden rounded-2xl border border-[#D9E2DA] bg-[#10251F] shadow-xl">
+            <KrezImage
+              src="/assets/investment/property-diligence.svg"
+              alt="Editorial illustration of property documentation, inspection and financial due diligence"
+              className="block h-auto w-full"
+            />
+          </figure>
+        </KrezReveal>
         <div className="max-w-2xl mb-10">
           <p className="text-xs font-semibold tracking-widest uppercase text-[#927447]">What the platform provides</p>
           <h2 className="mt-3 text-3xl sm:text-4xl font-heading font-bold uppercase">A framework for informed review</h2>
