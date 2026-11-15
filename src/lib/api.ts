@@ -305,8 +305,8 @@ export const api = {
  * Authentication Endpoints with Cloudflare Turnstile bot verification
  */
 export const authApi = {
-  login: (email: string, pass: string, turnstileToken?: string) =>
-    api.post<{ user: any; token: string }>('/auth/login', { email, pass, turnstileToken }, { skipAuth: true }),
+  login: (email: string, pass: string, emailCode?: string) =>
+    api.post<{ user?: any; token?: string; requiresEmailCode?: boolean; maskedEmail?: string }>('/auth/login', { email, pass, emailCode }, { skipAuth: true }),
 
   register: (payload: {
     email: string;
@@ -335,11 +335,11 @@ export const authApi = {
   updatePassword: (password: string, token?: string) =>
     api.post<{ success: boolean; message: string }>('/auth/password/reset', { newPassword: password, token }),
 
-  adminLogin: (email: string, pass: string, turnstileToken?: string) =>
-    api.post<{ user: any; token: string; message?: string }>('/auth/admin-login', {
+  adminLogin: (email: string, pass: string, emailCode?: string) =>
+    api.post<{ user?: any; token?: string; message?: string; requiresEmailCode?: boolean; maskedEmail?: string }>('/auth/admin-login', {
       email,
       password: pass,
-      turnstileToken
+      emailCode
     }, { skipAuth: true }),
 
   adminLogout: () =>
