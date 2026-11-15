@@ -3654,3 +3654,47 @@ body,
 #root {
   min-height: 100%;
 }
+
+
+/* Keep third-party live-chat surfaces out of normal document flow.
+   Some mobile browsers otherwise lay out the injected chat iframe after
+   the site footer, creating an apparently endless blank page. The vendor
+   launcher keeps its intrinsic size; only oversized chat surfaces are capped. */
+body > #smartsupp-widget-container,
+body > #smartsupp-widget,
+body > div[id*="smartsupp"],
+#smartsupp-widget-container,
+#smartsupp-widget,
+.smartsupp-widget,
+iframe[src*="smartsupp"],
+iframe[title*="Smartsupp"] {
+  position: fixed !important;
+  inset: auto 16px 16px auto !important;
+  z-index: 2147483000 !important;
+  max-width: min(420px, calc(100vw - 24px)) !important;
+  max-height: min(640px, calc(100dvh - 32px)) !important;
+  box-sizing: border-box !important;
+}
+
+/* The injected widget must never contribute height to the page after footer. */
+body > #smartsupp-widget-container,
+body > #smartsupp-widget,
+body > div[id*="smartsupp"] {
+  contain: layout style paint;
+  overflow: visible;
+}
+
+@media (max-width: 480px) {
+  body > #smartsupp-widget-container,
+  body > #smartsupp-widget,
+  body > div[id*="smartsupp"],
+  #smartsupp-widget-container,
+  #smartsupp-widget,
+  .smartsupp-widget,
+  iframe[src*="smartsupp"],
+  iframe[title*="Smartsupp"] {
+    inset: auto 12px 12px auto !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+}
