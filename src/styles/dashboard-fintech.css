@@ -162,3 +162,84 @@
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Simplified investor workspace */
+.app-shell .app-content-scroll > div {
+  max-width: 1120px;
+  padding-top: 24px;
+  padding-bottom: 40px;
+}
+.app-shell .dashboard-section {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+}
+.app-shell .dashboard-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 2px 8px;
+}
+.app-shell .dashboard-eyebrow {
+  margin-bottom: 7px;
+  color: var(--dash-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.app-shell .dashboard-panel {
+  min-width: 0;
+  padding: clamp(14px, 2.2vw, 22px);
+  border: 1px solid var(--dash-card-border);
+  border-radius: 16px;
+  background: var(--dash-card);
+  box-shadow: 0 8px 24px rgba(0,0,0,.10);
+}
+.app-shell .dashboard-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid var(--dash-inner-border);
+  border-radius: 10px;
+  background: var(--dash-inner);
+  color: var(--dash-text);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
+}
+.app-shell .dashboard-secondary-action:hover {
+  background: var(--dash-card-hover);
+  border-color: var(--dash-accent);
+  transform: translateY(-1px);
+}
+.app-shell .app-sidebar nav button {
+  min-height: 40px;
+  font-weight: 600;
+}
+.app-shell .app-content-scroll,
+.app-shell .app-content-scroll * {
+  scroll-behavior: smooth;
+}
+@media (max-width: 640px) {
+  .app-shell .app-content-scroll > div {
+    padding-top: 16px;
+    padding-bottom: 24px;
+  }
+  .app-shell .dashboard-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .app-shell .dashboard-secondary-action {
+    width: 100%;
+  }
+  .app-shell .dashboard-panel {
+    border-radius: 14px;
+  }
+}

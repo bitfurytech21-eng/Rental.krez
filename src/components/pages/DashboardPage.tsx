@@ -1259,35 +1259,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* 2. MY PORTFOLIO TAB */}
             {activeTab === 'portfolio' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Property Performance Breakdown & Investment Diversification Matrix */}
-                <PropertyLedgerAnalytics
-                  properties={properties}
+              <div className="dashboard-section space-y-5 animate-in fade-in duration-200">
+                <div className="dashboard-section-heading">
+                  <div>
+                    <p className="dashboard-eyebrow">YOUR INVESTMENTS</p>
+                    <h2 className="text-xl sm:text-2xl font-semibold text-white">My portfolio</h2>
+                    <p className="text-sm text-[#A9B7B5] mt-1">A clear view of your property holdings and ownership.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('properties')}
+                    className="dashboard-secondary-action"
+                  >
+                    Explore properties <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <PortfolioOverview
                   investments={investments}
                   onSelectProperty={onSelectProperty}
+                  onExploreMore={() => setActiveTab('properties')}
                 />
 
-                {/* Portfolio Value Over Time (Chronological Account Equity Curve) */}
-                <PortfolioPerformanceChart
-                  initialValuation={user.investedBalance > 0 ? Math.max(100, Math.round(user.investedBalance * 0.85)) : 0}
-                  currentValuation={user.walletBalance + user.investedBalance}
-                  totalDividends={user.totalEarned}
-                  onExploreProperties={() => setActiveTab('properties')}
-                  onDeposit={() => setIsDepositOpen(true)}
-                />
-
-                {/* Rental Distributions Over Time */}
-                <YieldPayoutTrendsChart transactions={transactions} investments={investments} />
-
-                {/* My Property Investments */}
-                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#303030]">
-                    <div>
-                      <h2 className="text-base sm:text-lg font-bold text-white">My Property Investments</h2>
-                      <p className="text-xs text-[#999999]">Owned fractional property units, circular yield tracking, and notarized contracts.</p>
-                    </div>
+                <section className="dashboard-panel space-y-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-white">Property holdings</h3>
+                    <p className="text-sm text-[#A9B7B5] mt-1">Your owned units, investment details and available actions.</p>
                   </div>
-
                   <MyPropertyInvestments
                     investments={investments}
                     allProperties={properties}
@@ -1301,7 +1299,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     }}
                     onExploreProperties={() => setActiveTab('properties')}
                   />
-                </div>
+                </section>
               </div>
             )}
 
@@ -1339,99 +1337,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* 4. TRANSACTIONS TAB */}
             {activeTab === 'transactions' && (
-              <div className="space-y-4 animate-in fade-in duration-200">
-                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl">
-                  <div className="pb-3 border-b border-[#303030]">
-                    <h2 className="text-base sm:text-lg font-bold text-white">Transactions &amp; Audit Ledger</h2>
-                    <p className="text-xs text-[#999999]">Immutable history of all deposits, withdrawals, property investments, and dividends.</p>
+              <div className="dashboard-section space-y-5 animate-in fade-in duration-200">
+                <div className="dashboard-section-heading">
+                  <div>
+                    <p className="dashboard-eyebrow">ACCOUNT ACTIVITY</p>
+                    <h2 className="text-xl sm:text-2xl font-semibold text-white">Transactions</h2>
+                    <p className="text-sm text-[#A9B7B5] mt-1">Deposits, withdrawals, investments and distributions in one history.</p>
                   </div>
                 </div>
-
-                {/* Account Onboarding & Investment Pipeline (Moved to Ledger) */}
-                <ColoredPipeline
-                  title="Investor Account & Investment Lifecycle"
-                  subtitle="Regulated European participatory model progression"
-                  stages={[
-                    {
-                      id: 'stg-1',
-                      title: 'Account Registered',
-                      description: 'Investor profile created and authenticated on L\'Agence platform.',
-                      status: 'completed',
-                      timestamp: 'Verified',
-                      metrics: { label: 'Account Tier', value: 'VIP Client' },
-                    },
-                    {
-                      id: 'stg-2',
-                      title: 'Identity (KYC/AML)',
-                      description: 'Spanish/EU regulatory anti-money laundering verification.',
-                      status: user.kycStatus === 'verified' ? 'completed' : 'active',
-                      timestamp: user.kycStatus === 'verified' ? 'Verified' : 'In Review',
-                      metrics: { label: 'Compliance', value: user.kycStatus === 'verified' ? 'EU Passed' : 'Pending Docs' },
-                    },
-                    {
-                      id: 'stg-3',
-                      title: 'Wallet Funded',
-                      description: 'SEPA bank transfer or crypto deposit cleared in institutional escrow.',
-                      status: user.walletBalance > 0 ? 'completed' : 'pending',
-                      metrics: { label: 'Available Cash', value: formatCurrency(user.walletBalance) },
-                    },
-                    {
-                      id: 'stg-4',
-                      title: 'Asset Tokens Held',
-                      description: 'Notarized SPV property shares allocated to your private wallet.',
-                      status: investments.length > 0 ? 'completed' : 'upcoming',
-                      metrics: { label: 'Holdings', value: `${investments.length} Properties` },
-                    },
-                    {
-                      id: 'stg-5',
-                      title: 'Monthly Yields',
-                      description: 'Automated dividend payouts credited on the 1st of every month.',
-                      status: investments.length > 0 ? 'active' : 'upcoming',
-                      metrics: { label: 'Est. APY', value: '7.8% - 9.2%' },
-                    },
-                  ]}
-                />
-
-                {/* Your Tokenized Assets (Moved to Ledger) */}
-                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-[#303030]">
-                    <div>
-                      <h2 className="text-base sm:text-lg font-bold text-white">Your Tokenized Assets</h2>
-                      <p className="text-xs text-[#999999]">Active real estate properties generating monthly rental yield</p>
-                    </div>
-                    <button onClick={() => setActiveTab('properties')} className="bg-white hover:bg-neutral-200 text-black font-bold text-xs py-2 px-4 rounded-xl cursor-pointer shadow-xs transition-colors">
-                      Browse Real Estate
-                    </button>
-                  </div>
-
-                  <PortfolioOverview
-                    investments={investments}
-                    onSelectProperty={onSelectProperty}
-                    onExploreMore={() => setActiveTab('properties')}
-                  />
-                </div>
-
-                {/* Property Funding & Portfolio Performance Visualiser (Moved to Ledger) */}
-                <RechartsPropertyDashboard
-                  properties={properties}
-                  investments={investments}
-                  transactions={transactions}
-                />
-
-                {/* Institutional Portfolio Analytics Suite */}
-                <InvestorAnalyticsSuite
-                  properties={properties}
-                  investments={investments}
-                  transactions={transactions}
-                  walletBalance={user.walletBalance}
-                  onExploreProperties={() => setActiveTab('properties')}
-                  onSelectProperty={onSelectProperty}
-                  onOpenTransactions={() => setActiveTab('transactions')}
-                />
-
-                <div className="bg-[#151515] p-5 rounded-2xl sm:rounded-3xl border border-[#303030] shadow-xl space-y-4">
+                <section className="dashboard-panel">
                   <TransactionTable transactions={transactions} />
-                </div>
+                </section>
               </div>
             )}
 
