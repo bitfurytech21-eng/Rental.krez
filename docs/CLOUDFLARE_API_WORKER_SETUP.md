@@ -89,6 +89,7 @@ Apply these repository migrations to the intended Supabase project in ascending 
 4. `20261113000001_persistent_admin_account_controls.sql`
 5. `20261113000002_durable_server_sessions.sql` (only if the optional legacy cookie-session store is enabled)
 6. `20261113000003_durable_admin_auth.sql`
+7. `20261113000004_customer_auth_profile_metadata.sql`
 
 Do not mark the database stage complete until the Supabase migration history confirms each required migration is applied and staging checks verify: signup provisions exactly one investor profile and role; login and logout work through Supabase Auth; administrator identity resolves only through `user_roles`; admin credential changes revoke prior Worker sessions; and the existing investor/admin dashboard, KYC, and financial RPC flows still work.
 
