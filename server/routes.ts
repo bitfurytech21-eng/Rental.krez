@@ -2112,7 +2112,7 @@ const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) 
   }
 };
 
-router.patch('/admin/users/:id/status', requireAdmin, handleUserStatusUpdate);
+router.patch('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 router.post('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 
 /**
