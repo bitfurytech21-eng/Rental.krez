@@ -274,6 +274,14 @@ const publicSubmissionLimiter = rateLimiter({
   message: 'Too many submissions from this IP address. Please wait 1 minute.'
 });
 
+// Restrict sensitive administrator credential changes and resets.
+const securityLimiter = rateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  category: 'security',
+  message: 'Too many administrator security changes. Please wait 10 minutes.'
+});
+
 export interface UserRecord {
   id: string;
   email: string;
