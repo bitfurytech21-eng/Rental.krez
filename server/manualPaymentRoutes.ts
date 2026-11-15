@@ -16,6 +16,14 @@ const submitLimiter = rateLimiter({
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 const MAX_PROOF_BYTES = 5 * 1024 * 1024;
 
+function matchesFileSignature(bytes: Buffer, mimeType: string): boolean {
+  if (mimeType === 'application/pdf') return bytes.subarray(0, 5).toString('ascii') === '%PDF-';
+  if (mimeType === 'image/jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (mimeType === 'image/png') return bytes.subarray(0, 8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]));
+  if (mimeType === 'image/webp') return bytes.length >= 12 && bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP';
+  return false;
+}
+
 function configured(res: Response, req: AuthenticatedRequest) {
   if (isSupabaseServerConfigured()) return true;
   res.status(503).json({ success: false, error: 'Persistent payment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
@@ -81,6 +89,7 @@ manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: Au
   const senderName = String(body.senderName || '').trim();
   const paymentDate = String(body.paymentDate || '').trim();
   const proofBase64 = String(body.proofBase64 || '');
+  if (proofBase64.length > Math.ceil(MAX_PROOF_BYTES * 4 / 3) + 256) return res.status(413).json({ success: false, error: 'Proof files must be 5 MB or smaller.', code: 'PROOF_FILE_TOO_LARGE', requestId: req.id });
   const mimeType = String(body.proofMimeType || '').toLowerCase();
   const extraValues = body.extraValues && typeof body.extraValues === 'object' ? body.extraValues : {};
   if (!Number.isFinite(amount) || amount <= 0 || transactionId.length < 4 || transactionId.length > 120 ||
@@ -92,6 +101,7 @@ manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: Au
   try { bytes = Buffer.from(proofBase64.replace(/^data:[^;]+;base64,/, ''), 'base64'); }
   catch { return res.status(400).json({ success: false, error: 'The proof file could not be read.', code: 'INVALID_PROOF_FILE', requestId: req.id }); }
   if (!bytes.length || bytes.length > MAX_PROOF_BYTES) return res.status(413).json({ success: false, error: 'Proof files must be 5 MB or smaller.', code: 'PROOF_FILE_TOO_LARGE', requestId: req.id });
+  if (!matchesFileSignature(bytes, mimeType)) return res.status(400).json({ success: false, error: 'The uploaded file content does not match its declared file type.', code: 'INVALID_PROOF_FILE', requestId: req.id });
   const userId = req.user!.id;
   const client = getSupabaseAdmin();
   let uploadedPath: string | null = null;
