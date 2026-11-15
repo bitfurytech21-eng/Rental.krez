@@ -339,7 +339,7 @@ export const authApi = {
     api.post<{ user: any; token: string; message?: string }>('/auth/admin-login', {
       email,
       password: pass,
-      turnstileToken: turnstileToken || 'mock-admin-turnstile-token'
+      turnstileToken
     }, { skipAuth: true }),
 
   adminLogout: () =>
