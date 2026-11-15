@@ -437,6 +437,8 @@ router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: R
   if (!isSupabaseAuthConfigured()) return res.status(503).json({ success: false, error: 'Customer authentication is not configured. Please contact support.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
   try {
     if (!emailCode) {
+      // Validate the password first; never send a code to an arbitrary address.
+      await signInCustomer(normalizedEmail, password);
       const challenge = await sendLoginEmailCode(normalizedEmail, 'investor_login');
       if (!challenge.success) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached. Please wait before requesting another.', code: challenge.reason, retryAfter: challenge.retryAfter, requestId: req.id });
       return res.json({ success: true, requiresEmailCode: true, maskedEmail: challenge.maskedEmail, expiresInSeconds: 300, message: 'A six-digit security code has been sent to your email address.', requestId: req.id });
@@ -512,10 +514,28 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   // 3. Load administrator configuration from environment
   const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
 
-  // Send a one-time email code before completing the password-authenticated session.
-  if (normalizedEmail !== config.adminEmail) {
-    return res.status(401).json({ success: false, error: 'Invalid administrator email or security credentials.', code: 'INVALID_CREDENTIALS', requestId: req.id });
+  // 4. Validate both administrator factors before issuing any email challenge.
+  const emailMatches = normalizedEmail === config.adminEmail;
+  const passwordMatches = emailMatches && (process.env.NODE_ENV === 'production'
+    ? await verifyPersistentAdminCredentials(normalizedEmail, inputPass)
+    : await verifyAdminCredentials(inputPass));
+
+  if (!emailMatches || !passwordMatches) {
+    const failureRecord = process.env.NODE_ENV === 'production' ? await recordPersistentAdminFailure(ip) : recordAdminFailedAttempt(ip);
+    logger.log({
+      level: 'warn', category: 'security', requestId: req.id || 'req-admin-fail',
+      method: 'POST', route: req.originalUrl, statusCode: 401,
+      eventType: 'ADMIN_LOGIN_FAILED', outcome: 'failure',
+      message: `Failed admin login attempt from ${ip} for account ${normalizedEmail}. Failed attempts: ${failureRecord.attempts}`,
+      errorCode: 'INVALID_CREDENTIALS',
+      metadata: { ip, attempts: failureRecord.attempts, isLocked: failureRecord.isLocked }
+    });
+    return res.status(401).json({
+      success: false, error: 'Invalid administrator email or security credentials.',
+      code: 'INVALID_CREDENTIALS', remainingAttempts: Math.max(0, 5 - failureRecord.attempts), requestId: req.id
+    });
   }
+
   const emailCode = String(req.body?.emailCode || '').trim();
   if (!emailCode) {
     try {
@@ -528,36 +548,6 @@ const handleAdminLogin = async (req: AuthenticatedRequest, res: Response) => {
   }
   const codeResult = await verifyEmailOtp(normalizedEmail, 'admin_login', emailCode);
   if (!codeResult.valid) return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
-
-  // 4. Validate credentials
-  const emailMatches = normalizedEmail === config.adminEmail;
-  const passwordMatches = process.env.NODE_ENV === 'production' ? await verifyPersistentAdminCredentials(normalizedEmail, inputPass) : await verifyAdminCredentials(inputPass);
-
-  if (!emailMatches || !passwordMatches) {
-    const failureRecord = process.env.NODE_ENV === 'production' ? await recordPersistentAdminFailure(ip) : recordAdminFailedAttempt(ip);
-
-    logger.log({
-      level: 'warn',
-      category: 'security',
-      requestId: req.id || 'req-admin-fail',
-      method: 'POST',
-      route: req.originalUrl,
-      statusCode: 401,
-      eventType: 'ADMIN_LOGIN_FAILED',
-      outcome: 'failure',
-      message: `Failed admin login attempt from ${ip} for account ${normalizedEmail}. Failed attempts: ${failureRecord.attempts}`,
-      errorCode: 'INVALID_CREDENTIALS',
-      metadata: { ip, attempts: failureRecord.attempts, isLocked: failureRecord.isLocked }
-    });
-
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid administrator email or security credentials.',
-      code: 'INVALID_CREDENTIALS',
-      remainingAttempts: Math.max(0, 5 - failureRecord.attempts),
-      requestId: req.id
-    });
-  }
 
   // Production administrator credentials must map to an explicitly provisioned database role.
   if (process.env.NODE_ENV === 'production') {
