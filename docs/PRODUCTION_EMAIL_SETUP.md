@@ -20,7 +20,7 @@ Set these server-side environment variables in the actual hosting platform (not 
 
 Alternative SendGrid: set `SENDGRID_API_KEY` and the same sender variables.
 
-Alternative SMTP: set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `EMAIL_FROM`. For Zoho, use `smtp.zoho.com`, port `465`, and an app-specific password where required.
+**Cloudflare Worker limitation:** SMTP socket transport is not supported by this Worker implementation. Use Resend or SendGrid over HTTPS. The existing email service explicitly rejects SMTP mode in Workers; SMTP credentials in the environment will not make email delivery work.
 
 Never put provider secrets in `VITE_*` variables, frontend source, GitHub commits, or chat messages. Add them as protected server runtime secrets and redeploy/restart the server.
 
@@ -51,7 +51,7 @@ The automation rules registry also defines welcome, verification, password reset
 
 ## 5. Production test checklist
 
-Before enabling live delivery, add the provider API key (or SMTP credentials) as a protected server runtime secret. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
+Before enabling live delivery, add the provider API key as a protected Cloudflare Worker secret. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
 
 1. Confirm the admin email-provider status reports a real provider, not sandbox.
 2. Send a test message to a mailbox controlled by the project owner.
