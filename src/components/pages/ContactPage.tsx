@@ -177,10 +177,6 @@ export const ContactPage: React.FC = () => {
                     {error}
                   </div>
                 )}
-
-                {}
-                
-
                 <button
                   type="submit"
                   disabled={loading}
@@ -189,7 +185,7 @@ export const ContactPage: React.FC = () => {
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Validating Security & Sending...</span>
+                      <span>Sending inquiry...</span>
                     </>
                   ) : (
                     <>
