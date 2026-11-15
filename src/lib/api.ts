@@ -312,7 +312,7 @@ export const api = {
 // ============================================================================
 
 /**
- * Authentication Endpoints with Cloudflare Turnstile bot verification
+ * Authentication endpoints; Turnstile remains enabled for login and protected routes.
  */
 export const authApi = {
   login: (email: string, pass: string, turnstileToken?: string, emailCode?: string) =>
@@ -323,7 +323,6 @@ export const authApi = {
     pass: string;
     fullName: string;
     role?: string;
-    turnstileToken?: string;
     country?: string;
     phoneNumber?: string;
     countryCode?: string;
