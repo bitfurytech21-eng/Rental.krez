@@ -49,7 +49,7 @@ export const PropertyLocationMap: React.FC<PropertyLocationMapProps> = ({ proper
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [geocodedCoordinates, setGeocodedCoordinates] = useState<{ lat: number; lng: number } | null>(null);
-  const coordinates = useMemo(() => {
+  const coordinates = useMemo((): ({ lat: number; lng: number; exact: boolean; geocoded?: boolean } | null) => {
     if (Number.isFinite(property.latitude) && Number.isFinite(property.longitude)) {
       return { lat: property.latitude as number, lng: property.longitude as number, exact: true };
     }
