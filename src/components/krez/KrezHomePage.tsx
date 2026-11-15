@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, FileSearch, Building2, ChartNoAxesCombined } from 'lucide-react';
 import { FeaturedPropertiesCarousel } from '../home/FeaturedPropertiesCarousel';
 import { CaseStudiesCarousel } from '../home/CaseStudiesCarousel';
-import { KREZ_HOW_IT_WORKS_STEPS, KREZ_IMAGES } from '../../data/krezTemplateData';
+
 import { useReducedMotion } from 'motion/react';
 import {
   KREZ_GALLERY_ITEMS,
   KREZ_IMAGES,
+  KREZ_HOW_IT_WORKS_STEPS,
   formatJournalDate,
   getJournalPosts,
 } from '../../data/krezTemplateData';
