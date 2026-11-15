@@ -755,7 +755,7 @@ function MainApp() {
       <ViewportDesktopMonitor />
 
       <SchemaJsonLd property={selectedProperty} />
-      <SmartsuppWidget />
+      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
     </div>
   );
 }
