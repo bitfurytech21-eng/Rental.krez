@@ -2339,6 +2339,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           refreshUser();
         }}
         onNavigateTransactions={() => setActiveTab('transactions')}
+        onNavigateCompliance={() => setActiveTab('verification')}
+        isVerified={user.kycStatus === 'verified'}
       />
 
       {/* Withdrawal Modal */}
