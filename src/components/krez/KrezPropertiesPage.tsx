@@ -196,9 +196,28 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
             </a>
           </div>
 
+          {/* Results summary and responsive building cards */}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-2" aria-live="polite">
+            <p className="text-xs text-muted">
+              Showing <span className="font-semibold tabular-nums text-foreground">{filteredBuildings.length}</span>{' '}
+              {filteredBuildings.length === 1 ? 'building' : 'buildings'}
+              {statusFilter !== 'All' ? ` · ${statusFilter}` : ''}
+            </p>
+            {statusFilter !== 'All' && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter('All')}
+                className="text-xs font-semibold tracking-wider uppercase text-accent underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+
           {/* 3-Column Building Cards */}
-          <div className="mt-10 grid gap-gutter md:grid-cols-2 md:gap-gutter-md lg:grid-cols-3">
-            {filteredBuildings.map((building, index) => (
+          {filteredBuildings.length > 0 ? (
+            <div className="mt-5 grid gap-gutter md:grid-cols-2 md:gap-gutter-md lg:grid-cols-3">
+              {filteredBuildings.map((building, index) => (
               <KrezReveal key={building.id} delay={(index % 3) * 0.05}>
                 <article className="group flex h-full flex-col overflow-hidden rounded-card border border-border bg-background transition-transform duration-base hover:-translate-y-hover-lift">
                   <button
@@ -281,8 +300,21 @@ export const KrezPropertiesPage: React.FC<KrezPropertiesPageProps> = ({
                   </div>
                 </article>
               </KrezReveal>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-card border border-dashed border-border bg-secondary/40 px-6 py-12 text-center">
+              <p className="text-sm font-semibold text-foreground">No buildings match this filter.</p>
+              <p className="mt-2 text-sm text-muted">Try another status or return to the complete register.</p>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('All')}
+                className="mt-5 rounded-pill bg-primary px-5 py-2.5 text-xs font-semibold tracking-widest uppercase text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+              >
+                Show all buildings
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
