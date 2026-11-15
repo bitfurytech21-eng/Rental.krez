@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth';
-import { ledger } from '../../lib/ledger';
 import { formatCurrency } from '../../lib/utils';
-import { isValidIBAN, isValidCryptoAddress } from '../../lib/validation';
-import { ButtonLoader } from '../common/ButtonLoader';
-import { ArrowUpRight, ShieldAlert, CheckCircle2, Building2, Coins, Sparkles, AlertCircle } from 'lucide-react';
+import { isValidIBAN } from '../../lib/validation';
+import { getApiUrl, getAuthToken } from '../../lib/api';
+import { ArrowUpRight, ShieldAlert, CheckCircle2, Building2, AlertCircle } from 'lucide-react';
 
 interface WithdrawalModalProps {
   isOpen: boolean;
@@ -12,318 +11,174 @@ interface WithdrawalModalProps {
   onSuccess: () => void;
   onNavigateProfile: () => void;
 }
+type Step = 1 | 2 | 3 | 4;
+
+const ACTION_SCOPE = 'investor.withdrawal.create';
+const MIN_WITHDRAWAL = 250;
+
+function maskIban(value: string) {
+  const clean = value.replace(/\\s/g, '');
+  if (clean.length < 8) return clean;
+  return `${clean.slice(0, 4)} •••• •••• ${clean.slice(-4)}`;
+}
 
 export const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
-  isOpen,
-  onClose,
-  onSuccess,
-  onNavigateProfile
+  isOpen, onClose, onSuccess, onNavigateProfile
 }) => {
   const { user, refreshUser } = useAuth();
-  const [method, setMethod] = useState<'sepa' | 'crypto'>('sepa');
-  const [amount, setAmount] = useState<number>(0);
-  const [iban, setIban] = useState<string>(user?.bankIban || '');
-  // Crypto withdrawal is streamlined exclusively to USDC (BEP20) on BNB Smart Chain
-  const cryptoToken = 'USDC';
-  const cryptoNetwork = 'BNB Smart Chain (BEP20)';
-  const [cryptoAddress, setCryptoAddress] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [step, setStep] = useState<Step>(1);
+  const [amount, setAmount] = useState('');
+  const [code, setCode] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
+  const [grantId, setGrantId] = useState('');
+  const [reference, setReference] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+  const [error, setError] = useState('');
+  const [codeError, setCodeError] = useState('');
+
+  const balance = Number(user?.walletBalance || 0);
+  const iban = user?.bankIban?.trim() || '';
+  const verified = user?.kycStatus === 'verified';
+  const numericAmount = Number(amount);
+  const token = getAuthToken();
+  const money = (value: number) => formatCurrency(value);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setStep(1); setAmount(''); setCode(''); setMaskedEmail(''); setGrantId('');
+    setReference(''); setBusy(false); setCodeSent(false); setError(''); setCodeError('');
+  }, [isOpen]);
 
   if (!isOpen || !user) return null;
 
-  const isKYCVerified = user.kycStatus === 'verified';
+  const close = () => {
+    setStep(1); setError(''); setCodeError(''); setCode(''); setGrantId('');
+    onClose();
+  };
+  const blocker = !verified ? 'kyc' : !isValidIBAN(iban) ? 'bank' : null;
 
-  const handleWithdrawalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!isKYCVerified) {
-      setError('Regulatory compliance requires identity verification (KYC) before withdrawing funds.');
-      return;
-    }
-
-    if (!Number.isFinite(amount) || amount < 10) {
-      setError('Withdrawal amount must be at least €10.00.');
-      return;
-    }
-
-    if (amount > user.walletBalance) {
-      setError(`Requested amount (€${amount.toFixed(2)}) exceeds available wallet balance (€${user.walletBalance.toFixed(2)}).`);
-      return;
-    }
-
-    if (method === 'sepa') {
-      if (!isValidIBAN(iban)) {
-        setError('Please provide a valid IBAN (15–34 letters and digits).');
-        return;
-      }
-    } else {
-      const cleanAddr = cryptoAddress.trim();
-      if (!isValidCryptoAddress(cleanAddr)) {
-        setError('Please provide a valid BNB Smart Chain BEP20 address (starts with 0x, 42 characters).');
-        return;
-      }
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (method === 'sepa') {
-        await ledger.requestWithdrawal(user.id, amount, 'SEPA Bank Wire', { 
-          bankIban: iban.trim().toUpperCase() 
-        });
-      } else {
-        await ledger.requestWithdrawal(user.id, amount, 'Crypto USDC (BEP20)', {
-          cryptoAddress: cryptoAddress.trim(),
-          network: 'BNB Smart Chain (BEP20)',
-          token: 'USDC'
-        });
-      }
-
-      refreshUser();
-      setSuccess(true);
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Withdrawal request failed.');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const continueToDestination = () => {
+    setError('');
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setError('Enter a valid withdrawal amount.');
+    if (numericAmount < MIN_WITHDRAWAL) return setError(`Minimum withdrawal amount is ${money(MIN_WITHDRAWAL)}.`);
+    if (numericAmount > balance) return setError(`That exceeds your available balance of ${money(balance)}.`);
+    if (blocker) return;
+    setStep(2);
   };
 
+  const requestCode = async () => {
+    setBusy(true); setError(''); setCodeError('');
+    try {
+      const response = await fetch(getApiUrl('/security/action-code/request'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ actionScope: ACTION_SCOPE })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Could not send your security code.');
+      setMaskedEmail(payload.maskedEmail || 'your registered email');
+      setCodeSent(true);
+      setStep(3);
+    } catch (e: any) {
+      setError(e.message || 'Could not send your security code.');
+    } finally { setBusy(false); }
+  };
+
+  const confirmWithdrawal = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setCodeError(''); setError('');
+    if (!/^\\d{6}$/.test(code)) return setCodeError('Enter the 6-digit code sent to your email.');
+    setBusy(true);
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+      const verifyResponse = await fetch(getApiUrl('/security/action-code/verify'), {
+        method: 'POST', headers,
+        body: JSON.stringify({ actionScope: ACTION_SCOPE, code })
+      });
+      const verifyPayload = await verifyResponse.json();
+      if (!verifyResponse.ok || !verifyPayload.grantId) throw new Error(verifyPayload.error || 'The security code is invalid or expired.');
+      const idempotencyKey = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `withdrawal-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const response = await fetch(getApiUrl('/withdrawals'), {
+        method: 'POST',
+        headers: { ...headers, 'X-Action-Verification': verifyPayload.grantId, 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ amount: numericAmount, destination: iban.replace(/\\s/g, '').toUpperCase(), method: 'Bank Wire SEPA' })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Your withdrawal request could not be recorded.');
+      setGrantId(verifyPayload.grantId);
+      setReference(payload.data?.reference || payload.data?.id || 'Pending reference');
+      setStep(4);
+      refreshUser();
+      onSuccess();
+    } catch (e: any) {
+      setCodeError(e.message || 'Your withdrawal request could not be completed.');
+    } finally { setBusy(false); }
+  };
+
+  const availableBlock = blocker === 'kyc' || blocker === 'bank';
+
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div 
-        className="dash-card rounded-2xl w-[92vw] sm:w-full max-w-[440px] max-h-[82vh] sm:max-h-[85vh] p-3.5 sm:p-4 shadow-2xl border relative animate-in zoom-in-95 duration-150 my-auto overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center pb-2.5 mb-2.5 border-b border-[#303030]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#1D1D1D] text-[#FF4D4D] border border-[#303030] flex items-center justify-center shrink-0">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-white">Withdraw Funds</h3>
-              <p className="text-[11px] text-[#999999]">Transfer capital to your bank account or crypto wallet</p>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) close(); }}>
+      <div className="my-auto max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-[22px] border border-[#1F2C33] bg-[#0B0F10] p-5 text-[#F2F5F4] shadow-2xl sm:p-6" onClick={e => e.stopPropagation()}>
+        <header className="mb-5 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#1F2C33] bg-[#121A1F] text-[#6FD8B0]"><ArrowUpRight className="size-5" /></div>
+            <div><p className="text-[10px] font-bold tracking-[.16em] text-[#8FA1A8]">INVESTOR PORTAL · WALLET</p><h2 className="mt-1 text-xl font-bold">Withdraw funds</h2><p className="mt-1 text-xs text-[#8FA1A8]">Withdrawals require email confirmation and finance review.</p></div>
           </div>
-          <button 
-            onClick={onClose} 
-            className="text-[#999999] hover:text-white text-lg font-bold p-1 cursor-pointer transition-colors"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
+          <button type="button" onClick={close} aria-label="Close withdrawal" className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#1F2C33] text-xl text-[#8FA1A8] hover:text-white">×</button>
+        </header>
 
-        {!isKYCVerified ? (
-          <div className="text-center py-6 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#1D1D1D] text-[#FF9F43] border border-[#303030] flex items-center justify-center mx-auto">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-            <h4 className="text-lg font-bold text-white">Identity Verification Required</h4>
-            <p className="text-xs text-[#999999] max-w-xs mx-auto leading-relaxed">
-              In adherence to European AML/CFT regulations, withdrawals can only be processed to verified investor accounts.
-            </p>
+        {step !== 4 && <div className="mb-5 flex gap-1.5" aria-label={`Step ${step} of 3`}>{[1,2,3].map(n => <span key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? 'bg-[#6FD8B0]' : 'bg-[#1F2C33]'}`} />)}</div>}
+        {error && <p role="alert" className="mb-4 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-[13px] text-rose-300">{error}</p>}
 
-            <div className="pt-2 flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onNavigateProfile();
-                }}
-                className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors"
-              >
-                <span>Submit Verification Documents in Profile</span>
-              </button>
-
-              <button 
-                type="button" 
-                onClick={onClose} 
-                className="w-full py-2 rounded-xl bg-[#151515] hover:bg-[#252525] border border-[#303030] text-white text-xs font-medium cursor-pointer transition-colors"
-              >
-                Return to Dashboard
-              </button>
-            </div>
-          </div>
-        ) : !success ? (
-          <form onSubmit={handleWithdrawalSubmit} className="space-y-3">
-            {/* Method Toggle: SEPA vs Crypto */}
-            <div className="flex bg-[#101010] p-0.5 rounded-xl border border-[#303030]">
-              <button
-                type="button"
-                onClick={() => setMethod('sepa')}
-                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  method === 'sepa'
-                    ? 'bg-white text-black shadow-xs'
-                    : 'text-[#999999] hover:text-white'
-                }`}
-              >
-                <Building2 className={`w-3.5 h-3.5 ${method === 'sepa' ? 'text-black' : 'text-[#999999]'}`} />
-                SEPA Bank Wire
-              </button>
-              <button
-                type="button"
-                onClick={() => setMethod('crypto')}
-                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  method === 'crypto'
-                    ? 'bg-white text-black shadow-xs'
-                    : 'text-[#999999] hover:text-white'
-                }`}
-              >
-                <Coins className={`w-3.5 h-3.5 ${method === 'crypto' ? 'text-black' : 'text-[#999999]'}`} />
-                USDC (BEP20)
-              </button>
-            </div>
-
-            {/* Available Balance Box */}
-            <div className="bg-[#1D1D1D] p-2.5 rounded-xl border border-[#303030] flex justify-between items-center text-xs">
-              <span className="text-[#999999] text-[11px]">Available for Withdrawal:</span>
-              <span className="text-sm font-extrabold text-white">{formatCurrency(user.walletBalance)}</span>
-            </div>
-
-            {/* Withdrawal Amount */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-white block">Withdrawal Amount (EUR)</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min={10}
-                  max={user.walletBalance}
-                  step={10}
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  required
-                  className="font-bold text-sm w-full pr-14 py-2 px-3 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white focus:outline-none focus:border-white"
-                />
-                <button
-                  type="button"
-                  onClick={() => setAmount(user.walletBalance)}
-                  className="absolute right-2.5 top-2.5 text-[10px] font-bold text-[#00D2FF] hover:underline cursor-pointer"
-                >
-                  MAX
-                </button>
-              </div>
-            </div>
-
-            {/* Method-specific fields */}
-            {method === 'sepa' ? (
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-white block">Destination European Bank IBAN</label>
-                <input
-                  type="text"
-                  value={iban}
-                  onChange={(e) => setIban(e.target.value)}
-                  placeholder="ES91 2100 0418 ..."
-                  required
-                  className="font-mono text-xs uppercase py-2 px-3 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white w-full focus:outline-none focus:border-white"
-                />
-                <span className="text-[10px] text-[#999999] mt-0.5 block leading-tight">
-                  Beneficiary name must match verified account: <strong className="text-white">{user.fullName}</strong>
-                </span>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                <div className="p-3 rounded-xl bg-[#1D1D1D] border border-[#303030] space-y-1.5 text-xs">
-                  <div className="flex justify-between items-center pb-1 border-b border-[#303030]">
-                    <span className="text-[#999999] text-[11px]">Payout Asset:</span>
-                    <span className="font-bold text-white text-[11px]">USDC (BEP20)</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#999999] text-[11px]">Settlement Network:</span>
-                    <span className="font-bold text-[#00D2FF] text-[11px]">BNB Smart Chain (BEP20)</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-white text-[11px] font-bold block">Destination USDC (BEP20) Wallet Address</label>
-                  <input
-                    type="text"
-                    value={cryptoAddress}
-                    onChange={(e) => setCryptoAddress(e.target.value)}
-                    placeholder="0x... (BNB Smart Chain BEP20 Address)"
-                    required
-                    className="font-mono text-xs py-2 px-3 rounded-lg bg-[#1D1D1D] border border-[#303030] text-white w-full focus:outline-none focus:border-white"
-                  />
-                  <span className="text-[9px] text-[#FF9F43] mt-0.5 block leading-tight">
-                    Transfers are sent in USDC via BNB Smart Chain (BEP20). Ensure your recipient address supports BEP20 tokens.
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <div className="p-2.5 rounded-xl bg-[#1D1D1D] text-[#FF4D4D] text-[11px] font-medium border border-[#FF4D4D]/40 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="p-2.5 rounded-xl bg-[#1D1D1D] border border-[#303030] text-[10px] text-[#D0D0D0] leading-tight space-y-1">
-              <p>• <strong className="text-white">Processing:</strong> {method === 'sepa' ? '1–2 European banking business days' : '15–30 minutes blockchain confirmation'}.</p>
-              <p>• <strong className="text-white">Fee:</strong> €0.00 (Zero withdrawal fee charged).</p>
-            </div>
-
-            <div className="pt-1 flex flex-col gap-1.5">
-              <button
-                type="submit"
-                disabled={isSubmitting || user.walletBalance < 10 || amount < 10 || amount > user.walletBalance}
-                className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold flex items-center justify-center cursor-pointer transition-colors disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <ButtonLoader text="Processing Withdrawal..." />
-                ) : (
-                  `Confirm Withdrawal of ${formatCurrency(amount)}`
-                )}
-              </button>
-              <button 
-                type="button" 
-                onClick={onClose} 
-                className="w-full py-2 rounded-xl bg-[#151515] hover:bg-[#252525] border border-[#303030] text-white text-xs font-medium cursor-pointer transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="text-center py-6 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-[#1D1D1D] text-[#2ECC71] border border-[#303030] flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8" />
-            </div>
-            <h4 className="text-xl font-bold text-white">Withdrawal Request Registered</h4>
-            <p className="text-xs text-[#D0D0D0] max-w-xs mx-auto leading-relaxed">
-              Your withdrawal of <strong className="text-white">{formatCurrency(amount)}</strong> via {method === 'sepa' ? 'SEPA Bank Wire' : 'USDC (BEP20)'} has been safely locked on the ledger and sent to compliance administration.
-            </p>
-            <div className="bg-[#1D1D1D] p-3.5 rounded-2xl border border-[#303030] text-left text-xs space-y-1 font-mono">
-              <div className="flex justify-between">
-                <span className="text-[#999999]">Destination:</span>
-                <span className="font-bold text-white truncate max-w-[200px]">
-                  {method === 'sepa' ? iban : cryptoAddress}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#999999]">Status:</span>
-                <span className="font-bold text-[#FF9F43]">Pending Admin Approval</span>
-              </div>
-            </div>
-            <button 
-              onClick={() => {
-                setSuccess(false);
-                onClose();
-              }} 
-              className="w-full py-2.5 rounded-xl bg-white hover:bg-[#E5E5E5] text-black text-xs font-bold mt-4 cursor-pointer transition-colors"
-            >
-              Return to Dashboard
-            </button>
+        {availableBlock && step !== 4 && (
+          <div className="mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-[13px]">
+            <div className="flex items-center gap-2 font-semibold text-amber-300"><ShieldAlert className="size-4" />{blocker === 'kyc' ? 'Verification required' : 'Add a bank account'}</div>
+            <p className="mt-1 text-[#8FA1A8]">{blocker === 'kyc' ? 'Complete identity verification before withdrawing funds.' : 'Add a valid bank account in your own name to receive withdrawals.'}</p>
+            <button type="button" onClick={() => { close(); onNavigateProfile(); }} className="mt-3 h-10 rounded-lg border border-amber-300/50 px-4 font-semibold text-amber-300">{blocker === 'kyc' ? 'Go to Compliance Vault' : 'Update bank details'}</button>
           </div>
         )}
+
+        {step === 1 && <section className="space-y-4">
+          <div><h3 className="text-2xl font-bold">Withdraw amount</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Available balance: <strong className="text-white">{money(balance)}</strong></p></div>
+          <label className="flex h-20 items-center rounded-2xl border border-[#1F2C33] bg-[#121A1F] px-5 focus-within:border-[#6FD8B0]"><span className="text-3xl font-bold text-[#8FA1A8]">€</span><input aria-label="Withdrawal amount in euros" inputMode="decimal" type="number" min={MIN_WITHDRAWAL} max={balance} step="0.01" value={amount} onChange={e => { setAmount(e.target.value); setError(''); }} placeholder="0.00" className="h-full min-w-0 flex-1 bg-transparent pl-3 text-4xl font-bold outline-none placeholder:text-[#8FA1A8]/40" /><button type="button" onClick={() => { setAmount(balance.toFixed(2)); setError(''); }} className="h-9 rounded-lg border border-[#6FD8B0] px-3 text-xs font-semibold text-[#6FD8B0]">Max</button></label>
+          <p className="text-xs text-[#8FA1A8]">Minimum withdrawal: {money(MIN_WITHDRAWAL)}. Only funds available in your wallet can be withdrawn; invested or pending funds are excluded.</p>
+          <button type="button" disabled={availableBlock || !amount || busy} onClick={continueToDestination} className="h-12 w-full rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:cursor-not-allowed disabled:opacity-40">Continue</button>
+        </section>}
+
+        {step === 2 && <section className="space-y-4">
+          <div><h3 className="text-2xl font-bold">Send to bank account</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Withdrawals are sent only to a bank account registered in your own name.</p></div>
+          <div className="flex items-center gap-3 rounded-2xl border border-[#6FD8B0] bg-[#0F1A18] p-4"><Building2 className="size-6 shrink-0 text-[#6FD8B0]" /><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{user.fullName}</p><p className="mt-1 break-all text-xs text-[#8FA1A8]">{maskIban(iban)}</p></div></div>
+          <p className="text-[13px] leading-relaxed text-[#8FA1A8]">To change your destination account, update your banking details in your profile. The registered beneficiary name must match your verified investor identity.</p>
+          <button type="button" onClick={() => { close(); onNavigateProfile(); }} className="h-10 rounded-lg border border-[#1F2C33] px-4 text-[13px]">Change bank account</button>
+          <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setStep(1)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold">Back</button><button type="button" disabled={busy} onClick={requestCode} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">{busy ? 'Sending code…' : 'Send security code'}</button></div>
+        </section>}
+
+        {step === 3 && <form onSubmit={confirmWithdrawal} className="space-y-4">
+          <div><h3 className="text-2xl font-bold">Confirm withdrawal</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Review the request and enter the one-time security code.</p></div>
+          <dl className="divide-y divide-[#1F2C33] rounded-2xl border border-[#1F2C33] bg-[#121A1F] text-sm">
+            <div className="flex justify-between gap-3 p-4"><dt className="text-[#8FA1A8]">Amount</dt><dd className="font-semibold">{money(numericAmount)}</dd></div>
+            <div className="flex justify-between gap-3 p-4"><dt className="text-[#8FA1A8]">Fee</dt><dd className="font-semibold">Calculated by platform</dd></div>
+            <div className="flex justify-between gap-3 p-4"><dt className="text-[#8FA1A8]">To</dt><dd className="max-w-[65%] break-all text-right font-semibold">{maskIban(iban)}</dd></div>
+            <div className="flex justify-between gap-3 p-4"><dt className="text-[#8FA1A8]">Processing</dt><dd className="text-right font-semibold">Finance review required</dd></div>
+          </dl>
+          {codeSent ? <p className="rounded-xl border border-[#1F2C33] bg-[#121A1F] p-3 text-xs text-[#8FA1A8]">A 6-digit code was sent to {maskedEmail}. It expires in 5 minutes.</p> : null}
+          <label className="block text-xs text-[#8FA1A8]">Security code<input required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={e => { setCode(e.target.value.replace(/\\D/g, '').slice(0,6)); setCodeError(''); }} placeholder="6-digit code" className="mt-1 h-12 w-full rounded-xl border border-[#1F2C33] bg-[#121A1F] px-4 text-center text-lg font-semibold tracking-[.4em] text-white outline-none placeholder:text-sm placeholder:tracking-normal focus:border-[#6FD8B0]" /></label>
+          {codeError && <p role="alert" className="flex items-center gap-2 text-[13px] text-rose-400"><AlertCircle className="size-4 shrink-0" />{codeError}</p>}
+          <button type="submit" disabled={busy || code.length !== 6} className="h-12 w-full rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">{busy ? 'Verifying and submitting…' : 'Confirm withdrawal'}</button>
+          <button type="button" disabled={busy} onClick={requestCode} className="w-full py-2 text-xs font-semibold text-[#6FD8B0] disabled:opacity-40">Resend security code</button>
+          <button type="button" disabled={busy} onClick={() => setStep(2)} className="w-full py-2 text-xs text-[#8FA1A8]">Back</button>
+        </form>}
+
+        {step === 4 && <section className="space-y-4">
+          <div className="flex flex-col items-center gap-2 py-4 text-center"><div className="grid size-14 place-items-center rounded-full bg-[#6FD8B0]/15 text-[#6FD8B0]"><CheckCircle2 className="size-7" /></div><h3 className="text-2xl font-bold">Withdrawal requested</h3><p className="text-[13px] text-[#8FA1A8]">Your request has been recorded. Funds are reserved and the withdrawal remains pending until finance review and payout.</p></div>
+          <dl className="divide-y divide-[#1F2C33] rounded-2xl border border-[#1F2C33] bg-[#121A1F] text-sm"><div className="flex justify-between p-4"><dt className="text-[#8FA1A8]">Status</dt><dd className="font-semibold text-amber-300">Pending review</dd></div><div className="flex justify-between gap-3 p-4"><dt className="text-[#8FA1A8]">Reference</dt><dd className="break-all text-right font-semibold">{reference}</dd></div><div className="flex justify-between gap-3 p-4"><dt className="text-[#8FA1A8]">Destination</dt><dd className="text-right font-semibold">{maskIban(iban)}</dd></div></dl>
+          <div className="grid grid-cols-2 gap-2"><button type="button" onClick={close} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold">Close</button><button type="button" onClick={close} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A]">Done</button></div>
+        </section>}
       </div>
     </div>
   );
