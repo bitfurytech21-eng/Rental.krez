@@ -42,6 +42,10 @@ VITE_SUPABASE_URL = "https://mpwsbepgnxvritrnchdg.supabase.co/"
 "body-parser" = "./cloudflare/body-parser-shim.js"
 "iconv-lite" = "./cloudflare/iconv-lite-shim.js"
 
+# Worker Previews are created from this separate API configuration.
+# Keep this empty until preview-safe bindings/secrets are configured in Cloudflare.
+previews = {}
+
 # Cloudflare Worker observability settings.
 [observability.logs]
 enabled = true
