@@ -132,7 +132,7 @@ manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: Au
       proof_storage_path: uploadedPath, fee_amount: Number(fee.toFixed(2)),
       gross_amount: Number((amount + fee).toFixed(2)), extra_values: extraValues,
       method_id: method.id
-    }).select('*,profiles(email,full_name)').single();
+    }).select('*,profiles!manual_deposit_submissions_user_id_fkey(email,full_name)').single();
     if (insertError) throw insertError;
     sendEmail({
       templateId: 'deposit_received', recipient: req.user!.email,
@@ -186,7 +186,7 @@ manualPaymentRouter.patch('/admin/methods/:id', requireAdmin, async (req: Authen
 manualPaymentRouter.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   if (!configured(res, req)) return;
   try {
-    let query = getSupabaseAdmin().from('manual_deposit_submissions').select('*,profiles(email,full_name)').order('created_at', { ascending: false }).limit(300);
+    let query = getSupabaseAdmin().from('manual_deposit_submissions').select('*,profiles!manual_deposit_submissions_user_id_fkey(email,full_name)').order('created_at', { ascending: false }).limit(300);
     if (typeof req.query.status === 'string' && ['pending','completed','rejected'].includes(req.query.status)) query = query.eq('status', req.query.status);
     const { data, error } = await query;
     if (error) throw error;
@@ -221,7 +221,7 @@ manualPaymentRouter.post('/admin/deposits/:id/review', requireAdmin, async (req:
     if (!verified) return res.status(428).json({ success: false, error: 'The email verification has expired or does not match this action.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', requestId: req.id });
     const client = getSupabaseAdmin();
     const { data: current, error: readError } = await client.from('manual_deposit_submissions')
-      .select('*,profiles(email,full_name)').eq('id', req.params.id).maybeSingle();
+      .select('*,profiles!manual_deposit_submissions_user_id_fkey(email,full_name)').eq('id', req.params.id).maybeSingle();
     if (readError) throw readError;
     if (!current) return res.status(404).json({ success: false, error: 'Manual deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
     if (current.status !== 'pending') return res.status(409).json({ success: false, error: 'This deposit has already been reviewed.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
