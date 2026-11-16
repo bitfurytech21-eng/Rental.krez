@@ -566,7 +566,7 @@ async function persistDevState(): Promise<void> {
 }
 
 registerManualPaymentDevHooks({
-  onDepositCreated: async (deposit) => {
+  onDepositCreated: async (deposit: any) => {
     const depTx = {
       id: deposit.id,
       userId: deposit.user_id,
@@ -595,7 +595,7 @@ registerManualPaymentDevHooks({
       type: 'info',
     });
   },
-  onDepositReviewed: async (deposit, approve, reason) => {
+  onDepositReviewed: async (deposit: any, approve: boolean, reason?: string) => {
     const tx = mockTransactions.find((t) => t.id === deposit.id || t.reference === deposit.reference);
     if (tx) {
       tx.status = approve ? 'completed' : 'rejected';
