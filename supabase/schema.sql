@@ -9,6 +9,8 @@ create table if not exists public.profiles (
   email text unique not null,
   full_name text not null,
   role text default 'investor' check (role in ('investor', 'admin')),
+  is_admin boolean not null default false,
+  staff_role text check (staff_role is null or staff_role in ('super_admin', 'finance', 'compliance', 'property_manager', 'support')),
   account_type text default 'individual_investor',
   wallet_balance numeric(12,2) default 0.00 not null,
   invested_balance numeric(12,2) default 0.00 not null,

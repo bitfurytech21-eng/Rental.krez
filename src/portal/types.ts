@@ -162,6 +162,23 @@ export interface PortalAccountStatement {
   currentBalance: number;
 }
 
+export interface PortalUploadedDocument {
+  id: string;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  category: 'statement' | 'tax_document';
+  title: string;
+  taxYear?: string;
+  periodLabel?: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  fileDataUrl?: string;
+  uploadedBy?: string;
+  uploadedAt: string;
+}
+
 export interface PortalPerformanceData {
   annualizedReturnPercent: number;
   historicalPerformance: Array<{

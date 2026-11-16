@@ -12,6 +12,7 @@ import {
   PortalProfile,
   PortalProperty,
   PortalTransaction,
+  PortalUploadedDocument,
 } from '../types';
 
 function unwrap<T>(res: any): T {
@@ -343,6 +344,12 @@ export const portalApi = {
   async getAccountStatement(): Promise<PortalAccountStatement> {
     const res = await api.get<any>('/reports/account-statement');
     return unwrap<PortalAccountStatement>(res);
+  },
+
+  async getStatements(): Promise<PortalUploadedDocument[]> {
+    const res = await api.get<any>('/reports/statements');
+    const list = unwrap<PortalUploadedDocument[]>(res);
+    return Array.isArray(list) ? list : [];
   },
 
   async getPerformance(): Promise<PortalPerformanceData> {

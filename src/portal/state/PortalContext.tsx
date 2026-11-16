@@ -115,6 +115,7 @@ export function resolvePortalRouteFromPath(path: string): { route: PortalRoute; 
   }
   switch (clean) {
     case '/dashboard':
+    case '/overview':
     case '/account':
       return { route: 'overview' };
     case '/portfolio':
@@ -122,6 +123,7 @@ export function resolvePortalRouteFromPath(path: string): { route: PortalRoute; 
     case '/portal/explore':
     case '/explore':
       return { route: 'explore' };
+    case '/ledger':
     case '/transactions':
     case '/portal/ledger':
     case '/distributions':

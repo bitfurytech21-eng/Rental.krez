@@ -19,7 +19,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { logger } from './logger';
-import { UserRoleType } from './middleware';
+import { UserRoleType, CanonicalStaffRole, normalizeStaffRole } from './middleware';
 import { getSupabaseAdmin, isSupabaseServerConfigured } from './supabaseDatabase';
 
 // Production must never rely on isolate-local session state. Supabase is the default
@@ -32,6 +32,8 @@ export interface ServerSession {
   userId: string;
   email: string;
   role: UserRoleType;
+  isAdmin?: boolean;
+  staffRole?: CanonicalStaffRole | null;
   fullName: string;
   csrfToken: string;       // Unique CSRF token for state-changing requests
   createdAt: number;       // Timestamp when created
@@ -163,6 +165,8 @@ export async function createSession(params: {
   userId: string;
   email: string;
   role: UserRoleType;
+  isAdmin?: boolean;
+  staffRole?: CanonicalStaffRole | null;
   fullName: string;
   ip: string;
   userAgent: string;
@@ -174,11 +178,19 @@ export async function createSession(params: {
   // Generate high-entropy CSRF token tied to this session
   const csrfToken = crypto.randomBytes(24).toString('hex');
 
+  const resolvedIsAdmin = Boolean(params.isAdmin || params.role === 'admin' || params.role === 'super_admin');
+  const resolvedStaffRole = normalizeStaffRole(
+    params.staffRole ?? (params.role !== 'investor' ? params.role : null),
+    resolvedIsAdmin
+  );
+
   const session: ServerSession = {
     id: sessionId,
     userId: params.userId,
     email: params.email.toLowerCase(),
     role: params.role,
+    isAdmin: resolvedIsAdmin,
+    staffRole: resolvedStaffRole,
     fullName: params.fullName,
     csrfToken,
     createdAt: now,
@@ -192,8 +204,9 @@ export async function createSession(params: {
 
   if (usePersistentSessionStore()) {
     if (!isSupabaseServerConfigured()) throw new Error('PERSISTENT_SESSION_STORE_NOT_CONFIGURED');
+    const persistedRole = (resolvedStaffRole || session.role) as UserRoleType;
     const { error } = await getSupabaseAdmin().from('kretz_server_sessions').insert({
-      id: session.id, user_id: session.userId, email: session.email, role: session.role,
+      id: session.id, user_id: session.userId, email: session.email, role: persistedRole,
       full_name: session.fullName, csrf_token: session.csrfToken, created_at_ms: session.createdAt,
       last_activity_at_ms: session.lastActivityAt, expires_at_ms: session.expiresAt,
       idle_timeout_ms: session.idleTimeoutMs, ip: session.ip, user_agent: session.userAgent
@@ -221,8 +234,11 @@ export async function getSession(token: string): Promise<ServerSession | null> {
     const { data, error } = await getSupabaseAdmin().from('kretz_server_sessions').select('*').eq('id', token).maybeSingle();
     if (error) throw error;
     if (!data) return null;
+    const isAdminFlag = data.role === 'admin' || data.role === 'super_admin';
     session = {
       id: data.id, userId: data.user_id, email: data.email, role: data.role,
+      isAdmin: isAdminFlag,
+      staffRole: normalizeStaffRole(data.role !== 'investor' ? data.role : null, isAdminFlag),
       fullName: data.full_name, csrfToken: data.csrf_token, createdAt: Number(data.created_at_ms),
       lastActivityAt: Number(data.last_activity_at_ms), expiresAt: Number(data.expires_at_ms),
       idleTimeoutMs: Number(data.idle_timeout_ms), ip: data.ip || '', userAgent: data.user_agent || 'unknown', isRevoked: false

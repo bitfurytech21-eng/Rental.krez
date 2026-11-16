@@ -276,59 +276,10 @@ function MainApp() {
     }
 
     // Authoritative Admin Portal Routes with strict role enforcement
-    const ADMIN_TAB_PREFIXES = [
-      '/admin',
-      '/admin-login',
-      '/users',
-      '/deposits',
-      '/withdrawals',
-      '/deposit-system',
-      '/spv',
-      '/kyc',
-      '/proofs',
-      '/wallets',
-      '/ledger',
-      '/reconciliation',
-      '/audit',
-      '/logs',
-      '/security',
-      '/admin-security',
-      '/dividends',
-      '/issuance',
-      '/restore',
-      '/manage-referral',
-      '/plan-manage',
-      '/support-ticket',
-      '/report',
-      '/promotional-tool',
-      '/subscribers',
-      '/language',
-      '/active-template',
-      '/manage-pages',
-      '/section-manage',
-      '/settings',
-      '/logo-icon-setting',
-      '/plugins',
-      '/seo',
-      '/email-manager',
-      '/sms-manager',
-      '/holiday-setting',
-      '/gdpr-cookie',
-      '/system-information',
-      '/custom-css',
-      '/clear-cache',
-      '/manual-payment'
-    ];
-
     const isAdminRoute =
-      basePath.startsWith('/admin') ||
-      basePath === '/admin-login' ||
-      ADMIN_TAB_PREFIXES.some(
-        (prefix) =>
-          basePath === prefix ||
-          basePath.startsWith(`${prefix}-`) ||
-          basePath.startsWith(`${prefix}/`)
-      );
+      basePath === '/admin' ||
+      basePath.startsWith('/admin/') ||
+      basePath === '/admin-login';
 
     if (isAdminRoute) {
       if (basePath === '/admin/login' || basePath === '/admin-login') {
@@ -346,6 +297,7 @@ function MainApp() {
         <ProtectedRoute
           requireAdmin
           onNavigateLogin={() => navigateTo('/admin/login')}
+          onRedirectUnauthorized={() => navigateTo('/dashboard', { bypassLoader: true })}
         >
           <AdminPanel />
         </ProtectedRoute>
@@ -658,23 +610,9 @@ function MainApp() {
     currentBasePath.startsWith('/portal/') ||
     (Boolean(user) && (currentBasePath === '/portfolio' || currentBasePath === '/account'));
 
-  const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
+  const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin/');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
   const isIsolatedAdminEnvironment = isAdminView || isAdminLoginPage;
-  const isAdminUtilityRoute = [
-    '/users', '/deposits', '/withdrawals', '/deposit-system', '/spv', '/kyc',
-    '/proofs', '/wallets', '/ledger', '/reconciliation', '/audit', '/logs',
-    '/security', '/admin-security', '/dividends', '/issuance', '/restore',
-    '/manage-referral', '/plan-manage', '/support-ticket', '/report',
-    '/promotional-tool', '/subscribers', '/language', '/active-template',
-    '/manage-pages', '/section-manage', '/settings', '/logo-icon-setting',
-    '/plugins', '/seo', '/email-manager', '/sms-manager', '/holiday-setting',
-    '/gdpr-cookie', '/system-information', '/custom-css', '/clear-cache', '/manual-payment'
-  ].some((prefix) =>
-    currentBasePath === prefix ||
-    currentBasePath.startsWith(`${prefix}/`) ||
-    currentBasePath.startsWith(`${prefix}-`)
-  );
 
   const isKrezTemplatePage =
     currentBasePath === '/' ||
@@ -738,7 +676,7 @@ function MainApp() {
       <ViewportDesktopMonitor />
 
       <SchemaJsonLd property={selectedProperty} />
-      {!isIsolatedAdminEnvironment && !isAdminUtilityRoute && <SmartsuppWidget />}
+      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
     </div>
   );
 }
