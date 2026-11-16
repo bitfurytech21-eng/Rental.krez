@@ -264,6 +264,8 @@ export const AdminDepositsSection: React.FC<{
   onError: (msg: string) => void;
 }> = ({ users, transactions, manualDeposits, paymentGates, onRefresh, onSuccess, onError }) => {
   const [filter, setFilter] = useState<'pending' | 'completed' | 'failed' | 'all'>('pending');
+  const [sortKey, setSortKey] = useState<'createdAt' | 'investorName' | 'amount' | 'status'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Approve modal ("Amount actually received")
@@ -326,9 +328,33 @@ export const AdminDepositsSection: React.FC<{
     );
   }, [manualDeposits, transactions, userById, gateById]);
 
-  const filtered = useMemo(
-    () => combinedDeposits.filter((d) => (filter === 'all' ? true : d.status === filter)),
-    [combinedDeposits, filter]
+  const filtered = useMemo(() => {
+    const rows = combinedDeposits.filter((d) => (filter === 'all' ? true : d.status === filter));
+    return rows.sort((a, b) => {
+      const left = a[sortKey];
+      const right = b[sortKey];
+      const comparison = sortKey === 'amount'
+        ? Number(left) - Number(right)
+        : sortKey === 'createdAt'
+        ? new Date(String(left)).getTime() - new Date(String(right)).getTime()
+        : String(left).localeCompare(String(right), undefined, { sensitivity: 'base' });
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [combinedDeposits, filter, sortKey, sortDirection]);
+
+  const toggleSort = (key: typeof sortKey) => {
+    if (sortKey === key) {
+      setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection(key === 'createdAt' || key === 'amount' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortLabel = (key: typeof sortKey, label: string) => (
+    <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1.5 hover:text-[#F2F5F4]" aria-label={`Sort deposits by ${label}`}>
+      {label}<span aria-hidden="true">{sortKey === key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+    </button>
   );
 
   const handleOpenProof = async (row: any) => {
@@ -413,13 +439,13 @@ export const AdminDepositsSection: React.FC<{
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-[#0B0F10] border-b border-[#1F2C33] text-[11px] font-semibold text-[#8FA1A8] uppercase tracking-wider">
-                <th className="py-3 px-4">Investor</th>
+                <th className="py-3 px-4">{sortLabel('investorName', 'Investor')}</th>
                 <th className="py-3 px-4">Assigned Gate</th>
-                <th className="py-3 px-4 text-right">Amount</th>
+                <th className="py-3 px-4 text-right">{sortLabel('amount', 'Amount')}</th>
                 <th className="py-3 px-4">Payment Reference</th>
                 <th className="py-3 px-4">Proof of Payment</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">{sortLabel('createdAt', 'Date')}</th>
+                <th className="py-3 px-4">{sortLabel('status', 'Status')}</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
