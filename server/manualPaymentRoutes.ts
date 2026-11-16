@@ -103,6 +103,31 @@ const devPaymentGates: PaymentGateRecord[] = [
   },
 ];
 
+// Clearly labeled sandbox-only fixture used by non-production fallback and API smoke tests.
+devPaymentGates.push({
+  id: 'method-sepa-wire',
+  name: 'Demo SEPA Wire (Sandbox)',
+  method: 'sepa',
+  logo_url: null,
+  instructions: 'Sandbox payment rail for development and automated tests only. Do not transfer real funds.',
+  account_details: { Beneficiary: 'DEMO ONLY — NO REAL PAYMENTS', IBAN: 'DE00 0000 0000 0000 0000 00', BIC: 'DEMOXXXX' },
+  detail_rows: [
+    { label: 'Beneficiary', value: 'DEMO ONLY — NO REAL PAYMENTS' },
+    { label: 'IBAN', value: 'DE00 0000 0000 0000 0000 00' },
+    { label: 'BIC', value: 'DEMOXXXX' },
+  ],
+  minimum_amount: 100,
+  maximum_amount: 5000000,
+  fee_type: 'none',
+  fee_value: 0,
+  extra_fields: [{ key: 'sending_iban', label: 'Originating IBAN (Optional)', required: false }],
+  enabled: true,
+  active: true,
+  sort_order: 3,
+  created_at: '2026-01-10T09:00:00.000Z',
+  updated_at: '2026-01-10T09:00:00.000Z',
+});
+
 const devAssignedGateByUserId = new Map<string, string | null>([
   ['usr-inv-01', '11111111-1111-4111-8111-111111111101'],
 ]);
@@ -307,7 +332,7 @@ manualPaymentRouter.get('/methods', async (req: AuthenticatedRequest, res: Respo
 });
 
 manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) {
+  if (!isSupabaseServerConfigured() && process.env.NODE_ENV === 'production') {
     return res.status(503).json({ success: false, error: 'Persistent payment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
   const body = req.body || {};
@@ -330,6 +355,46 @@ manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: Au
   if (!bytes.length || bytes.length > MAX_PROOF_BYTES) return res.status(413).json({ success: false, error: 'Proof files must be 5 MB or smaller.', code: 'PROOF_FILE_TOO_LARGE', requestId: req.id });
   if (!matchesFileSignature(bytes, mimeType)) return res.status(400).json({ success: false, error: 'The uploaded file content does not match its declared file type.', code: 'INVALID_PROOF_FILE', requestId: req.id });
   const userId = req.user!.id;
+  if (!isSupabaseServerConfigured()) {
+    const method = devPaymentGates.find((item) => item.id === String(body.methodId) && item.enabled);
+    if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
+    if (amount < Number(method.minimum_amount) || (method.maximum_amount && amount > Number(method.maximum_amount))) {
+      return res.status(400).json({ success: false, error: 'The amount is outside this payment method’s allowed limits.', code: 'AMOUNT_OUT_OF_RANGE', requestId: req.id });
+    }
+    if (devManualDeposits.some((deposit) => deposit.manual_transaction_id.toLowerCase() === transactionId.toLowerCase())) {
+      return res.status(409).json({ success: false, error: 'This payment transaction ID has already been submitted.', code: 'DUPLICATE_PAYMENT_TRANSACTION', requestId: req.id });
+    }
+    for (const field of Array.isArray(method.extra_fields) ? method.extra_fields : []) {
+      if (field.required && (typeof extraValues[field.key] !== 'string' || !extraValues[field.key].trim())) {
+        return res.status(400).json({ success: false, error: `Please complete: ${field.label}`, code: 'MISSING_EXTRA_FIELD', requestId: req.id });
+      }
+    }
+    const reference = `KZ-MAN-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+    const fee = method.fee_type === 'fixed' ? Number(method.fee_value) : method.fee_type === 'percent' ? amount * Number(method.fee_value) / 100 : 0;
+    const record: DevManualDepositRecord = {
+      id: `dep-man-${crypto.randomUUID()}`,
+      user_id: userId,
+      user_email: req.user!.email,
+      user_name: req.user!.fullName,
+      amount,
+      currency: 'EUR',
+      status: 'pending',
+      payment_method: method.name,
+      reference,
+      manual_transaction_id: transactionId,
+      sender_name: senderName,
+      payment_date: paymentDate,
+      fee_amount: Number(fee.toFixed(2)),
+      gross_amount: Number((amount + fee).toFixed(2)),
+      extra_values: extraValues,
+      method_id: method.id,
+      created_at: new Date().toISOString(),
+    };
+    devManualDeposits.unshift(record);
+    await registeredDevHooks.onDepositCreated?.(record);
+    await registeredDevHooks.persist?.();
+    return res.status(201).json({ success: true, data: record, message: 'Payment proof received. Your deposit remains pending until finance verification.', requestId: req.id });
+  }
   const client = getSupabaseAdmin();
   let uploadedPath: string | null = null;
   try {
