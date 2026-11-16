@@ -35,6 +35,20 @@ async function apiFetchJson(endpoint: string, init: RequestInit = {}): Promise<a
   return json;
 }
 
+async function requireRpcSuccess<T = unknown>(functionName: string, attempts: Array<Record<string, any>>): Promise<T> {
+  if (!(await hasLiveSupabaseSession())) {
+    throw new Error('A signed-in Supabase session is required for this administrative action.');
+  }
+  let lastError: any = null;
+  for (const args of attempts) {
+    const { data, error } = await supabase.rpc(functionName, args);
+    if (!error) return data as T;
+    lastError = error;
+  }
+  const message = lastError?.message || lastError?.details || lastError?.hint;
+  throw new Error(message || `Database function ${functionName} refused the request.`);
+}
+
 // ============================================================================
 // 1. DASHBOARD: admin_stats()
 // ============================================================================
@@ -143,38 +157,15 @@ export async function fetchWalletBalancesMap(): Promise<Map<string, number>> {
   return map;
 }
 
-export async function assignPaymentGateToInvestor(userId: string, gateId: string | null, gateName?: string): Promise<void> {
-  if (await hasLiveSupabaseSession()) {
-    const attempts: Array<Record<string, any>> = [
-      { p_user: userId, p_gate: gateId },
-      { p_user_id: userId, p_gate_id: gateId },
-    ];
-    for (const args of attempts) {
-      const { error } = await supabase.rpc('assign_gate', args);
-      if (!error) return;
-    }
-  }
-  await apiFetchJson(`/admin/users/${encodeURIComponent(userId)}/assign-gate`, {
-    method: 'PATCH',
-    body: JSON.stringify({ gateId, gateName }),
-  });
+export async function assignPaymentGateToInvestor(userId: string, gateId: string | null, _gateName?: string): Promise<void> {
+  await requireRpcSuccess('assign_gate', [
+    { p_user: userId, p_gate: gateId },
+    { p_user_id: userId, p_gate_id: gateId },
+  ]);
 }
-
-export async function setInvestorFrozenState(userId: string, frozen: boolean, reason?: string): Promise<void> {
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('set_frozen', { p_user: userId, p_frozen: frozen });
-    if (!error) return;
-  }
-  await apiFetchJson(`/admin/users/${encodeURIComponent(userId)}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      status: frozen ? 'suspended' : 'active',
-      frozen,
-      reason: reason || (frozen ? 'Account frozen by staff compliance' : 'Account unfrozen by staff'),
-    }),
-  });
+export async function setInvestorFrozenState(userId: string, frozen: boolean, _reason?: string): Promise<void> {
+  await requireRpcSuccess('set_frozen', [{ p_user: userId, p_frozen: frozen }]);
 }
-
 // ============================================================================
 // 3. KYC: kyc_submissions + signed URL + review_kyc
 // ============================================================================
@@ -254,128 +245,68 @@ export async function reviewKycSubmission(
   submissionId: string,
   approve: boolean,
   reason: string | undefined,
-  userIdForFallback: string
+  _userIdForFallback: string
 ): Promise<void> {
   if (!approve && (!reason || !reason.trim())) {
     throw new Error('A rejection reason is required.');
   }
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('review_kyc', {
-      p_sub: submissionId,
-      p_approve: approve,
-      p_reason: reason?.trim() || null,
-    });
-    if (!error) return;
-    // If the submission ID is not a UUID (fallback doc), fall through to API update
-  }
-  await apiFetchJson(`/admin/users/${encodeURIComponent(userIdForFallback)}/kyc`, {
-    method: 'POST',
-    body: JSON.stringify({ kycStatus: approve ? 'approved' : 'rejected', notes: reason?.trim() || undefined }),
-  });
+  await requireRpcSuccess('review_kyc', [{
+    p_sub: submissionId,
+    p_approve: approve,
+    p_reason: reason?.trim() || null,
+  }]);
 }
-
 // ============================================================================
 // 4. DEPOSITS: approve_deposit (editable received amount) & reject_deposit
 // ============================================================================
 export async function approveDepositSubmission(
   depositId: string,
   actualAmountEur: number,
-  isManualSubmission = false
+  _isManualSubmission = false
 ): Promise<void> {
   if (!Number.isFinite(actualAmountEur) || actualAmountEur <= 0) {
     throw new Error('Amount actually received must be greater than zero.');
   }
-  if (await hasLiveSupabaseSession()) {
-    const cents = Math.round(actualAmountEur * 100);
-    const rpcAttempts: Array<{ fn: string; args: Record<string, any> }> = [
-      { fn: 'approve_deposit', args: { p_id: depositId, p_amount_cents: cents } },
-      { fn: 'approve_deposit', args: { p_deposit: depositId, p_amount_cents: cents } },
-      { fn: 'approve_deposit', args: { p_deposit_id: depositId, p_amount: actualAmountEur } },
-    ];
-    for (const attempt of rpcAttempts) {
-      const { error } = await supabase.rpc(attempt.fn, attempt.args);
-      if (!error) return;
-    }
+  const amountCents = Math.round(actualAmountEur * 100);
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    throw new Error('The received amount is outside the supported cents range.');
   }
-  const endpoint = isManualSubmission
-    ? `/admin/manual-deposits/${encodeURIComponent(depositId)}/approve`
-    : `/admin/deposits/${encodeURIComponent(depositId)}/approve`;
-  await apiFetchJson(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({ amount: actualAmountEur }),
-  });
+  await requireRpcSuccess('approve_deposit', [
+    { p_id: depositId, p_amount_cents: amountCents },
+    { p_deposit: depositId, p_amount_cents: amountCents },
+    { p_deposit_id: depositId, p_amount_cents: amountCents },
+  ]);
 }
-
 export async function rejectDepositSubmission(
   depositId: string,
   reason: string,
-  isManualSubmission = false
+  _isManualSubmission = false
 ): Promise<void> {
-  if (!reason.trim()) {
-    throw new Error('A rejection reason is required.');
-  }
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<{ fn: string; args: Record<string, any> }> = [
-      { fn: 'reject_deposit', args: { p_id: depositId, p_reason: reason.trim() } },
-      { fn: 'reject_deposit', args: { p_deposit: depositId, p_reason: reason.trim() } },
-      { fn: 'reject_deposit', args: { p_deposit_id: depositId, p_reason: reason.trim() } },
-    ];
-    for (const attempt of rpcAttempts) {
-      const { error } = await supabase.rpc(attempt.fn, attempt.args);
-      if (!error) return;
-    }
-  }
-  const endpoint = isManualSubmission
-    ? `/admin/manual-deposits/${encodeURIComponent(depositId)}/reject`
-    : `/admin/deposits/${encodeURIComponent(depositId)}/reject`;
-  await apiFetchJson(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({ reason: reason.trim() }),
-  });
+  if (!reason.trim()) throw new Error('A rejection reason is required.');
+  await requireRpcSuccess('reject_deposit', [
+    { p_id: depositId, p_reason: reason.trim() },
+    { p_deposit: depositId, p_reason: reason.trim() },
+    { p_deposit_id: depositId, p_reason: reason.trim() },
+  ]);
 }
-
 // ============================================================================
 // 5. WITHDRAWALS: approve_withdrawal & reject_withdrawal
 // ============================================================================
 export async function approveWithdrawalRequest(withdrawalId: string): Promise<void> {
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<Record<string, any>> = [
-      { p_id: withdrawalId },
-      { p_withdrawal: withdrawalId },
-      { p_withdrawal_id: withdrawalId },
-    ];
-    for (const args of rpcAttempts) {
-      const { error } = await supabase.rpc('approve_withdrawal', args);
-      if (!error) return;
-    }
-  }
-  await apiFetchJson(`/admin/withdrawals/${encodeURIComponent(withdrawalId)}/approve`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
+  await requireRpcSuccess('approve_withdrawal', [
+    { p_id: withdrawalId },
+    { p_withdrawal: withdrawalId },
+    { p_withdrawal_id: withdrawalId },
+  ]);
 }
-
 export async function rejectWithdrawalRequest(withdrawalId: string, reason: string): Promise<void> {
-  if (!reason.trim()) {
-    throw new Error('A rejection reason is required.');
-  }
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<Record<string, any>> = [
-      { p_id: withdrawalId, p_reason: reason.trim() },
-      { p_withdrawal: withdrawalId, p_reason: reason.trim() },
-      { p_withdrawal_id: withdrawalId, p_reason: reason.trim() },
-    ];
-    for (const args of rpcAttempts) {
-      const { error } = await supabase.rpc('reject_withdrawal', args);
-      if (!error) return;
-    }
-  }
-  await apiFetchJson(`/admin/withdrawals/${encodeURIComponent(withdrawalId)}/reject`, {
-    method: 'POST',
-    body: JSON.stringify({ reason: reason.trim() }),
-  });
+  if (!reason.trim()) throw new Error('A rejection reason is required.');
+  await requireRpcSuccess('reject_withdrawal', [
+    { p_id: withdrawalId, p_reason: reason.trim() },
+    { p_withdrawal: withdrawalId, p_reason: reason.trim() },
+    { p_withdrawal_id: withdrawalId, p_reason: reason.trim() },
+  ]);
 }
-
 // ============================================================================
 // 6. PROPERTIES: Supabase properties table + photo storage upload
 // ============================================================================
@@ -489,22 +420,14 @@ export async function recordInvestmentRpc(params: {
   shares: number;
   sharePriceEur: number;
 }): Promise<void> {
-  if (await hasLiveSupabaseSession()) {
-    const attempts: Array<Record<string, any>> = [
-      { p_user: params.userId, p_property: params.propertyId, p_shares: params.shares },
-      { p_user_id: params.userId, p_property_id: params.propertyId, p_shares: params.shares },
-    ];
-    for (const args of attempts) {
-      const { error } = await supabase.rpc('record_investment', args);
-      if (!error) return;
-    }
+  if (!Number.isSafeInteger(params.shares) || params.shares <= 0) {
+    throw new Error('Share quantity must be a positive integer.');
   }
-  await apiFetchJson('/admin/investments', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  });
+  await requireRpcSuccess('record_investment', [
+    { p_user: params.userId, p_property: params.propertyId, p_shares: params.shares },
+    { p_user_id: params.userId, p_property_id: params.propertyId, p_shares: params.shares },
+  ]);
 }
-
 // ============================================================================
 // 8. DISTRIBUTIONS: pay_distribution & distributions list
 // ============================================================================
@@ -731,19 +654,8 @@ export async function fetchAdminNotificationsTable(): Promise<any[] | null> {
 // 13. STAFF & ROLES: set_staff_role
 // ============================================================================
 export async function assignStaffRoleRpc(userId: string, role: string | null): Promise<void> {
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('set_staff_role', {
-      p_user: userId,
-      p_role: role ?? '',
-    });
-    if (!error) return;
-  }
-  await apiFetchJson('/admin/staff-role', {
-    method: 'POST',
-    body: JSON.stringify({ userId, role }),
-  });
+  await requireRpcSuccess('set_staff_role', [{ p_user: userId, p_role: role ?? '' }]);
 }
-
 // ============================================================================
 // 14. SETTINGS ("limits", "email_templates") & PAYMENT GATES
 // ============================================================================
