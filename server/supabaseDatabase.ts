@@ -546,6 +546,42 @@ export async function saveUserPreferences(userId: string, preferences: Record<st
   return merged;
 }
 
+export interface ComplianceDocumentRecord {
+  id: string;
+  userId: string;
+  category: 'kyc_identity' | 'proof_of_address' | 'accredited_proof';
+  documentType: string;
+  title: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  status: 'pending' | 'verified' | 'rejected';
+  uploadedAt: string;
+  fileDataUrl?: string;
+}
+
+export async function listComplianceDocuments(userId: string): Promise<ComplianceDocumentRecord[]> {
+  const { data, error } = await getSupabaseAdmin().from('user_preferences')
+    .select('preferences').eq('user_id', userId).maybeSingle();
+  if (error) throw error;
+  const docs = data?.preferences?.complianceDocuments;
+  return Array.isArray(docs) ? docs : [];
+}
+
+export async function addComplianceDocument(userId: string, doc: ComplianceDocumentRecord): Promise<ComplianceDocumentRecord[]> {
+  const { data, error: fetchError } = await getSupabaseAdmin().from('user_preferences')
+    .select('preferences').eq('user_id', userId).maybeSingle();
+  if (fetchError) throw fetchError;
+  const current = (data?.preferences && typeof data.preferences === 'object') ? data.preferences : {};
+  const existingDocs = Array.isArray(current.complianceDocuments) ? current.complianceDocuments : [];
+  const nextDocs = [doc, ...existingDocs].slice(0, 25);
+  const merged = { ...current, complianceDocuments: nextDocs };
+  const { error } = await getSupabaseAdmin().from('user_preferences')
+    .upsert({ user_id: userId, preferences: merged, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  if (error) throw error;
+  return nextDocs;
+}
+
 export async function getAdminIdentityByEmail(email: string): Promise<VerifiedSupabaseIdentity | null> {
   if (!isSupabaseServerConfigured()) return null;
   const { data, error } = await getSupabaseAdmin().from('user_profiles')

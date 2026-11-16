@@ -51,6 +51,30 @@ export interface FailedAttemptRecord {
 // In-Memory Server Authoritative Session Store
 export const serverSessions = new Map<string, ServerSession>();
 
+let devSessionHydrateHook: (() => Promise<void>) | null = null;
+let devSessionPersistHook: (() => Promise<void>) | null = null;
+
+export function registerDevSessionPersistence(
+  hydrateFn: () => Promise<void>,
+  persistFn: () => Promise<void>
+): void {
+  devSessionHydrateHook = hydrateFn;
+  devSessionPersistHook = persistFn;
+}
+
+export function hydrateServerSessions(sessions: ServerSession[]): void {
+  if (!Array.isArray(sessions)) return;
+  for (const s of sessions) {
+    if (s && s.id && !s.isRevoked && !serverSessions.has(s.id)) {
+      serverSessions.set(s.id, s);
+    }
+  }
+}
+
+export function exportServerSessions(): ServerSession[] {
+  return Array.from(serverSessions.values()).filter((s) => !s.isRevoked);
+}
+
 // Failed login attempt tracking (keyed by ip + ":" + normalizedEmail)
 const failedLoginAttempts = new Map<string, FailedAttemptRecord>();
 
@@ -176,7 +200,9 @@ export async function createSession(params: {
     });
     if (error) throw error;
   } else {
+    if (devSessionHydrateHook) await devSessionHydrateHook();
     serverSessions.set(sessionId, session);
+    if (devSessionPersistHook) await devSessionPersistHook();
   }
   return session;
 }
@@ -202,6 +228,7 @@ export async function getSession(token: string): Promise<ServerSession | null> {
       idleTimeoutMs: Number(data.idle_timeout_ms), ip: data.ip || '', userAgent: data.user_agent || 'unknown', isRevoked: false
     };
   } else {
+    if (devSessionHydrateHook) await devSessionHydrateHook();
     session = serverSessions.get(token);
   }
   if (!session) return null;
@@ -261,6 +288,7 @@ export async function revokeSession(token: string): Promise<boolean> {
   if (!session) return false;
   session.isRevoked = true;
   serverSessions.delete(token);
+  if (devSessionPersistHook) await devSessionPersistHook();
   return true;
 }
 
@@ -282,6 +310,7 @@ export async function revokeAllUserSessions(userId: string): Promise<number> {
       count++;
     }
   }
+  if (count > 0 && devSessionPersistHook) await devSessionPersistHook();
   return count;
 }
 

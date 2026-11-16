@@ -1,21 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
-import { formatCurrency, formatDate } from '../../lib/utils';
-import { 
-  FileText, 
-  Download, 
-  Printer, 
-  Calendar, 
-  ShieldCheck, 
-  CheckCircle2, 
-  Building2, 
-  Receipt, 
-  Info,
-  ChevronDown,
-  Award,
-  Globe
-} from 'lucide-react';
+import { formatCurrency } from '../../lib/utils';
+import { Download, Printer, ShieldCheck, Award } from 'lucide-react';
 
 export const TaxReportGenerator: React.FC = () => {
   const { user } = useAuth();
@@ -26,17 +13,16 @@ export const TaxReportGenerator: React.FC = () => {
   const userInvestments = user ? ledger.getInvestments(user.id) : [];
   const userTransactions = user ? ledger.getTransactions(user.id) : [];
 
-  // Filter dividend payouts for selected tax year
   const yearlyDividends = userTransactions.filter((tx) => {
     if (tx.type !== 'distribution') return false;
     const year = new Date(tx.createdAt).getFullYear();
     return year === selectedYear;
   });
 
-  const grossDividendIncome = yearlyDividends.reduce((acc, curr) => acc + curr.amount, 0) || 1240.00;
-  const managementExpenseDeduction = Number((grossDividendIncome * 0.10).toFixed(2)); // 10% operating reserve deduction
+  const grossDividendIncome = yearlyDividends.reduce((acc, curr) => acc + curr.amount, 0);
+  const managementExpenseDeduction = Number((grossDividendIncome * 0.1).toFixed(2));
   const netTaxableIncome = Number((grossDividendIncome - managementExpenseDeduction).toFixed(2));
-  const euWithholdingTax19 = Number((netTaxableIncome * 0.19).toFixed(2)); // 19% EU Non-Resident Standard Rate
+  const euWithholdingTax19 = Number((netTaxableIncome * 0.19).toFixed(2));
   const netDisbursedYield = Number((netTaxableIncome - euWithholdingTax19).toFixed(2));
 
   const handlePrintTaxStatement = () => {
@@ -49,31 +35,34 @@ export const TaxReportGenerator: React.FC = () => {
       setIsGenerating(false);
       setDownloadSuccess(true);
       setTimeout(() => setDownloadSuccess(false), 3000);
-    }, 1200);
+    }, 800);
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[#E3E8E3] p-6 sm:p-8 shadow-sm space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E3E8E3]">
+    <div className="portal-card p-5 sm:p-7 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--dash-card-border)]">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#27845D] text-xs font-bold mb-1.5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--dash-highlight)] text-[var(--dash-accent)] border border-[var(--dash-accent-border)] text-xs font-bold mb-1.5">
             <Award className="w-3.5 h-3.5" />
-            <span>EU Modelo 210 & Certified Tax Audits</span>
+            <span>EU Modelo 210 &amp; Certified Tax Audits</span>
           </div>
-          <h2 className="text-2xl font-black text-[#18211F]">Fiscal & Tax Statement Generator</h2>
-          <p className="text-xs text-[#69736F]">
-            Generate official certified tax statements detailing gross rental dividends, deductible SPV expenses, and EU withholding tax compliance.
+          <h2 className="text-xl sm:text-2xl font-bold text-[var(--dash-text)]">
+            Fiscal &amp; Tax Statement Generator
+          </h2>
+          <p className="text-xs text-[var(--dash-text-muted)] mt-0.5">
+            Official annual fiscal summaries detailing gross rental dividends, deductible SPV expenses, and EU withholding compliance.
           </p>
         </div>
 
-        {/* Year Selector */}
         <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-[#18211F]">Tax Year:</label>
+          <label htmlFor="tax-year-select" className="text-xs font-bold text-[var(--dash-text)]">
+            Tax Year:
+          </label>
           <select
+            id="tax-year-select"
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-            className="px-3 py-1.5 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] text-xs font-bold font-mono text-[#18211F] focus:outline-hidden focus:ring-2 focus:ring-[#27845D]"
+            className="px-3 py-1.5 rounded-xl border border-[var(--dash-card-border)] bg-[var(--dash-inner)] text-xs font-bold font-mono text-[var(--dash-text)] focus:outline-none focus:border-[var(--dash-accent)] cursor-pointer"
           >
             <option value={2026}>2026 Fiscal YTD</option>
             <option value={2025}>2025 Tax Year</option>
@@ -82,40 +71,62 @@ export const TaxReportGenerator: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Tax Calculation Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1">
-          <span className="text-[11px] uppercase font-bold text-[#69736F] block">Gross Rental Yield</span>
-          <span className="text-xl sm:text-2xl font-black font-mono text-[#18211F]">{formatCurrency(grossDividendIncome)}</span>
-          <span className="text-[10.5px] text-[#69736F] block">All SPV Distribution Dividends</span>
+      {downloadSuccess && (
+        <div className="p-3 rounded-xl bg-[var(--dash-highlight)] border border-[var(--dash-accent-border)] text-xs font-semibold text-[var(--dash-positive)]">
+          Fiscal statement summary prepared for {selectedYear}. Use &ldquo;Print Tax Statement&rdquo; for certified PDF output.
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-4 rounded-[14px] bg-[var(--dash-inner)] border border-[var(--dash-card-border)] space-y-1">
+          <span className="text-[10.5px] uppercase font-bold text-[var(--dash-text-muted)] block">
+            Gross Rental Yield
+          </span>
+          <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[var(--dash-text)] block">
+            {formatCurrency(grossDividendIncome)}
+          </span>
+          <span className="text-[10.5px] text-[var(--dash-text-muted)] block">SPV Dividends</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1">
-          <span className="text-[11px] uppercase font-bold text-[#69736F] block">Deductible Expenses</span>
-          <span className="text-xl sm:text-2xl font-black font-mono text-[#27845D]">-{formatCurrency(managementExpenseDeduction)}</span>
-          <span className="text-[10.5px] text-[#69736F] block">Property Mgt & Notarial Fees</span>
+        <div className="p-4 rounded-[14px] bg-[var(--dash-inner)] border border-[var(--dash-card-border)] space-y-1">
+          <span className="text-[10.5px] uppercase font-bold text-[var(--dash-text-muted)] block">
+            Deductible Expenses
+          </span>
+          <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[var(--dash-accent)] block">
+            -{formatCurrency(managementExpenseDeduction)}
+          </span>
+          <span className="text-[10.5px] text-[var(--dash-text-muted)] block">Management &amp; Notarial</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#F6F7F4] border border-[#E3E8E3] space-y-1">
-          <span className="text-[11px] uppercase font-bold text-[#69736F] block">EU Withholding Tax (19%)</span>
-          <span className="text-xl sm:text-2xl font-black font-mono text-rose-700">-{formatCurrency(euWithholdingTax19)}</span>
-          <span className="text-[10.5px] text-[#69736F] block">EU Modelo 210 Standard Rate</span>
+        <div className="p-4 rounded-[14px] bg-[var(--dash-inner)] border border-[var(--dash-card-border)] space-y-1">
+          <span className="text-[10.5px] uppercase font-bold text-[var(--dash-text-muted)] block">
+            EU Withholding (19%)
+          </span>
+          <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[var(--dash-negative)] block">
+            -{formatCurrency(euWithholdingTax19)}
+          </span>
+          <span className="text-[10.5px] text-[var(--dash-text-muted)] block">Modelo 210 Standard</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#142421] text-white space-y-1">
-          <span className="text-[11px] uppercase font-bold text-slate-300 block">Net Disbursed Income</span>
-          <span className="text-xl sm:text-2xl font-black font-mono text-[#B7E36A]">{formatCurrency(netDisbursedYield)}</span>
-          <span className="text-[10.5px] text-slate-300 block">Settled to Investor Wallet</span>
+        <div className="p-4 rounded-[14px] bg-[var(--dash-sidebar-active-bg)] border border-[var(--dash-accent-border)] space-y-1">
+          <span className="text-[10.5px] uppercase font-bold text-[var(--dash-text-secondary)] block">
+            Net Disbursed Income
+          </span>
+          <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-[var(--dash-positive)] block">
+            {formatCurrency(netDisbursedYield)}
+          </span>
+          <span className="text-[10.5px] text-[var(--dash-text-secondary)] block">Settled to Wallet</span>
         </div>
       </div>
 
-      {/* Property Breakdown Table */}
       <div className="space-y-3">
-        <h3 className="text-sm font-bold text-[#18211F]">Annual Asset Yield Breakdown ({selectedYear})</h3>
-        <div className="overflow-x-auto">
+        <h3 className="text-sm font-bold text-[var(--dash-text)]">
+          Annual Asset Yield Breakdown ({selectedYear})
+        </h3>
+        <div className="overflow-x-auto rounded-xl border border-[var(--dash-card-border)]">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-[#E3E8E3] text-[#69736F] font-semibold bg-[#F8FAFC]">
+              <tr className="border-b border-[var(--dash-card-border)] text-[var(--dash-text-muted)] font-semibold bg-[var(--dash-inner)]">
                 <th className="py-2.5 px-4">SPV Property Name</th>
                 <th className="py-2.5 px-4">Ownership Units</th>
                 <th className="py-2.5 px-4">Gross Dividends</th>
@@ -124,26 +135,32 @@ export const TaxReportGenerator: React.FC = () => {
                 <th className="py-2.5 px-4 text-right">Certificate ID</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F0F2EE]">
+            <tbody className="divide-y divide-[var(--dash-card-border)]">
               {userInvestments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-[#69736F]">
+                  <td colSpan={6} className="py-6 text-center text-[var(--dash-text-muted)]">
                     No active property allocations recorded for tax year {selectedYear}.
                   </td>
                 </tr>
               ) : (
                 userInvestments.map((inv) => {
-                  const gross = inv.totalDividendsReceived || (inv.projectedMonthlyIncome * 12);
-                  const ded = Number((gross * 0.10).toFixed(2));
+                  const gross = inv.totalDividendsReceived || inv.projectedMonthlyIncome * 12;
+                  const ded = Number((gross * 0.1).toFixed(2));
                   const net = Number((gross - ded).toFixed(2));
                   return (
-                    <tr key={inv.id} className="hover:bg-[#F9FAF8] transition-colors">
-                      <td className="py-3 px-4 font-bold text-[#18211F]">{inv.propertyTitle}</td>
-                      <td className="py-3 px-4 font-mono font-semibold">{inv.tokensPurchased} Units</td>
-                      <td className="py-3 px-4 font-mono text-[#18211F]">{formatCurrency(gross)}</td>
-                      <td className="py-3 px-4 font-mono text-[#27845D]">-{formatCurrency(ded)}</td>
-                      <td className="py-3 px-4 font-mono font-bold text-emerald-700">{formatCurrency(net)}</td>
-                      <td className="py-3 px-4 font-mono text-[#69736F] text-right">{inv.certificateId}</td>
+                    <tr key={inv.id} className="hover:bg-[var(--dash-hover)] transition-colors">
+                      <td className="py-3 px-4 font-bold text-[var(--dash-text)]">{inv.propertyTitle}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-[var(--dash-text)]">
+                        {inv.tokensPurchased} Units
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[var(--dash-text)]">{formatCurrency(gross)}</td>
+                      <td className="py-3 px-4 font-mono text-[var(--dash-accent)]">-{formatCurrency(ded)}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-[var(--dash-positive)]">
+                        {formatCurrency(net)}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[var(--dash-text-muted)] text-right">
+                        {inv.certificateId}
+                      </td>
                     </tr>
                   );
                 })
@@ -153,34 +170,37 @@ export const TaxReportGenerator: React.FC = () => {
         </div>
       </div>
 
-      {/* Certification Footer & Action Buttons */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-[#0F1E1B] text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[var(--dash-inner)] border border-[var(--dash-card-border)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <ShieldCheck className="w-6 h-6 text-[#B7E36A] shrink-0" />
+          <ShieldCheck className="w-6 h-6 text-[var(--dash-accent)] shrink-0" />
           <div>
-            <h4 className="text-xs font-bold text-white uppercase tracking-wide">eIDAS Certified Fiscal Statement</h4>
-            <p className="text-[11px] text-slate-300">
-              Formally issued under Spanish Agencia Tributaria & French Direction Générale des Finances Publiques guidelines.
+            <h4 className="text-xs font-bold text-[var(--dash-text)] uppercase tracking-wide">
+              eIDAS Certified Fiscal Statement
+            </h4>
+            <p className="text-[11px] text-[var(--dash-text-muted)]">
+              Issued under Spanish Agencia Tributaria &amp; French DGFiP reporting guidelines.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
           <button
+            type="button"
             onClick={handlePrintTaxStatement}
-            className="flex-1 sm:flex-none py-2 px-3.5 rounded-xl bg-white text-[#142421] hover:bg-slate-100 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="flex-1 sm:flex-none portal-btn-outline h-10 text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5 text-[#27845D]" />
+            <Printer className="w-3.5 h-3.5 text-[var(--dash-accent)]" />
             <span>Print Tax Statement</span>
           </button>
 
           <button
+            type="button"
             onClick={handleDownloadTaxPdf}
             disabled={isGenerating}
-            className="flex-1 sm:flex-none py-2 px-3.5 rounded-xl bg-[#27845D] hover:bg-[#1f6849] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-none portal-btn h-10 text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            <Download className="w-3.5 h-3.5 text-[#B7E36A]" />
-            <span>{isGenerating ? 'Generating PDF...' : 'Download Official PDF'}</span>
+            <Download className="w-3.5 h-3.5" />
+            <span>{isGenerating ? 'Preparing...' : 'Prepare Statement'}</span>
           </button>
         </div>
       </div>

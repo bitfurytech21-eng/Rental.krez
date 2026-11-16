@@ -64,9 +64,21 @@ function loadCustomCredentials(): CustomAdminCredentials | null {
   return cachedCustomCreds || null;
 }
 
+let devFallbackSessionSecret: string | null = null;
+
+function getAdminSessionSecret(): string {
+  const configured = process.env.SESSION_SECRET || process.env.JWT_SECRET || '';
+  if (configured) return configured;
+  if (process.env.NODE_ENV === 'production') return '';
+  if (!devFallbackSessionSecret) {
+    devFallbackSessionSecret = crypto.randomBytes(32).toString('hex');
+  }
+  return devFallbackSessionSecret;
+}
+
 // Never generate cryptographic randomness during module initialization.
 // Cloudflare Workers prohibit randomBytes() in global scope. A configured
-// SESSION_SECRET (or legacy JWT_SECRET) is required for signed admin sessions.
+// SESSION_SECRET (or legacy JWT_SECRET) is required for signed admin sessions in production.
 
 /**
  * Resolve Administrator configuration from custom store or server environment variables
@@ -94,9 +106,7 @@ export function getAdminConfig() {
     rawPlain === 'your_secure_password';
   const envPlaintextPassword = isPlaceholderPlain ? null : rawPlain;
 
-  // Fail closed when no signing secret is configured. Do not create random
-  // values during module evaluation: Workers reject crypto randomness in global scope.
-  const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET || '';
+  const sessionSecret = getAdminSessionSecret();
 
   if (custom) {
     return {

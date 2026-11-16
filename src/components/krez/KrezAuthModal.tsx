@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
+import { isValidEmail, isValidPassword } from '../../lib/validation';
 
 export type KrezAuthMode = 'login' | 'register' | 'forgot';
 
@@ -31,6 +32,7 @@ export const KrezAuthModal: React.FC = () => {
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offerRegister, setOfferRegister] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export const KrezAuthModal: React.FC = () => {
       setMode(custom.detail?.mode || 'login');
       setRedirectTo(custom.detail?.redirectTo);
       setError(null);
+      setOfferRegister(false);
       setNotice(null);
       setEmailCode('');
       setRequiresEmailCode(false);
@@ -64,6 +67,7 @@ export const KrezAuthModal: React.FC = () => {
   const switchMode = (nextMode: KrezAuthMode) => {
     setMode(nextMode);
     setError(null);
+    setOfferRegister(false);
     setNotice(null);
     setEmailCode('');
     setRequiresEmailCode(false);
@@ -73,22 +77,35 @@ export const KrezAuthModal: React.FC = () => {
     e.preventDefault();
     if (busy) return;
     setError(null);
+    setOfferRegister(false);
     setNotice(null);
 
     const cleanEmail = email.trim();
-    if (!cleanEmail) {
-      setError('Please enter your email address.');
+    if (!isValidEmail(cleanEmail)) {
+      setError('Please provide a valid email address.');
       return;
+    }
+
+    if (mode === 'login' && !password) {
+      setError('Please enter your password.');
+      return;
+    }
+    if (mode === 'register') {
+      const cleanName = fullName.trim();
+      if (cleanName.length < 2) {
+        setError('Please enter your full name.');
+        return;
+      }
+      const passCheck = isValidPassword(password);
+      if (!passCheck.valid) {
+        setError(passCheck.reason || 'Password must be at least 8 characters with uppercase, lowercase, and a number.');
+        return;
+      }
     }
 
     setBusy(true);
     try {
       if (mode === 'login') {
-        if (!password) {
-          setError('Please enter your password.');
-          setBusy(false);
-          return;
-        }
         await login(cleanEmail, password, emailCode || undefined);
         setIsOpen(false);
         setPassword('');
@@ -97,16 +114,6 @@ export const KrezAuthModal: React.FC = () => {
         }
       } else if (mode === 'register') {
         const cleanName = fullName.trim();
-        if (cleanName.length < 2) {
-          setError('Please enter your full name.');
-          setBusy(false);
-          return;
-        }
-        if (password.length < 6) {
-          setError('Password must be at least 6 characters.');
-          setBusy(false);
-          return;
-        }
         const res = await register(cleanEmail, password, cleanName, 'investor', 'individual_investor');
         if (res.requiresVerification) {
           setNotice('Account created. Check your inbox to confirm your email address, or sign in once verified.');
@@ -141,6 +148,7 @@ export const KrezAuthModal: React.FC = () => {
       ) {
         setError('Authentication service is currently unavailable. Please verify your credentials and try again.');
       } else {
+        setOfferRegister(err?.code === 'ACCOUNT_NOT_FOUND_DEV');
         setError(rawMsg || 'Unable to complete request. Please check your details and try again.');
       }
     } finally {
@@ -252,12 +260,18 @@ export const KrezAuthModal: React.FC = () => {
                 id="krez-auth-password"
                 type="password"
                 required
+                minLength={mode === 'register' ? 8 : undefined}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-2 w-full rounded-input border border-border bg-white px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
               />
+              {mode === 'register' && (
+                <p className="mt-1.5 text-xs text-muted">
+                  Minimum 8 characters, including uppercase, lowercase, and a number.
+                </p>
+              )}
             </div>
           )}
 
@@ -284,9 +298,18 @@ export const KrezAuthModal: React.FC = () => {
           )}
 
           {error && (
-            <p className="rounded-input border border-red-300 bg-red-50 px-3.5 py-2.5 text-xs text-red-800" role="alert">
-              {error}
-            </p>
+            <div className="rounded-input border border-red-300 bg-red-50 px-3.5 py-2.5 text-xs text-red-800 space-y-2" role="alert">
+              <p>{error}</p>
+              {offerRegister && mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('register')}
+                  className="inline-flex items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700 cursor-pointer"
+                >
+                  Create account with {email.trim() || 'this email'} →
+                </button>
+              )}
+            </div>
           )}
 
           {notice && (

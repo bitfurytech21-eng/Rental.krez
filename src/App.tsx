@@ -34,7 +34,7 @@ import { SuccessStoriesPage } from './components/pages/SuccessStoriesPage';
 import { BlogPage } from './components/pages/BlogPage';
 import { CompanyNewsPage } from './components/pages/CompanyNewsPage';
 import { AuthPages } from './components/pages/AuthPages';
-import { DashboardPage } from './components/pages/DashboardPage';
+import { PortalShell } from './portal/PortalShell';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
 import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
@@ -126,11 +126,6 @@ function MainApp() {
       });
     }
   }, [currentPath, selectedProperty, currentLanguage]);
-
-  const handleSelectProperty = (property: Property) => {
-    setSelectedProperty(property);
-    navigateTo(`/property/${property.slug}?dossier=full`);
-  };
 
   const handleAuthSuccess = () => {
     if (pendingInvestmentProperty) {
@@ -374,20 +369,7 @@ function MainApp() {
 
       case '/portfolio':
         if (user) {
-          return (
-            <DashboardPage
-              defaultTab="portfolio"
-              onSelectProperty={(id) => {
-                const p = properties.find((prop) => prop.id === id);
-                if (p) handleSelectProperty(p);
-              }}
-              onExploreProperties={() => navigateTo('/properties')}
-              onNavigateProfile={() => navigateTo('/profile')}
-              onNavigateTransactions={() => navigateTo('/transactions')}
-              onNavigatePortfolio={() => navigateTo('/portfolio')}
-              onNavigateHome={() => navigateTo('/')}
-            />
-          );
+          return <PortalShell />;
         }
         return <KrezPortfolioPage onNavigate={navigateTo} />;
 
@@ -399,20 +381,7 @@ function MainApp() {
 
       case '/account':
         if (user) {
-          return (
-            <DashboardPage
-              defaultTab="overview"
-              onSelectProperty={(id) => {
-                const p = properties.find((prop) => prop.id === id);
-                if (p) handleSelectProperty(p);
-              }}
-              onExploreProperties={() => navigateTo('/properties')}
-              onNavigateProfile={() => navigateTo('/profile')}
-              onNavigateTransactions={() => navigateTo('/transactions')}
-              onNavigatePortfolio={() => navigateTo('/portfolio')}
-              onNavigateHome={() => navigateTo('/')}
-            />
-          );
+          return <PortalShell />;
         }
         return <KrezAccountPage onNavigate={navigateTo} />;
 
@@ -593,23 +562,11 @@ function MainApp() {
       case '/referrals':
       case '/notifications':
       case '/profile':
-      case '/support': {
-        const tabMap: Record<string, string> = {
-          '/dashboard': 'overview',
-          '/analytics': 'analytics',
-          '/transactions': 'transactions',
-          '/distributions': 'distributions',
-          '/wallet': 'wallet',
-          '/deposit': 'deposit',
-          '/withdraw': 'withdraw',
-          '/documents': 'documents',
-          '/referrals': 'referrals',
-          '/notifications': 'notifications',
-          '/profile': 'profile',
-          '/support': 'support',
-        };
-        const requestedTab = searchParams.get('tab');
-        const tab = requestedTab || tabMap[basePath] || 'overview';
+      case '/support':
+      case '/explore':
+      case '/more':
+      case '/reports':
+      case '/verification':
         return (
           <ProtectedRoute
             onNavigateLogin={() => {
@@ -617,24 +574,23 @@ function MainApp() {
               navigateTo('/login');
             }}
           >
-            <DashboardPage
-              defaultTab={tab}
-              onSelectProperty={(id) => {
-                const p = properties.find((prop) => prop.id === id);
-                if (p) handleSelectProperty(p);
-              }}
-              onExploreProperties={() => navigateTo('/properties')}
-              onNavigateProfile={() => navigateTo('/profile')}
-              onNavigateTransactions={() => navigateTo('/transactions')}
-              onNavigatePortfolio={() => navigateTo('/portfolio')}
-              onNavigateHome={() => navigateTo('/')}
-            />
+            <PortalShell />
           </ProtectedRoute>
         );
-      }
-
 
       default:
+        if (basePath === '/portal' || basePath.startsWith('/portal/')) {
+          return (
+            <ProtectedRoute
+              onNavigateLogin={() => {
+                setReturnDestination(basePath);
+                navigateTo('/login');
+              }}
+            >
+              <PortalShell />
+            </ProtectedRoute>
+          );
+        }
         return (
           <main className="min-h-[75vh] bg-background pt-header-offset pb-section-sm text-foreground">
             <div className="mx-auto max-w-container px-gutter md:px-gutter-md lg:px-gutter-lg">
@@ -687,7 +643,15 @@ function MainApp() {
       '/notifications',
       '/profile',
       '/support',
-    ].includes(currentBasePath) || currentBasePath.startsWith('/dashboard');
+      '/explore',
+      '/more',
+      '/reports',
+      '/verification',
+    ].includes(currentBasePath) ||
+    currentBasePath.startsWith('/dashboard') ||
+    currentBasePath === '/portal' ||
+    currentBasePath.startsWith('/portal/') ||
+    (Boolean(user) && (currentBasePath === '/portfolio' || currentBasePath === '/account'));
 
   const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
@@ -725,7 +689,7 @@ function MainApp() {
     <div
       className={`flex flex-col ${
         isDashboardView
-          ? 'bg-[#090e17] text-[#f1f5f9] h-screen overflow-hidden'
+          ? 'bg-[#0B1B30] text-white min-h-screen lg:h-screen lg:overflow-hidden'
           : 'bg-background text-foreground font-sans min-h-screen'
       }`}
     >

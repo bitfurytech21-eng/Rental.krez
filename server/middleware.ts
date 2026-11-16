@@ -227,21 +227,27 @@ export async function authenticateToken(
         : verifyAdminSessionToken(token);
       if (!adminSession) return next();
       if (isSupabaseServerConfigured()) {
-        // Legacy signed admin credentials are accepted only when the same email
+        // Legacy signed admin credentials are accepted in production only when the same email
         // maps to a provisioned administrator role in the authoritative database.
-        const identity = await getAdminIdentityByEmail(adminSession.email);
-        if (!identity) return next();
-        req.user = {
-          id: identity.id,
-          email: identity.email,
-          role: identity.role,
-          fullName: identity.fullName,
-          accountType: identity.accountType,
-          balance: identity.balance,
-          status: identity.status || 'active',
-          suspendedReason: identity.suspendedReason
-        };
-        return next();
+        try {
+          const identity = await getAdminIdentityByEmail(adminSession.email);
+          if (identity) {
+            req.user = {
+              id: identity.id,
+              email: identity.email,
+              role: identity.role,
+              fullName: identity.fullName,
+              accountType: identity.accountType,
+              balance: identity.balance,
+              status: identity.status || 'active',
+              suspendedReason: identity.suspendedReason
+            };
+            return next();
+          }
+        } catch {
+          if (process.env.NODE_ENV === 'production') return next();
+        }
+        if (process.env.NODE_ENV === 'production') return next();
       }
       if (process.env.NODE_ENV === 'production') return next();
       req.user = {

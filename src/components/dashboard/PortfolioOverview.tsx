@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Investment } from '../../types/investment';
 import { formatCurrency, formatPercent, formatDate } from '../../lib/utils';
-import { Building2, Award, Calendar, ArrowRight, Printer, Table as TableIcon, FileText } from 'lucide-react';
+import { Building2, ArrowRight, Printer, FileText } from 'lucide-react';
 import { DocumentViewerModal } from './DocumentViewerModal';
 import { printPortfolioReport, PortfolioPrintData } from '../../lib/printService';
 import { useAuth } from '../../lib/auth';
@@ -30,7 +30,7 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         fullName: user?.fullName || 'Verified Investor',
         email: user?.email || 'investor@lagence.com',
         id: user?.id || 'usr-investor-01',
-        kycStatus: user?.kycStatus ? String(user.kycStatus) : 'Verified'
+        kycStatus: user?.kycStatus ? String(user.kycStatus) : 'Verified',
       },
       summary: {
         totalHoldingsValue: totalValue,
@@ -38,9 +38,15 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         activePropertiesCount: investments.length,
         totalDividendsReceived: totalDividends,
         walletBalance: user?.walletBalance || 0,
-        generatedAt: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        generatedAt: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
       },
-      holdings: investments.map(inv => ({
+      holdings: investments.map((inv) => ({
         id: inv.id,
         propertyTitle: inv.propertyTitle,
         tokensPurchased: inv.tokensPurchased,
@@ -49,8 +55,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
         projectedAnnualDividend: (inv.totalAmountInvested * inv.estimatedAnnualYield) / 100,
         dividendsReceived: inv.totalDividendsReceived || 0,
         purchaseDate: formatDate(inv.purchasedAt || inv.startDate),
-        certificateId: inv.certificateId || `CERT-${inv.id.slice(0, 8)}`
-      }))
+        certificateId: inv.certificateId || `CERT-${inv.id.slice(0, 8)}`,
+      })),
     };
   };
 
@@ -59,24 +65,26 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
     printPortfolioReport(reportData);
   };
 
-
-
   if (investments.length === 0) {
     return (
-      <div className="border border-[#303030] rounded-xl p-6 sm:p-8 text-center bg-[#151515]">
-        <div className="w-11 h-11 rounded-lg bg-[#202020] border border-[#303030] text-white flex items-center justify-center mx-auto mb-3 shadow-inner">
-          <Building2 className="w-5 h-5 text-[#35C9F5]" />
+      <div className="rounded-[18px] border border-dashed border-[var(--dash-card-border)] bg-[var(--dash-card)] p-7 sm:p-9 text-center space-y-3">
+        <div className="w-11 h-11 rounded-xl bg-[var(--dash-inner)] border border-[var(--dash-card-border)] text-[var(--dash-accent)] flex items-center justify-center mx-auto">
+          <Building2 className="w-5 h-5" />
         </div>
-        <h3 className="text-sm sm:text-base font-bold text-white mb-1.5 tracking-tight">No Active Property Holdings Yet</h3>
-        <p className="text-xs text-[#A0A0A0] max-w-sm mx-auto mb-4 leading-relaxed">
-          Start building your real estate portfolio today. Choose from our vetted European residential, coliving, and holiday properties.
-        </p>
+        <div className="space-y-1 max-w-sm mx-auto">
+          <h3 className="text-sm sm:text-base font-bold text-[var(--dash-text)]">No active property holdings</h3>
+          <p className="text-xs text-[var(--dash-text-muted)] leading-relaxed">
+            Explore vetted European residential and commercial SPV properties to start building your portfolio.
+          </p>
+        </div>
         {onExploreMore && (
-          <button 
-            onClick={onExploreMore} 
-            className="bg-white hover:bg-[#E5E5E5] text-black px-4 py-2 text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer active:scale-[0.98]"
+          <button
+            type="button"
+            onClick={onExploreMore}
+            className="portal-btn h-10 text-xs inline-flex items-center gap-1.5 cursor-pointer"
           >
-            Browse Active Properties
+            <span>Explore properties</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
@@ -84,39 +92,39 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between items-center">
+    <div className="space-y-3.5">
+      <div className="flex justify-between items-center gap-3">
         <div>
-          <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">Active Property Assets</h3>
-          <p className="text-xs text-[#A0A0A0]">
+          <h3 className="text-sm sm:text-base font-bold text-[var(--dash-text)] tracking-tight">
+            Active Property Assets
+          </h3>
+          <p className="text-xs text-[var(--dash-text-muted)]">
             {investments.length} {investments.length === 1 ? 'Holding' : 'Holdings'} generating monthly distributions
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrintPortfolio}
-            className="py-1.5 px-3 bg-[#202020] hover:bg-[#282828] border border-[#303030] text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#151515] cursor-pointer shadow-xs active:scale-[0.98]"
-            title="Print official Portfolio Performance Report"
-            aria-label="Print official portfolio performance report"
-          >
-            <Printer className="w-3.5 h-3.5 text-[#35C9F5]" />
-            <span>Print Report</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handlePrintPortfolio}
+          className="dashboard-secondary-action min-h-[36px] text-xs cursor-pointer"
+          title="Print official Portfolio Performance Report"
+          aria-label="Print official portfolio performance report"
+        >
+          <Printer className="w-3.5 h-3.5 text-[var(--dash-accent)]" />
+          <span>Print Report</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-        {investments.map((inv, idx) => (
+        {investments.map((inv) => (
           <div
             key={inv.id}
-            className={`cinematic-card cinematic-card-interactive p-4 sm:p-5 rounded-[18px] flex flex-col justify-between animate-cinematic-reveal-${(idx % 4) + 1}`}
+            className="portal-card p-4 sm:p-5 flex flex-col justify-between hover:border-[var(--dash-inner-border)] transition-colors"
           >
             <div>
               <div className="flex items-start justify-between gap-2.5 mb-3.5">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-[#1D1E1E] shrink-0 border border-white/[0.12] shadow-sm">
+                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-[var(--dash-inner)] shrink-0 border border-[var(--dash-card-border)]">
                     <img
                       src={inv.propertyImage}
                       alt={inv.propertyTitle}
@@ -125,61 +133,76 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
                     />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-bold text-[#F5F5F2] truncate">{inv.propertyTitle}</h4>
-                    <span className="text-[11px] text-[#A5A6A5] truncate block mt-0.5">{inv.propertyLocation}</span>
+                    <h4 className="text-xs sm:text-sm font-bold text-[var(--dash-text)] truncate">
+                      {inv.propertyTitle}
+                    </h4>
+                    <span className="text-[11px] text-[var(--dash-text-muted)] truncate block mt-0.5">
+                      {inv.propertyLocation}
+                    </span>
                   </div>
                 </div>
 
-                <span className="text-[10px] font-semibold text-[#43C98B] bg-[#43C98B]/10 px-2.5 py-0.5 rounded-full border border-[#43C98B]/25 shrink-0 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#43C98B]" /> Active
-                </span>
+                <span className="portal-pill ok">Active</span>
               </div>
 
-              {/* Stats Grid with Clean Tabular Numbers */}
-              <div className="grid grid-cols-3 gap-2 p-3 bg-[#141515]/85 rounded-xl border border-white/[0.08] text-[11px] mb-3.5 shadow-inner">
+              <div className="grid grid-cols-3 gap-2 p-3 bg-[var(--dash-inner)] rounded-xl border border-[var(--dash-card-border)] text-[11px] mb-3.5">
                 <div>
-                  <span className="text-[#777979] block text-[9.5px] font-semibold uppercase tracking-wider">Holding</span>
-                  <span className="financial-num text-[#F5F5F2] text-xs sm:text-[13.5px] block mt-0.5">{inv.tokensPurchased} Units</span>
-                  <span className="financial-num text-[10.5px] text-[#777979] block font-medium">{formatCurrency(inv.totalAmountInvested)}</span>
+                  <span className="text-[var(--dash-text-muted)] block text-[9.5px] font-semibold uppercase tracking-wider">
+                    Holding
+                  </span>
+                  <span className="financial-num text-[var(--dash-text)] font-bold text-xs sm:text-[13px] block mt-0.5">
+                    {inv.tokensPurchased} Units
+                  </span>
+                  <span className="financial-num text-[10.5px] text-[var(--dash-text-muted)] block">
+                    {formatCurrency(inv.totalAmountInvested)}
+                  </span>
                 </div>
 
-                <div className="border-x border-white/[0.08] px-2.5">
-                  <span className="text-[9.5px] font-semibold text-[#777979] uppercase block truncate">Annual Yield</span>
-                  <span className="financial-num text-[#55BDE8] text-xs sm:text-[13.5px] block mt-0.5">{formatPercent(inv.estimatedAnnualYield)}</span>
-                  <span className="text-[9.5px] text-[#777979] block font-medium">Projected</span>
+                <div className="border-x border-[var(--dash-card-border)] px-2.5">
+                  <span className="text-[9.5px] font-semibold text-[var(--dash-text-muted)] uppercase block truncate">
+                    Annual Yield
+                  </span>
+                  <span className="financial-num text-[var(--dash-accent)] font-bold text-xs sm:text-[13px] block mt-0.5">
+                    {formatPercent(inv.estimatedAnnualYield)}
+                  </span>
+                  <span className="text-[9.5px] text-[var(--dash-text-muted)] block">Projected</span>
                 </div>
 
                 <div>
-                  <span className="text-[9.5px] font-semibold text-[#777979] uppercase block truncate">Performance</span>
-                  <span className="financial-num text-[#43C98B] text-xs sm:text-[13.5px] block mt-0.5">
+                  <span className="text-[9.5px] font-semibold text-[var(--dash-text-muted)] uppercase block truncate">
+                    Performance
+                  </span>
+                  <span className="financial-num text-[var(--dash-positive)] font-bold text-xs sm:text-[13px] block mt-0.5">
                     +{formatCurrency(inv.totalDividendsReceived)}
                   </span>
-                  <span className="text-[9.5px] text-[#43C98B] block font-medium">Realized</span>
+                  <span className="text-[9.5px] text-[var(--dash-positive)] block">Realized</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs pt-2.5 border-t border-white/[0.08]">
+            <div className="flex items-center justify-between text-xs pt-2.5 border-t border-[var(--dash-card-border)]">
               <button
                 type="button"
                 onClick={() => setSelectedInvestmentForDocs(inv)}
-                className="font-semibold text-[#F5F5F2] flex items-center gap-1.5 bg-[#1D1E1E] hover:bg-[#252626] border border-white/[0.1] px-3 py-1.5 rounded-lg text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#151515] cursor-pointer transition-colors active:scale-[0.98]"
+                className="font-semibold text-[var(--dash-text)] flex items-center gap-1.5 bg-[var(--dash-inner)] hover:bg-[var(--dash-hover)] border border-[var(--dash-card-border)] px-3 py-1.5 rounded-lg text-[11px] cursor-pointer transition-colors"
                 aria-label={`View legal documents for ${inv.propertyTitle}`}
               >
-                <FileText className="w-3.5 h-3.5 text-[#55BDE8]" /> Legal Docs
+                <FileText className="w-3.5 h-3.5 text-[var(--dash-accent)]" /> Legal Docs
               </button>
 
               <div className="flex items-center gap-2.5">
-                <span className="font-mono text-[9.5px] text-[#A5A6A5] hidden sm:inline">{inv.certificateId}</span>
+                <span className="font-mono text-[9.5px] text-[var(--dash-text-muted)] hidden sm:inline">
+                  {inv.certificateId}
+                </span>
                 {onSelectProperty && (
                   <button
                     type="button"
                     onClick={() => onSelectProperty(inv.propertyId)}
-                    className="cinematic-btn cinematic-btn-primary flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-lg font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#55BDE8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#151515] cursor-pointer"
+                    className="cinematic-btn-primary flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-lg font-bold cursor-pointer"
                     aria-label={`View asset ${inv.propertyTitle}`}
                   >
                     <span>View Asset</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#070A09]" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -187,7 +210,6 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({
           </div>
         ))}
       </div>
-
 
       <DocumentViewerModal
         investment={selectedInvestmentForDocs}

@@ -80,6 +80,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
   // Status states
   const [error, setError] = useState<string | null>(null);
+  const [offerRegister, setOfferRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [verificationPending, setVerificationPending] = useState(false);
@@ -87,6 +88,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
+    setOfferRegister(false);
     setEmailCode('');
     setRequiresEmailCode(false);
     setMode(newMode);
@@ -97,6 +99,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setOfferRegister(false);
     if (!isValidEmail(email)) {
       setError('Please provide a valid email address.');
       return;
@@ -119,6 +122,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
         setError('Authentication service is currently unavailable. Please check your credentials and try again.');
       } else {
+        setOfferRegister(err?.code === 'ACCOUNT_NOT_FOUND_DEV');
         setError(msg || 'Login failed. Please verify your credentials.');
       }
     } finally {
@@ -227,8 +231,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) {
-      setError('New password must be at least 8 characters long.');
+    const passCheck = isValidPassword(password);
+    if (!passCheck.valid) {
+      setError(passCheck.reason || 'New password must be at least 8 characters long.');
       return;
     }
     if (password !== confirmPassword) {
@@ -339,8 +344,17 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           {error && (
             <div className="p-3.5 mb-5 rounded-2xl bg-red-950/70 text-red-200 text-xs font-semibold border border-red-500/40 flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <div className="flex-1 space-y-1.5">
+              <div className="flex-1 space-y-2">
                 <span className="leading-relaxed block">{error}</span>
+                {offerRegister && mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('register')}
+                    className="inline-flex items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
+                  >
+                    Register with {email.trim() || 'this email'} →
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -563,11 +577,15 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     <input
                       type="password"
                       required
+                      minLength={8}
                       placeholder="Create secure password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                     />
+                    <p className="text-[11px] text-[#8EA7C7]">
+                      Include at least 8 characters with uppercase, lowercase, and a number.
+                    </p>
                   </div>
 
                   <button

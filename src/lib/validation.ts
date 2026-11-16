@@ -1,11 +1,25 @@
 export function isValidEmail(email: string): boolean {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email.trim());
+  const clean = email.trim();
+  if (clean.length < 5 || clean.length > 254) return false;
+  const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  return re.test(clean);
 }
 
 export function isValidPassword(password: string): { valid: boolean; reason?: string } {
-  if (password.length < 8) {
+  if (!password || password.length < 8) {
     return { valid: false, reason: 'Password must be at least 8 characters long.' };
+  }
+  if (password.length > 128) {
+    return { valid: false, reason: 'Password must not exceed 128 characters.' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, reason: 'Password must contain at least one uppercase letter (A-Z).' };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, reason: 'Password must contain at least one lowercase letter (a-z).' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, reason: 'Password must contain at least one number (0-9).' };
   }
   return { valid: true };
 }

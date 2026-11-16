@@ -341,7 +341,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error('Authentication service is unavailable. Please try again shortly.');
         }
         const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Invalid email address or password.';
-        throw new Error(errMsg);
+        const typedErr: any = new Error(errMsg);
+        typedErr.code = err?.code;
+        typedErr.status = err?.status;
+        throw typedErr;
       }
 
       if ((res as any)?.requiresEmailCode || (res as any)?.data?.requiresEmailCode) {
