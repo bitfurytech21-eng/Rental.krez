@@ -27,10 +27,10 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
             type="button"
             aria-pressed={active}
             onClick={() => onChange(opt)}
-            className={`min-h-[40px] px-4 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors duration-150 border ${
+            className={`min-h-[44px] px-4 rounded-[14px] text-sm font-semibold whitespace-nowrap shrink-0 transition-colors duration-150 border ${
               active
-                ? 'bg-[#C5A880] text-[#0B1B30] border-[#C5A880]'
-                : 'bg-[#102442] text-[#8EA7C7] border-[#1D3860] hover:text-white hover:border-[#C5A880]/60'
+                ? 'bg-[#6FD8B0] text-[#07231A] border-[#6FD8B0]'
+                : 'bg-[#121A1F] text-[#8FA1A8] border-[#1F2C33] hover:text-[#F2F5F4] hover:border-[#6FD8B0]/60'
             }`}
           >
             {opt}

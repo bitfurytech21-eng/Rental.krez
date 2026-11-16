@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
-import { isValidEmail, isValidPassword } from '../../lib/validation';
+import { getPasswordChecklist, isValidEmail, isValidPassword } from '../../lib/validation';
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
 import { AccountType, ACCOUNT_TYPES, UserRole } from '../../types/user';
@@ -18,11 +18,14 @@ import {
   Globe,
   Phone,
   Tag,
-  Gift
+  Gift,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { authApi } from '../../lib/api';
 import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from '../../data/countries';
 import { ledger } from '../../lib/ledger';
+import authLuxuryKeyBg from '../../assets/images/auth_luxury_key_1794021673223.jpg';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register' | 'forgot-password' | 'reset-password';
@@ -81,6 +84,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   // Status states
   const [error, setError] = useState<string | null>(null);
   const [offerRegister, setOfferRegister] = useState(false);
+  const [offerLogin, setOfferLogin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [verificationPending, setVerificationPending] = useState(false);
@@ -89,6 +94,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
     setOfferRegister(false);
+    setOfferLogin(false);
+    setShowPassword(false);
     setEmailCode('');
     setRequiresEmailCode(false);
     setMode(newMode);
@@ -100,6 +107,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     e.preventDefault();
     setError(null);
     setOfferRegister(false);
+    setOfferLogin(false);
     if (!isValidEmail(email)) {
       setError('Please provide a valid email address.');
       return;
@@ -134,8 +142,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!fullName.trim()) {
-      setError('Full legal name is required.');
+    setOfferLogin(false);
+    const cleanName = fullName.trim();
+    if (cleanName.length < 2) {
+      setError('Full legal name must contain at least 2 characters.');
       return;
     }
     if (!isValidEmail(email)) {
@@ -199,6 +209,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
         setError('Registration service is currently unavailable. Please try again.');
       } else {
+        setOfferLogin(
+          err?.code === 'EMAIL_ALREADY_EXISTS' ||
+          /already exists|already registered/i.test(msg)
+        );
         setError(msg || 'Registration failed. Please check your information.');
       }
     } finally {
@@ -253,17 +267,19 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     }
   };
 
+  const passChecks = getPasswordChecklist(password);
+
   return (
-    <div className="auth-page py-12 px-4 sm:px-6 bg-[#070A11] min-h-[calc(100vh-160px)] flex items-center justify-center text-white relative overflow-hidden">
+    <div className="py-10 sm:py-12 px-4 sm:px-6 bg-[#070A11] min-h-[calc(100vh-160px)] flex items-center justify-center text-white relative overflow-hidden">
       {/* Background ambient lighting */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#315FEA]/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="auth-card max-w-4xl w-full bg-[#0E131F]/90 rounded-3xl border border-white/10 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10 backdrop-blur-md">
+      <div className="max-w-4xl w-full bg-[#0E131F]/90 rounded-3xl border border-white/10 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10 backdrop-blur-md">
         {/* Left Side Decorative Photography Panel */}
         <div 
           className="hidden lg:flex lg:col-span-5 relative flex-col justify-between p-8 bg-cover bg-center border-r border-white/10 overflow-hidden"
-          style={{ backgroundImage: `linear-gradient(to bottom, rgba(14, 19, 31, 0.65), rgba(14, 19, 31, 0.95)), url('/src/assets/images/auth_luxury_key_1794021673223.jpg')` }}
+          style={{ backgroundImage: `linear-gradient(to bottom, rgba(14, 19, 31, 0.65), rgba(14, 19, 31, 0.95)), url(${authLuxuryKeyBg})` }}
         >
           <div className="space-y-2 relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm text-[10px] font-mono font-bold text-emerald-400">
@@ -342,7 +358,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           </div>
 
           {error && (
-            <div className="p-3.5 mb-5 rounded-2xl bg-red-950/70 text-red-200 text-xs font-semibold border border-red-500/40 flex items-start gap-2.5">
+            <div className="p-3.5 mb-5 rounded-2xl bg-red-950/70 text-red-200 text-xs font-semibold border border-red-500/40 flex items-start gap-2.5" role="alert">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <div className="flex-1 space-y-2">
                 <span className="leading-relaxed block">{error}</span>
@@ -353,6 +369,15 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     className="inline-flex items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
                   >
                     Register with {email.trim() || 'this email'} →
+                  </button>
+                )}
+                {offerLogin && mode === 'register' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('login')}
+                    className="inline-flex items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
+                  >
+                    Sign in with {email.trim() || 'this email'} →
                   </button>
                 )}
               </div>
@@ -391,12 +416,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
           {/* 1. LOGIN FORM */}
           {mode === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} noValidate className="space-y-4">
               <div className="form-field space-y-1">
                 <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -415,14 +441,25 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     Forgot Password?
                   </button>
                 </div>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-11 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-2 flex items-center px-2 text-[#8EA7C7] hover:text-white cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               
@@ -480,7 +517,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           {mode === 'register' && (
             <div>
               {!verificationPending ? (
-                <form onSubmit={handleRegister} className="space-y-4">
+                <form onSubmit={handleRegister} noValidate className="space-y-4">
                   <div className="form-field space-y-1">
                     <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Full Legal Name</label>
                     <input
@@ -574,18 +611,42 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
                   <div className="form-field space-y-1">
                     <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Min 8 Characters)</label>
-                    <input
-                      type="password"
-                      required
-                      minLength={8}
-                      placeholder="Create secure password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
-                    />
-                    <p className="text-[11px] text-[#8EA7C7]">
-                      Include at least 8 characters with uppercase, lowercase, and a number.
-                    </p>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        placeholder="Create secure password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-11 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="absolute inset-y-0 right-2 flex items-center px-2 text-[#8EA7C7] hover:text-white cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 pt-1.5 text-[11px]">
+                      {[
+                        { ok: passChecks.minLength, label: '8+ characters' },
+                        { ok: passChecks.hasUpper, label: 'Uppercase (A–Z)' },
+                        { ok: passChecks.hasLower, label: 'Lowercase (a–z)' },
+                        { ok: passChecks.hasDigit, label: 'Number (0–9)' },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          className={`flex items-center gap-1.5 ${item.ok ? 'text-emerald-400 font-semibold' : 'text-[#8EA7C7]'}`}
+                        >
+                          <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${item.ok ? 'text-emerald-400' : 'text-[#8EA7C7]/45'}`} />
+                          <span>{item.label}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <button
@@ -643,12 +704,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
           {/* 3. FORGOT PASSWORD */}
           {mode === 'forgot-password' && (
-            <form onSubmit={handleResetRequest} className="space-y-4">
+            <form onSubmit={handleResetRequest} noValidate className="space-y-4">
               <div className="form-field space-y-1">
                 <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Registered Email Address</label>
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -678,17 +740,28 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
           {/* 4. RESET PASSWORD */}
           {mode === 'reset-password' && (
-            <form onSubmit={handleUpdatePassword} className="space-y-4">
+            <form onSubmit={handleUpdatePassword} noValidate className="space-y-4">
               <div className="form-field space-y-1">
                 <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 8 Characters)</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter new password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    autoComplete="new-password"
+                    placeholder="Enter new password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-11 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-2 flex items-center px-2 text-[#8EA7C7] hover:text-white cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div className="form-field space-y-1">

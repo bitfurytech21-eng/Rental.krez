@@ -1,14 +1,25 @@
-export function formatEuro(amount: number, showSign = false): string {
+export function formatCurrency(amount: number, currency = 'EUR', showSign = false): string {
   const num = Number.isFinite(amount) ? amount : 0;
-  const formatted = new Intl.NumberFormat('en-IE', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Math.abs(num));
+  const code = String(currency || 'EUR').toUpperCase();
+  const isIsoCurrency = /^[A-Z]{3}$/.test(code) && !['USDC', 'USDT', 'SOL'].includes(code);
+  const formatted = isIsoCurrency
+    ? new Intl.NumberFormat('en-IE', {
+        style: 'currency',
+        currency: code,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Math.abs(num))
+    : `${new Intl.NumberFormat('en-IE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Math.abs(num))} ${code}`;
   if (showSign && num > 0) return `+${formatted}`;
   if (num < 0) return `-${formatted}`;
   return formatted;
+}
+
+export function formatEuro(amount: number, showSign = false): string {
+  return formatCurrency(amount, 'EUR', showSign);
 }
 
 export function formatNumber(value: number, decimals = 0): string {
@@ -52,6 +63,16 @@ export function formatDateTime(iso?: string | null): string {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function formatTime(input?: Date | string | null): string {
+  if (!input) return 'Just now';
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return 'Just now';
+  return d.toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });

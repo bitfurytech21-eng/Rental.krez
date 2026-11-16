@@ -14,20 +14,18 @@ export const StatTile: React.FC<StatTileProps> = ({
   tone = 'default',
 }) => {
   const valueClass =
-    tone === 'accent'
-      ? 'text-[#C5A880]'
-      : tone === 'positive'
-      ? 'text-[#34D399]'
-      : 'text-white';
+    tone === 'accent' || tone === 'positive'
+      ? 'text-[#6FD8B0]'
+      : 'text-[#F2F5F4]';
 
   return (
-    <div className="portal-card p-4 sm:p-5 flex flex-col justify-between gap-2">
-      <div className="text-xs font-medium text-[#8EA7C7]">{label}</div>
-      <div className={`text-xl sm:text-2xl font-bold portal-tabular tracking-tight ${valueClass}`}>
+    <div className="portal-card flex flex-col justify-between gap-2">
+      <div className="text-sm font-medium text-[#8FA1A8]">{label}</div>
+      <div className={`text-2xl sm:text-[26px] font-bold portal-tabular tracking-tight leading-tight ${valueClass}`}>
         {value}
       </div>
       {sublabel && (
-        <div className="text-xs text-[#8EA7C7]">{sublabel}</div>
+        <div className="text-xs text-[#8FA1A8]">{sublabel}</div>
       )}
     </div>
   );

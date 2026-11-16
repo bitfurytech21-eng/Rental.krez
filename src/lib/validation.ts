@@ -5,6 +5,24 @@ export function isValidEmail(email: string): boolean {
   return re.test(clean);
 }
 
+export interface PasswordChecklist {
+  minLength: boolean;
+  maxLength: boolean;
+  hasUpper: boolean;
+  hasLower: boolean;
+  hasDigit: boolean;
+}
+
+export function getPasswordChecklist(password: string): PasswordChecklist {
+  return {
+    minLength: password.length >= 8,
+    maxLength: password.length <= 128,
+    hasUpper: /[A-Z]/.test(password),
+    hasLower: /[a-z]/.test(password),
+    hasDigit: /[0-9]/.test(password),
+  };
+}
+
 export function isValidPassword(password: string): { valid: boolean; reason?: string } {
   if (!password || password.length < 8) {
     return { valid: false, reason: 'Password must be at least 8 characters long.' };

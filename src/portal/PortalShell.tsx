@@ -1,5 +1,6 @@
 import React from 'react';
 import './styles/portal.css';
+import { useToast } from '../context/ToastContext';
 import { PortalProvider, usePortal } from './state/PortalContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -21,7 +22,18 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { SupportPage } from './pages/SupportPage';
 
 const PortalLayout: React.FC = () => {
-  const { route } = usePortal();
+  const toast = useToast();
+  const { route, selectedPropertySlug, sampleDataEnabled, setSampleDataEnabled } = usePortal();
+  const mainRef = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0 });
+    }
+  }, [route, selectedPropertySlug]);
 
   const renderRoute = () => {
     switch (route) {
@@ -65,8 +77,30 @@ const PortalLayout: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 lg:overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 sm:py-6 pb-8">
-          <div className="mx-auto max-w-6xl">{renderRoute()}</div>
+        <main ref={mainRef} className="flex-1 overflow-y-auto py-5 sm:py-6 portal-safe-main">
+          <div className="mx-auto max-w-6xl space-y-5">
+            {sampleDataEnabled && (
+              <div
+                role="status"
+                className="rounded-[14px] border border-[#FCD34D]/40 bg-[#121A1F] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3"
+              >
+                <span className="text-xs font-medium text-[#FCD34D]">
+                  Sample data is active for previewing populated views.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSampleDataEnabled(false);
+                    toast.info('Switched back to live account data.');
+                  }}
+                  className="min-h-[44px] px-3 rounded-[14px] border border-[#1F2C33] text-xs font-semibold text-[#F2F5F4] hover:border-[#6FD8B0] transition-colors"
+                >
+                  Use live data
+                </button>
+              </div>
+            )}
+            {renderRoute()}
+          </div>
         </main>
         <BottomNav />
       </div>

@@ -1,5 +1,5 @@
 /**
- * Non-production Node-only persistence for dev customers, sessions, and compliance docs.
+ * Non-production Node-only persistence for dev customers, sessions, compliance docs, and steps.
  * Uses dynamic specifier construction so Cloudflare Workers / edge bundlers never fail.
  */
 
@@ -7,12 +7,14 @@ export interface DevAuthSnapshot {
   customers: any[];
   sessions: any[];
   complianceDocs: Record<string, any[]>;
+  complianceSteps?: Record<string, any[]>;
 }
 
 const EMPTY_SNAPSHOT: DevAuthSnapshot = {
   customers: [],
   sessions: [],
   complianceDocs: {},
+  complianceSteps: {},
 };
 
 export function isLocalDevPersistenceEnabled(): boolean {
@@ -43,6 +45,10 @@ export async function loadDevAuthSnapshot(): Promise<DevAuthSnapshot> {
       complianceDocs:
         parsed?.complianceDocs && typeof parsed.complianceDocs === 'object'
           ? parsed.complianceDocs
+          : {},
+      complianceSteps:
+        parsed?.complianceSteps && typeof parsed.complianceSteps === 'object'
+          ? parsed.complianceSteps
           : {},
     };
   } catch {

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
-import { isValidEmail, isValidPassword } from '../../lib/validation';
+import { getPasswordChecklist, isValidEmail, isValidPassword } from '../../lib/validation';
 
 export type KrezAuthMode = 'login' | 'register' | 'forgot';
 
@@ -28,11 +28,13 @@ export const KrezAuthModal: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offerRegister, setOfferRegister] = useState(false);
+  const [offerLogin, setOfferLogin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +44,9 @@ export const KrezAuthModal: React.FC = () => {
       setRedirectTo(custom.detail?.redirectTo);
       setError(null);
       setOfferRegister(false);
+      setOfferLogin(false);
       setNotice(null);
+      setShowPassword(false);
       setEmailCode('');
       setRequiresEmailCode(false);
       setIsOpen(true);
@@ -68,7 +72,9 @@ export const KrezAuthModal: React.FC = () => {
     setMode(nextMode);
     setError(null);
     setOfferRegister(false);
+    setOfferLogin(false);
     setNotice(null);
+    setShowPassword(false);
     setEmailCode('');
     setRequiresEmailCode(false);
   };
@@ -78,6 +84,7 @@ export const KrezAuthModal: React.FC = () => {
     if (busy) return;
     setError(null);
     setOfferRegister(false);
+    setOfferLogin(false);
     setNotice(null);
 
     const cleanEmail = email.trim();
@@ -149,12 +156,18 @@ export const KrezAuthModal: React.FC = () => {
         setError('Authentication service is currently unavailable. Please verify your credentials and try again.');
       } else {
         setOfferRegister(err?.code === 'ACCOUNT_NOT_FOUND_DEV');
+        setOfferLogin(
+          err?.code === 'EMAIL_ALREADY_EXISTS' ||
+          /already exists|already registered/i.test(rawMsg)
+        );
         setError(rawMsg || 'Unable to complete request. Please check your details and try again.');
       }
     } finally {
       setBusy(false);
     }
   };
+
+  const passChecks = getPasswordChecklist(password);
 
   return (
     <div
@@ -166,7 +179,7 @@ export const KrezAuthModal: React.FC = () => {
         if (e.target === e.currentTarget) setIsOpen(false);
       }}
     >
-      <div className="relative w-full max-w-md rounded-card border border-border bg-background p-card-pad shadow-2xl">
+      <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-card border border-border bg-background p-card-pad shadow-2xl">
         <button
           type="button"
           onClick={() => setIsOpen(false)}
@@ -197,7 +210,7 @@ export const KrezAuthModal: React.FC = () => {
             : 'Enter the email address registered to your account.'}
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
           {mode === 'register' && (
             <div>
               <label
@@ -256,21 +269,44 @@ export const KrezAuthModal: React.FC = () => {
                   </button>
                 )}
               </div>
-              <input
-                id="krez-auth-password"
-                type="password"
-                required
-                minLength={mode === 'register' ? 8 : undefined}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="mt-2 w-full rounded-input border border-border bg-white px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
-              />
+              <div className="relative mt-2">
+                <input
+                  id="krez-auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={mode === 'register' ? 8 : undefined}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-input border border-border bg-white px-4 py-3 pr-11 text-sm text-foreground focus:border-primary focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-2 flex items-center px-2 text-muted hover:text-foreground cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {mode === 'register' && (
-                <p className="mt-1.5 text-xs text-muted">
-                  Minimum 8 characters, including uppercase, lowercase, and a number.
-                </p>
+                <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+                  {[
+                    { ok: passChecks.minLength, label: '8+ characters' },
+                    { ok: passChecks.hasUpper, label: 'Uppercase (A–Z)' },
+                    { ok: passChecks.hasLower, label: 'Lowercase (a–z)' },
+                    { ok: passChecks.hasDigit, label: 'Number (0–9)' },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className={`flex items-center gap-1.5 ${item.ok ? 'text-emerald-700 font-medium' : 'text-muted'}`}
+                    >
+                      <CheckCircle2 className={`h-3.5 w-3.5 shrink-0 ${item.ok ? 'text-emerald-600' : 'text-muted/50'}`} />
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -307,6 +343,15 @@ export const KrezAuthModal: React.FC = () => {
                   className="inline-flex items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700 cursor-pointer"
                 >
                   Create account with {email.trim() || 'this email'} →
+                </button>
+              )}
+              {offerLogin && mode === 'register' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="inline-flex items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700 cursor-pointer"
+                >
+                  Sign in with {email.trim() || 'this email'} →
                 </button>
               )}
             </div>

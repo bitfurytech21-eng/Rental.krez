@@ -1,35 +1,50 @@
-export const MIN_DEPOSIT_EUR = 100;
-export const MAX_DEPOSIT_EUR = 5_000_000;
-export const MIN_WITHDRAWAL_EUR = 250;
+import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
+import { formatEuro } from './format';
+
 export const MAX_COMPLIANCE_DOC_BYTES = 15 * 1024 * 1024;
 
-export function validateDepositAmount(raw: string | number): { valid: boolean; value: number; error?: string } {
+export function validateDepositAmount(
+  raw: string | number,
+  limits?: { minDepositEur?: number; maxDepositEur?: number }
+): { valid: boolean; value: number; error?: string } {
+  const minEur = limits?.minDepositEur ?? PORTAL_PLACEHOLDER_CONFIG.limits.minDepositEur;
+  const maxEur = limits?.maxDepositEur ?? PORTAL_PLACEHOLDER_CONFIG.limits.maxDepositEur;
   const value = typeof raw === 'number' ? raw : Number(String(raw).replace(/,/g, '.'));
   if (!Number.isFinite(value) || value <= 0) {
     return { valid: false, value: 0, error: 'Enter a valid positive EUR amount.' };
   }
-  if (value < MIN_DEPOSIT_EUR) {
-    return { valid: false, value, error: `Minimum deposit is €${MIN_DEPOSIT_EUR}.` };
+  if (value < minEur) {
+    return { valid: false, value, error: `Minimum deposit is ${formatEuro(minEur)}.` };
   }
-  if (value > MAX_DEPOSIT_EUR) {
-    return { valid: false, value, error: `Single deposits cannot exceed €${MAX_DEPOSIT_EUR.toLocaleString('en-IE')}.` };
+  if (value > maxEur) {
+    return {
+      valid: false,
+      value,
+      error: `Single deposits cannot exceed ${formatEuro(maxEur)}.`,
+    };
   }
   return { valid: true, value: Math.round(value * 100) / 100 };
 }
 
 export function validateWithdrawalAmount(
   raw: string | number,
-  availableBalance: number
+  availableBalance: number,
+  minEurOverride?: number
 ): { valid: boolean; value: number; error?: string } {
+  const minEur = minEurOverride ?? PORTAL_PLACEHOLDER_CONFIG.limits.minWithdrawalEur;
   const value = typeof raw === 'number' ? raw : Number(String(raw).replace(/,/g, '.'));
   if (!Number.isFinite(value) || value <= 0) {
     return { valid: false, value: 0, error: 'Enter a valid positive EUR amount.' };
   }
-  if (value < MIN_WITHDRAWAL_EUR) {
-    return { valid: false, value, error: `Minimum withdrawal is €${MIN_WITHDRAWAL_EUR}.` };
+  if (value < minEur) {
+    return { valid: false, value, error: `Minimum withdrawal is ${formatEuro(minEur)}.` };
   }
   if (value > availableBalance) {
-    return { valid: false, value, error: `Amount exceeds your available balance of €${availableBalance.toFixed(2)}.` };
+    return {
+      valid: false,
+      value,
+      error: `Amount exceeds your available balance of ${formatEuro(availableBalance)}.`,
+    };
   }
   return { valid: true, value: Math.round(value * 100) / 100 };
 }
@@ -68,4 +83,20 @@ export function validateComplianceFile(file: File): { valid: boolean; error?: st
     return { valid: false, error: 'Document must be smaller than 15 MB.' };
   }
   return { valid: true };
+}
+
+export function normalizeAccountOwnerName(name: string): string {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function namesMatchAccountOwner(legalName: string, holderName: string): boolean {
+  const a = normalizeAccountOwnerName(legalName);
+  const b = normalizeAccountOwnerName(holderName);
+  return Boolean(a && b && a === b);
 }

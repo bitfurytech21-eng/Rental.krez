@@ -552,6 +552,8 @@ function MainApp() {
         );
 
       case '/dashboard':
+      case '/overview':
+      case '/ledger':
       case '/analytics':
       case '/transactions':
       case '/distributions':
@@ -632,6 +634,8 @@ function MainApp() {
   const isDashboardView =
     [
       '/dashboard',
+      '/overview',
+      '/ledger',
       '/analytics',
       '/transactions',
       '/distributions',
@@ -689,7 +693,7 @@ function MainApp() {
     <div
       className={`flex flex-col ${
         isDashboardView
-          ? 'bg-[#0B1B30] text-white min-h-screen lg:h-screen lg:overflow-hidden'
+          ? 'bg-[#0B0F10] text-[#F2F5F4] min-h-screen lg:h-screen lg:overflow-hidden'
           : 'bg-background text-foreground font-sans min-h-screen'
       }`}
     >

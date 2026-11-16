@@ -1,8 +1,11 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../context/NavigationContext';
 import { portalApi } from '../services/portalApi';
+import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
+import { buildSamplePortalDataset, SamplePortalDataset } from '../config/samplePortalData';
 import {
+  PortalConfig,
   PortalDashboardSummary,
   PortalNotification,
   PortalPortfolioData,
@@ -12,25 +15,98 @@ import {
   PortalTransaction,
 } from '../types';
 
+const SAMPLE_DATA_STORAGE_KEY = 'portal_sample_data_enabled';
+
 const PRIMARY_ROUTES = new Set<PortalRoute>(['overview', 'portfolio', 'explore', 'ledger', 'more']);
 
-const ROUTE_TO_URL: Record<PortalRoute, string> = {
-  overview: '/dashboard',
-  portfolio: '/portfolio',
-  explore: '/portal/explore',
-  'property-detail': '/portal/property',
-  ledger: '/transactions',
-  more: '/portal/more',
-  wallet: '/wallet',
-  deposit: '/deposit',
-  withdraw: '/withdraw',
-  profile: '/profile',
-  compliance: '/documents',
-  reports: '/portal/reports',
-  analytics: '/analytics',
-  notifications: '/notifications',
-  support: '/support',
+const MORE_CHILD_ROUTES = new Set<PortalRoute>([
+  'wallet',
+  'deposit',
+  'withdraw',
+  'profile',
+  'compliance',
+  'reports',
+  'analytics',
+  'notifications',
+  'support',
+]);
+
+const ROUTE_TO_HASH: Record<PortalRoute, string> = {
+  overview: '#/overview',
+  portfolio: '#/portfolio',
+  explore: '#/explore',
+  'property-detail': '#/property',
+  ledger: '#/ledger',
+  more: '#/more',
+  wallet: '#/wallet',
+  deposit: '#/deposit',
+  withdraw: '#/withdraw',
+  profile: '#/profile',
+  compliance: '#/compliance',
+  reports: '#/reports',
+  analytics: '#/analytics',
+  notifications: '#/notifications',
+  support: '#/support',
 };
+
+export function resolvePortalRouteFromHash(hash?: string): { route: PortalRoute; propertySlug?: string } | null {
+  if (!hash) return null;
+  const normalized = hash.replace(/^#/, '').replace(/^\/+/, '').split('?')[0].replace(/\/+$/, '').trim();
+  if (!normalized) return null;
+
+  if (normalized.startsWith('property/')) {
+    const slug = decodeURIComponent(normalized.slice('property/'.length));
+    return slug ? { route: 'property-detail', propertySlug: slug } : { route: 'explore' };
+  }
+  if (normalized.startsWith('portal/property/')) {
+    const slug = decodeURIComponent(normalized.slice('portal/property/'.length));
+    return slug ? { route: 'property-detail', propertySlug: slug } : { route: 'explore' };
+  }
+
+  switch (normalized) {
+    case 'overview':
+    case 'dashboard':
+    case 'account':
+      return { route: 'overview' };
+    case 'portfolio':
+      return { route: 'portfolio' };
+    case 'explore':
+    case 'portal/explore':
+      return { route: 'explore' };
+    case 'ledger':
+    case 'transactions':
+    case 'portal/ledger':
+    case 'distributions':
+      return { route: 'ledger' };
+    case 'more':
+    case 'portal/more':
+      return { route: 'more' };
+    case 'wallet':
+      return { route: 'wallet' };
+    case 'deposit':
+      return { route: 'deposit' };
+    case 'withdraw':
+      return { route: 'withdraw' };
+    case 'profile':
+      return { route: 'profile' };
+    case 'compliance':
+    case 'documents':
+    case 'verification':
+    case 'portal/compliance':
+      return { route: 'compliance' };
+    case 'reports':
+    case 'portal/reports':
+      return { route: 'reports' };
+    case 'analytics':
+      return { route: 'analytics' };
+    case 'notifications':
+      return { route: 'notifications' };
+    case 'support':
+      return { route: 'support' };
+    default:
+      return null;
+  }
+}
 
 export function resolvePortalRouteFromPath(path: string): { route: PortalRoute; propertySlug?: string } {
   const clean = (path.split('#')[0].split('?')[0] || '/').replace(/\/$/, '') || '/';
@@ -79,6 +155,13 @@ export function resolvePortalRouteFromPath(path: string): { route: PortalRoute; 
   }
 }
 
+function buildPortalHash(route: PortalRoute, propertySlug?: string | null): string {
+  if (route === 'property-detail' && propertySlug) {
+    return `#/property/${encodeURIComponent(propertySlug)}`;
+  }
+  return ROUTE_TO_HASH[route] || '#/overview';
+}
+
 interface PortalContextValue {
   route: PortalRoute;
   isPrimaryRoute: boolean;
@@ -91,6 +174,8 @@ interface PortalContextValue {
   // Live backend state
   loading: boolean;
   error: string | null;
+  lastSyncedAt: Date | null;
+  portalConfig: PortalConfig;
   summary: PortalDashboardSummary | null;
   portfolio: PortalPortfolioData | null;
   balance: number;
@@ -100,6 +185,11 @@ interface PortalContextValue {
   notifications: PortalNotification[];
   unreadCount: number;
   profile: PortalProfile | null;
+
+  // Sample data mode toggle (default OFF so real/empty states render cleanly)
+  sampleDataEnabled: boolean;
+  setSampleDataEnabled: (enabled: boolean) => void;
+  sampleDataset: SamplePortalDataset | null;
 
   // Shared UI filters
   exploreFilter: string;
@@ -121,13 +211,24 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { user } = useAuth();
   const { currentPath, navigateTo } = useNavigation();
 
-  const initial = resolvePortalRouteFromPath(currentPath);
+  const resolveInitialState = (): { route: PortalRoute; propertySlug?: string } => {
+    if (typeof window !== 'undefined') {
+      const fromHash = resolvePortalRouteFromHash(window.location.hash);
+      if (fromHash) return fromHash;
+    }
+    return resolvePortalRouteFromPath(currentPath);
+  };
+
+  const initial = resolveInitialState();
   const [route, setRoute] = useState<PortalRoute>(initial.route);
   const [selectedPropertySlug, setSelectedPropertySlug] = useState<string | null>(initial.propertySlug || null);
-  const [history, setHistory] = useState<Array<{ route: PortalRoute; propertySlug?: string }>>([]);
+  const [portalHistoryDepth, setPortalHistoryDepth] = useState<number>(0);
+  const pathRef = useRef<string>(currentPath);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [portalConfig, setPortalConfig] = useState<PortalConfig>(PORTAL_PLACEHOLDER_CONFIG);
   const [summary, setSummary] = useState<PortalDashboardSummary | null>(null);
   const [portfolio, setPortfolio] = useState<PortalPortfolioData | null>(null);
   const [balance, setBalance] = useState<number>(0);
@@ -138,17 +239,93 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [profile, setProfile] = useState<PortalProfile | null>(null);
 
+  const [sampleDataEnabled, setSampleDataState] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.sessionStorage.getItem(SAMPLE_DATA_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const setSampleDataEnabled = useCallback((enabled: boolean) => {
+    setSampleDataState(enabled);
+    if (typeof window !== 'undefined') {
+      try {
+        if (enabled) {
+          window.sessionStorage.setItem(SAMPLE_DATA_STORAGE_KEY, 'true');
+        } else {
+          window.sessionStorage.removeItem(SAMPLE_DATA_STORAGE_KEY);
+        }
+      } catch {
+        // Ignore storage restrictions
+      }
+    }
+  }, []);
+
   const [exploreFilter, setExploreFilter] = useState<string>('All');
   const [exploreSearch, setExploreSearch] = useState<string>('');
   const [ledgerFilter, setLedgerFilter] = useState<string>('All');
 
+  // Ensure an initial canonical hash exists so the first browser back entry works cleanly
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const fromHash = resolvePortalRouteFromHash(window.location.hash);
+    if (!fromHash) {
+      const resolved = resolvePortalRouteFromPath(currentPath);
+      const targetHash = buildPortalHash(resolved.route, resolved.propertySlug);
+      try {
+        window.history.replaceState(
+          null,
+          '',
+          `${window.location.pathname}${window.location.search}${targetHash}`
+        );
+      } catch {
+        // Fallback silently if replaceState is unavailable
+      }
+    }
+  }, []);
+
+  // React to top-level NavigationProvider route changes only if the pathname changed without a hash
+  useEffect(() => {
+    if (pathRef.current === currentPath) return;
+    pathRef.current = currentPath;
+    if (typeof window !== 'undefined') {
+      const fromHash = resolvePortalRouteFromHash(window.location.hash);
+      if (fromHash) {
+        setRoute(fromHash.route);
+        setSelectedPropertySlug(fromHash.propertySlug || null);
+        return;
+      }
+    }
     const resolved = resolvePortalRouteFromPath(currentPath);
     setRoute(resolved.route);
-    if (resolved.propertySlug) {
-      setSelectedPropertySlug(resolved.propertySlug);
-    }
+    setSelectedPropertySlug(resolved.propertySlug || null);
   }, [currentPath]);
+
+  // Listen to browser hashchange & popstate for back/forward hash navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncFromLocation = () => {
+      const fromHash = resolvePortalRouteFromHash(window.location.hash);
+      if (fromHash) {
+        setRoute(fromHash.route);
+        setSelectedPropertySlug(fromHash.propertySlug || null);
+        return;
+      }
+      const fromPath = resolvePortalRouteFromPath(window.location.pathname);
+      setRoute(fromPath.route);
+      setSelectedPropertySlug(fromPath.propertySlug || null);
+    };
+
+    window.addEventListener('hashchange', syncFromLocation);
+    window.addEventListener('popstate', syncFromLocation);
+    return () => {
+      window.removeEventListener('hashchange', syncFromLocation);
+      window.removeEventListener('popstate', syncFromLocation);
+    };
+  }, []);
 
   const refreshAll = useCallback(async () => {
     if (!user) return;
@@ -163,6 +340,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         txRes,
         notifRes,
         profileRes,
+        configRes,
       ] = await Promise.all([
         portalApi.getDashboardSummary(),
         portalApi.getPortfolio(),
@@ -171,6 +349,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         portalApi.getTransactions(),
         portalApi.getNotifications(),
         portalApi.getProfile(),
+        portalApi.getPaymentConfig().catch(() => PORTAL_PLACEHOLDER_CONFIG),
       ]);
       setSummary(summaryRes);
       setPortfolio(portfolioRes);
@@ -181,6 +360,8 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setNotifications(notifRes.items);
       setUnreadCount(notifRes.unreadCount);
       setProfile(profileRes);
+      setPortalConfig(configRes);
+      setLastSyncedAt(new Date());
     } catch (err: any) {
       setError(err?.message || 'Unable to synchronize your investor portal with the server.');
     } finally {
@@ -215,35 +396,43 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const navigatePortal = useCallback(
     (nextRoute: PortalRoute, options?: { propertySlug?: string }) => {
-      setHistory((prev) => [...prev.slice(-15), { route, propertySlug: selectedPropertySlug || undefined }]);
+      const nextSlug =
+        nextRoute === 'property-detail'
+          ? options?.propertySlug || selectedPropertySlug
+          : null;
+      const targetHash = buildPortalHash(nextRoute, nextSlug);
+
       setRoute(nextRoute);
-      if (options?.propertySlug) {
-        setSelectedPropertySlug(options.propertySlug);
+      if (nextRoute === 'property-detail' && nextSlug) {
+        setSelectedPropertySlug(nextSlug);
+      } else if (nextRoute !== 'property-detail') {
+        setSelectedPropertySlug(null);
       }
-      const targetUrl =
-        nextRoute === 'property-detail' && options?.propertySlug
-          ? `/portal/property/${encodeURIComponent(options.propertySlug)}`
-          : ROUTE_TO_URL[nextRoute];
-      navigateTo(targetUrl);
+
+      if (typeof window !== 'undefined' && window.location.hash !== targetHash) {
+        setPortalHistoryDepth((d) => d + 1);
+        window.location.hash = targetHash;
+      }
     },
-    [navigateTo, route, selectedPropertySlug]
+    [selectedPropertySlug]
   );
 
   const goBack = useCallback(() => {
-    if (history.length > 0) {
-      const prev = history[history.length - 1];
-      setHistory((h) => h.slice(0, -1));
-      setRoute(prev.route);
-      setSelectedPropertySlug(prev.propertySlug || null);
-      const targetUrl =
-        prev.route === 'property-detail' && prev.propertySlug
-          ? `/portal/property/${encodeURIComponent(prev.propertySlug)}`
-          : ROUTE_TO_URL[prev.route];
-      navigateTo(targetUrl);
+    if (typeof window !== 'undefined' && portalHistoryDepth > 0) {
+      setPortalHistoryDepth((d) => Math.max(0, d - 1));
+      window.history.back();
+      return;
+    }
+    if (route === 'property-detail') {
+      navigatePortal('explore');
+      return;
+    }
+    if (MORE_CHILD_ROUTES.has(route)) {
+      navigatePortal('more');
       return;
     }
     navigatePortal('overview');
-  }, [history, navigatePortal, navigateTo]);
+  }, [navigatePortal, portalHistoryDepth, route]);
 
   const exitToPublicSite = useCallback(
     (path = '/') => {
@@ -253,7 +442,44 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const isPrimaryRoute = PRIMARY_ROUTES.has(route);
-  const canGoBack = !isPrimaryRoute || history.length > 0;
+  const canGoBack = !isPrimaryRoute;
+
+  const sampleDataset = useMemo(
+    () => (sampleDataEnabled ? buildSamplePortalDataset(profile) : null),
+    [sampleDataEnabled, profile]
+  );
+
+  const effectiveProfile = useMemo(() => {
+    if (!sampleDataset) return profile;
+    if (!profile) {
+      return {
+        id: 'sample-user',
+        email: user?.email || 'investor@sample.local',
+        fullName: user?.fullName || 'Sample Investor',
+        country: 'France',
+        countryCode: 'FR',
+        phoneNumber: '',
+        accountType: 'individual_investor',
+        balance: sampleDataset.balance,
+        investedBalance: sampleDataset.summary.investedCapital,
+        kycStatus: 'verified',
+        status: 'active',
+        address: '',
+        city: 'Paris',
+        postalCode: '75008',
+        bankIban: sampleDataset.profileOverrides.bankIban || '',
+        cryptoDepositAddress: '',
+        taxId: '',
+        dateOfBirth: '',
+        createdAt: new Date().toISOString(),
+      };
+    }
+    return {
+      ...profile,
+      ...sampleDataset.profileOverrides,
+      balance: sampleDataset.balance,
+    };
+  }, [profile, sampleDataset, user]);
 
   return (
     <PortalContext.Provider
@@ -267,15 +493,20 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         exitToPublicSite,
         loading,
         error,
-        summary,
-        portfolio,
-        balance,
-        subBalances,
-        properties,
-        transactions,
-        notifications,
-        unreadCount,
-        profile,
+        lastSyncedAt,
+        portalConfig,
+        summary: sampleDataset ? sampleDataset.summary : summary,
+        portfolio: sampleDataset ? sampleDataset.portfolio : portfolio,
+        balance: sampleDataset ? sampleDataset.balance : balance,
+        subBalances: sampleDataset ? sampleDataset.subBalances : subBalances,
+        properties: sampleDataset ? sampleDataset.properties : properties,
+        transactions: sampleDataset ? sampleDataset.transactions : transactions,
+        notifications: sampleDataset ? sampleDataset.notifications : notifications,
+        unreadCount: sampleDataset ? sampleDataset.unreadCount : unreadCount,
+        profile: effectiveProfile,
+        sampleDataEnabled,
+        setSampleDataEnabled,
+        sampleDataset,
         exploreFilter,
         setExploreFilter,
         exploreSearch,

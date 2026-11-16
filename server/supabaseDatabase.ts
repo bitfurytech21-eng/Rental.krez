@@ -52,7 +52,7 @@ export async function signInCustomer(email: string, password: string) {
 }
 
 export async function registerCustomer(input: {
-  email: string; password: string; fullName: string; country?: string;
+  email: string; password: string; fullName: string; accountType?: string; country?: string;
   countryCode?: string; phoneNumber?: string; redirectTo: string;
 }) {
   const client = getSupabaseAuthClient();
@@ -64,7 +64,7 @@ export async function registerCustomer(input: {
       data: {
         full_name: input.fullName,
         role: 'investor',
-        account_type: 'individual_investor',
+        account_type: input.accountType || 'individual_investor',
         country: input.country || 'France',
         country_code: input.countryCode || '',
         phone_number: input.phoneNumber || ''
@@ -192,7 +192,7 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function updateUserProfile(userId: string, patch: Record<string, unknown>) {
-  const allowed = ['full_name','phone_number','country','country_code','address','city','postal_code','avatar_url','bank_iban','crypto_deposit_address','tax_id','date_of_birth','preferences'];
+  const allowed = ['full_name','phone_number','country','country_code','address','city','postal_code','avatar_url','bank_iban','bank_account_holder','crypto_deposit_address','tax_id','date_of_birth','preferences'];
   const safePatch: Record<string, unknown> = {};
   for (const key of allowed) if (patch[key] !== undefined) safePatch[key] = patch[key];
   if (Object.keys(safePatch).length === 0) return getUserProfile(userId);
@@ -200,6 +200,29 @@ export async function updateUserProfile(userId: string, patch: Record<string, un
     .update({ ...safePatch, updated_at: new Date().toISOString() }).eq('id', userId).select('*').maybeSingle();
   if (error) throw error;
   return data;
+}
+
+export async function getWalletSummary(userId: string) {
+  const admin = getSupabaseAdmin();
+  const { data: wallet, error } = await admin.from('wallets').select('*').eq('user_id', userId).maybeSingle();
+  if (!error && wallet) {
+    return {
+      userId: wallet.user_id,
+      currency: wallet.currency || 'EUR',
+      availableBalance: Number(wallet.available_balance || 0),
+      reservedBalance: Number(wallet.reserved_balance || 0),
+      updatedAt: wallet.updated_at,
+    };
+  }
+  const profile = await getUserProfile(userId);
+  if (!profile) return null;
+  return {
+    userId: profile.id,
+    currency: 'EUR',
+    availableBalance: Number(profile.wallet_balance || 0),
+    reservedBalance: 0,
+    updatedAt: profile.updated_at,
+  };
 }
 
 export async function runFinancialRpc(name: string, args: Record<string, unknown>) {
@@ -504,6 +527,27 @@ export async function markAllUserNotificationsRead(userId: string) {
   return data?.length || 0;
 }
 
+export async function createUserNotification(
+  userId: string,
+  notif: { title: string; message: string; type?: string }
+) {
+  const { data, error } = await getSupabaseAdmin()
+    .from('notifications')
+    .insert({
+      id: crypto.randomUUID(),
+      user_id: userId,
+      title: notif.title,
+      message: notif.message,
+      type: notif.type || 'info',
+      read: false,
+      created_at: new Date().toISOString(),
+    })
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function listUserFavorites(userId: string) {
   const { data, error } = await getSupabaseAdmin().from('user_favorites')
     .select('property_id').eq('user_id', userId).order('created_at', { ascending: false });
@@ -560,8 +604,51 @@ export interface ComplianceDocumentRecord {
   fileDataUrl?: string;
 }
 
+export type ComplianceStepKey = 'kyc_identity' | 'proof_of_address' | 'accredited_proof';
+export type ComplianceStepStatus = 'not_started' | 'in_review' | 'verified' | 'rejected';
+
+export interface ComplianceStepRecord {
+  stepKey: ComplianceStepKey;
+  title: string;
+  status: ComplianceStepStatus;
+  notes?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  updatedAt?: string;
+}
+
+const DEFAULT_COMPLIANCE_STEPS: Array<{ stepKey: ComplianceStepKey; title: string }> = [
+  { stepKey: 'kyc_identity', title: 'Identity verification' },
+  { stepKey: 'proof_of_address', title: 'Proof of address' },
+  { stepKey: 'accredited_proof', title: 'Investor questionnaire' },
+];
+
 export async function listComplianceDocuments(userId: string): Promise<ComplianceDocumentRecord[]> {
-  const { data, error } = await getSupabaseAdmin().from('user_preferences')
+  const admin = getSupabaseAdmin();
+  const { data: tableDocs, error: tableErr } = await admin
+    .from('documents')
+    .select('id,user_id,category,document_type,title,file_name,file_size,mime_type,status,uploaded_at,file_data_url')
+    .eq('user_id', userId)
+    .order('uploaded_at', { ascending: false })
+    .limit(50);
+
+  if (!tableErr && Array.isArray(tableDocs)) {
+    return tableDocs.map((row: any) => ({
+      id: String(row.id),
+      userId: String(row.user_id),
+      category: row.category,
+      documentType: String(row.document_type || ''),
+      title: String(row.title || ''),
+      fileName: String(row.file_name || ''),
+      fileSize: Number(row.file_size || 0),
+      mimeType: String(row.mime_type || 'application/pdf'),
+      status: row.status || 'pending',
+      uploadedAt: String(row.uploaded_at || ''),
+      fileDataUrl: row.file_data_url || undefined,
+    }));
+  }
+
+  const { data, error } = await admin.from('user_preferences')
     .select('preferences').eq('user_id', userId).maybeSingle();
   if (error) throw error;
   const docs = data?.preferences?.complianceDocuments;
@@ -569,17 +656,186 @@ export async function listComplianceDocuments(userId: string): Promise<Complianc
 }
 
 export async function addComplianceDocument(userId: string, doc: ComplianceDocumentRecord): Promise<ComplianceDocumentRecord[]> {
-  const { data, error: fetchError } = await getSupabaseAdmin().from('user_preferences')
+  const admin = getSupabaseAdmin();
+  const { error: insertErr } = await admin.from('documents').insert({
+    id: doc.id,
+    user_id: userId,
+    category: doc.category,
+    document_type: doc.documentType,
+    title: doc.title,
+    file_name: doc.fileName,
+    file_size: doc.fileSize,
+    mime_type: doc.mimeType,
+    status: doc.status,
+    file_data_url: doc.fileDataUrl || null,
+    uploaded_at: doc.uploadedAt,
+  });
+
+  await upsertComplianceStep(userId, doc.category, 'in_review');
+
+  if (!insertErr) {
+    return listComplianceDocuments(userId);
+  }
+
+  const { data, error: fetchError } = await admin.from('user_preferences')
     .select('preferences').eq('user_id', userId).maybeSingle();
   if (fetchError) throw fetchError;
   const current = (data?.preferences && typeof data.preferences === 'object') ? data.preferences : {};
   const existingDocs = Array.isArray(current.complianceDocuments) ? current.complianceDocuments : [];
   const nextDocs = [doc, ...existingDocs].slice(0, 25);
   const merged = { ...current, complianceDocuments: nextDocs };
-  const { error } = await getSupabaseAdmin().from('user_preferences')
+  const { error } = await admin.from('user_preferences')
     .upsert({ user_id: userId, preferences: merged, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) throw error;
   return nextDocs;
+}
+
+export async function listComplianceSteps(userId: string): Promise<ComplianceStepRecord[]> {
+  const admin = getSupabaseAdmin();
+  const [profile, docs, tableRes] = await Promise.all([
+    getUserProfile(userId),
+    listComplianceDocuments(userId),
+    admin.from('compliance_steps').select('*').eq('user_id', userId),
+  ]);
+
+  const byKey = new Map<string, any>();
+  if (!tableRes.error && Array.isArray(tableRes.data)) {
+    for (const row of tableRes.data) {
+      byKey.set(String(row.step_key), row);
+    }
+  }
+
+  const profileKyc = String(profile?.kyc_status || 'pending').toLowerCase();
+  return DEFAULT_COMPLIANCE_STEPS.map((def) => {
+    const saved = byKey.get(def.stepKey);
+    const matchingDocs = docs.filter((d) => d.category === def.stepKey);
+    let status: ComplianceStepStatus = 'not_started';
+    if (profileKyc === 'verified' || profileKyc === 'approved') {
+      status = 'verified';
+    } else if (saved?.status) {
+      status = saved.status as ComplianceStepStatus;
+    } else if (matchingDocs.length > 0) {
+      const latest = matchingDocs[0];
+      status = latest.status === 'verified' ? 'verified' : latest.status === 'rejected' ? 'rejected' : 'in_review';
+    } else if (profileKyc === 'rejected') {
+      status = 'rejected';
+    }
+    return {
+      stepKey: def.stepKey,
+      title: saved?.title || def.title,
+      status,
+      notes: saved?.notes || undefined,
+      submittedAt: saved?.submitted_at || matchingDocs[0]?.uploadedAt || undefined,
+      reviewedAt: saved?.reviewed_at || undefined,
+      updatedAt: saved?.updated_at || undefined,
+    };
+  });
+}
+
+export async function upsertComplianceStep(
+  userId: string,
+  stepKey: ComplianceStepKey,
+  status: ComplianceStepStatus,
+  notes?: string
+): Promise<ComplianceStepRecord[]> {
+  const admin = getSupabaseAdmin();
+  const def = DEFAULT_COMPLIANCE_STEPS.find((s) => s.stepKey === stepKey);
+  const nowIso = new Date().toISOString();
+  await admin.from('compliance_steps').upsert(
+    {
+      user_id: userId,
+      step_key: stepKey,
+      title: def?.title || stepKey,
+      status,
+      notes: notes || null,
+      submitted_at: status === 'in_review' ? nowIso : undefined,
+      reviewed_at: status === 'verified' || status === 'rejected' ? nowIso : undefined,
+      updated_at: nowIso,
+    },
+    { onConflict: 'user_id,step_key' }
+  );
+  return listComplianceSteps(userId);
+}
+
+export async function listAdminComplianceDocuments(limit = 200): Promise<
+  Array<ComplianceDocumentRecord & { userEmail?: string; userName?: string }>
+> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('documents')
+    .select('id,user_id,category,document_type,title,file_name,file_size,mime_type,status,uploaded_at,file_data_url,user_profiles(email,full_name)')
+    .order('uploaded_at', { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 500));
+
+  if (!error && Array.isArray(data)) {
+    return data.map((row: any) => ({
+      id: String(row.id),
+      userId: String(row.user_id),
+      category: row.category,
+      documentType: String(row.document_type || ''),
+      title: String(row.title || ''),
+      fileName: String(row.file_name || ''),
+      fileSize: Number(row.file_size || 0),
+      mimeType: String(row.mime_type || 'application/pdf'),
+      status: row.status || 'pending',
+      uploadedAt: String(row.uploaded_at || ''),
+      fileDataUrl: row.file_data_url || undefined,
+      userEmail: row.user_profiles?.email || undefined,
+      userName: row.user_profiles?.full_name || undefined,
+    }));
+  }
+
+  return [];
+}
+
+export async function reviewComplianceDocument(
+  docId: string,
+  status: 'verified' | 'rejected',
+  notes?: string
+): Promise<(ComplianceDocumentRecord & { userId: string }) | null> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('documents')
+    .update({ status })
+    .eq('id', docId)
+    .select('*')
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  await upsertComplianceStep(
+    String(data.user_id),
+    data.category as ComplianceStepKey,
+    status === 'verified' ? 'verified' : 'rejected',
+    notes
+  ).catch(() => {});
+
+  return {
+    id: String(data.id),
+    userId: String(data.user_id),
+    category: data.category,
+    documentType: String(data.document_type || ''),
+    title: String(data.title || ''),
+    fileName: String(data.file_name || ''),
+    fileSize: Number(data.file_size || 0),
+    mimeType: String(data.mime_type || 'application/pdf'),
+    status: data.status,
+    uploadedAt: String(data.uploaded_at || ''),
+    fileDataUrl: data.file_data_url || undefined,
+  };
+}
+
+export async function findTransactionByReferenceOrId(idOrRef: string) {
+  const admin = getSupabaseAdmin();
+  const clean = String(idOrRef || '').trim();
+  if (!clean) return null;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
+  if (isUuid) {
+    const { data } = await admin.from('transactions').select('*').eq('id', clean).maybeSingle();
+    if (data) return data;
+  }
+  const { data } = await admin.from('transactions').select('*').eq('reference', clean).maybeSingle();
+  return data || null;
 }
 
 export async function getAdminIdentityByEmail(email: string): Promise<VerifiedSupabaseIdentity | null> {

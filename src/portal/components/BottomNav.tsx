@@ -29,8 +29,11 @@ export const BottomNav: React.FC = () => {
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="lg:hidden sticky bottom-0 z-30 border-t border-[#1D3860] bg-[#0B1B30]/95 backdrop-blur-md grid grid-cols-5 px-1 pt-1.5"
-      style={{ paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}
+      className="lg:hidden sticky bottom-0 z-30 border-t border-[#1F2C33] bg-[#0B0F10]/95 backdrop-blur-md grid grid-cols-5 gap-1 pt-1.5 portal-safe-bottom"
+      style={{
+        paddingLeft: 'max(6px, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(6px, env(safe-area-inset-right, 0px))',
+      }}
     >
       {TABS.map((tab) => {
         const Icon = tab.icon;
@@ -45,11 +48,13 @@ export const BottomNav: React.FC = () => {
             type="button"
             onClick={() => navigatePortal(tab.id)}
             aria-current={active ? 'page' : undefined}
-            className={`min-h-[46px] flex flex-col items-center justify-center gap-1 rounded-xl text-[11px] transition-colors ${
-              active ? 'text-[#C5A880] font-semibold' : 'text-[#8EA7C7] hover:text-white'
+            className={`min-h-[48px] min-w-[44px] flex flex-col items-center justify-center gap-1 rounded-[14px] text-[11px] transition-colors ${
+              active
+                ? 'bg-[#6FD8B0]/12 text-[#6FD8B0] font-semibold'
+                : 'text-[#8FA1A8] hover:text-[#F2F5F4]'
             }`}
           >
-            <Icon className="w-[20px] h-[20px]" />
+            <Icon className="w-5 h-5" />
             <span className="whitespace-nowrap">{tab.label}</span>
           </button>
         );

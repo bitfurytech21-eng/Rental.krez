@@ -16,19 +16,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
 }) => {
   return (
-    <div className="rounded-[14px] border border-dashed border-[#1D3860] bg-[#102442]/60 px-6 py-10 text-center flex flex-col items-center justify-center gap-3">
+    <div className="rounded-[18px] border border-dashed border-[#1F2C33] bg-[#121A1F] p-4 sm:py-8 text-center flex flex-col items-center justify-center gap-3">
       {icon && (
-        <div className="w-11 h-11 rounded-xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] flex items-center justify-center">
+        <div className="w-11 h-11 rounded-[14px] bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center">
           {icon}
         </div>
       )}
-      <h3 className="text-base font-semibold text-white">{title}</h3>
-      <p className="text-sm text-[#8EA7C7] max-w-sm leading-relaxed">{description}</p>
+      <h3 className="text-base font-semibold text-[#F2F5F4]">{title}</h3>
+      <p className="text-sm text-[#8FA1A8] max-w-sm leading-relaxed">{description}</p>
       {actionLabel && onAction && (
         <button
           type="button"
           onClick={onAction}
-          className="portal-btn-primary mt-2"
+          className="portal-btn-primary mt-1"
         >
           {actionLabel}
         </button>

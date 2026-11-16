@@ -5,6 +5,7 @@ import { usePortal } from '../state/PortalContext';
 import { PortalRoute } from '../types';
 import { getInitials } from '../utils/format';
 import { AccountMenu } from './AccountMenu';
+import { LagenceLogo } from '../../components/common/LagenceLogo';
 
 const ROUTE_TITLES: Record<PortalRoute, string> = {
   overview: 'Overview',
@@ -26,7 +27,7 @@ const ROUTE_TITLES: Record<PortalRoute, string> = {
 
 export const Header: React.FC = () => {
   const { user } = useAuth();
-  const { route, isPrimaryRoute, canGoBack, goBack, navigatePortal, unreadCount, profile } = usePortal();
+  const { route, isPrimaryRoute, goBack, navigatePortal, unreadCount, profile } = usePortal();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -36,63 +37,96 @@ export const Header: React.FC = () => {
         setMenuOpen(false);
       }
     };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   const initials = getInitials(profile?.fullName || user?.fullName || user?.email);
 
   return (
-    <header className="sticky top-0 z-30 h-14 sm:h-16 border-b border-[#1D3860] bg-[#0B1B30]/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
-        {!isPrimaryRoute && canGoBack && (
+    <header
+      className="sticky top-0 z-30 border-b border-[#1F2C33] bg-[#0B0F10]/95 backdrop-blur-md shrink-0 portal-safe-top"
+      style={{
+        paddingLeft: 'max(16px, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(16px, env(safe-area-inset-right, 0px))',
+      }}
+    >
+      <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
+        {/* Left region: Logo + L'Agence / INVESTOR PORTAL on primary tabs, or Back button + page title on sub-pages */}
+        {isPrimaryRoute ? (
           <button
             type="button"
-            onClick={goBack}
-            aria-label="Go back"
-            className="w-11 h-11 rounded-xl border border-[#1D3860] bg-[#102442] text-white flex items-center justify-center hover:border-[#C5A880] transition-colors shrink-0"
+            onClick={() => navigatePortal('overview')}
+            aria-label="L'Agence Investor Portal home"
+            className="min-h-[44px] flex items-center gap-2.5 min-w-0 rounded-[14px] px-1 -ml-1 text-left"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <LagenceLogo variant="green" className="w-7 h-7 shrink-0" />
+            <div className="flex items-baseline gap-1.5 min-w-0 truncate">
+              <span className="font-serif text-base sm:text-lg font-bold tracking-tight text-[#F2F5F4] shrink-0">
+                L’Agence
+              </span>
+              <span className="text-[#8FA1A8] text-xs font-medium shrink-0" aria-hidden="true">
+                /
+              </span>
+              <span className="text-[10px] sm:text-xs font-semibold tracking-[0.14em] uppercase text-[#6FD8B0] truncate">
+                INVESTOR PORTAL
+              </span>
+            </div>
           </button>
+        ) : (
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Go back"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[14px] border border-[#1F2C33] bg-[#121A1F] text-[#F2F5F4] flex items-center justify-center hover:border-[#6FD8B0] transition-colors shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-base sm:text-lg font-heading font-bold text-[#F2F5F4] truncate">
+              {ROUTE_TITLES[route]}
+            </h1>
+          </div>
         )}
-        <div className="min-w-0">
-          {isPrimaryRoute && (
-            <span className="lg:hidden block text-sm font-serif font-semibold text-[#C5A880] leading-none mb-0.5">
-              L’Agence
-            </span>
-          )}
-          <h1 className="text-base sm:text-lg font-heading font-bold text-white truncate">
-            {ROUTE_TITLES[route]}
-          </h1>
-        </div>
-      </div>
 
-      <div className="flex items-center gap-2.5 shrink-0" ref={menuContainerRef}>
-        <button
-          type="button"
-          onClick={() => navigatePortal('notifications')}
-          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
-          className="relative w-11 h-11 rounded-xl border border-[#1D3860] bg-[#102442] text-[#8EA7C7] hover:text-white hover:border-[#C5A880] flex items-center justify-center transition-colors"
-        >
-          <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#C5A880] text-[#0B1B30] text-[10px] font-bold portal-tabular flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </button>
-
-        <div className="relative">
+        {/* Right region: Notification bell with unread dot + Avatar account menu trigger */}
+        <div className="flex items-center gap-2.5 shrink-0" ref={menuContainerRef}>
           <button
             type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Account menu"
-            aria-expanded={menuOpen}
-            className="w-11 h-11 rounded-xl border border-[#C5A880]/60 bg-[#152E54] text-[#C5A880] font-bold text-sm flex items-center justify-center hover:border-[#C5A880] transition-colors"
+            onClick={() => navigatePortal('notifications')}
+            aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+            className="relative w-11 h-11 min-w-[44px] min-h-[44px] rounded-[14px] border border-[#1F2C33] bg-[#121A1F] text-[#8FA1A8] hover:text-[#F2F5F4] hover:border-[#6FD8B0] flex items-center justify-center transition-colors"
           >
-            {initials}
+            <Bell className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-[#6FD8B0] ring-2 ring-[#121A1F]"
+              />
+            )}
           </button>
-          {menuOpen && <AccountMenu onClose={() => setMenuOpen(false)} />}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Account menu"
+              aria-expanded={menuOpen}
+              className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[14px] border border-[#6FD8B0]/50 bg-[#121A1F] text-[#6FD8B0] font-bold text-sm flex items-center justify-center hover:border-[#6FD8B0] transition-colors"
+            >
+              {initials}
+            </button>
+            {menuOpen && <AccountMenu onClose={() => setMenuOpen(false)} />}
+          </div>
         </div>
       </div>
     </header>

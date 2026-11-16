@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Printer, Download } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Download, FileText, Printer } from 'lucide-react';
 import { getAuthToken } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
@@ -7,38 +7,122 @@ import { portalApi } from '../services/portalApi';
 import { PortalAccountStatement } from '../types';
 import { formatEuro, formatShortDate } from '../utils/format';
 import { StatTile } from '../components/StatTile';
+import { EmptyState } from '../components/EmptyState';
 import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
 
 export const ReportsPage: React.FC = () => {
   const toast = useToast();
-  const { profile } = usePortal();
+  const { profile, transactions, sampleDataEnabled, sampleDataset, navigatePortal } = usePortal();
 
   const [statement, setStatement] = useState<PortalAccountStatement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
-  const loadStatement = async () => {
+  const loadStatement = useCallback(async () => {
+    if (sampleDataEnabled) {
+      setLoading(false);
+      setError(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const data = await portalApi.getAccountStatement();
       setStatement(data);
     } catch (err: any) {
-      setError(err?.message || 'Unable to load account statement.');
+      setError(err?.message || 'Unable to load statements and tax documents.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [sampleDataEnabled]);
 
   useEffect(() => {
     void loadStatement();
-  }, []);
+  }, [loadStatement]);
+
+  const effectiveStatement =
+    sampleDataEnabled && sampleDataset ? sampleDataset.statement : statement;
+
+  const triggerTextDownload = (filename: string, content: string, mime = 'text/plain;charset=utf-8;') => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadStatement = () => {
+    if (!effectiveStatement) return;
+    setDownloading('statement');
+    try {
+      const lines = [
+        'L’AGENCE INVESTOR PORTAL — ACCOUNT STATEMENT',
+        `Statement ID: ${effectiveStatement.statementId}`,
+        `Investor: ${profile?.fullName || profile?.email || 'Registered Investor'}`,
+        `Period: ${formatShortDate(effectiveStatement.periodStart)} to ${formatShortDate(effectiveStatement.periodEnd)}`,
+        '',
+        `Total Deposits: ${formatEuro(effectiveStatement.totalDeposits)}`,
+        `Total Invested: ${formatEuro(effectiveStatement.totalInvested)}`,
+        `Distributions Received: ${formatEuro(effectiveStatement.totalDividendsReceived)}`,
+        `Closing Cash Balance: ${formatEuro(effectiveStatement.currentBalance)}`,
+      ].join('\n');
+      triggerTextDownload(`lagence-statement-${effectiveStatement.statementId}.txt`, lines);
+      toast.success('Account statement downloaded.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDownloadTaxSummary = () => {
+    if (!effectiveStatement) return;
+    setDownloading('tax');
+    try {
+      const year = new Date(effectiveStatement.periodEnd || Date.now()).getFullYear();
+      const lines = [
+        `L’AGENCE — ANNUAL TAX & DISTRIBUTION SUMMARY (${year})`,
+        `Investor: ${profile?.fullName || profile?.email || 'Registered Investor'}`,
+        `Tax ID (NIF / TIN): ${profile?.taxId || 'Not specified'}`,
+        `Reporting Period: ${formatShortDate(effectiveStatement.periodStart)} to ${formatShortDate(effectiveStatement.periodEnd)}`,
+        '',
+        `Gross Rental Distributions Settled: ${formatEuro(effectiveStatement.totalDividendsReceived)}`,
+        `Capital Deployed (Period): ${formatEuro(effectiveStatement.totalInvested)}`,
+        `Closing Wallet Cash: ${formatEuro(effectiveStatement.currentBalance)}`,
+      ].join('\n');
+      triggerTextDownload(`lagence-tax-summary-${year}.txt`, lines);
+      toast.success('Annual tax summary downloaded.');
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   const handleDownloadCsv = async () => {
     if (downloading) return;
-    setDownloading(true);
+    setDownloading('csv');
     try {
+      if (sampleDataEnabled && sampleDataset) {
+        const csvLines = [
+          'Date,Reference,Property,Type,Amount EUR,Status',
+          ...sampleDataset.transactions
+            .filter((t) => t.type.toLowerCase() === 'dividend')
+            .map(
+              (t) =>
+                `${t.createdAt.slice(0, 10)},${t.reference},"${t.propertyTitle || 'Portfolio'}",${t.type},${t.amount},${t.status}`
+            ),
+        ].join('\n');
+        triggerTextDownload(
+          `lagence-sample-tax-distributions-${new Date().toISOString().slice(0, 10)}.csv`,
+          csvLines,
+          'text/csv;charset=utf-8;'
+        );
+        toast.success('Sample distribution tax CSV downloaded.');
+        return;
+      }
+
       const token = getAuthToken();
       const res = await fetch(portalApi.getDistributionsExportUrl('csv'), {
         credentials: 'include',
@@ -48,81 +132,150 @@ export const ReportsPage: React.FC = () => {
         throw new Error('Export failed.');
       }
       const csvText = await res.text();
-      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `lagence-distributions-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success('Distribution CSV exported.');
+      triggerTextDownload(
+        `lagence-tax-distributions-${new Date().toISOString().slice(0, 10)}.csv`,
+        csvText,
+        'text/csv;charset=utf-8;'
+      );
+      toast.success('Distribution tax CSV downloaded.');
     } catch (err: any) {
-      toast.error(err?.message || 'Unable to export CSV right now.');
+      toast.error(err?.message || 'Unable to download tax CSV right now.');
     } finally {
-      setDownloading(false);
+      setDownloading(null);
     }
   };
 
-  if (loading && !statement) {
+  if (loading && !sampleDataEnabled && !effectiveStatement) {
     return <LoadingSkeleton rows={3} />;
   }
 
+  const hasActivity =
+    transactions.length > 0 ||
+    Boolean(
+      effectiveStatement &&
+        (effectiveStatement.totalDeposits > 0 ||
+          effectiveStatement.totalInvested > 0 ||
+          effectiveStatement.totalDividendsReceived > 0 ||
+          effectiveStatement.currentBalance > 0)
+    );
+
   return (
     <div className="max-w-4xl space-y-6">
-      {error && <ErrorBanner message={error} onRetry={loadStatement} />}
+      {error && !sampleDataEnabled && <ErrorBanner message={error} onRetry={loadStatement} />}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-heading font-bold text-white">Account statements &amp; exports</h2>
-          <p className="text-sm text-[#8EA7C7] mt-0.5">
-            Official year-to-date fiscal statement and rental distribution CSV records.
+          <h2 className="text-xl font-heading font-bold text-[#F2F5F4]">Reports</h2>
+          <p className="text-sm text-[#8FA1A8] mt-0.5">
+            Downloadable account statements and annual tax documents.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3 portal-no-print">
+        {hasActivity && (
           <button
             type="button"
             onClick={() => window.print()}
-            className="portal-btn-secondary"
+            className="portal-btn-secondary portal-no-print self-start"
           >
             <Printer className="w-4 h-4" />
-            <span>Print statement</span>
+            <span>Print summary</span>
           </button>
-          <button
-            type="button"
-            disabled={downloading}
-            onClick={handleDownloadCsv}
-            className="portal-btn-primary"
-          >
-            <Download className="w-4 h-4" />
-            <span>{downloading ? 'Exporting...' : 'Export CSV'}</span>
-          </button>
-        </div>
+        )}
       </div>
 
-      {statement && (
-        <div className="space-y-5">
-          <div className="portal-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="text-xs text-[#8EA7C7]">Statement ID · <span className="font-mono text-white">{statement.statementId}</span></div>
-              <div className="mt-1 text-base font-semibold text-white">
-                {profile?.fullName || profile?.email}
-              </div>
+      {!hasActivity ? (
+        <EmptyState
+          icon={<FileText className="w-5 h-5" />}
+          title="No statements or tax documents yet"
+          description="Your downloadable account statements and annual distribution tax documents will appear here once you complete your first deposit or investment."
+          actionLabel="Explore properties"
+          onAction={() => navigatePortal('explore')}
+        />
+      ) : (
+        effectiveStatement && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <StatTile label="Total deposits" value={formatEuro(effectiveStatement.totalDeposits)} />
+              <StatTile
+                label="Total invested"
+                value={formatEuro(effectiveStatement.totalInvested)}
+                tone="accent"
+              />
+              <StatTile
+                label="Distributions received"
+                value={formatEuro(effectiveStatement.totalDividendsReceived)}
+                tone="positive"
+              />
+              <StatTile label="Closing balance" value={formatEuro(effectiveStatement.currentBalance)} />
             </div>
-            <div className="text-xs text-[#8EA7C7] portal-tabular">
-              Period · {formatShortDate(statement.periodStart)} to {formatShortDate(statement.periodEnd)}
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <StatTile label="Total deposits" value={formatEuro(statement.totalDeposits)} />
-            <StatTile label="Total invested" value={formatEuro(statement.totalInvested)} tone="accent" />
-            <StatTile label="Dividends received" value={formatEuro(statement.totalDividendsReceived)} tone="positive" />
-            <StatTile label="Closing cash balance" value={formatEuro(statement.currentBalance)} />
+            <section className="space-y-3">
+              <h3 className="text-base font-semibold text-[#F2F5F4]">Available documents</h3>
+              <div className="portal-card-list divide-y divide-[#1F2C33]">
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-[#F2F5F4]">
+                      Account statement · <span className="font-mono">{effectiveStatement.statementId}</span>
+                    </div>
+                    <div className="text-xs text-[#8FA1A8] mt-0.5 portal-tabular">
+                      {formatShortDate(effectiveStatement.periodStart)} to{' '}
+                      {formatShortDate(effectiveStatement.periodEnd)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={downloading === 'statement'}
+                    onClick={handleDownloadStatement}
+                    className="portal-btn-secondary shrink-0"
+                  >
+                    <Download className="w-4 h-4 text-[#6FD8B0]" />
+                    <span>{downloading === 'statement' ? 'Preparing...' : 'Download'}</span>
+                  </button>
+                </div>
+
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-[#F2F5F4]">
+                      Annual tax summary ({new Date(effectiveStatement.periodEnd || Date.now()).getFullYear()})
+                    </div>
+                    <div className="text-xs text-[#8FA1A8] mt-0.5">
+                      Fiscal year rental income &amp; withholding summary
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={downloading === 'tax'}
+                    onClick={handleDownloadTaxSummary}
+                    className="portal-btn-secondary shrink-0"
+                  >
+                    <Download className="w-4 h-4 text-[#6FD8B0]" />
+                    <span>{downloading === 'tax' ? 'Preparing...' : 'Download'}</span>
+                  </button>
+                </div>
+
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-[#F2F5F4]">
+                      Distribution tax ledger (CSV)
+                    </div>
+                    <div className="text-xs text-[#8FA1A8] mt-0.5">
+                      Itemized rental payout schedule for tax filing
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={downloading === 'csv'}
+                    onClick={() => void handleDownloadCsv()}
+                    className="portal-btn-primary shrink-0"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{downloading === 'csv' ? 'Downloading...' : 'Download CSV'}</span>
+                  </button>
+                </div>
+              </div>
+            </section>
           </div>
-        </div>
+        )
       )}
     </div>
   );

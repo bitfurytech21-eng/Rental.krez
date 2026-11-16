@@ -512,9 +512,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const res = await authApi.register({
           email: cleanEmail,
+          password: pass,
           pass,
           fullName: fullName.trim(),
           role: determinedRole,
+          accountType: determinedAccountType,
           country: country || 'France',
           phoneNumber: phoneNumber || '',
           countryCode: countryCode || '',
@@ -524,13 +526,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         serverUser = (res as any)?.user || (res as any)?.data?.user;
         serverToken = (res as any)?.token || (res as any)?.data?.token;
       } catch (err: any) {
-        // Production must never fall back to browser-local demo accounts when
-        // the durable Supabase-backed registration API is unavailable.
-        if (import.meta.env.PROD) {
-          throw new Error('Registration service is unavailable. Please try again shortly.');
-        }
-        // Handle static host 405 / 404 / offline network fallback only in development.
-        if (
+        const isTransportOutage =
           err?.status === 405 ||
           err?.status === 404 ||
           err?.status === 0 ||
@@ -538,8 +534,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           String(err?.message || '').includes('405') ||
           String(err?.message || '').includes('Failed to fetch') ||
           String(err?.message || '').includes('Network request failed') ||
-          String(err?.message || '').includes('temporarily unavailable')
-        ) {
+          String(err?.message || '').includes('temporarily unavailable');
+
+        // Production must never fall back to browser-local demo accounts when
+        // the durable Supabase-backed registration API is unavailable.
+        if (import.meta.env.PROD) {
+          if (isTransportOutage) {
+            throw new Error('Registration service is unavailable. Please try again shortly.');
+          }
+          const prodErr: any = new Error(err?.message || 'Registration could not be completed. Please try again.');
+          prodErr.code = err?.code;
+          prodErr.status = err?.status;
+          throw prodErr;
+        }
+        // Handle static host 405 / 404 / offline network fallback only in development.
+        if (isTransportOutage) {
           let existing = ledger.getUserByEmail(cleanEmail);
           const created = existing || ledger.createUser({
             email: cleanEmail,
@@ -562,7 +571,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
         }
         const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Registration could not be completed. Please try again.';
-        throw new Error(errMsg);
+        const typedErr: any = new Error(errMsg);
+        typedErr.code = err?.code;
+        typedErr.status = err?.status;
+        throw typedErr;
       }
 
       if (!serverUser?.id) {

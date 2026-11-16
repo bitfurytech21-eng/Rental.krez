@@ -18,6 +18,7 @@ import {
 import { usePortal } from '../state/PortalContext';
 import { PortalRoute } from '../types';
 import { formatEuro } from '../utils/format';
+import { LagenceLogo } from '../../components/common/LagenceLogo';
 
 interface NavGroup {
   label: string;
@@ -64,23 +65,36 @@ export const Sidebar: React.FC = () => {
   const { route, navigatePortal, exitToPublicSite, balance, unreadCount } = usePortal();
 
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-[#1D3860] bg-[#0B1B30] h-screen sticky top-0">
-      <div className="h-16 px-5 border-b border-[#1D3860] flex items-center justify-between">
+    <aside
+      className="hidden lg:flex w-64 shrink-0 flex-col border-r border-[#1F2C33] bg-[#0B0F10] h-screen sticky top-0"
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+      }}
+    >
+      <div className="h-16 px-4 border-b border-[#1F2C33] flex items-center justify-between">
         <button
           type="button"
           onClick={() => navigatePortal('overview')}
-          className="text-left"
+          className="min-h-[44px] flex items-center gap-2.5 text-left rounded-[14px] px-1"
         >
-          <span className="font-serif text-xl font-semibold tracking-tight text-[#C5A880]">
-            L’Agence
-          </span>
+          <LagenceLogo variant="green" className="w-7 h-7 shrink-0" />
+          <div className="flex flex-col leading-none">
+            <span className="font-serif text-lg font-bold tracking-tight text-[#F2F5F4]">
+              L’Agence
+            </span>
+            <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#6FD8B0] mt-0.5">
+              INVESTOR PORTAL
+            </span>
+          </div>
         </button>
       </div>
 
-      <div className="px-4 py-4 border-b border-[#1D3860]">
-        <div className="portal-surface-elevated p-3.5">
-          <div className="text-[11px] font-medium text-[#8EA7C7]">Available cash</div>
-          <div className="mt-1 text-lg font-bold text-white portal-tabular">
+      <div className="p-4 border-b border-[#1F2C33]">
+        <div className="portal-card">
+          <div className="text-xs font-medium text-[#8FA1A8]">Available cash</div>
+          <div className="mt-1 text-xl font-bold text-[#F2F5F4] portal-tabular">
             {formatEuro(balance)}
           </div>
         </div>
@@ -89,10 +103,10 @@ export const Sidebar: React.FC = () => {
       <nav aria-label="Portal navigation" className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
-            <div className="px-3 mb-1.5 text-[11px] font-semibold tracking-wider text-[#8EA7C7]">
+            <div className="px-3 mb-1.5 text-xs font-medium text-[#8FA1A8]">
               {group.label}
             </div>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const active =
@@ -104,10 +118,10 @@ export const Sidebar: React.FC = () => {
                     type="button"
                     onClick={() => navigatePortal(item.id)}
                     aria-current={active ? 'page' : undefined}
-                    className={`w-full min-h-[42px] px-3 rounded-xl flex items-center justify-between gap-2.5 text-sm font-medium transition-colors ${
+                    className={`w-full min-h-[44px] px-3 rounded-[14px] flex items-center justify-between gap-2.5 text-sm font-medium transition-colors ${
                       active
-                        ? 'bg-[#152E54] text-[#C5A880] border border-[#C5A880]/40'
-                        : 'text-[#8EA7C7] hover:text-white hover:bg-[#102442] border border-transparent'
+                        ? 'bg-[#121A1F] text-[#6FD8B0] border border-[#6FD8B0]/45'
+                        : 'text-[#8FA1A8] hover:text-[#F2F5F4] hover:bg-[#121A1F] border border-transparent'
                     }`}
                   >
                     <span className="flex items-center gap-3 min-w-0">
@@ -115,8 +129,8 @@ export const Sidebar: React.FC = () => {
                       <span className="truncate">{item.label}</span>
                     </span>
                     {item.id === 'notifications' && unreadCount > 0 && (
-                      <span className="text-xs font-semibold text-[#C5A880] portal-tabular">
-                        {unreadCount}
+                      <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#6FD8B0] text-[#07231A] text-xs font-bold portal-tabular flex items-center justify-center">
+                        {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
                   </button>
@@ -127,11 +141,11 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="p-3 border-t border-[#1D3860]">
+      <div className="p-3 border-t border-[#1F2C33]">
         <button
           type="button"
           onClick={() => exitToPublicSite('/')}
-          className="w-full min-h-[44px] px-3 rounded-xl text-xs font-semibold text-[#8EA7C7] hover:text-white hover:bg-[#102442] flex items-center gap-2.5 transition-colors"
+          className="w-full min-h-[44px] px-3 rounded-[14px] text-xs font-semibold text-[#8FA1A8] hover:text-[#F2F5F4] hover:bg-[#121A1F] border border-transparent hover:border-[#1F2C33] flex items-center gap-2.5 transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
           <span>Return to Public Site</span>

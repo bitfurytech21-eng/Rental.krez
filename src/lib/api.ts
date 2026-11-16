@@ -318,9 +318,11 @@ export const authApi = {
 
   register: (payload: {
     email: string;
-    pass: string;
+    password?: string;
+    pass?: string;
     fullName: string;
     role?: string;
+    accountType?: string;
     country?: string;
     phoneNumber?: string;
     countryCode?: string;

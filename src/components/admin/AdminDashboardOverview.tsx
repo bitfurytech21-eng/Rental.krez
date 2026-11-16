@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Property } from '../../types/property';
 import { Transaction } from '../../types/transaction';
 import { User } from '../../types/user';
-import { AuditLog, PaymentConfig } from '../../lib/ledger';
+import { AuditLog, PaymentConfig, VerificationDocument } from '../../lib/ledger';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import {
   Shield,
@@ -41,6 +41,7 @@ interface AdminDashboardOverviewProps {
   users: User[];
   auditLogs: AuditLog[];
   paymentConfig: PaymentConfig;
+  verificationDocs?: VerificationDocument[];
   onNavigateTab: (tab: 'dashboard' | 'users' | 'membership' | 'deposits' | 'withdrawals' | 'manual-payment' | 'kyc' | 'properties' | 'property-documents' | 'audit' | 'payment-settings' | 'logs' | 'verification_docs' | 'news' | 'insights' | 'admin-security' | 'emails' | 'reconciliation' | 'frontend-errors') => void;
   onOpenNewPropertyModal: () => void;
   onRefreshAll: () => void;
@@ -54,6 +55,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
   users,
   auditLogs,
   paymentConfig,
+  verificationDocs,
   onNavigateTab,
   onOpenNewPropertyModal,
   onRefreshAll,
@@ -317,7 +319,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
             <span>Administrative Action Queue</span>
           </h3>
           <span className="text-xs text-[#69736F]">
-            {pendingDeposits.length + pendingWithdrawals.length + pendingKYCUsers.length + ledger.getVerificationDocuments().filter(d => d.status === 'pending').length} total items awaiting administrative review
+            {pendingDeposits.length + pendingWithdrawals.length + pendingKYCUsers.length + (verificationDocs ?? ledger.getVerificationDocuments()).filter(d => d.status === 'pending').length} total items awaiting administrative review
           </span>
         </div>
 
@@ -395,7 +397,7 @@ export const AdminDashboardOverview: React.FC<AdminDashboardOverviewProps> = ({
 
           {/* Pending Uploads & Receipts Vault Card */}
           {(() => {
-            const pendingUploads = ledger.getVerificationDocuments().filter(d => d.status === 'pending');
+            const pendingUploads = (verificationDocs ?? ledger.getVerificationDocuments()).filter(d => d.status === 'pending');
             return (
               <div className={`p-5 rounded-2xl border transition-all text-left flex flex-col justify-between ${
                 pendingUploads.length > 0 

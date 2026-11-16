@@ -1,0 +1,288 @@
+import { formatEuro } from '../utils/format';
+import {
+  PortalAccountStatement,
+  PortalComplianceDoc,
+  PortalDashboardSummary,
+  PortalNotification,
+  PortalPerformanceData,
+  PortalPortfolioData,
+  PortalProfile,
+  PortalProperty,
+  PortalTransaction,
+} from '../types';
+
+export interface SamplePortalDataset {
+  balance: number;
+  subBalances: Record<string, number>;
+  summary: PortalDashboardSummary;
+  portfolio: PortalPortfolioData;
+  properties: PortalProperty[];
+  transactions: PortalTransaction[];
+  notifications: PortalNotification[];
+  unreadCount: number;
+  performance: PortalPerformanceData;
+  statement: PortalAccountStatement;
+  complianceDocs: PortalComplianceDoc[];
+  profileOverrides: Partial<PortalProfile>;
+}
+
+export const SAMPLE_PROPERTIES: PortalProperty[] = [
+  {
+    id: 'sample-villa-cap-ferrat',
+    slug: 'sample-villa-cap-ferrat',
+    title: 'Villa Horizon Cap-Ferrat (Sample)',
+    location: 'Saint-Jean-Cap-Ferrat, France',
+    city: 'Saint-Jean-Cap-Ferrat',
+    country: 'France',
+    type: 'Residential Villa',
+    status: 'funding',
+    description:
+      'Prime Riviera residential villa SPV positioned for seasonal luxury leasing and long-term appreciation. Sample property for UI preview.',
+    tokenPrice: 500,
+    totalTokens: 4000,
+    availableTokens: 1120,
+    targetAmount: 2000000,
+    fundedAmount: 1440000,
+    minimumInvestment: 1000,
+    projectedYield: 7.4,
+    capitalAppreciation: 4.2,
+    holdingPeriodMonths: 48,
+    images: [],
+    distributionFrequency: 'Monthly',
+    financials: { grossRentAnnual: 148000, netYield: 7.4, totalIrr: 11.6 },
+  },
+  {
+    id: 'sample-atelier-marais',
+    slug: 'sample-atelier-marais',
+    title: 'Galerie & Lofts Le Marais (Sample)',
+    location: 'Paris 3e, France',
+    city: 'Paris',
+    country: 'France',
+    type: 'Commercial Retail & Office',
+    status: 'funding',
+    description:
+      'Ground-floor showroom and upper-level commercial suites on Rue de Turenne leased on 3-6-9 commercial covenants. Sample property for UI preview.',
+    tokenPrice: 250,
+    totalTokens: 5000,
+    availableTokens: 1750,
+    targetAmount: 1250000,
+    fundedAmount: 812500,
+    minimumInvestment: 500,
+    projectedYield: 6.8,
+    capitalAppreciation: 3.9,
+    holdingPeriodMonths: 36,
+    images: [],
+    distributionFrequency: 'Monthly',
+    financials: { grossRentAnnual: 85000, netYield: 6.8, totalIrr: 10.7 },
+  },
+  {
+    id: 'sample-finca-soller',
+    slug: 'sample-finca-soller',
+    title: 'Finca Serra de Tramuntana (Sample)',
+    location: 'Sóller, Mallorca, Spain',
+    city: 'Sóller',
+    country: 'Spain',
+    type: 'Residential Estate',
+    status: 'funded',
+    description:
+      'Restored limestone estate with active holiday license and full annual occupancy. Sample property for UI preview.',
+    tokenPrice: 400,
+    totalTokens: 2500,
+    availableTokens: 0,
+    targetAmount: 1000000,
+    fundedAmount: 1000000,
+    minimumInvestment: 800,
+    projectedYield: 8.1,
+    capitalAppreciation: 4.5,
+    holdingPeriodMonths: 48,
+    images: [],
+    distributionFrequency: 'Monthly',
+    financials: { grossRentAnnual: 81000, netYield: 8.1, totalIrr: 12.6 },
+  },
+];
+
+export function buildSamplePortalDataset(realProfile?: PortalProfile | null): SamplePortalDataset {
+  const holdings = [
+    {
+      id: 'sample-hold-1',
+      propertyId: 'sample-villa-cap-ferrat',
+      propertyTitle: 'Villa Horizon Cap-Ferrat (Sample)',
+      tokensPurchased: 24,
+      totalCost: 12000,
+      currentValue: 12840,
+      projectedAnnualDividend: 888,
+      dividendsReceived: 444,
+      purchaseDate: '2026-04-12T10:30:00.000Z',
+      certificateId: 'SAMPLE-CERT-001',
+      status: 'active',
+    },
+    {
+      id: 'sample-hold-2',
+      propertyId: 'sample-atelier-marais',
+      propertyTitle: 'Galerie & Lofts Le Marais (Sample)',
+      tokensPurchased: 32,
+      totalCost: 8000,
+      currentValue: 8320,
+      projectedAnnualDividend: 544,
+      dividendsReceived: 272,
+      purchaseDate: '2026-06-03T14:15:00.000Z',
+      certificateId: 'SAMPLE-CERT-002',
+      status: 'active',
+    },
+  ];
+
+  const totalHoldingsValue = holdings.reduce((s, h) => s + h.currentValue, 0);
+  const balance = 4850;
+
+  return {
+    balance,
+    subBalances: { EUR: balance, USD: 1250, GBP: 0, CHF: 0 },
+    summary: {
+      totalPortfolioValue: balance + totalHoldingsValue,
+      availableBalance: balance,
+      investedCapital: 20000,
+      totalEarnedDividends: 716,
+      activePropertiesCount: 2,
+      projectedMonthlyIncome: 119.33,
+      currency: 'EUR',
+    },
+    portfolio: {
+      holdings,
+      totalHoldingsValue,
+      totalPortfolioValue: balance + totalHoldingsValue,
+      totalTokensHeld: 56,
+      activePropertiesCount: 2,
+      totalDividendsReceived: 716,
+      currency: 'EUR',
+    },
+    properties: SAMPLE_PROPERTIES,
+    transactions: [
+      {
+        id: 'sample-tx-1',
+        type: 'dividend',
+        amount: 119.33,
+        currency: 'EUR',
+        status: 'completed',
+        reference: 'SAMPLE-DIV-082',
+        createdAt: '2026-11-01T09:00:00.000Z',
+        description: 'Monthly rent distribution',
+        propertyId: 'sample-villa-cap-ferrat',
+        propertyTitle: 'Villa Horizon Cap-Ferrat (Sample)',
+      },
+      {
+        id: 'sample-tx-2',
+        type: 'withdrawal',
+        amount: 1200,
+        currency: 'EUR',
+        status: 'pending',
+        reference: 'SAMPLE-WTH-041',
+        createdAt: '2026-10-28T16:40:00.000Z',
+        paymentMethod: 'SEPA bank transfer',
+      },
+      {
+        id: 'sample-tx-3',
+        type: 'investment',
+        amount: 8000,
+        currency: 'EUR',
+        status: 'completed',
+        reference: 'SAMPLE-INV-019',
+        createdAt: '2026-06-03T14:15:00.000Z',
+        propertyId: 'sample-atelier-marais',
+        propertyTitle: 'Galerie & Lofts Le Marais (Sample)',
+        tokensPurchased: 32,
+        paymentMethod: 'Platform Balance',
+      },
+      {
+        id: 'sample-tx-4',
+        type: 'deposit',
+        amount: 25000,
+        currency: 'EUR',
+        status: 'completed',
+        reference: 'SAMPLE-DEP-004',
+        createdAt: '2026-04-02T11:20:00.000Z',
+        paymentMethod: 'SEPA bank transfer',
+      },
+    ],
+    notifications: [
+      {
+        id: 'sample-notif-1',
+        title: 'Monthly distribution settled (Sample)',
+        message: `Sample ${formatEuro(119.33)} rental yield has been credited to your preview wallet.`,
+        type: 'Distribution',
+        read: false,
+        createdAt: '2026-11-01T09:05:00.000Z',
+      },
+      {
+        id: 'sample-notif-2',
+        title: 'Identity verification approved (Sample)',
+        message: 'Sample KYC & AML compliance dossier status is verified for preview mode.',
+        type: 'Compliance',
+        read: true,
+        createdAt: '2026-04-01T10:00:00.000Z',
+      },
+    ],
+    unreadCount: 1,
+    performance: {
+      annualizedReturnPercent: 7.16,
+      historicalPerformance: [
+        { month: 'Jun', yield: 88, totalValue: 20120 },
+        { month: 'Jul', yield: 112, totalValue: 20340 },
+        { month: 'Aug', yield: 115, totalValue: 20590 },
+        { month: 'Sep', yield: 118, totalValue: 20810 },
+        { month: 'Oct', yield: 119, totalValue: 21020 },
+        { month: 'Nov', yield: 119.33, totalValue: 21160 },
+      ],
+    },
+    statement: {
+      statementId: 'SAMPLE-STMT-2026-Q4',
+      periodStart: '2026-01-01',
+      periodEnd: '2026-11-15',
+      totalDeposits: 25000,
+      totalInvested: 20000,
+      totalDividendsReceived: 716,
+      currentBalance: balance,
+    },
+    complianceDocs: [
+      {
+        id: 'sample-doc-1',
+        userId: realProfile?.id || 'sample-user',
+        category: 'kyc_identity',
+        documentType: 'Passport',
+        title: 'Passport — Identity Verification (Sample)',
+        fileName: 'sample-passport.pdf',
+        fileSize: 420000,
+        mimeType: 'application/pdf',
+        status: 'verified',
+        uploadedAt: '2026-04-01T09:30:00.000Z',
+      },
+      {
+        id: 'sample-doc-2',
+        userId: realProfile?.id || 'sample-user',
+        category: 'proof_of_address',
+        documentType: 'Utility Bill',
+        title: 'Utility Bill — Proof of Address (Sample)',
+        fileName: 'sample-utility-bill.pdf',
+        fileSize: 310000,
+        mimeType: 'application/pdf',
+        status: 'verified',
+        uploadedAt: '2026-04-01T09:35:00.000Z',
+      },
+      {
+        id: 'sample-doc-3',
+        userId: realProfile?.id || 'sample-user',
+        category: 'accredited_proof',
+        documentType: 'Investor Questionnaire',
+        title: 'Investor Questionnaire — Suitability (Sample)',
+        fileName: 'sample-questionnaire.pdf',
+        fileSize: 185000,
+        mimeType: 'application/pdf',
+        status: 'pending',
+        uploadedAt: '2026-04-01T09:40:00.000Z',
+      },
+    ],
+    profileOverrides: {
+      kycStatus: 'verified',
+      bankIban: realProfile?.bankIban || 'FR7630006000011234567890189',
+    },
+  };
+}

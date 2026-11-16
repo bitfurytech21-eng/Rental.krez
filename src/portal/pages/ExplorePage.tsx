@@ -6,11 +6,29 @@ import { FilterChips } from '../components/FilterChips';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
 
+function classifyPropertySegment(type: string): 'Residential' | 'Commercial' {
+  const t = String(type || '').toLowerCase();
+  if (
+    t.includes('commercial') ||
+    t.includes('office') ||
+    t.includes('retail') ||
+    t.includes('industrial') ||
+    t.includes('hospitality') ||
+    t.includes('hotel') ||
+    t.includes('logistics') ||
+    t.includes('mixed')
+  ) {
+    return 'Commercial';
+  }
+  return 'Residential';
+}
+
 export const ExplorePage: React.FC = () => {
   const {
     loading,
     error,
     properties,
+    sampleDataEnabled,
     exploreFilter,
     setExploreFilter,
     exploreSearch,
@@ -19,23 +37,27 @@ export const ExplorePage: React.FC = () => {
     refreshAll,
   } = usePortal();
 
-  const filterOptions = ['All', 'Open', 'Funded', 'Upcoming'];
+  const filterOptions = ['All', 'Residential', 'Commercial'];
+  const activeFilter = filterOptions.includes(exploreFilter) ? exploreFilter : 'All';
 
   const filtered = useMemo(() => {
     const q = exploreSearch.trim().toLowerCase();
     return properties.filter((p) => {
-      if (exploreFilter === 'Open' && p.status !== 'funding' && p.status !== 'active') return false;
-      if (exploreFilter === 'Funded' && p.status !== 'funded') return false;
-      if (exploreFilter === 'Upcoming' && p.status !== 'upcoming') return false;
+      if (activeFilter === 'Residential' && classifyPropertySegment(p.type) !== 'Residential') {
+        return false;
+      }
+      if (activeFilter === 'Commercial' && classifyPropertySegment(p.type) !== 'Commercial') {
+        return false;
+      }
       if (q) {
-        const hay = `${p.title} ${p.location} ${p.type}`.toLowerCase();
+        const hay = `${p.title} ${p.location} ${p.city || ''} ${p.type}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [properties, exploreFilter, exploreSearch]);
+  }, [properties, activeFilter, exploreSearch]);
 
-  if (loading && properties.length === 0) {
+  if (loading && !sampleDataEnabled && properties.length === 0) {
     return <LoadingSkeleton rows={4} />;
   }
 
@@ -45,19 +67,19 @@ export const ExplorePage: React.FC = () => {
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-heading font-bold text-white">Available property SPVs</h2>
-          <p className="text-sm text-[#8EA7C7] mt-0.5">
-            Live investment offerings from the verified property marketplace.
+          <h2 className="text-xl font-heading font-bold text-[#F2F5F4]">Explore properties</h2>
+          <p className="text-sm text-[#8FA1A8] mt-0.5">
+            Vetted residential and commercial property SPVs open for investment.
           </p>
         </div>
 
         <div className="relative w-full md:w-72">
-          <Search className="w-4 h-4 text-[#8EA7C7] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-[#8FA1A8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="search"
             value={exploreSearch}
             onChange={(e) => setExploreSearch(e.target.value)}
-            placeholder="Search city, asset, or type..."
+            placeholder="Search name, city, or type..."
             aria-label="Search properties"
             className="portal-input !pl-10"
           />
@@ -66,17 +88,17 @@ export const ExplorePage: React.FC = () => {
 
       <FilterChips
         options={filterOptions}
-        value={exploreFilter}
+        value={activeFilter}
         onChange={setExploreFilter}
-        ariaLabel="Filter properties by status"
+        ariaLabel="Filter properties by asset class"
       />
 
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Building2 className="w-5 h-5" />}
-          title="No matching offerings"
-          description="Try clearing your search filter or viewing all available property offerings."
-          actionLabel="Reset filters"
+          title="No matching properties"
+          description="Try clearing your search term or switching back to all asset classes."
+          actionLabel="Show all properties"
           onAction={() => {
             setExploreFilter('All');
             setExploreSearch('');

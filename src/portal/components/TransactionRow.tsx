@@ -1,6 +1,7 @@
 import React from 'react';
 import { PortalTransaction } from '../types';
 import { formatEuro, formatShortDate } from '../utils/format';
+import { StatusBadge } from './StatusBadge';
 
 interface TransactionRowProps {
   transaction: PortalTransaction;
@@ -23,15 +24,6 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
     typeKey === 'withdrawal' || typeKey === 'investment' || typeKey === 'purchase';
   const signedAmount = isOutflow ? -Math.abs(transaction.amount) : Math.abs(transaction.amount);
 
-  const statusKey = transaction.status.toLowerCase();
-  const statusColor =
-    statusKey === 'completed' || statusKey === 'approved' || statusKey === 'verified'
-      ? 'text-[#34D399]'
-      : statusKey === 'rejected' || statusKey === 'failed' || statusKey === 'cancelled'
-      ? 'text-[#FB7185]'
-      : 'text-[#FBBF24]';
-
-  const statusText = statusKey.charAt(0).toUpperCase() + statusKey.slice(1);
   const title =
     transaction.propertyTitle ||
     TYPE_LABELS[typeKey] ||
@@ -39,10 +31,10 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
     transaction.type;
 
   return (
-    <div className="py-3.5 px-4 flex items-center justify-between gap-4 hover:bg-[#152E54]/45 transition-colors">
+    <div className="p-4 flex items-center justify-between gap-4 hover:bg-[#172228]/70 transition-colors">
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-white truncate">{title}</div>
-        <div className="mt-0.5 text-xs text-[#8EA7C7] flex items-center gap-1.5 flex-wrap">
+        <div className="text-sm font-medium text-[#F2F5F4] truncate">{title}</div>
+        <div className="mt-1 text-xs text-[#8FA1A8] flex items-center gap-1.5 flex-wrap">
           <span className="font-mono">{transaction.reference}</span>
           <span aria-hidden="true">·</span>
           <span>{formatShortDate(transaction.createdAt)}</span>
@@ -55,15 +47,15 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
         </div>
       </div>
 
-      <div className="text-right shrink-0">
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
         <div
           className={`text-sm font-bold portal-tabular ${
-            isOutflow ? 'text-white' : 'text-[#34D399]'
+            isOutflow ? 'text-[#F2F5F4]' : 'text-[#6FD8B0]'
           }`}
         >
           {formatEuro(signedAmount, true)}
         </div>
-        <div className={`mt-0.5 text-xs font-medium ${statusColor}`}>{statusText}</div>
+        <StatusBadge status={transaction.status} />
       </div>
     </div>
   );

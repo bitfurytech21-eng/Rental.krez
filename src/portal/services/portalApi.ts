@@ -1,10 +1,12 @@
 import { api, apiRequest, createIdempotencyKey, getBaseUrl } from '../../lib/api';
+import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
 import {
   PortalAccountStatement,
   PortalComplianceDoc,
+  PortalComplianceStep,
+  PortalConfig,
   PortalDashboardSummary,
   PortalNotification,
-  PortalPaymentConfig,
   PortalPerformanceData,
   PortalPortfolioData,
   PortalProfile,
@@ -128,6 +130,7 @@ export const portalApi = {
       city: String(d.city || ''),
       postalCode: String(d.postalCode || ''),
       bankIban: String(d.bankIban || ''),
+      bankAccountHolder: String(d.bankAccountHolder || d.fullName || ''),
       cryptoDepositAddress: String(d.cryptoDepositAddress || ''),
       taxId: String(d.taxId || ''),
       dateOfBirth: String(d.dateOfBirth || ''),
@@ -154,6 +157,7 @@ export const portalApi = {
       city: String(d.city || ''),
       postalCode: String(d.postalCode || ''),
       bankIban: String(d.bankIban || ''),
+      bankAccountHolder: String(d.bankAccountHolder || d.fullName || ''),
       cryptoDepositAddress: String(d.cryptoDepositAddress || ''),
       taxId: String(d.taxId || ''),
       dateOfBirth: String(d.dateOfBirth || ''),
@@ -161,19 +165,42 @@ export const portalApi = {
     };
   },
 
-  async getPaymentConfig(): Promise<PortalPaymentConfig> {
+  async getPaymentConfig(): Promise<PortalConfig> {
     const res = await api.get<any>('/payments/config');
     const d = unwrap<any>(res) || {};
+    const ph = PORTAL_PLACEHOLDER_CONFIG;
     return {
+      isPlaceholder: false,
       traditional: {
-        beneficiary: d.traditional?.beneficiary || 'L’Agence Escrow Services S.A.S.',
-        bankName: d.traditional?.bankName || 'BNP Paribas Institutional',
-        iban: d.traditional?.iban || '',
-        bic: d.traditional?.bic || '',
-        address: d.traditional?.address || '',
-        country: d.traditional?.country || 'France',
+        beneficiary: d.traditional?.beneficiary || ph.traditional.beneficiary,
+        bankName: d.traditional?.bankName || ph.traditional.bankName,
+        iban: d.traditional?.iban || ph.traditional.iban,
+        bic: d.traditional?.bic || ph.traditional.bic,
+        address: d.traditional?.address || ph.traditional.address,
+        country: d.traditional?.country || ph.traditional.country,
       },
-      cryptoNetworks: Array.isArray(d.cryptoNetworks) ? d.cryptoNetworks : [],
+      cryptoNetworks: Array.isArray(d.cryptoNetworks) ? d.cryptoNetworks : ph.cryptoNetworks,
+      limits: {
+        minDepositEur: Number(d.limits?.minDepositEur ?? ph.limits.minDepositEur),
+        maxDepositEur: Number(d.limits?.maxDepositEur ?? ph.limits.maxDepositEur),
+        minWithdrawalEur: Number(d.limits?.minWithdrawalEur ?? ph.limits.minWithdrawalEur),
+        minInvestmentEur: Number(d.limits?.minInvestmentEur ?? ph.limits.minInvestmentEur),
+        maxInvestmentPerInvestorEur: Number(
+          d.limits?.maxInvestmentPerInvestorEur ?? ph.limits.maxInvestmentPerInvestorEur
+        ),
+      },
+      fees: {
+        sepaDepositFeeEur: Number(d.fees?.sepaDepositFeeEur ?? ph.fees.sepaDepositFeeEur),
+        cardDepositFeeEur: Number(d.fees?.cardDepositFeeEur ?? ph.fees.cardDepositFeeEur),
+        withdrawalFeeEur: Number(d.fees?.withdrawalFeeEur ?? ph.fees.withdrawalFeeEur),
+        investmentFeePercent: Number(d.fees?.investmentFeePercent ?? ph.fees.investmentFeePercent),
+        treasuryFxFeePercent: Number(d.fees?.treasuryFxFeePercent ?? ph.fees.treasuryFxFeePercent),
+      },
+      settlement: {
+        sepaDepositEta: d.settlement?.sepaDepositEta || ph.settlement.sepaDepositEta,
+        cardDepositEta: d.settlement?.cardDepositEta || ph.settlement.cardDepositEta,
+        withdrawalEta: d.settlement?.withdrawalEta || ph.settlement.withdrawalEta,
+      },
     };
   },
 
@@ -225,6 +252,7 @@ export const portalApi = {
     amount: number;
     destination: string;
     method: string;
+    accountHolderName?: string;
     grantId?: string;
     idempotencyKey?: string;
   }): Promise<PortalTransaction> {
@@ -238,6 +266,7 @@ export const portalApi = {
         amount: payload.amount,
         destination: payload.destination,
         method: payload.method,
+        accountHolderName: payload.accountHolderName,
         idempotencyKey: payload.idempotencyKey || createIdempotencyKey(),
       },
       headers,
@@ -282,6 +311,12 @@ export const portalApi = {
   async convertTreasury(payload: { fromCurrency: string; toCurrency: string; amount: number }) {
     const res = await api.post<any>('/treasury/convert', payload);
     return unwrap<any>(res);
+  },
+
+  async getComplianceSteps(): Promise<PortalComplianceStep[]> {
+    const res = await api.get<any>('/compliance/steps');
+    const steps = unwrap<PortalComplianceStep[]>(res);
+    return Array.isArray(steps) ? steps : [];
   },
 
   async getComplianceDocuments(): Promise<PortalComplianceDoc[]> {

@@ -1,16 +1,16 @@
-/* L'Agence Investor Portal — Institutional Navy & Champagne Gold Theme */
+/* L'Agence Investor Portal — Design System Tokens & Core Primitives */
 .portal-shell {
-  --portal-bg: #0B1B30;
-  --portal-card: #102442;
-  --portal-elevated: #152E54;
-  --portal-line: #1D3860;
-  --portal-text: #FFFFFF;
-  --portal-muted: #8EA7C7;
-  --portal-accent: #C5A880;
-  --portal-accent-hover: #D4BA94;
-  --portal-accent-ink: #0B1B30;
-  --portal-ok: #34D399;
-  --portal-warn: #FBBF24;
+  --portal-bg: #0B0F10;
+  --portal-card: #121A1F;
+  --portal-elevated: #172228;
+  --portal-line: #1F2C33;
+  --portal-text: #F2F5F4;
+  --portal-muted: #8FA1A8;
+  --portal-accent: #6FD8B0;
+  --portal-accent-hover: #83DFBC;
+  --portal-accent-ink: #07231A;
+  --portal-ok: #6FD8B0;
+  --portal-warn: #FCD34D;
   --portal-danger: #FB7185;
 
   background-color: var(--portal-bg);
@@ -22,13 +22,21 @@
 .portal-card {
   background-color: var(--portal-card);
   border: 1px solid var(--portal-line);
-  border-radius: 14px;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.portal-card-list {
+  background-color: var(--portal-card);
+  border: 1px solid var(--portal-line);
+  border-radius: 18px;
+  overflow: hidden;
 }
 
 .portal-surface-elevated {
   background-color: var(--portal-elevated);
   border: 1px solid var(--portal-line);
-  border-radius: 12px;
+  border-radius: 14px;
 }
 
 .portal-btn-primary {
@@ -36,20 +44,23 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 0 20px;
-  border-radius: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--portal-accent);
   background-color: var(--portal-accent);
   color: var(--portal-accent-ink);
   font-weight: 700;
   font-size: 14px;
+  line-height: 1;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 180ms cubic-bezier(0.16, 1, 0.3, 1), border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .portal-btn-primary:hover:not(:disabled) {
   background-color: var(--portal-accent-hover);
+  border-color: var(--portal-accent-hover);
 }
 
 .portal-btn-primary:active:not(:disabled) {
@@ -57,7 +68,7 @@
 }
 
 .portal-btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -66,48 +77,63 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 48px;
   padding: 0 20px;
-  border-radius: 12px;
+  border-radius: 14px;
   background-color: transparent;
   border: 1px solid var(--portal-line);
   color: var(--portal-text);
   font-weight: 600;
   font-size: 14px;
+  line-height: 1;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms cubic-bezier(0.16, 1, 0.3, 1), transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .portal-btn-secondary:hover:not(:disabled) {
   border-color: var(--portal-accent);
-  background-color: rgba(197, 168, 128, 0.08);
+  background-color: rgba(111, 216, 176, 0.08);
+}
+
+.portal-btn-secondary:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .portal-btn-secondary:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .portal-input {
   width: 100%;
-  min-height: 46px;
-  border-radius: 12px;
+  min-height: 48px;
+  border-radius: 14px;
   border: 1px solid var(--portal-line);
   background-color: var(--portal-bg);
   color: var(--portal-text);
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 14px;
-  outline: none;
-  transition: border-color 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .portal-input::placeholder {
   color: var(--portal-muted);
+  opacity: 1;
+}
+
+.portal-input option {
+  background-color: var(--portal-card);
+  color: var(--portal-text);
 }
 
 .portal-input:focus {
   border-color: var(--portal-accent);
+}
+
+.portal-input:focus-visible {
+  outline: 2px solid var(--portal-accent);
+  outline-offset: 2px;
 }
 
 .portal-progress-track {
@@ -130,8 +156,30 @@
 }
 
 .portal-shell :focus-visible {
-  outline: 2px solid var(--portal-accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--portal-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* iOS Safe Area Helpers */
+.portal-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.portal-safe-bottom {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+.portal-safe-main {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  .portal-safe-main {
+    padding-left: max(24px, env(safe-area-inset-left, 0px));
+    padding-right: max(24px, env(safe-area-inset-right, 0px));
+  }
 }
 
 @media print {
@@ -149,7 +197,8 @@
     overflow: visible !important;
   }
 
-  .portal-card {
+  .portal-card,
+  .portal-card-list {
     background: #ffffff !important;
     border-color: #d1d5db !important;
     color: #111827 !important;

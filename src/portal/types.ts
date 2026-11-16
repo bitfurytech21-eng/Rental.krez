@@ -55,6 +55,8 @@ export interface PortalProperty {
   slug: string;
   title: string;
   location: string;
+  city?: string;
+  country?: string;
   type: string;
   status: string;
   description?: string;
@@ -65,9 +67,16 @@ export interface PortalProperty {
   fundedAmount: number;
   minimumInvestment: number;
   projectedYield: number;
+  capitalAppreciation?: number;
+  holdingPeriodMonths?: number;
   images: string[];
   spvName?: string;
   distributionFrequency?: string;
+  financials?: {
+    grossRentAnnual?: number;
+    netYield?: number;
+    totalIrr?: number;
+  };
 }
 
 export interface PortalTransaction {
@@ -112,10 +121,21 @@ export interface PortalProfile {
   city: string;
   postalCode: string;
   bankIban: string;
+  bankAccountHolder?: string;
   cryptoDepositAddress: string;
   taxId: string;
   dateOfBirth: string;
   createdAt: string;
+}
+
+export interface PortalComplianceStep {
+  stepKey: 'kyc_identity' | 'proof_of_address' | 'accredited_proof';
+  title: string;
+  status: 'not_started' | 'in_review' | 'verified' | 'rejected';
+  notes?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  updatedAt?: string;
 }
 
 export interface PortalComplianceDoc {
@@ -167,4 +187,27 @@ export interface PortalPaymentConfig {
     address: string;
     memo?: string;
   }>;
+}
+
+export interface PortalConfig extends PortalPaymentConfig {
+  isPlaceholder: boolean;
+  limits: {
+    minDepositEur: number;
+    maxDepositEur: number;
+    minWithdrawalEur: number;
+    minInvestmentEur: number;
+    maxInvestmentPerInvestorEur: number;
+  };
+  fees: {
+    sepaDepositFeeEur: number;
+    cardDepositFeeEur: number;
+    withdrawalFeeEur: number;
+    investmentFeePercent: number;
+    treasuryFxFeePercent: number;
+  };
+  settlement: {
+    sepaDepositEta: string;
+    cardDepositEta: string;
+    withdrawalEta: string;
+  };
 }

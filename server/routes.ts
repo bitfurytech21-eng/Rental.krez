@@ -77,12 +77,24 @@ import {
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
   getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs, getAdminIdentityByEmail,
   createPersistentInvestmentPlan, updatePersistentInvestmentPlan,
-  listUserNotifications, markUserNotificationRead, markAllUserNotificationsRead,
+  listUserNotifications, markUserNotificationRead, markAllUserNotificationsRead, createUserNotification,
   listUserFavorites, saveUserFavorite, removeUserFavorite, getUserPreferences, saveUserPreferences,
-  listComplianceDocuments, addComplianceDocument,
+  listComplianceDocuments, addComplianceDocument, listAdminComplianceDocuments, reviewComplianceDocument,
+  listComplianceSteps, upsertComplianceStep, getWalletSummary, findTransactionByReferenceOrId,
+  ComplianceStepKey, ComplianceStepRecord,
   getPersistentAccountStatement, getPersistentPerformance,
   signInCustomer, registerCustomer, requestCustomerPasswordReset, updateCustomerPassword, signOutCustomer
 } from './supabaseDatabase';
+import {
+  getPaymentProviderStatus,
+  verifyPaymentWebhookSignature,
+  dispatchBankPayoutInstruction
+} from './services/paymentProvider';
+import {
+  getKycProviderStatus,
+  createKycVerificationSession,
+  verifyKycWebhookSignature
+} from './services/kycProvider';
 
 const router = Router();
 router.use(async (_req, _res, next) => {
@@ -116,6 +128,63 @@ const devComplianceDocsByUser = new Map<string, Array<{
   uploadedAt: string;
   fileDataUrl?: string;
 }>>();
+const devComplianceStepsByUser = new Map<string, ComplianceStepRecord[]>();
+
+function normalizeAccountName(name: unknown): string {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function namesMatchOwner(legalName: unknown, holderName: unknown): boolean {
+  const a = normalizeAccountName(legalName);
+  const b = normalizeAccountName(holderName);
+  return Boolean(a && b && a === b);
+}
+
+function isValidIbanServer(iban: string): boolean {
+  const clean = iban.replace(/\s+/g, '').toUpperCase();
+  return clean.length >= 15 && clean.length <= 34 && /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(clean);
+}
+
+function buildDevComplianceSteps(userId: string, kycStatus?: string): ComplianceStepRecord[] {
+  const defs: Array<{ stepKey: ComplianceStepKey; title: string }> = [
+    { stepKey: 'kyc_identity', title: 'Identity verification' },
+    { stepKey: 'proof_of_address', title: 'Proof of address' },
+    { stepKey: 'accredited_proof', title: 'Investor questionnaire' },
+  ];
+  const saved = devComplianceStepsByUser.get(userId) || [];
+  const docs = devComplianceDocsByUser.get(userId) || [];
+  const normKyc = String(kycStatus || 'pending').toLowerCase();
+
+  return defs.map((def) => {
+    const existing = saved.find((s) => s.stepKey === def.stepKey);
+    const matchingDocs = docs.filter((d) => d.category === def.stepKey);
+    let status: ComplianceStepRecord['status'] = 'not_started';
+    if (normKyc === 'verified' || normKyc === 'approved') {
+      status = 'verified';
+    } else if (existing?.status) {
+      status = existing.status;
+    } else if (matchingDocs.length > 0) {
+      const latest = matchingDocs[0];
+      status = latest.status === 'verified' ? 'verified' : latest.status === 'rejected' ? 'rejected' : 'in_review';
+    } else if (normKyc === 'rejected') {
+      status = 'rejected';
+    }
+    return {
+      stepKey: def.stepKey,
+      title: def.title,
+      status,
+      submittedAt: existing?.submittedAt || matchingDocs[0]?.uploadedAt,
+      reviewedAt: existing?.reviewedAt,
+      updatedAt: existing?.updatedAt,
+    };
+  });
+}
 
 const requireActionEmailVerification = (actionScope: string) =>
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -392,6 +461,7 @@ interface DevCustomerRecord extends UserRecord {
   postalCode?: string;
   avatarUrl?: string;
   bankIban?: string;
+  bankAccountHolder?: string;
   cryptoDepositAddress?: string;
   taxId?: string;
   dateOfBirth?: string;
@@ -423,6 +493,11 @@ async function ensureDevStateHydrated(): Promise<void> {
           devComplianceDocsByUser.set(uid, docs);
         }
       }
+      for (const [uid, steps] of Object.entries(snap.complianceSteps || {})) {
+        if (Array.isArray(steps) && !devComplianceStepsByUser.has(uid)) {
+          devComplianceStepsByUser.set(uid, steps);
+        }
+      }
       hydrateServerSessions(snap.sessions);
       devStateHydrated = true;
     })();
@@ -436,10 +511,15 @@ async function persistDevState(): Promise<void> {
   for (const [uid, docs] of devComplianceDocsByUser.entries()) {
     complianceDocs[uid] = docs;
   }
+  const complianceSteps: Record<string, any[]> = {};
+  for (const [uid, steps] of devComplianceStepsByUser.entries()) {
+    complianceSteps[uid] = steps;
+  }
   await saveDevAuthSnapshot({
     customers: Array.from(devCustomersById.values()),
     sessions: exportServerSessions(),
     complianceDocs,
+    complianceSteps,
   });
 }
 
@@ -468,6 +548,7 @@ function toPublicDevCustomer(record: DevCustomerRecord) {
     postalCode: record.postalCode,
     avatarUrl: record.avatarUrl,
     bankIban: record.bankIban,
+    bankAccountHolder: record.bankAccountHolder || record.fullName,
     cryptoDepositAddress: record.cryptoDepositAddress,
     taxId: record.taxId,
     dateOfBirth: record.dateOfBirth,
@@ -665,6 +746,40 @@ function pushUserNotification(userId: string, notif: { title: string; message: s
     createdAt: new Date().toISOString()
   });
   userNotificationsStore.set(userId, list);
+}
+
+async function notifyInvestorEvent(params: {
+  userId: string;
+  email?: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'alert';
+  emailTemplate?: string;
+  emailData?: Record<string, any>;
+  idempotencyKey?: string;
+}) {
+  if (isSupabaseServerConfigured()) {
+    await createUserNotification(params.userId, {
+      title: params.title,
+      message: params.message,
+      type: params.type,
+    }).catch(() => {});
+  } else {
+    pushUserNotification(params.userId, {
+      title: params.title,
+      message: params.message,
+      type: params.type,
+    });
+  }
+
+  if (params.email && params.emailTemplate) {
+    sendEmail({
+      templateId: params.emailTemplate,
+      recipient: params.email,
+      data: params.emailData || {},
+      idempotencyKey: params.idempotencyKey,
+    }).catch(() => {});
+  }
 }
 
 // ============================================================================
@@ -1408,12 +1523,17 @@ router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest
  */
 router.post('/auth/register', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
-  const password = String(req.body?.password || req.body?.pass || '');
-  const fullName = String(req.body?.fullName || '').trim();
-  const country = String(req.body?.country || 'France').trim();
-  const phoneNumber = String(req.body?.phoneNumber || '').trim();
-  const countryCode = String(req.body?.countryCode || '').trim();
+  const rawPassword = req.body?.password ?? req.body?.pass ?? '';
+  const password = typeof rawPassword === 'string' ? rawPassword : String(rawPassword || '');
+  const fullName = String(req.body?.fullName || req.body?.full_name || '').trim();
+  const country = String(req.body?.country || 'France').trim() || 'France';
+  const phoneNumber = String(req.body?.phoneNumber || req.body?.phone_number || '').trim();
+  const countryCode = String(req.body?.countryCode || req.body?.country_code || '').trim();
+  const requestedAccountType = String(req.body?.accountType || req.body?.account_type || 'individual_investor').trim();
+  const accountType = requestedAccountType === 'admin' || !requestedAccountType ? 'individual_investor' : requestedAccountType;
+
   if (!email || !password || !fullName) return res.status(400).json({ success: false, error: 'Full legal name, valid email address, and password are required.', code: 'VALIDATION_ERROR', requestId: req.id });
+  if (fullName.length < 2) return res.status(400).json({ success: false, error: 'Full legal name must contain at least 2 characters.', code: 'VALIDATION_ERROR', requestId: req.id });
   if (!validateEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL_FORMAT', requestId: req.id });
   const strength = validatePasswordStrength(password);
   if (!strength.valid) return res.status(400).json({ success: false, error: strength.error || 'Password does not meet institutional security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
@@ -1440,7 +1560,7 @@ router.post('/auth/register', authLimiter, async (req: AuthenticatedRequest, res
       fullName,
       passwordHash: hashPassword(password),
       role: 'investor',
-      accountType: String(req.body?.accountType || 'individual_investor'),
+      accountType,
       kycStatus: 'pending',
       balance: 0,
       investedBalance: 0,
@@ -1491,10 +1611,10 @@ router.post('/auth/register', authLimiter, async (req: AuthenticatedRequest, res
 
   try {
     const origin = typeof req.headers.origin === 'string' ? req.headers.origin : 'https://kretzdespain.com';
-    const result = await registerCustomer({ email, password, fullName, country, countryCode, phoneNumber, redirectTo: `${origin}/#login` });
+    const result = await registerCustomer({ email, password, fullName, accountType, country, countryCode, phoneNumber, redirectTo: `${origin}/#login` });
     const user = result.user || {
       id: result.authUser.id, email: result.authUser.email || email,
-      fullName, role: 'investor', accountType: 'individual_investor',
+      fullName, role: 'investor', accountType,
       balance: 0, status: 'active'
     };
     return res.status(201).json({
@@ -1509,6 +1629,7 @@ router.post('/auth/register', authLimiter, async (req: AuthenticatedRequest, res
     const message = String(error?.message || '');
     if (/already registered|already exists|user already/i.test(message)) return res.status(409).json({ success: false, error: 'An account with this email address already exists. Please sign in.', code: 'EMAIL_ALREADY_EXISTS', requestId: req.id });
     if (/password/i.test(message)) return res.status(400).json({ success: false, error: message, code: 'WEAK_PASSWORD', requestId: req.id });
+    if (/email.*invalid|invalid.*email/i.test(message)) return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL_FORMAT', requestId: req.id });
     logger.log({ level: 'error', category: 'auth', requestId: req.id || 'req-register-failed', eventType: 'SUPABASE_REGISTRATION_FAILED', outcome: 'failure', message: 'Supabase customer registration failed.' });
     return res.status(503).json({ success: false, error: 'Registration could not be completed. Please try again shortly.', code: 'REGISTRATION_UNAVAILABLE', requestId: req.id });
   }
@@ -2400,19 +2521,80 @@ router.patch('/admin/users/:id/profile', requireAdmin, async (req: Authenticated
 });
 
 router.post('/admin/users/:id/kyc', requireAdmin, requireActionEmailVerification('admin.user.kyc'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const { id } = req.params;
   const { kycStatus = 'approved', notes } = req.body || {};
+  const normalizedKyc = String(kycStatus).toLowerCase() === 'rejected' ? 'rejected' : 'verified';
+  const stepStatus = normalizedKyc === 'rejected' ? 'rejected' : 'verified';
+
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const devCustomer = devCustomersById.get(id);
+    if (!devCustomer) {
+      return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    }
+    devCustomer.kycStatus = normalizedKyc;
+    const docs = devComplianceDocsByUser.get(id) || [];
+    docs.forEach((doc) => {
+      if (doc.status === 'pending') doc.status = stepStatus;
+    });
+    const nowIso = new Date().toISOString();
+    const updatedSteps = buildDevComplianceSteps(id, normalizedKyc).map((s) => ({
+      ...s,
+      status: stepStatus as ComplianceStepRecord['status'],
+      reviewedAt: nowIso,
+      updatedAt: nowIso,
+      notes: notes || s.notes,
+    }));
+    devComplianceStepsByUser.set(id, updatedSteps);
+    await notifyInvestorEvent({
+      userId: id,
+      email: devCustomer.email,
+      title: stepStatus === 'verified' ? 'Identity verification approved' : 'Identity verification requires attention',
+      message: stepStatus === 'verified'
+        ? 'Your investor KYC compliance check is verified. Withdrawals and full portfolio operations are now enabled.'
+        : notes || 'Your submitted identity documents need an update before approval.',
+      type: stepStatus === 'verified' ? 'success' : 'warning',
+      emailTemplate: stepStatus === 'verified' ? 'kyc_approved' : 'kyc_rejected',
+      emailData: {
+        fullName: devCustomer.fullName || 'Valued Investor',
+        event_name: 'Institutional KYC Verification',
+        status: stepStatus === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified',
+        notes: notes || 'Your KYC status has been updated.',
+      },
+      idempotencyKey: `idemp-kyc-${id}-${normalizedKyc}-${Date.now()}`,
+    });
+    await persistDevState();
+    return res.json({ success: true, data: toPublicDevCustomer(devCustomer), message: `User KYC status updated to ${normalizedKyc}.`, requestId: req.id });
+  }
+
   try {
     const profile = await runFinancialRpc('kretz_admin_update_kyc', { p_user_id: id, p_admin_id: req.user!.id, p_kyc_status: String(kycStatus), p_notes: notes || null });
+    await Promise.all([
+      upsertComplianceStep(id, 'kyc_identity', stepStatus, notes || undefined).catch(() => {}),
+      upsertComplianceStep(id, 'proof_of_address', stepStatus, notes || undefined).catch(() => {}),
+      upsertComplianceStep(id, 'accredited_proof', stepStatus, notes || undefined).catch(() => {}),
+    ]);
     try {
       const updatedProfile = await getUserProfile(id);
-      if (updatedProfile?.email) sendEmail({
-        templateId: String(kycStatus).toLowerCase() === 'rejected' ? 'kyc_rejected' : 'kyc_approved',
-        recipient: updatedProfile.email,
-        data: { fullName: updatedProfile.full_name || 'Valued Investor', event_name: 'Institutional KYC Verification', status: String(kycStatus).toLowerCase() === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified', notes: notes || 'Your KYC status has been updated.' },
-        idempotencyKey: `idemp-kyc-${id}-${String(kycStatus).toLowerCase()}-${Date.now()}`
-      }).catch(() => {});
+      await notifyInvestorEvent({
+        userId: id,
+        email: updatedProfile?.email,
+        title: stepStatus === 'verified' ? 'Identity verification approved' : 'Identity verification requires attention',
+        message: stepStatus === 'verified'
+          ? 'Your investor KYC compliance check is verified. Withdrawals and full portfolio operations are now enabled.'
+          : notes || 'Your submitted identity documents need an update before approval.',
+        type: stepStatus === 'verified' ? 'success' : 'warning',
+        emailTemplate: stepStatus === 'rejected' ? 'kyc_rejected' : 'kyc_approved',
+        emailData: {
+          fullName: updatedProfile?.full_name || 'Valued Investor',
+          event_name: 'Institutional KYC Verification',
+          status: stepStatus === 'rejected' ? 'Action Required / Declined' : 'Approved & Verified',
+          notes: notes || 'Your KYC status has been updated.',
+        },
+        idempotencyKey: `idemp-kyc-${id}-${String(kycStatus).toLowerCase()}-${Date.now()}`,
+      });
     } catch {
       logger.log({ level: 'warn', category: 'database', requestId: req.id || 'req-kyc-notify', eventType: 'KYC_NOTIFICATION_PROFILE_LOOKUP_FAILED', outcome: 'failure', message: 'KYC was saved but the notification profile lookup failed.' });
     }
@@ -2810,7 +2992,8 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
       balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0),
       kycStatus: profile.kyc_status, status: profile.account_status || 'active', createdAt: profile.created_at,
       address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url,
-      bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
+      bankIban: profile.bank_iban, bankAccountHolder: profile.bank_account_holder || profile.full_name,
+      cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
       dateOfBirth: profile.date_of_birth, preferences: profile.preferences
     }, requestId: req.id });
   } catch (error: any) {
@@ -2821,14 +3004,22 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
 
 /**
  * PATCH/PUT /api/v1/user/profile
- * Persist customer-editable profile data against the authenticated Supabase user ID.
+ * Persist customer-editable profile data against the authenticated user ID.
  */
 const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res: Response) => {
   const input = req.body || {};
+  const normalizedIban = typeof input.bankIban === 'string'
+    ? input.bankIban.replace(/\s+/g, '').toUpperCase()
+    : undefined;
+  if (normalizedIban && !isValidIbanServer(normalizedIban)) {
+    return res.status(400).json({ success: false, error: 'Enter a valid IBAN between 15 and 34 alphanumeric characters.', code: 'INVALID_IBAN', requestId: req.id });
+  }
+
   const patch: Record<string, unknown> = {
     full_name: input.fullName, phone_number: input.phoneNumber, country: input.country,
     country_code: input.countryCode, address: input.address, city: input.city,
-    postal_code: input.postalCode, avatar_url: input.avatarUrl, bank_iban: input.bankIban,
+    postal_code: input.postalCode, avatar_url: input.avatarUrl, bank_iban: normalizedIban,
+    bank_account_holder: input.bankAccountHolder,
     crypto_deposit_address: input.cryptoDepositAddress, tax_id: input.taxId,
     date_of_birth: input.dateOfBirth
   };
@@ -2836,6 +3027,7 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     if (value !== undefined && typeof value !== 'string') return res.status(400).json({ success: false, error: 'Profile fields must be text values.', code: 'INVALID_PROFILE_FIELD', requestId: req.id });
     if (typeof value === 'string' && value.length > 500) return res.status(400).json({ success: false, error: 'A profile field exceeds the allowed length.', code: 'PROFILE_FIELD_TOO_LONG', requestId: req.id });
   }
+
   if (!shouldUseSupabaseForCustomer(req)) {
     if (process.env.NODE_ENV === 'production') {
       return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
@@ -2843,6 +3035,17 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     const devCustomer = devCustomersById.get(req.user!.id);
     if (!devCustomer) {
       return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    }
+    const targetLegalName = typeof input.fullName === 'string' && input.fullName.trim()
+      ? input.fullName.trim()
+      : devCustomer.fullName;
+    if (typeof input.bankAccountHolder === 'string' && input.bankAccountHolder.trim() && !namesMatchOwner(targetLegalName, input.bankAccountHolder)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bank account holder must match your own legal name. Third-party bank accounts are not permitted.',
+        code: 'BANK_HOLDER_NAME_MISMATCH',
+        requestId: req.id
+      });
     }
     if (typeof input.fullName === 'string') devCustomer.fullName = input.fullName;
     if (typeof input.phoneNumber === 'string') devCustomer.phoneNumber = input.phoneNumber;
@@ -2852,7 +3055,8 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     if (typeof input.city === 'string') devCustomer.city = input.city;
     if (typeof input.postalCode === 'string') devCustomer.postalCode = input.postalCode;
     if (typeof input.avatarUrl === 'string') devCustomer.avatarUrl = input.avatarUrl;
-    if (typeof input.bankIban === 'string') devCustomer.bankIban = input.bankIban;
+    if (normalizedIban !== undefined) devCustomer.bankIban = normalizedIban;
+    if (typeof input.bankAccountHolder === 'string') devCustomer.bankAccountHolder = input.bankAccountHolder.trim();
     if (typeof input.cryptoDepositAddress === 'string') devCustomer.cryptoDepositAddress = input.cryptoDepositAddress;
     if (typeof input.taxId === 'string') devCustomer.taxId = input.taxId;
     if (typeof input.dateOfBirth === 'string') devCustomer.dateOfBirth = input.dateOfBirth;
@@ -2860,6 +3064,19 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     return res.json({ success: true, data: toPublicDevCustomer(devCustomer), message: 'User profile updated successfully.', requestId: req.id });
   }
   try {
+    const existing = await getUserProfile(req.user!.id);
+    if (!existing) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    const targetLegalName = typeof input.fullName === 'string' && input.fullName.trim()
+      ? input.fullName.trim()
+      : existing.full_name;
+    if (typeof input.bankAccountHolder === 'string' && input.bankAccountHolder.trim() && !namesMatchOwner(targetLegalName, input.bankAccountHolder)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bank account holder must match your own legal name. Third-party bank accounts are not permitted.',
+        code: 'BANK_HOLDER_NAME_MISMATCH',
+        requestId: req.id
+      });
+    }
     const profile = await updateUserProfile(req.user!.id, patch);
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     return res.json({ success: true, data: {
@@ -2867,6 +3084,7 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
       countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
       address: profile.address, city: profile.city, postalCode: profile.postal_code,
       avatarUrl: profile.avatar_url, bankIban: profile.bank_iban,
+      bankAccountHolder: profile.bank_account_holder || profile.full_name,
       cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
       dateOfBirth: profile.date_of_birth, balance: Number(profile.wallet_balance || 0),
       kycStatus: profile.kyc_status, status: profile.account_status || 'active'
@@ -2882,7 +3100,7 @@ router.put('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
 /**
  * GET /api/v1/portfolio
  */
-router.get(['/portfolio', '/portfolio/summary'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.get(['/portfolio', '/portfolio/summary', '/holdings'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
   if (shouldUseSupabaseForCustomer(req)) {
     try {
@@ -2976,14 +3194,14 @@ router.get(['/portfolio', '/portfolio/summary'], requireAuth, async (req: Authen
 });
 
 /**
- * GET /api/v1/wallet/balance
+ * GET /api/v1/wallet/balance | /api/v1/wallets | /api/v1/wallets/me
  */
-router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (shouldUseSupabaseForCustomer(req)) {
     try {
-      const profile = await getUserProfile(req.user!.id);
-      if (!profile) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-      return res.json({ success: true, data: { balance: Number(profile.wallet_balance || 0), subBalances: { EUR: Number(profile.wallet_balance || 0) }, currency: 'EUR' }, requestId: req.id });
+      const wallet = await getWalletSummary(req.user!.id);
+      if (!wallet) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+      return res.json({ success: true, data: { balance: wallet.availableBalance, availableBalance: wallet.availableBalance, reservedBalance: wallet.reservedBalance, subBalances: { EUR: wallet.availableBalance }, currency: wallet.currency }, requestId: req.id });
     } catch (error: any) {
       return res.status(503).json({ success: false, error: 'Wallet balance is temporarily unavailable.', code: 'WALLET_DATABASE_UNAVAILABLE', requestId: req.id });
     }
@@ -3024,6 +3242,7 @@ router.get(['/wallet/balance', '/user/wallet/balance'], requireAuth, async (req:
     success: true,
     data: {
       balance: calculatedBalance,
+      availableBalance: calculatedBalance,
       subBalances: getOrInitUserSubBalances(req.user!.id, calculatedBalance),
       currency: 'EUR'
     },
@@ -3212,7 +3431,27 @@ router.put('/user/preferences', requireAuth, async (req: AuthenticatedRequest, r
 /**
  * Compliance & KYC Document Endpoints (/api/v1/compliance/documents)
  */
-router.get('/compliance/documents', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+/**
+ * Compliance Steps & Documents (/api/v1/compliance/steps, /api/v1/compliance-steps, /api/v1/documents, /api/v1/compliance/documents)
+ */
+router.get(['/compliance/steps', '/compliance-steps'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (shouldUseSupabaseForCustomer(req)) {
+    try {
+      const steps = await listComplianceSteps(req.user!.id);
+      return res.json({ success: true, data: steps, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Compliance steps are temporarily unavailable.', code: 'COMPLIANCE_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent compliance storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const devCustomer = devCustomersById.get(req.user!.id);
+  const steps = buildDevComplianceSteps(req.user!.id, devCustomer?.kycStatus);
+  return res.json({ success: true, data: steps, requestId: req.id });
+});
+
+router.get(['/compliance/documents', '/documents'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (shouldUseSupabaseForCustomer(req)) {
     try {
       const docs = await listComplianceDocuments(req.user!.id);
@@ -3228,7 +3467,7 @@ router.get('/compliance/documents', requireAuth, async (req: AuthenticatedReques
   return res.json({ success: true, data: docs, requestId: req.id });
 });
 
-router.post('/compliance/documents', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post(['/compliance/documents', '/documents'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const category = String(req.body?.category || '') as 'kyc_identity' | 'proof_of_address' | 'accredited_proof';
   const documentType = String(req.body?.documentType || '').trim();
   const fileName = String(req.body?.fileName || '').trim();
@@ -3275,7 +3514,8 @@ router.post('/compliance/documents', requireAuth, async (req: AuthenticatedReque
   if (shouldUseSupabaseForCustomer(req)) {
     try {
       const docs = await addComplianceDocument(req.user!.id, record);
-      return res.status(201).json({ success: true, data: record, documents: docs, message: 'Compliance document uploaded and queued for review.', requestId: req.id });
+      const steps = await listComplianceSteps(req.user!.id);
+      return res.status(201).json({ success: true, data: record, documents: docs, steps, message: 'Compliance document uploaded and queued for review.', requestId: req.id });
     } catch {
       return res.status(503).json({ success: false, error: 'Compliance document could not be saved.', code: 'COMPLIANCE_WRITE_FAILED', requestId: req.id });
     }
@@ -3287,12 +3527,312 @@ router.post('/compliance/documents', requireAuth, async (req: AuthenticatedReque
   const existing = devComplianceDocsByUser.get(req.user!.id) || [];
   const nextDocs = [record, ...existing].slice(0, 25);
   devComplianceDocsByUser.set(req.user!.id, nextDocs);
+
   const devCustomer = devCustomersById.get(req.user!.id);
   if (devCustomer && devCustomer.kycStatus !== 'verified') {
     devCustomer.kycStatus = 'pending';
   }
+  const currentSteps = buildDevComplianceSteps(req.user!.id, devCustomer?.kycStatus);
+  const updatedSteps = currentSteps.map((st) =>
+    st.stepKey === category
+      ? { ...st, status: 'in_review' as const, submittedAt: record.uploadedAt, updatedAt: record.uploadedAt }
+      : st
+  );
+  devComplianceStepsByUser.set(req.user!.id, updatedSteps);
+
   await persistDevState();
-  return res.status(201).json({ success: true, data: record, documents: nextDocs, message: 'Compliance document uploaded and queued for review.', requestId: req.id });
+  return res.status(201).json({ success: true, data: record, documents: nextDocs, steps: updatedSteps, message: 'Compliance document uploaded and queued for review.', requestId: req.id });
+});
+
+/**
+ * POST /api/v1/compliance/kyc-session
+ * Starts or resumes KYC verification via external KYC provider (Sumsub) or internal AML5/6 vault
+ */
+router.post('/compliance/kyc-session', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const session = await createKycVerificationSession({
+    userId: req.user!.id,
+    email: req.user!.email,
+    fullName: req.user!.fullName || 'Investor',
+  });
+  return res.json({ success: true, data: session, requestId: req.id });
+});
+
+/**
+ * POST /api/v1/webhooks/kyc
+ * External KYC provider callback (Sumsub / automated AML check) with HMAC verification & idempotency
+ */
+router.post('/webhooks/kyc', async (req: AuthenticatedRequest, res: Response) => {
+  const rawBody = typeof (req as any).rawBody === 'string'
+    ? (req as any).rawBody
+    : JSON.stringify(req.body || {});
+  const sigCheck = verifyKycWebhookSignature({
+    rawBody,
+    headers: req.headers as Record<string, string | string[] | undefined>,
+  });
+  if (!sigCheck.valid) {
+    const isUnconfigured = (sigCheck.reason || '').toLowerCase().includes('not configured');
+    return res.status(isUnconfigured ? 503 : 401).json({
+      success: false,
+      error: sigCheck.reason || 'Invalid KYC webhook signature.',
+      code: isUnconfigured ? 'KYC_WEBHOOK_NOT_CONFIGURED' : 'INVALID_KYC_WEBHOOK_SIGNATURE',
+      requestId: req.id,
+    });
+  }
+
+  const payload = req.body || {};
+  const userId = String(payload.externalUserId || payload.userId || '').trim();
+  const reviewAnswer = String(payload.reviewResult?.reviewAnswer || payload.status || '').toUpperCase();
+  const eventId = String(payload.eventId || payload.inspectionId || `${userId}:${reviewAnswer}`).trim();
+
+  if (!userId || !['GREEN', 'VERIFIED', 'APPROVED', 'RED', 'REJECTED'].includes(reviewAnswer)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Valid KYC webhook userId and reviewAnswer (GREEN/VERIFIED/RED/REJECTED) are required.',
+      code: 'INVALID_KYC_WEBHOOK_PAYLOAD',
+      requestId: req.id,
+    });
+  }
+
+  const whKey = `kyc:${eventId}`;
+  if (processedWebhooks.has(whKey)) {
+    return res.json({ success: true, message: 'KYC webhook event already processed.', eventId, requestId: req.id });
+  }
+  processedWebhooks.add(whKey);
+
+  const isApproved = ['GREEN', 'VERIFIED', 'APPROVED'].includes(reviewAnswer);
+  const stepStatus: ComplianceStepRecord['status'] = isApproved ? 'verified' : 'rejected';
+  const kycStatusValue = isApproved ? 'verified' : 'rejected';
+  const reason = typeof payload.reviewResult?.moderationComment === 'string'
+    ? payload.reviewResult.moderationComment
+    : undefined;
+
+  if (isSupabaseServerConfigured()) {
+    try {
+      await getSupabaseAdmin()
+        .from('user_profiles')
+        .update({ kyc_status: kycStatusValue, updated_at: new Date().toISOString() })
+        .eq('id', userId);
+      await Promise.all([
+        upsertComplianceStep(userId, 'kyc_identity', stepStatus, reason).catch(() => {}),
+        upsertComplianceStep(userId, 'proof_of_address', stepStatus, reason).catch(() => {}),
+        upsertComplianceStep(userId, 'accredited_proof', stepStatus, reason).catch(() => {}),
+      ]);
+      const prof = await getUserProfile(userId);
+      await notifyInvestorEvent({
+        userId,
+        email: prof?.email,
+        title: isApproved ? 'Identity verification approved' : 'Identity verification requires attention',
+        message: isApproved
+          ? 'Your identity verification passed automated compliance review.'
+          : reason || 'Additional documentation is required to verify your identity.',
+        type: isApproved ? 'success' : 'warning',
+        emailTemplate: isApproved ? 'kyc_approved' : 'kyc_rejected',
+        emailData: {
+          fullName: prof?.full_name || 'Valued Investor',
+          event_name: 'Automated KYC Verification',
+          status: isApproved ? 'Approved & Verified' : 'Action Required / Declined',
+          notes: reason || 'Verification outcome recorded.',
+        },
+        idempotencyKey: `kyc-wh-${whKey}`,
+      });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Unable to persist KYC webhook outcome.', code: 'KYC_WEBHOOK_PERSIST_FAILED', requestId: req.id });
+    }
+  } else {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Persistent KYC database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const devCustomer = devCustomersById.get(userId);
+    if (!devCustomer) {
+      return res.status(404).json({ success: false, error: 'User not found for KYC webhook.', code: 'USER_NOT_FOUND', requestId: req.id });
+    }
+    devCustomer.kycStatus = kycStatusValue;
+    const nowIso = new Date().toISOString();
+    const updatedSteps = buildDevComplianceSteps(userId, kycStatusValue).map((s) => ({
+      ...s,
+      status: stepStatus,
+      reviewedAt: nowIso,
+      updatedAt: nowIso,
+      notes: reason || s.notes,
+    }));
+    devComplianceStepsByUser.set(userId, updatedSteps);
+    await notifyInvestorEvent({
+      userId,
+      email: devCustomer.email,
+      title: isApproved ? 'Identity verification approved' : 'Identity verification requires attention',
+      message: isApproved
+        ? 'Your identity verification passed compliance review.'
+        : reason || 'Additional documentation is required to verify your identity.',
+      type: isApproved ? 'success' : 'warning',
+      emailTemplate: isApproved ? 'kyc_approved' : 'kyc_rejected',
+      emailData: {
+        fullName: devCustomer.fullName || 'Valued Investor',
+        event_name: 'Automated KYC Verification',
+        status: isApproved ? 'Approved & Verified' : 'Action Required / Declined',
+        notes: reason || 'Verification outcome recorded.',
+      },
+      idempotencyKey: `kyc-wh-${whKey}`,
+    });
+    await persistDevState();
+  }
+
+  return res.json({ success: true, data: { userId, kycStatus: kycStatusValue }, message: 'KYC webhook processed.', requestId: req.id });
+});
+
+/**
+ * Staff Admin: Provider Integrations Health & Compliance Document Vault
+ */
+router.get('/admin/providers/status', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const emailProv = getProviderConfig();
+  const paymentProv = getPaymentProviderStatus();
+  const kycProv = getKycProviderStatus();
+  let dbStatus: { connected: boolean; mode: 'supabase' | 'dev_snapshot'; usersCount?: number | null } = {
+    connected: isSupabaseServerConfigured(),
+    mode: isSupabaseServerConfigured() ? 'supabase' : 'dev_snapshot',
+    usersCount: isSupabaseServerConfigured() ? null : devCustomersById.size,
+  };
+  if (isSupabaseServerConfigured()) {
+    try {
+      const h = await databaseHealth();
+      dbStatus = { connected: h.status === 'healthy', mode: 'supabase', usersCount: h.usersCount };
+    } catch {
+      dbStatus = { connected: false, mode: 'supabase', usersCount: null };
+    }
+  }
+  return res.json({
+    success: true,
+    data: {
+      database: dbStatus,
+      payments: paymentProv,
+      kyc: kycProv,
+      email: {
+        provider: emailProv.type,
+        providerName: emailProv.name,
+        configured: emailProv.configured,
+        mode: emailProv.configured ? 'live' : 'sandbox',
+      },
+    },
+    requestId: req.id,
+  });
+});
+
+router.get('/admin/documents', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const docs = await listAdminComplianceDocuments(250);
+      return res.json({ success: true, data: docs, total: docs.length, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Compliance documents are temporarily unavailable.', code: 'ADMIN_DOCUMENTS_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent compliance storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const allDocs: any[] = [];
+  for (const [uid, docs] of devComplianceDocsByUser.entries()) {
+    const cust = devCustomersById.get(uid);
+    for (const d of docs) {
+      allDocs.push({
+        ...d,
+        userEmail: cust?.email || 'investor@kretz.com',
+        userName: cust?.fullName || 'Investor',
+      });
+    }
+  }
+  allDocs.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+  return res.json({ success: true, data: allDocs, total: allDocs.length, requestId: req.id });
+});
+
+router.post('/admin/documents/:docId/review', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { docId } = req.params;
+  const approved = req.body?.approved !== false;
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : undefined;
+  const nextStatus = approved ? 'verified' : 'rejected';
+
+  if (isSupabaseServerConfigured()) {
+    try {
+      const reviewed = await reviewComplianceDocument(docId, nextStatus, reason);
+      if (!reviewed) {
+        return res.status(404).json({ success: false, error: 'Compliance document not found.', code: 'DOCUMENT_NOT_FOUND', requestId: req.id });
+      }
+      if (reviewed.category === 'kyc_identity') {
+        await getSupabaseAdmin()
+          .from('user_profiles')
+          .update({ kyc_status: nextStatus, updated_at: new Date().toISOString() })
+          .eq('id', reviewed.userId);
+      }
+      const prof = await getUserProfile(reviewed.userId);
+      await notifyInvestorEvent({
+        userId: reviewed.userId,
+        email: prof?.email,
+        title: approved ? `${reviewed.title} approved` : `${reviewed.title} requires re-submission`,
+        message: approved
+          ? `Your document "${reviewed.fileName}" has been verified by our compliance team.`
+          : reason || `Your document "${reviewed.fileName}" could not be accepted. Please upload a clear replacement.`,
+        type: approved ? 'success' : 'warning',
+        emailTemplate: approved ? 'kyc_approved' : 'kyc_rejected',
+        emailData: {
+          fullName: prof?.full_name || 'Valued Investor',
+          event_name: reviewed.title,
+          status: approved ? 'Verified' : 'Action Required',
+          notes: reason || (approved ? 'Document approved.' : 'Please upload a valid replacement.'),
+        },
+      });
+      return res.json({ success: true, data: reviewed, message: `Document ${nextStatus}.`, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Unable to review compliance document.', code: 'DOCUMENT_REVIEW_FAILED', requestId: req.id });
+    }
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent compliance storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+
+  let matchedDoc: any = null;
+  let ownerId = '';
+  for (const [uid, docs] of devComplianceDocsByUser.entries()) {
+    const found = docs.find((d) => d.id === docId);
+    if (found) {
+      found.status = nextStatus;
+      matchedDoc = found;
+      ownerId = uid;
+      break;
+    }
+  }
+  if (!matchedDoc) {
+    return res.status(404).json({ success: false, error: 'Compliance document not found.', code: 'DOCUMENT_NOT_FOUND', requestId: req.id });
+  }
+
+  const devCustomer = devCustomersById.get(ownerId);
+  if (matchedDoc.category === 'kyc_identity' && devCustomer) {
+    devCustomer.kycStatus = nextStatus;
+  }
+  const nowIso = new Date().toISOString();
+  const updatedSteps = buildDevComplianceSteps(ownerId, devCustomer?.kycStatus).map((st) =>
+    st.stepKey === matchedDoc.category
+      ? { ...st, status: nextStatus as ComplianceStepRecord['status'], reviewedAt: nowIso, updatedAt: nowIso, notes: reason }
+      : st
+  );
+  devComplianceStepsByUser.set(ownerId, updatedSteps);
+
+  await notifyInvestorEvent({
+    userId: ownerId,
+    email: devCustomer?.email,
+    title: approved ? `${matchedDoc.title} approved` : `${matchedDoc.title} requires re-submission`,
+    message: approved
+      ? `Your document "${matchedDoc.fileName}" has been verified by our compliance team.`
+      : reason || `Your document "${matchedDoc.fileName}" could not be accepted. Please upload a clear replacement.`,
+    type: approved ? 'success' : 'warning',
+    emailTemplate: approved ? 'kyc_approved' : 'kyc_rejected',
+    emailData: {
+      fullName: devCustomer?.fullName || 'Valued Investor',
+      event_name: matchedDoc.title,
+      status: approved ? 'Verified' : 'Action Required',
+      notes: reason || (approved ? 'Document approved.' : 'Please upload a valid replacement.'),
+    },
+  });
+  await persistDevState();
+  return res.json({ success: true, data: matchedDoc, message: `Document ${nextStatus}.`, requestId: req.id });
 });
 
 /**
@@ -3456,6 +3996,29 @@ router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, 
 // ============================================================================
 
 /**
+ * GET /api/v1/deposits (user's own deposit requests)
+ */
+router.get('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (shouldUseSupabaseForCustomer(req)) {
+    try {
+      const rows = await listUserTransactions(req.user!.id, 250);
+      const deposits = rows.filter((r: any) => r.type === 'deposit').map(toApiTransaction);
+      return res.json({ success: true, data: deposits, total: deposits.length, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Deposit history is temporarily unavailable.', code: 'DEPOSIT_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent deposit storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const userEmail = req.user?.email?.toLowerCase();
+  const deposits = mockTransactions.filter(
+    (t) => t.type === 'deposit' && (t.userId === req.user!.id || (userEmail && t.userEmail?.toLowerCase() === userEmail))
+  );
+  return res.json({ success: true, data: deposits, total: deposits.length, requestId: req.id });
+});
+
+/**
  * POST /api/v1/deposits
  */
 router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -3496,10 +4059,10 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
   }
 
   const numAmount = Number(amount);
-  if (!Number.isFinite(numAmount) || numAmount < 100) {
+  if (!Number.isFinite(numAmount) || numAmount < 100 || numAmount > 5000000) {
     return res.status(400).json({
       success: false,
-      error: 'Minimum deposit amount is €100. Enter a valid numeric amount.',
+      error: 'Deposit amount must be between €100 and €5,000,000.',
       code: 'INVALID_DEPOSIT_AMOUNT',
       requestId: req.id
     });
@@ -3631,6 +4194,29 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
 });
 
 /**
+ * GET /api/v1/withdrawals (user's own withdrawal requests)
+ */
+router.get('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (shouldUseSupabaseForCustomer(req)) {
+    try {
+      const rows = await listUserTransactions(req.user!.id, 250);
+      const withdrawals = rows.filter((r: any) => r.type === 'withdrawal').map(toApiTransaction);
+      return res.json({ success: true, data: withdrawals, total: withdrawals.length, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Withdrawal history is temporarily unavailable.', code: 'WITHDRAWAL_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent withdrawal storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const userEmail = req.user?.email?.toLowerCase();
+  const withdrawals = mockTransactions.filter(
+    (t) => t.type === 'withdrawal' && (t.userId === req.user!.id || (userEmail && t.userEmail?.toLowerCase() === userEmail))
+  );
+  return res.json({ success: true, data: withdrawals, total: withdrawals.length, requestId: req.id });
+});
+
+/**
  * POST /api/v1/withdrawals
  */
 router.post('/withdrawals', requireAuth, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
@@ -3668,66 +4254,163 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
     });
   }
 
-  const { amount, destination, method = 'Bank Wire SEPA' } = req.body || {};
+  const { amount, destination, method = 'Bank Wire SEPA', accountHolderName, bankAccountHolder } = req.body || {};
 
   const numAmount = Number(amount);
-  if (!Number.isFinite(numAmount) || numAmount < 250) {
+  if (!Number.isFinite(numAmount) || numAmount < 250 || numAmount > 5000000) {
     return res.status(400).json({
       success: false,
-      error: 'Minimum withdrawal amount is €250. Enter a valid numeric amount.',
+      error: 'Withdrawal amount must be between €250 and €5,000,000.',
       code: 'INVALID_AMOUNT',
       requestId: req.id
     });
   }
 
-  if (typeof destination !== 'string' || destination.trim().length < 5) {
+  const requestedIban = typeof destination === 'string' ? destination.replace(/\s+/g, '').toUpperCase() : '';
+  if (!requestedIban || !isValidIbanServer(requestedIban)) {
     return res.status(400).json({
       success: false,
-      error: 'Withdrawal destination (IBAN or Crypto Address) is required.',
+      error: 'A valid personal SEPA IBAN destination is required.',
       code: 'MISSING_DESTINATION',
       requestId: req.id
     });
   }
 
+  const suppliedHolder = typeof accountHolderName === 'string'
+    ? accountHolderName.trim()
+    : typeof bankAccountHolder === 'string'
+    ? bankAccountHolder.trim()
+    : '';
+
   if (shouldUseSupabaseForCustomer(req)) {
     try {
-      // Enforce KYC and registered-bank ownership on the server, not only in the client.
+      // Enforce KYC, registered IBAN, own-name account holder, and balance on the server.
       const investorProfile = await getUserProfile(req.user!.id);
-      if (!investorProfile || investorProfile.kyc_status !== 'verified') {
+      if (!investorProfile || (investorProfile.kyc_status !== 'verified' && investorProfile.kyc_status !== 'approved')) {
         return res.status(403).json({ success: false, error: 'Complete identity verification before requesting a withdrawal.', code: 'WITHDRAWAL_KYC_REQUIRED', requestId: req.id });
       }
-      const registeredIban = String(investorProfile.bank_iban || '').replace(/\\s/g, '').toUpperCase();
-      const requestedIban = destination.replace(/\\s/g, '').toUpperCase();
+      const registeredIban = String(investorProfile.bank_iban || '').replace(/\s+/g, '').toUpperCase();
       if (!registeredIban || requestedIban !== registeredIban) {
         return res.status(403).json({ success: false, error: 'Withdrawals can only be sent to the bank account registered on your verified profile.', code: 'WITHDRAWAL_DESTINATION_MISMATCH', requestId: req.id });
+      }
+      const legalOwnerName = String(investorProfile.full_name || '').trim();
+      const effectiveHolder = suppliedHolder || String(investorProfile.bank_account_holder || legalOwnerName).trim();
+      if (!namesMatchOwner(legalOwnerName, effectiveHolder) || (investorProfile.bank_account_holder && !namesMatchOwner(legalOwnerName, investorProfile.bank_account_holder))) {
+        return res.status(403).json({
+          success: false,
+          error: 'Withdrawals can only be transferred to a bank account held in your own legal name.',
+          code: 'WITHDRAWAL_HOLDER_NAME_MISMATCH',
+          requestId: req.id
+        });
+      }
+      if (Number(investorProfile.wallet_balance || 0) < numAmount) {
+        return res.status(400).json({
+          success: false,
+          error: `Insufficient available balance (€${Number(investorProfile.wallet_balance || 0).toFixed(2)}) for requested withdrawal of €${numAmount.toFixed(2)}.`,
+          code: 'INSUFFICIENT_FUNDS',
+          requestId: req.id
+        });
       }
       const ref = `KZ-WTH-${crypto.randomInt(100000, 1000000)}`;
       const idempotencyKey = String(req.headers['idempotency-key'] || req.body?.idempotencyKey || crypto.randomUUID()).slice(0, 128);
       const row = await runFinancialRpc('kretz_request_withdrawal', {
         p_user_id: req.user!.id, p_amount: numAmount, p_method: String(method),
-        p_destination: destination.trim(), p_reference: ref,
+        p_destination: requestedIban, p_reference: ref,
         p_transaction_id: crypto.randomUUID(), p_idempotency_key: idempotencyKey
       });
       const transaction = toApiTransaction(row);
       sendEmail({
         templateId: 'withdrawal_requested', recipient: req.user!.email,
-        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, amount: numAmount.toFixed(2), currency: 'EUR', reference: transaction.reference || ref, destination: destination.trim(), estimatedProcessingTime: '24 business hours' }
+        data: { fullName: req.user!.fullName || 'Valued Investor', email: req.user!.email, amount: numAmount.toFixed(2), currency: 'EUR', reference: transaction.reference || ref, destination: requestedIban, estimatedProcessingTime: '24 business hours' }
       }).catch(err => logger.log({ level: 'error', category: 'payments', requestId: req.id || 'req-withdrawal-email', eventType: 'EMAIL_DISPATCH_FAILURE', outcome: 'failure', message: err.message }));
-      return res.status(201).json({ success: true, data: { ...transaction, destination: destination.trim() }, message: 'Withdrawal request recorded and funds reserved in your wallet. Compliance review is required before payout.', requestId: req.id });
+      return res.status(201).json({ success: true, data: { ...transaction, destination: requestedIban }, message: 'Withdrawal request recorded and funds reserved in your wallet. Compliance review is required before payout.', requestId: req.id });
     } catch (error: any) {
       logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-withdrawal-db', eventType: 'WITHDRAWAL_PERSIST_FAILED', outcome: 'failure', message: error?.message || 'Withdrawal could not be saved.' });
       const message = String(error?.message || '');
-      const status = message.includes('INSUFFICIENT_FUNDS') ? 400 : message.includes('INVALID_WITHDRAWAL_AMOUNT') || message.includes('INVALID_WITHDRAWAL_DESTINATION') ? 400 : message.includes('ACCOUNT_LEDGER_UNAVAILABLE') ? 409 : 503;
-      return res.status(status).json({ success: false, error: status === 503 ? 'The withdrawal service is temporarily unavailable. No request was recorded.' : message, code: status === 503 ? 'WITHDRAWAL_DATABASE_UNAVAILABLE' : 'WITHDRAWAL_REQUEST_REJECTED', requestId: req.id });
+      const status = message.includes('INSUFFICIENT_FUNDS')
+        ? 400
+        : message.includes('WITHDRAWAL_KYC_REQUIRED') || message.includes('WITHDRAWAL_DESTINATION_MISMATCH') || message.includes('WITHDRAWAL_HOLDER_NAME_MISMATCH')
+        ? 403
+        : message.includes('INVALID_WITHDRAWAL_AMOUNT') || message.includes('INVALID_WITHDRAWAL_DESTINATION')
+        ? 400
+        : message.includes('ACCOUNT_LEDGER_UNAVAILABLE')
+        ? 409
+        : 503;
+      const code = message.includes('INSUFFICIENT_FUNDS')
+        ? 'INSUFFICIENT_FUNDS'
+        : message.includes('WITHDRAWAL_HOLDER_NAME_MISMATCH')
+        ? 'WITHDRAWAL_HOLDER_NAME_MISMATCH'
+        : message.includes('WITHDRAWAL_DESTINATION_MISMATCH')
+        ? 'WITHDRAWAL_DESTINATION_MISMATCH'
+        : message.includes('WITHDRAWAL_KYC_REQUIRED')
+        ? 'WITHDRAWAL_KYC_REQUIRED'
+        : status === 503
+        ? 'WITHDRAWAL_DATABASE_UNAVAILABLE'
+        : 'WITHDRAWAL_REQUEST_REJECTED';
+      return res.status(status).json({ success: false, error: status === 503 ? 'The withdrawal service is temporarily unavailable. No request was recorded.' : message, code, requestId: req.id });
     }
   }
   if (process.env.NODE_ENV === 'production') {
     return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured. Withdrawals are disabled until the database is connected.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
-  if (!userRecord) {
+  const devCustomer = devCustomersById.get(req.user!.id);
+  const activeRecord = devCustomer || userRecord;
+  if (!activeRecord) {
     return res.status(409).json({ success: false, error: 'Investor ledger account is unavailable.', code: 'ACCOUNT_LEDGER_UNAVAILABLE', requestId: req.id });
   }
-  if (userRecord.balance < numAmount) {
+  if (activeRecord.kycStatus !== 'verified' && activeRecord.kycStatus !== 'approved') {
+    return res.status(403).json({
+      success: false,
+      error: 'Complete identity verification before requesting a withdrawal.',
+      code: 'WITHDRAWAL_KYC_REQUIRED',
+      requestId: req.id
+    });
+  }
+  const registeredIban = String((devCustomer?.bankIban ?? (activeRecord as any).bankIban) || '').replace(/\s+/g, '').toUpperCase();
+  if (!registeredIban || requestedIban !== registeredIban) {
+    return res.status(403).json({
+      success: false,
+      error: 'Withdrawals can only be sent to the bank account registered on your verified profile.',
+      code: 'WITHDRAWAL_DESTINATION_MISMATCH',
+      requestId: req.id
+    });
+  }
+  const legalOwnerName = String(activeRecord.fullName || '').trim();
+  const profileHolderName = String((devCustomer?.bankAccountHolder ?? (activeRecord as any).bankAccountHolder ?? legalOwnerName) || '').trim();
+  const effectiveHolder = suppliedHolder || profileHolderName;
+  if (!namesMatchOwner(legalOwnerName, effectiveHolder) || !namesMatchOwner(legalOwnerName, profileHolderName)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Withdrawals can only be transferred to a bank account held in your own legal name.',
+      code: 'WITHDRAWAL_HOLDER_NAME_MISMATCH',
+      requestId: req.id
+    });
+  }
+
+  // Server-authoritative available balance check (honoring pending withdrawal reservations)
+  const userEmailLower = activeRecord.email?.toLowerCase();
+  const userTxs = mockTransactions.filter(
+    (t) => t.userId === req.user!.id || (userEmailLower && t.userEmail?.toLowerCase() === userEmailLower)
+  );
+  let serverAvailable = Number(activeRecord.balance || 0);
+  if (userTxs.length > 0) {
+    let txSum = 0;
+    for (const tx of userTxs) {
+      const amt = Number(tx.amount || 0);
+      if (tx.status === 'completed') {
+        if (tx.type === 'deposit' || tx.type === 'dividend' || tx.type === 'payout' || tx.type === 'distribution') {
+          txSum += amt;
+        } else if (tx.type === 'withdrawal' || tx.type === 'investment' || tx.type === 'purchase') {
+          txSum -= amt;
+        }
+      } else if (tx.status === 'pending' && tx.type === 'withdrawal') {
+        txSum -= amt;
+      }
+    }
+    serverAvailable = Math.max(0, Math.round(txSum * 100) / 100);
+  }
+
+  if (serverAvailable < numAmount) {
     logger.log({
       level: 'warn',
       category: 'payments',
@@ -3738,22 +4421,26 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
       userId: req.user?.id,
       eventType: 'WITHDRAWAL_INSUFFICIENT_FUNDS',
       outcome: 'failure',
-      message: `Withdrawal of €${numAmount} rejected: insufficient funds (available: €${userRecord.balance})`,
+      message: `Withdrawal of €${numAmount} rejected: insufficient funds (available: €${serverAvailable})`,
       errorCode: 'INSUFFICIENT_FUNDS'
     });
 
     return res.status(400).json({
       success: false,
-      error: `Insufficient available balance (€${userRecord.balance.toFixed(2)}) for requested withdrawal of €${numAmount.toFixed(2)}.`,
+      error: `Insufficient available balance (€${serverAvailable.toFixed(2)}) for requested withdrawal of €${numAmount.toFixed(2)}.`,
       code: 'INSUFFICIENT_FUNDS',
       requestId: req.id
     });
   }
 
   // Deduct immediately on server to lock funds
-  userRecord.balance = Math.round((userRecord.balance - numAmount) * 100) / 100;
-  if (userSubBalancesStore.has(userRecord.id)) {
-    userSubBalancesStore.get(userRecord.id)!.EUR = userRecord.balance;
+  const nextBalance = Math.round((serverAvailable - numAmount) * 100) / 100;
+  activeRecord.balance = nextBalance;
+  if (devCustomer) {
+    devCustomer.balance = nextBalance;
+  }
+  if (userSubBalancesStore.has(activeRecord.id)) {
+    userSubBalancesStore.get(activeRecord.id)!.EUR = nextBalance;
   }
 
   const ref = `KZ-WTH-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -3766,12 +4453,14 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
     currency: 'EUR',
     status: 'pending',
     method,
-    destination,
+    destination: requestedIban,
+    accountHolderName: legalOwnerName,
     reference: ref,
     createdAt: new Date().toISOString()
   };
 
   mockTransactions.unshift(withdrawalTx);
+  await persistDevState();
 
   const userRecipient = req.user?.email || 'investor@kretz.com';
   const foundUser = req.user;
@@ -3785,7 +4474,7 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
       amount: numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       currency: 'EUR',
       reference: ref,
-      destination,
+      destination: requestedIban,
       estimatedProcessingTime: '24 business hours'
     }
   }).catch(err => {
@@ -3810,8 +4499,8 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
     userRole: req.user?.role,
     eventType: 'WITHDRAWAL_REQUESTED',
     outcome: 'pending',
-    message: `Withdrawal of €${numAmount} requested by ${req.user?.email} to ${destination.slice(0, 8)}... Ref: ${ref}`,
-    metadata: { amount: numAmount, destination: destination.slice(0, 10) + '...', reference: ref }
+    message: `Withdrawal of €${numAmount} requested by ${req.user?.email} to ${requestedIban.slice(0, 8)}... Ref: ${ref}`,
+    metadata: { amount: numAmount, destination: requestedIban.slice(0, 10) + '...', reference: ref }
   });
 
   res.status(201).json({
@@ -4147,13 +4836,26 @@ router.post('/admin/database/repair', requireAdmin, async (req: AuthenticatedReq
 
 /**
  * POST /api/v1/payments/webhooks
- * Secure payment provider webhook processing with signature verification & idempotency
+ * Secure payment/bank provider webhook processing with HMAC signature verification, idempotency, and settlement sync
  */
-router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(503).json({ success: false, error: 'Payment-provider webhook signature verification is not configured. No payment event was accepted.', code: 'PAYMENT_WEBHOOK_NOT_CONFIGURED', requestId: req.id });
+router.post('/payments/webhooks', async (req: AuthenticatedRequest, res: Response) => {
+  const rawBody = typeof (req as any).rawBody === 'string'
+    ? (req as any).rawBody
+    : JSON.stringify(req.body || {});
+  const sigCheck = verifyPaymentWebhookSignature({
+    rawBody,
+    headers: req.headers as Record<string, string | string[] | undefined>,
+  });
+  if (!sigCheck.valid) {
+    const isUnconfigured = (sigCheck.reason || '').toLowerCase().includes('not configured');
+    return res.status(isUnconfigured ? 503 : 401).json({
+      success: false,
+      error: sigCheck.reason || 'Payment webhook signature verification failed.',
+      code: isUnconfigured ? 'PAYMENT_WEBHOOK_NOT_CONFIGURED' : 'INVALID_PAYMENT_WEBHOOK_SIGNATURE',
+      requestId: req.id,
+    });
   }
-  const providerSignature = req.headers['x-signature'] || req.headers['stripe-signature'];
+
   const event = req.body || {};
   const eventId = event.id || req.headers['x-event-id'];
 
@@ -4173,8 +4875,8 @@ router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => 
     return res.status(400).json({ success: false, error: 'Missing webhook event identifier.', requestId: req.id });
   }
 
-  // Idempotency check: prevent duplicate replay attacks
-  if (processedWebhooks.has(String(eventId))) {
+  const whKey = `pay:${eventId}`;
+  if (processedWebhooks.has(whKey)) {
     logger.log({
       level: 'info',
       category: 'payments',
@@ -4191,7 +4893,117 @@ router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => 
     return res.status(200).json({ success: true, message: 'Event already processed.', eventId });
   }
 
-  processedWebhooks.add(String(eventId));
+  processedWebhooks.add(whKey);
+  const eventType = String(event.type || 'payment.succeeded');
+  const reference = String(event.data?.object?.metadata?.reference || event.data?.reference || event.reference || '').trim();
+  const transactionId = String(event.data?.object?.metadata?.transactionId || event.data?.transactionId || event.transactionId || '').trim();
+  let settlementApplied = false;
+
+  if (reference || transactionId) {
+    const lookupKey = transactionId || reference;
+    if (isSupabaseServerConfigured()) {
+      try {
+        const tx = await findTransactionByReferenceOrId(lookupKey);
+        if (tx && tx.status === 'pending') {
+          if (tx.type === 'deposit' && (eventType === 'payment.succeeded' || eventType === 'sepa.deposit.settled' || eventType === 'charge.succeeded')) {
+            await runFinancialRpc('kretz_review_deposit', {
+              p_transaction_id: tx.id,
+              p_admin_id: 'system-payment-webhook',
+              p_approve: true,
+              p_reason: `Settled by payment webhook (${eventId})`,
+            });
+            settlementApplied = true;
+            const prof = await getUserProfile(tx.user_id).catch(() => null);
+            await notifyInvestorEvent({
+              userId: tx.user_id,
+              email: prof?.email,
+              title: 'Deposit settled to wallet',
+              message: `Your EUR ${Number(tx.amount || 0).toFixed(2)} deposit (${tx.reference}) has cleared and been credited to your wallet.`,
+              type: 'success',
+              emailTemplate: 'deposit_approved',
+              emailData: {
+                fullName: prof?.full_name || 'Valued Investor',
+                amount: Number(tx.amount || 0).toFixed(2),
+                currency: 'EUR',
+                reference: tx.reference,
+                method: tx.method || 'SEPA Transfer',
+              },
+              idempotencyKey: `wh-dep-${tx.id}`,
+            });
+          } else if (tx.type === 'withdrawal' && eventType === 'payout.failed') {
+            await runFinancialRpc('kretz_review_withdrawal', {
+              p_transaction_id: tx.id,
+              p_admin_id: 'system-payment-webhook',
+              p_approve: false,
+              p_reason: `Bank payout failed (${eventId})`,
+            });
+            settlementApplied = true;
+            const prof = await getUserProfile(tx.user_id).catch(() => null);
+            await notifyInvestorEvent({
+              userId: tx.user_id,
+              email: prof?.email,
+              title: 'Withdrawal returned to wallet',
+              message: `Bank settlement for ${tx.reference} did not complete. Reserved funds of EUR ${Number(tx.amount || 0).toFixed(2)} were returned to your wallet.`,
+              type: 'warning',
+            });
+          }
+        }
+      } catch (err: any) {
+        logger.log({
+          level: 'warn',
+          category: 'payments',
+          requestId: req.id || 'req-wh-db',
+          eventType: 'WEBHOOK_SETTLEMENT_ERROR',
+          outcome: 'failure',
+          message: err?.message || 'Unable to settle webhook transaction against database.',
+        });
+      }
+    } else if (process.env.NODE_ENV !== 'production') {
+      const tx = mockTransactions.find((t) => t.id === lookupKey || t.reference === lookupKey);
+      if (tx && tx.status === 'pending') {
+        if (tx.type === 'deposit' && (eventType === 'payment.succeeded' || eventType === 'sepa.deposit.settled' || eventType === 'charge.succeeded')) {
+          tx.status = 'completed';
+          const cust = devCustomersById.get(tx.userId);
+          if (cust) {
+            cust.balance = Math.round((Number(cust.balance || 0) + Number(tx.amount || 0)) * 100) / 100;
+            await notifyInvestorEvent({
+              userId: cust.id,
+              email: cust.email,
+              title: 'Deposit settled to wallet',
+              message: `Your EUR ${Number(tx.amount || 0).toFixed(2)} deposit (${tx.reference}) has cleared and been credited to your wallet.`,
+              type: 'success',
+              emailTemplate: 'deposit_approved',
+              emailData: {
+                fullName: cust.fullName || 'Valued Investor',
+                amount: Number(tx.amount || 0).toFixed(2),
+                currency: 'EUR',
+                reference: tx.reference,
+                method: tx.method || 'SEPA Transfer',
+              },
+              idempotencyKey: `wh-dep-${tx.id}`,
+            });
+          }
+          settlementApplied = true;
+          await persistDevState();
+        } else if (tx.type === 'withdrawal' && eventType === 'payout.failed') {
+          tx.status = 'rejected';
+          const cust = devCustomersById.get(tx.userId);
+          if (cust) {
+            cust.balance = Math.round((Number(cust.balance || 0) + Number(tx.amount || 0)) * 100) / 100;
+            await notifyInvestorEvent({
+              userId: cust.id,
+              email: cust.email,
+              title: 'Withdrawal returned to wallet',
+              message: `Bank settlement for ${tx.reference} did not complete. Reserved funds were returned to your wallet.`,
+              type: 'warning',
+            });
+          }
+          settlementApplied = true;
+          await persistDevState();
+        }
+      }
+    }
+  }
 
   logger.log({
     level: 'info',
@@ -4202,11 +5014,12 @@ router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => 
     statusCode: 200,
     eventType: 'WEBHOOK_PROCESSED',
     outcome: 'success',
-    message: `Payment webhook ${eventId} verified and recorded. Type: ${event.type || 'payment.succeeded'}`,
+    message: `Payment webhook ${eventId} verified (${sigCheck.scheme}) and processed. Type: ${eventType}`,
     metadata: {
       eventId,
-      eventType: event.type,
-      signatureVerified: Boolean(providerSignature)
+      eventType,
+      scheme: sigCheck.scheme,
+      settlementApplied
     }
   });
 
@@ -4214,6 +5027,8 @@ router.post('/payments/webhooks', (req: AuthenticatedRequest, res: Response) => 
     success: true,
     message: 'Webhook processed successfully.',
     eventId,
+    settlementApplied,
+    scheme: sigCheck.scheme,
     requestId: req.id
   });
 });
@@ -4243,12 +5058,33 @@ let paymentConfig = {
 };
 
 /**
- * GET /api/v1/payments/config (Public view of escrow instructions)
+ * GET /api/v1/payments/config (Public view of escrow instructions, limits, and fee schedule)
  */
 router.get('/payments/config', (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
-    data: paymentConfig,
+    data: {
+      ...paymentConfig,
+      limits: {
+        minDepositEur: 100,
+        maxDepositEur: 5000000,
+        minWithdrawalEur: 250,
+        minInvestmentEur: platformConfig.minInvestment || 750,
+        maxInvestmentPerInvestorEur: platformConfig.maxInvestmentPerInvestor || 500000
+      },
+      fees: {
+        sepaDepositFeeEur: 0,
+        cardDepositFeeEur: 0,
+        withdrawalFeeEur: 0,
+        investmentFeePercent: 0.25,
+        treasuryFxFeePercent: TREASURY_FX_FEE_PERCENT
+      },
+      settlement: {
+        sepaDepositEta: '1–2 business days',
+        cardDepositEta: 'Instant upon authorization',
+        withdrawalEta: '1–2 business days'
+      }
+    },
     requestId: req.id
   });
 });
@@ -4306,6 +5142,8 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
       ...req.user, fullName: profile.full_name, country: profile.country,
       accountType: profile.account_type, balance: Number(profile.wallet_balance || 0),
       kycStatus: profile.kyc_status, phoneNumber: profile.phone_number,
+      bankIban: profile.bank_iban,
+      bankAccountHolder: profile.bank_account_holder || profile.full_name,
       status: profile.account_status || 'active'
     }, requestId: req.id });
   } catch {
@@ -4313,36 +5151,7 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
   }
 });
 
-router.patch('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (!shouldUseSupabaseForCustomer(req)) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-    }
-    return updateAuthenticatedCustomerProfile(req, res);
-  }
-  const updates = req.body || {};
-  try {
-    const patch: Record<string, unknown> = {
-      full_name: updates.fullName, phone_number: updates.phoneNumber, country: updates.country,
-      country_code: updates.countryCode, bank_iban: updates.bankIban,
-      crypto_deposit_address: updates.cryptoDepositAddress, tax_id: updates.taxId,
-      address: updates.address, city: updates.city, postal_code: updates.postalCode,
-      date_of_birth: updates.dateOfBirth, avatar_url: updates.avatarUrl
-    };
-    const profile = await updateUserProfile(req.user!.id, patch);
-    return res.json({ success: true, data: {
-      id: profile.id, email: profile.email, fullName: profile.full_name, phoneNumber: profile.phone_number,
-      country: profile.country, countryCode: profile.country_code, address: profile.address,
-      city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url,
-      bankIban: profile.bank_iban, cryptoDepositAddress: profile.crypto_deposit_address,
-      taxId: profile.tax_id, dateOfBirth: profile.date_of_birth,
-      balance: Number(profile.wallet_balance || 0), kycStatus: profile.kyc_status
-    }, message: 'User profile updated successfully.', requestId: req.id });
-  } catch (error: any) {
-    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-profile-update-db', eventType: 'PROFILE_UPDATE_FAILED', outcome: 'failure', message: error?.message || 'Profile update failed.' });
-    return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
-  }
-});
+router.patch('/users/me', requireAuth, updateAuthenticatedCustomerProfile);
 
 // Dashboard summary & performance endpoints
 router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -4612,9 +5421,46 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
 });
 
 router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEmailVerification('admin.deposit.approve'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.type === 'deposit');
+    if (!tx) return res.status(404).json({ success: false, error: 'Deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
+    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Deposit is no longer pending.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+    tx.status = 'completed';
+    const cust = devCustomersById.get(tx.userId);
+    if (cust) {
+      cust.balance = Math.round((Number(cust.balance || 0) + Number(tx.amount || 0)) * 100) / 100;
+      await notifyInvestorEvent({
+        userId: cust.id,
+        email: cust.email,
+        title: 'Deposit approved',
+        message: `Your EUR ${Number(tx.amount || 0).toFixed(2)} deposit (${tx.reference}) has been approved and credited.`,
+        type: 'success',
+        emailTemplate: 'deposit_approved',
+        emailData: { fullName: cust.fullName || 'Investor', amount: Number(tx.amount || 0).toFixed(2), currency: 'EUR', reference: tx.reference, method: tx.method || 'SEPA Transfer' },
+        idempotencyKey: `dep-appr-${tx.id}`,
+      });
+    }
+    await persistDevState();
+    return res.json({ success: true, data: tx, message: 'Deposit approved and wallet credited.', requestId: req.id });
+  }
   try {
-    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+    const row: any = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+    if (row?.user_id) {
+      await notifyInvestorEvent({
+        userId: row.user_id,
+        email: prof?.email,
+        title: 'Deposit approved',
+        message: `Your EUR ${Number(row.amount || 0).toFixed(2)} deposit (${row.reference}) has been approved and credited.`,
+        type: 'success',
+        emailTemplate: 'deposit_approved',
+        emailData: { fullName: prof?.full_name || 'Valued Investor', amount: Number(row.amount || 0).toFixed(2), currency: 'EUR', reference: row.reference, method: row.method || 'SEPA Transfer' },
+        idempotencyKey: `dep-appr-${row.id}`,
+      });
+    }
     return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit approved and wallet credited.', requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
@@ -4624,9 +5470,40 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEma
 });
 
 router.post('/admin/deposits/:depositId/reject', requireAdmin, requireActionEmailVerification('admin.deposit.reject'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const reason = req.body?.reason || 'Transfer verification could not be matched.';
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.type === 'deposit');
+    if (!tx) return res.status(404).json({ success: false, error: 'Deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
+    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Deposit is no longer pending.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+    tx.status = 'rejected';
+    const cust = devCustomersById.get(tx.userId);
+    if (cust) {
+      await notifyInvestorEvent({
+        userId: cust.id,
+        email: cust.email,
+        title: 'Deposit declined',
+        message: `Deposit ${tx.reference} was declined: ${reason}`,
+        type: 'warning',
+      });
+    }
+    await persistDevState();
+    return res.json({ success: true, data: tx, message: 'Deposit rejected.', requestId: req.id });
+  }
   try {
-    const row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Transfer verification could not be matched.' });
+    const row: any = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason });
+    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+    if (row?.user_id) {
+      await notifyInvestorEvent({
+        userId: row.user_id,
+        email: prof?.email,
+        title: 'Deposit declined',
+        message: `Deposit ${row.reference} was declined: ${reason}`,
+        type: 'warning',
+      });
+    }
     return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit rejected.', requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
@@ -4636,10 +5513,62 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, requireActionEmai
 });
 
 router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, requireActionEmailVerification('admin.withdrawal.approve'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const tx = mockTransactions.find((t) => t.id === req.params.withdrawalId && t.type === 'withdrawal');
+    if (!tx) return res.status(404).json({ success: false, error: 'Withdrawal not found.', code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
+    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Withdrawal is no longer pending.', code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
+    tx.status = 'completed';
+    const cust = devCustomersById.get(tx.userId);
+    const payoutResult = await dispatchBankPayoutInstruction({
+      transactionId: tx.id,
+      reference: tx.reference,
+      amount: Number(tx.amount || 0),
+      currency: 'EUR',
+      iban: String((tx as any).destination || cust?.bankIban || ''),
+      holderName: cust?.bankAccountHolder || cust?.fullName || 'Investor',
+    });
+    if (cust) {
+      await notifyInvestorEvent({
+        userId: cust.id,
+        email: cust.email,
+        title: 'Withdrawal approved for payout',
+        message: `Your withdrawal ${tx.reference} of EUR ${Number(tx.amount || 0).toFixed(2)} has been approved (${payoutResult.provider}).`,
+        type: 'success',
+        emailTemplate: 'payment_notification',
+        emailData: { fullName: cust.fullName || 'Investor', amount: Number(tx.amount || 0).toFixed(2), currency: 'EUR', reference: tx.reference, status: 'Approved & Dispatched' },
+        idempotencyKey: `wth-appr-${tx.id}`,
+      });
+    }
+    await persistDevState();
+    return res.json({ success: true, data: tx, payout: payoutResult, message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
+  }
   try {
-    const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
-    return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
+    const row: any = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+    const payoutResult = await dispatchBankPayoutInstruction({
+      transactionId: row.id,
+      reference: row.reference,
+      amount: Number(row.amount || 0),
+      currency: 'EUR',
+      iban: String(row.tx_hash || prof?.bank_iban || ''),
+      holderName: prof?.bank_account_holder || prof?.full_name || 'Investor',
+    });
+    if (row?.user_id) {
+      await notifyInvestorEvent({
+        userId: row.user_id,
+        email: prof?.email,
+        title: 'Withdrawal approved for payout',
+        message: `Your withdrawal ${row.reference} of EUR ${Number(row.amount || 0).toFixed(2)} has been approved (${payoutResult.provider}).`,
+        type: 'success',
+        emailTemplate: 'payment_notification',
+        emailData: { fullName: prof?.full_name || 'Valued Investor', amount: Number(row.amount || 0).toFixed(2), currency: 'EUR', reference: row.reference, status: 'Approved & Dispatched' },
+        idempotencyKey: `wth-appr-${row.id}`,
+      });
+    }
+    return res.json({ success: true, data: toApiTransaction(row), payout: payoutResult, message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
     const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
@@ -4648,9 +5577,41 @@ router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, requireAct
 });
 
 router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, requireActionEmailVerification('admin.withdrawal.reject'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const reason = req.body?.reason || 'Withdrawal rejected by finance review.';
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const tx = mockTransactions.find((t) => t.id === req.params.withdrawalId && t.type === 'withdrawal');
+    if (!tx) return res.status(404).json({ success: false, error: 'Withdrawal not found.', code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
+    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Withdrawal is no longer pending.', code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
+    tx.status = 'rejected';
+    const cust = devCustomersById.get(tx.userId);
+    if (cust) {
+      cust.balance = Math.round((Number(cust.balance || 0) + Number(tx.amount || 0)) * 100) / 100;
+      await notifyInvestorEvent({
+        userId: cust.id,
+        email: cust.email,
+        title: 'Withdrawal declined and funds returned',
+        message: `Withdrawal ${tx.reference} was declined (${reason}). EUR ${Number(tx.amount || 0).toFixed(2)} was returned to your wallet.`,
+        type: 'warning',
+      });
+    }
+    await persistDevState();
+    return res.json({ success: true, data: tx, message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
+  }
   try {
-    const row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: req.body?.reason || 'Withdrawal rejected by finance review.' });
+    const row: any = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason });
+    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+    if (row?.user_id) {
+      await notifyInvestorEvent({
+        userId: row.user_id,
+        email: prof?.email,
+        title: 'Withdrawal declined and funds returned',
+        message: `Withdrawal ${row.reference} was declined (${reason}). EUR ${Number(row.amount || 0).toFixed(2)} was returned to your wallet.`,
+        type: 'warning',
+      });
+    }
     return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
@@ -5820,5 +6781,35 @@ router.get('/distributions/export', requireAuth, (req: AuthenticatedRequest, res
   res.status(200).send(csv);
 });
 
-export default router;
+export function __testSetCustomerFinancialState(
+  userId: string,
+  updates: { kycStatus?: 'pending' | 'verified' | 'rejected'; balance?: number }
+): void {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('__testSetCustomerFinancialState is only available in test mode');
+  }
+  const customer = devCustomersById.get(userId);
+  if (!customer) {
+    throw new Error(`Test customer not found: ${userId}`);
+  }
+  if (updates.kycStatus !== undefined) {
+    customer.kycStatus = updates.kycStatus;
+  }
+  if (updates.balance !== undefined) {
+    customer.balance = updates.balance;
+    mockTransactions.unshift({
+      id: `tx-test-credit-${Date.now()}`,
+      userId: customer.id,
+      userEmail: customer.email,
+      type: 'deposit',
+      amount: updates.balance,
+      currency: 'EUR',
+      status: 'completed',
+      method: 'Direct Wire Received',
+      reference: `KZ-TEST-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    } as any);
+  }
+}
 
+export default router;

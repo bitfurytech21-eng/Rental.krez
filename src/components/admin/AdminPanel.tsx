@@ -211,12 +211,18 @@ export const AdminPanel: React.FC = () => {
     return true;
   };
 
-  const [transactions, setTransactions] = useState(ledger.getTransactions());
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [properties, setProperties] = useState(ledger.getProperties());
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [adminRegistryInvestments, setAdminRegistryInvestments] = useState<any[]>([]);
   const [adminRegistryTransactions, setAdminRegistryTransactions] = useState<any[]>([]);
-  const [verificationDocs, setVerificationDocs] = useState<VerificationDocument[]>(ledger.getVerificationDocuments());
+  const [verificationDocs, setVerificationDocs] = useState<VerificationDocument[]>([]);
+  const [providersStatus, setProvidersStatus] = useState<{
+    database?: { connected: boolean; mode: string; usersCount?: number | null };
+    payments?: { provider: string; mode: string; webhookVerificationConfigured: boolean };
+    kyc?: { provider: string; mode: string; webhookVerificationConfigured: boolean };
+    email?: { provider: string; providerName: string; configured: boolean; mode: string };
+  } | null>(null);
   const [auditLogs, setAuditLogs] = useState(ledger.getAuditLogs());
   const [paymentConfig, setPaymentConfig] = useState(ledger.getPaymentConfig());
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -246,9 +252,11 @@ export const AdminPanel: React.FC = () => {
     ref?: string;
     user?: string;
   } | null>(null);
+  const [rejectDocTarget, setRejectDocTarget] = useState<{ id: string; title: string } | null>(null);
+  const [rejectDocReason, setRejectDocReason] = useState('Document scan is blurry or unreadable. Please provide a clear original PDF or photo.');
 
   // Document filter states
-  const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'deposit_proof' | 'kyc_identity' | 'proof_of_address'>('all');
+  const [docFilterCategory, setDocFilterCategory] = useState<'all' | 'deposit_proof' | 'kyc_identity' | 'proof_of_address' | 'accredited_proof'>('all');
   const [docFilterStatus, setDocFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   React.useEffect(() => {
@@ -328,17 +336,72 @@ export const AdminPanel: React.FC = () => {
   const loadUsers = async () => {
     const token = getAuthToken();
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-    const [response, investmentsResponse, transactionsResponse] = await Promise.all([
+    const [response, investmentsResponse, transactionsResponse, docsResponse, providersResponse, payConfigResponse] = await Promise.all([
       fetch(getApiUrl('/admin/users'), { headers }),
       fetch(getApiUrl('/admin/investments'), { headers }),
-      fetch(getApiUrl('/admin/transactions'), { headers })
+      fetch(getApiUrl('/admin/transactions'), { headers }),
+      fetch(getApiUrl('/admin/documents'), { headers }),
+      fetch(getApiUrl('/admin/providers/status'), { headers }),
+      fetch(getApiUrl('/admin/payment-config'), { headers }),
     ]);
-    if (!response.ok) throw new Error('Unable to load the Supabase investor registry.');
+    if (!response.ok) throw new Error('Unable to load the investor registry.');
     const payload = await response.json();
     const investmentPayload = investmentsResponse.ok ? await investmentsResponse.json() : { data: [] };
     const transactionPayload = transactionsResponse.ok ? await transactionsResponse.json() : { data: [] };
+    const docsPayload = docsResponse.ok ? await docsResponse.json() : { data: [] };
+    const providersPayload = providersResponse.ok ? await providersResponse.json() : { data: null };
+    const payConfigPayload = payConfigResponse.ok ? await payConfigResponse.json() : { data: null };
+
     setAdminRegistryInvestments(Array.isArray(investmentPayload?.data) ? investmentPayload.data : []);
-    setAdminRegistryTransactions(Array.isArray(transactionPayload?.data) ? transactionPayload.data : []);
+    const txRows = Array.isArray(transactionPayload?.data) ? transactionPayload.data : [];
+    setAdminRegistryTransactions(txRows);
+    setTransactions(txRows.map((row: any) => ({
+      id: String(row.id),
+      userId: String(row.userId || row.user_id || ''),
+      type: String(row.type || 'transaction'),
+      amount: Number(row.amount || 0),
+      currency: String(row.currency || 'EUR'),
+      status: String(row.status || 'pending'),
+      description: row.description || row.notes || `${row.type || 'transaction'} (${row.reference || row.id})`,
+      reference: String(row.reference || row.id),
+      createdAt: String(row.createdAt || row.created_at || new Date().toISOString()),
+      paymentMethod: String(row.method || row.paymentMethod || 'SEPA Transfer'),
+      txHash: row.txHash || row.tx_hash || undefined,
+      metadata: {
+        ...(row.metadata || {}),
+        bankIban: row.destination || row.metadata?.bankIban || row.txHash || undefined,
+      },
+    })));
+
+    const docRows = Array.isArray(docsPayload?.data) ? docsPayload.data : [];
+    setVerificationDocs(docRows.map((d: any): VerificationDocument => ({
+      id: String(d.id),
+      userId: String(d.userId || ''),
+      userEmail: String(d.userEmail || ''),
+      userName: String(d.userName || 'Investor'),
+      category: d.category,
+      documentType: String(d.documentType || 'Document'),
+      title: String(d.title || d.fileName || 'Compliance Document'),
+      fileUrl: String(d.fileDataUrl || ''),
+      fileName: String(d.fileName || 'document.pdf'),
+      fileSize: Number(d.fileSize || 0),
+      status: d.status === 'verified' ? 'approved' : d.status === 'rejected' ? 'rejected' : 'pending',
+      rejectionReason: d.notes || undefined,
+      notes: d.notes || undefined,
+      uploadedAt: String(d.uploadedAt || new Date().toISOString()),
+    })));
+
+    if (providersPayload?.data) {
+      setProvidersStatus(providersPayload.data);
+    }
+    if (payConfigPayload?.data?.traditional) {
+      setPaymentConfig((prev) => ({
+        ...prev,
+        ...payConfigPayload.data,
+        traditional: { ...prev.traditional, ...payConfigPayload.data.traditional },
+      }));
+    }
+
     const rows = Array.isArray(payload?.data) ? payload.data : [];
     setUsers(rows.map((row: any): PlatformUser => ({
       id: String(row.id), email: String(row.email || ''), fullName: String(row.fullName || ''),
@@ -365,12 +428,9 @@ export const AdminPanel: React.FC = () => {
   }, [editUserPaymentId, users]);
 
   const refreshAll = () => {
-    setTransactions(ledger.getTransactions());
     setProperties(ledger.getProperties());
     loadUsers().catch((error) => setActionError(error.message || 'Unable to refresh investor registry.'));
-    setVerificationDocs(ledger.getVerificationDocuments());
     setAuditLogs(ledger.getAuditLogs());
-    setPaymentConfig(ledger.getPaymentConfig());
   };
 
   const handleRestoreDefaults = () => {
@@ -387,8 +447,20 @@ export const AdminPanel: React.FC = () => {
 
   const handleReviewVerificationDoc = async (docId: string, approved: boolean, reason?: string) => {
     try {
-      ledger.reviewVerificationDocument(docId, approved, reason, activeUser.email);
-      setActionSuccess(`Document ${approved ? 'confirmed and approved' : 'declined'}. Ledger updated.`);
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl(`/admin/documents/${docId}/review`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ approved, reason }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Document review could not be saved.');
+      }
+      setActionSuccess(`Document ${approved ? 'verified' : 'rejected'} and compliance step updated.`);
       setActionError(null);
       refreshAll();
       setTimeout(() => setActionSuccess(null), 3500);
@@ -397,11 +469,24 @@ export const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleSavePaymentConfig = (e: React.FormEvent) => {
+  const handleSavePaymentConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const token = getAuthToken();
+      const response = await fetch(getApiUrl('/admin/payment-config'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(paymentConfig),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to save payment configuration.');
+      }
       ledger.updatePaymentConfig(paymentConfig);
-      setActionSuccess('Payment gateway settings and crypto treasury configurations updated successfully!');
+      setActionSuccess('Payment gateway settings and crypto treasury configurations saved to the backend!');
       setActionError(null);
       refreshAll();
       setTimeout(() => setActionSuccess(null), 3000);
@@ -1231,9 +1316,9 @@ export const AdminPanel: React.FC = () => {
                 <div className="kretz-admin-card">
                   <div className="flex justify-between items-center mb-1">
                     <h4>Proof vault</h4>
-                    <span className="kretz-admin-bd">{pendingVerificationDocs.length || 2}</span>
+                    <span className="kretz-admin-bd">{pendingVerificationDocs.length}</span>
                   </div>
-                  <div className="kretz-admin-stat">{pendingVerificationDocs.length || 2} awaiting review</div>
+                  <div className="kretz-admin-stat">{pendingVerificationDocs.length} awaiting review</div>
                   <div className="text-xs text-[#6b7773] mt-1">Wire slips, crypto screenshots, and KYC proofs</div>
                   <button className="kretz-admin-go" onClick={() => handleNavigate('proofs')}>
                     Open
@@ -1244,9 +1329,9 @@ export const AdminPanel: React.FC = () => {
                 <div className="kretz-admin-card">
                   <div className="flex justify-between items-center mb-1">
                     <h4>KYC queue</h4>
-                    <span className="kretz-admin-bd">{pendingKYCUsers.length || 1}</span>
+                    <span className="kretz-admin-bd">{pendingKYCUsers.length}</span>
                   </div>
-                  <div className="kretz-admin-stat">{pendingKYCUsers.length || 1} investor</div>
+                  <div className="kretz-admin-stat">{pendingKYCUsers.length} {pendingKYCUsers.length === 1 ? 'investor' : 'investors'}</div>
                   <div className="text-xs text-[#6b7773] mt-1">In MiCA regulatory review</div>
                   <button className="kretz-admin-go" onClick={() => handleNavigate('kyc')}>
                     Open
@@ -1254,21 +1339,39 @@ export const AdminPanel: React.FC = () => {
                 </div>
               </div>
 
-              {/* Platform Health Card */}
+              {/* Platform Health & Provider Integrations Card */}
               <div className="kretz-admin-card">
-                <h4>Platform health</h4>
+                <h4>Backend &amp; provider integrations</h4>
                 <div className="divide-y divide-[#e4e6e1] text-xs">
                   <div className="py-2.5 flex justify-between items-center">
-                    <span className="text-[#6b7773]">Audit log entries</span>
-                    <span className="font-bold text-[#1f2b28]">{auditLogs.length} records</span>
+                    <span className="text-[#6b7773]">Database</span>
+                    <span className="font-bold text-[#1f2b28]">
+                      {providersStatus?.database?.connected ? 'Connected' : 'Dev Snapshot'} ({providersStatus?.database?.mode || 'checking'})
+                    </span>
                   </div>
                   <div className="py-2.5 flex justify-between items-center">
-                    <span className="text-[#6b7773]">Settled transactions</span>
-                    <span className="font-bold text-[#1f2b28]">{transactions.filter(t => t.status === 'completed' || t.status === 'approved').length}</span>
+                    <span className="text-[#6b7773]">Payments / bank provider</span>
+                    <span className="font-bold text-[#1f2b28]">
+                      {providersStatus?.payments?.provider || 'sepa_manual_escrow'} ({providersStatus?.payments?.mode || 'sandbox'})
+                    </span>
                   </div>
                   <div className="py-2.5 flex justify-between items-center">
-                    <span className="text-[#6b7773]">Active admins</span>
-                    <span className="font-bold text-[#1f2b28]">{activeUser.email}</span>
+                    <span className="text-[#6b7773]">KYC provider</span>
+                    <span className="font-bold text-[#1f2b28]">
+                      {providersStatus?.kyc?.provider || 'internal_aml_vault'} ({providersStatus?.kyc?.mode || 'internal'})
+                    </span>
+                  </div>
+                  <div className="py-2.5 flex justify-between items-center">
+                    <span className="text-[#6b7773]">Email / notifications</span>
+                    <span className="font-bold text-[#1f2b28]">
+                      {providersStatus?.email?.providerName || 'Sandbox'} ({providersStatus?.email?.mode || 'sandbox'})
+                    </span>
+                  </div>
+                  <div className="py-2.5 flex justify-between items-center">
+                    <span className="text-[#6b7773]">Settled transactions · Active operator</span>
+                    <span className="font-bold text-[#1f2b28]">
+                      {transactions.filter(t => t.status === 'completed' || t.status === 'approved').length} · {activeUser.email}
+                    </span>
                   </div>
                 </div>
                 <button className="kretz-admin-go" onClick={() => handleNavigate('logs')}>
@@ -1284,6 +1387,7 @@ export const AdminPanel: React.FC = () => {
               users={users}
               auditLogs={auditLogs}
               paymentConfig={paymentConfig}
+              verificationDocs={verificationDocs}
               onNavigateTab={(tab) => handleNavigate(tab)}
               onOpenNewPropertyModal={() => setShowNewPropertyModal(true)}
               onRefreshAll={refreshAll}
@@ -2202,7 +2306,7 @@ export const AdminPanel: React.FC = () => {
                 <span className="font-bold text-[#18211F] flex items-center gap-1">
                   <Filter className="w-3.5 h-3.5 text-[#27845D]" /> Category:
                 </span>
-                {(['all', 'deposit_proof', 'kyc_identity', 'proof_of_address'] as const).map(cat => (
+                {(['all', 'deposit_proof', 'kyc_identity', 'proof_of_address', 'accredited_proof'] as const).map(cat => (
                   <button
                     key={cat}
                     type="button"
@@ -2213,7 +2317,7 @@ export const AdminPanel: React.FC = () => {
                         : 'bg-white text-[#69736F] hover:text-[#18211F] border border-[#E3E8E3]'
                     }`}
                   >
-                    {cat === 'all' ? 'All Categories' : cat === 'deposit_proof' ? 'Deposit Receipts' : cat === 'kyc_identity' ? 'Identity (KYC)' : 'Address Proofs'}
+                    {cat === 'all' ? 'All Categories' : cat === 'deposit_proof' ? 'Deposit Receipts' : cat === 'kyc_identity' ? 'Identity (KYC)' : cat === 'proof_of_address' ? 'Address Proofs' : 'Suitability Questionnaire'}
                   </button>
                 ))}
               </div>
@@ -2348,10 +2452,8 @@ export const AdminPanel: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                const reason = prompt('Specify rejection reason for investor:', 'Document scan is blurry or unreadable. Please provide a clear original PDF or photo.');
-                                if (reason !== null) {
-                                  handleReviewVerificationDoc(doc.id, false, reason);
-                                }
+                                setRejectDocReason('Document scan is blurry or unreadable. Please provide a clear original PDF or photo.');
+                                setRejectDocTarget({ id: doc.id, title: doc.title });
                               }}
                               className="btn btn-secondary text-xs font-bold px-3.5 py-2.5 text-[#C24141] border-red-200 hover:bg-red-50 flex items-center gap-1.5 cursor-pointer"
                             >
@@ -2914,17 +3016,31 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto rounded-2xl bg-slate-950 p-2 flex items-center justify-center min-h-[320px]">
-              {previewProofModalDoc.fileUrl.startsWith('data:image') || previewProofModalDoc.fileUrl.startsWith('http') ? (
+              {!previewProofModalDoc.fileUrl ? (
+                <div className="text-center p-8 text-white space-y-2 max-w-md">
+                  <FileText className="w-16 h-16 mx-auto text-emerald-400" />
+                  <p className="text-sm font-bold">{previewProofModalDoc.fileName}</p>
+                  <p className="text-xs text-slate-400">
+                    Metadata verified on server. Binary inline preview was omitted (e.g. file exceeds 1.5 MB inline threshold or submitted via API metadata).
+                  </p>
+                </div>
+              ) : previewProofModalDoc.fileUrl.startsWith('data:image') || previewProofModalDoc.fileUrl.startsWith('http') ? (
                 <img
                   src={previewProofModalDoc.fileUrl}
                   alt={previewProofModalDoc.title}
                   className="max-h-[60vh] max-w-full rounded-xl object-contain shadow-md"
                 />
+              ) : previewProofModalDoc.fileUrl.startsWith('data:application/pdf') ? (
+                <iframe
+                  title={previewProofModalDoc.title}
+                  src={previewProofModalDoc.fileUrl}
+                  className="w-full h-[60vh] rounded-xl bg-white"
+                />
               ) : (
                 <div className="text-center p-8 text-white space-y-2">
                   <FileText className="w-16 h-16 mx-auto text-emerald-400" />
                   <p className="text-sm font-bold">{previewProofModalDoc.fileName}</p>
-                  <p className="text-xs text-slate-400">PDF Document Proof</p>
+                  <p className="text-xs text-slate-400">Compliance Document Record</p>
                 </div>
               )}
             </div>
@@ -2950,6 +3066,54 @@ export const AdminPanel: React.FC = () => {
                 className="btn btn-secondary text-xs font-bold px-6 py-2.5 cursor-pointer"
               >
                 Close Inspector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Rejection Reason Modal */}
+      {rejectDocTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E3E8E3] space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E3E8E3] pb-3">
+              <h3 className="text-base font-bold text-[#18211F]">Decline Compliance Proof</h3>
+              <button
+                type="button"
+                onClick={() => setRejectDocTarget(null)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-500 cursor-pointer"
+                aria-label="Close decline modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-[#69736F]">
+              Specify why <strong className="text-[#18211F]">{rejectDocTarget.title}</strong> is being declined. This note is sent to the investor.
+            </p>
+            <textarea
+              rows={3}
+              value={rejectDocReason}
+              onChange={(e) => setRejectDocReason(e.target.value)}
+              className="w-full text-xs p-3 rounded-xl border border-[#E3E8E3] bg-[#F6F7F4] text-[#18211F]"
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRejectDocTarget(null)}
+                className="btn btn-secondary text-xs font-bold px-4 py-2 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = rejectDocTarget;
+                  setRejectDocTarget(null);
+                  handleReviewVerificationDoc(target.id, false, rejectDocReason.trim() || undefined);
+                }}
+                className="btn btn-primary text-xs font-bold px-4 py-2 bg-[#C24141] hover:bg-[#a63434] text-white cursor-pointer"
+              >
+                Confirm Decline
               </button>
             </div>
           </div>

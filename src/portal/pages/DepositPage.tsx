@@ -1,35 +1,88 @@
-import React, { useEffect, useState } from 'react';
-import { Building2, Coins, Copy, Check, CheckCircle2, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Building2,
+  CreditCard,
+  Copy,
+  Check,
+  CheckCircle2,
+  ArrowRight,
+  ShieldAlert,
+} from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
 import { portalApi } from '../services/portalApi';
-import { PortalPaymentConfig, PortalTransaction } from '../types';
+import { PortalTransaction } from '../types';
 import { formatEuro } from '../utils/format';
 import { validateDepositAmount } from '../utils/validate';
 import { Stepper } from '../components/Stepper';
+import { StatusBadge } from '../components/StatusBadge';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 
-const DEPOSIT_STEPS = ['Method', 'Amount', 'Instructions', 'Confirmation'];
+const DEPOSIT_STEPS = ['Amount', 'Method', 'Review', 'Confirmation'];
+const QUICK_AMOUNTS = [100, 500, 1000, 5000];
 
 export const DepositPage: React.FC = () => {
   const toast = useToast();
-  const { navigatePortal, refreshAll } = usePortal();
+  const { loading, profile, portalConfig, sampleDataEnabled, navigatePortal, refreshAll } = usePortal();
 
   const [step, setStep] = useState(0);
-  const [config, setConfig] = useState<PortalPaymentConfig | null>(null);
-  const [method, setMethod] = useState<'SEPA Bank Wire' | 'Instant Bank Transfer' | 'USDC (Solana / ERC-20)'>('SEPA Bank Wire');
+  const [method, setMethod] = useState<'SEPA bank transfer' | 'Card'>('SEPA bank transfer');
   const [amountInput, setAmountInput] = useState('1000');
-  const [txHash, setTxHash] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [createdTx, setCreatedTx] = useState<PortalTransaction | null>(null);
 
-  useEffect(() => {
-    portalApi
-      .getPaymentConfig()
-      .then(setConfig)
-      .catch(() => {});
-  }, []);
+  if (loading && !sampleDataEnabled) {
+    return <LoadingSkeleton rows={3} />;
+  }
+
+  const isVerified = profile?.kycStatus === 'verified';
+
+  if (profile && !isVerified) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="portal-card border-[#FCD34D]/45 space-y-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-[14px] bg-[#FCD34D]/12 border border-[#FCD34D]/35 text-[#FCD34D] flex items-center justify-center shrink-0">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-lg font-semibold text-[#F2F5F4]">Verification required to deposit</h2>
+                <StatusBadge
+                  status={profile.kycStatus}
+                  label={profile.kycStatus === 'rejected' ? 'Rejected' : 'In review'}
+                />
+              </div>
+              <p className="text-sm text-[#8FA1A8] mt-1.5 leading-relaxed">
+                European AML regulations require your identity, proof of address, and investor questionnaire to be verified before funding your wallet.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => navigatePortal('compliance')}
+              className="portal-btn-primary"
+            >
+              <span>Open Compliance Vault</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigatePortal('overview')}
+              className="portal-btn-secondary"
+            >
+              Back to overview
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const copyValue = async (label: string, val: string) => {
     if (!val) return;
@@ -43,88 +96,186 @@ export const DepositPage: React.FC = () => {
     }
   };
 
-  const amountCheck = validateDepositAmount(amountInput);
+  const limits = portalConfig.limits;
+  const amountCheck = validateDepositAmount(amountInput, limits);
+  const feeAmount =
+    method === 'SEPA bank transfer'
+      ? portalConfig.fees.sepaDepositFeeEur
+      : portalConfig.fees.cardDepositFeeEur;
+  const totalAmount = amountCheck.valid ? amountCheck.value + feeAmount : 0;
+
+  const handleAmountChange = (val: string) => {
+    setAmountInput(val);
+    const check = validateDepositAmount(val, limits);
+    setAmountError(val.trim() === '' ? 'Enter a deposit amount in EUR.' : check.valid ? null : check.error || null);
+    if (submitError) setSubmitError(null);
+  };
 
   const handleNextFromAmount = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setSubmitError(null);
     if (!amountCheck.valid) {
-      setError(amountCheck.error || 'Enter a valid deposit amount.');
+      setAmountError(
+        amountCheck.error ||
+          `Enter an amount between ${formatEuro(limits.minDepositEur)} and ${formatEuro(limits.maxDepositEur)}.`
+      );
       return;
     }
-    setStep(2);
+    setAmountError(null);
+    setStep(1);
   };
 
-  const handleSubmitDeposit = async () => {
+  const handleConfirmAndSubmit = async () => {
     if (submitting) return;
-    setError(null);
+    setSubmitError(null);
     if (!amountCheck.valid) {
-      setError(amountCheck.error || 'Invalid amount.');
-      setStep(1);
+      setAmountError(amountCheck.error || 'Enter a valid EUR amount.');
+      setStep(0);
       return;
     }
+
+    if (sampleDataEnabled) {
+      setCreatedTx({
+        id: 'sample-dep-preview',
+        type: 'deposit',
+        amount: amountCheck.value,
+        currency: 'EUR',
+        status: 'pending',
+        reference: 'SAMPLE-DEP-PREVIEW',
+        createdAt: new Date().toISOString(),
+        paymentMethod: method,
+      });
+      setStep(3);
+      toast.info('Sample deposit instructions generated (preview mode).');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const tx = await portalApi.submitDeposit({
         amount: amountCheck.value,
         currency: 'EUR',
         method,
-        txHash: txHash.trim() || undefined,
       });
       setCreatedTx(tx);
       setStep(3);
-      toast.success('Deposit notification recorded.');
+      toast.success('Deposit instructions issued.');
       await refreshAll();
     } catch (err: any) {
-      const msg = err?.message || 'Unable to record deposit notification.';
-      setError(msg);
+      const msg = err?.message || 'Unable to record deposit request.';
+      setSubmitError(msg);
       toast.error(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const isCrypto = method.includes('USDC');
-  const primaryCrypto = config?.cryptoNetworks?.[0];
+  const bankDetails = [
+    { label: 'Beneficiary', value: portalConfig.traditional.beneficiary },
+    { label: 'Bank', value: portalConfig.traditional.bankName },
+    { label: 'IBAN', value: portalConfig.traditional.iban },
+    { label: 'BIC / SWIFT', value: portalConfig.traditional.bic },
+  ];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <Stepper steps={DEPOSIT_STEPS} currentStep={step} />
 
-      {error && (
-        <div role="alert" className="portal-card border-[#FB7185]/50 p-4 text-sm text-[#FB7185]">
-          {error}
+      {submitError && (
+        <div role="alert" className="portal-card border-[#FB7185]/50 text-sm text-[#FB7185]">
+          {submitError}
         </div>
       )}
 
+      {/* Step 1: Amount */}
       {step === 0 && (
-        <div className="portal-card p-5 sm:p-6 space-y-5">
+        <form onSubmit={handleNextFromAmount} noValidate className="portal-card space-y-5">
           <div>
-            <h2 className="text-lg font-semibold text-white">Select funding rail</h2>
-            <p className="text-xs text-[#8EA7C7] mt-1">
-              Funds are credited to your EUR wallet upon escrow reconciliation.
+            <h2 className="text-lg font-semibold text-[#F2F5F4]">Deposit amount</h2>
+            <p className="text-xs text-[#8FA1A8] mt-1 portal-tabular">
+              Minimum {formatEuro(limits.minDepositEur)} · Maximum {formatEuro(limits.maxDepositEur)}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {QUICK_AMOUNTS.map((preset) => {
+              const isSelected = Number(amountInput) === preset;
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => handleAmountChange(String(preset))}
+                  className={`min-h-[44px] px-3 rounded-[14px] border text-xs font-semibold portal-tabular transition-colors ${
+                    isSelected
+                      ? 'bg-[#6FD8B0] border-[#6FD8B0] text-[#07231A]'
+                      : 'bg-[#0B0F10] border-[#1F2C33] text-[#F2F5F4] hover:border-[#6FD8B0]'
+                  }`}
+                >
+                  {formatEuro(preset)}
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <label htmlFor="deposit-amount" className="block text-sm font-medium text-[#F2F5F4] mb-2">
+              Amount (EUR)
+            </label>
+            <input
+              id="deposit-amount"
+              type="number"
+              min={limits.minDepositEur}
+              max={limits.maxDepositEur}
+              step="0.01"
+              value={amountInput}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              aria-invalid={Boolean(amountError)}
+              aria-describedby={amountError ? 'deposit-amount-error' : undefined}
+              className={`portal-input text-lg font-bold portal-tabular ${
+                amountError ? '!border-[#FB7185]' : ''
+              }`}
+            />
+            {amountError && (
+              <p id="deposit-amount-error" role="alert" className="mt-1.5 text-xs text-[#FB7185]">
+                {amountError}
+              </p>
+            )}
+          </div>
+
+          <button type="submit" className="portal-btn-primary w-full">
+            <span>Continue to method</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </form>
+      )}
+
+      {/* Step 2: Method */}
+      {step === 1 && (
+        <div className="portal-card space-y-5">
+          <div>
+            <h2 className="text-lg font-semibold text-[#F2F5F4]">Payment method</h2>
+            <p className="text-xs text-[#8FA1A8] mt-1 portal-tabular">
+              Deposit amount · {formatEuro(amountCheck.value)}
             </p>
           </div>
 
           <div className="space-y-3">
             {[
               {
-                id: 'SEPA Bank Wire' as const,
-                title: 'SEPA Bank Wire',
-                detail: 'Standard EUR institutional settlement · 1–2 business days · €0 fee',
+                id: 'SEPA bank transfer' as const,
+                title: 'SEPA bank transfer',
+                detail: `Wire from your European bank account · ${portalConfig.settlement.sepaDepositEta} · ${formatEuro(
+                  portalConfig.fees.sepaDepositFeeEur
+                )} fee`,
                 icon: Building2,
               },
               {
-                id: 'Instant Bank Transfer' as const,
-                title: 'Instant SEPA Transfer',
-                detail: 'Same-day EUR clearing from European bank accounts · €0 fee',
-                icon: Building2,
-              },
-              {
-                id: 'USDC (Solana / ERC-20)' as const,
-                title: 'Stablecoin Treasury Settlement (USDC)',
-                detail: 'On-chain settlement converted 1:1 to EUR upon confirmation',
-                icon: Coins,
+                id: 'Card' as const,
+                title: 'Card',
+                detail: `Debit or credit card funding · ${portalConfig.settlement.cardDepositEta} · ${formatEuro(
+                  portalConfig.fees.cardDepositFeeEur
+                )} fee`,
+                icon: CreditCard,
               },
             ].map((item) => {
               const Icon = item.icon;
@@ -134,199 +285,173 @@ export const DepositPage: React.FC = () => {
                   key={item.id}
                   type="button"
                   onClick={() => setMethod(item.id)}
-                  className={`w-full p-4 rounded-xl border text-left flex items-start gap-3.5 transition-colors ${
+                  className={`w-full min-h-[64px] p-4 rounded-[14px] border text-left flex items-start gap-3.5 transition-colors ${
                     selected
-                      ? 'bg-[#152E54] border-[#C5A880]'
-                      : 'bg-[#0B1B30] border-[#1D3860] hover:border-[#C5A880]/50'
+                      ? 'bg-[#172228] border-[#6FD8B0]'
+                      : 'bg-[#0B0F10] border-[#1F2C33] hover:border-[#6FD8B0]/55'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[#102442] border border-[#1D3860] text-[#C5A880] flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-[14px] bg-[#121A1F] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center shrink-0">
                     <Icon className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-white">{item.title}</div>
-                    <div className="text-xs text-[#8EA7C7] mt-0.5">{item.detail}</div>
+                    <div className="text-sm font-medium text-[#F2F5F4]">{item.title}</div>
+                    <div className="text-xs text-[#8FA1A8] mt-0.5 portal-tabular">{item.detail}</div>
                   </div>
                 </button>
               );
             })}
           </div>
 
-          <button type="button" onClick={() => setStep(1)} className="portal-btn-primary w-full">
-            <span>Continue to amount</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {step === 1 && (
-        <form onSubmit={handleNextFromAmount} className="portal-card p-5 sm:p-6 space-y-5">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Deposit amount (EUR)</h2>
-            <p className="text-xs text-[#8EA7C7] mt-1">
-              Funding rail · {method} · Minimum €100.00
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="deposit-amount" className="block text-xs font-semibold text-[#C5A880] mb-2">
-              Amount in EUR
-            </label>
-            <input
-              id="deposit-amount"
-              type="number"
-              min="100"
-              step="0.01"
-              required
-              value={amountInput}
-              onChange={(e) => setAmountInput(e.target.value)}
-              className="portal-input text-lg font-bold portal-tabular"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {[500, 1000, 5000, 10000].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setAmountInput(String(preset))}
-                className="min-h-[40px] px-3.5 rounded-xl border border-[#1D3860] bg-[#0B1B30] text-xs font-semibold text-white hover:border-[#C5A880] portal-tabular"
-              >
-                {formatEuro(preset)}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setStep(0)} className="portal-btn-secondary flex-1">
               Back
             </button>
-            <button type="submit" className="portal-btn-primary flex-1">
-              View instructions
+            <button type="button" onClick={() => setStep(2)} className="portal-btn-primary flex-1">
+              <span>Review deposit</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-        </form>
+        </div>
       )}
 
+      {/* Step 3: Review */}
       {step === 2 && (
-        <div className="portal-card p-5 sm:p-6 space-y-5">
+        <div className="portal-card space-y-5">
           <div>
-            <h2 className="text-lg font-semibold text-white">Escrow transfer instructions</h2>
-            <p className="text-xs text-[#8EA7C7] mt-1">
-              Initiate your transfer of{' '}
-              <span className="text-white font-semibold portal-tabular">{formatEuro(amountCheck.value)}</span>{' '}
-              using the details below, then submit confirmation.
+            <h2 className="text-lg font-semibold text-[#F2F5F4]">Review deposit</h2>
+            <p className="text-xs text-[#8FA1A8] mt-1">
+              Confirm the deposit summary below to generate your payment reference.
             </p>
           </div>
 
-          {!isCrypto ? (
-            <div className="portal-surface-elevated p-4 space-y-3 text-xs">
-              {[
-                { label: 'Beneficiary', value: config?.traditional.beneficiary || 'L’Agence Escrow Services' },
-                { label: 'Bank', value: config?.traditional.bankName || 'BNP Paribas Institutional' },
-                { label: 'IBAN', value: config?.traditional.iban || 'FR76 3000 4000 0300 0012 3456 789' },
-                { label: 'BIC / SWIFT', value: config?.traditional.bic || 'BNPAFRPP' },
-              ].map((row) => (
-                <div key={row.label} className="flex items-center justify-between gap-3">
-                  <span className="text-[#8EA7C7]">{row.label}</span>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-white truncate">{row.value}</span>
-                    <button
-                      type="button"
-                      onClick={() => void copyValue(row.label, row.value)}
-                      aria-label={`Copy ${row.label}`}
-                      className="w-8 h-8 rounded-lg border border-[#1D3860] flex items-center justify-center text-[#C5A880] hover:border-[#C5A880] shrink-0"
-                    >
-                      {copiedField === row.label ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-              ))}
+          <div className="portal-surface-elevated p-4 space-y-3 text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#8FA1A8]">Method</span>
+              <span className="text-[#F2F5F4] font-semibold">{method}</span>
             </div>
-          ) : (
-            <div className="portal-surface-elevated p-4 space-y-3 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[#8EA7C7]">Network</span>
-                <span className="text-white font-semibold">
-                  {primaryCrypto?.network || 'Solana / ERC-20'} ({primaryCrypto?.asset || 'USDC'})
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[#8EA7C7]">Treasury address</span>
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-white truncate">
-                    {primaryCrypto?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void copyValue(
-                        'Address',
-                        primaryCrypto?.address || '0x71C7656EC7ab88b098defB751B7401B5f6d8976F'
-                      )
-                    }
-                    className="w-8 h-8 rounded-lg border border-[#1D3860] flex items-center justify-center text-[#C5A880]"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="deposit-tx-hash" className="block text-xs font-medium text-[#C5A880] mb-1.5">
-                  Transaction hash (optional)
-                </label>
-                <input
-                  id="deposit-tx-hash"
-                  type="text"
-                  value={txHash}
-                  onChange={(e) => setTxHash(e.target.value)}
-                  placeholder="Paste transaction hash if already sent"
-                  className="portal-input font-mono text-xs"
-                />
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#8FA1A8]">Deposit amount</span>
+              <span className="text-[#F2F5F4] font-semibold portal-tabular">
+                {formatEuro(amountCheck.value)}
+              </span>
             </div>
-          )}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#8FA1A8]">Platform fee</span>
+              <span className="text-[#F2F5F4] font-semibold portal-tabular">
+                {formatEuro(feeAmount)}
+              </span>
+            </div>
+            <div className="pt-2.5 border-t border-[#1F2C33] flex items-center justify-between text-sm">
+              <span className="font-semibold text-[#F2F5F4]">Total</span>
+              <span className="font-bold text-[#6FD8B0] portal-tabular">
+                {formatEuro(totalAmount)}
+              </span>
+            </div>
+          </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setStep(1)} className="portal-btn-secondary flex-1">
               Back
             </button>
             <button
               type="button"
               disabled={submitting}
-              onClick={handleSubmitDeposit}
+              onClick={() => void handleConfirmAndSubmit()}
               className="portal-btn-primary flex-1"
             >
-              {submitting ? 'Submitting...' : 'Confirm transfer sent'}
+              {submitting ? 'Confirming...' : 'Confirm deposit'}
             </button>
           </div>
         </div>
       )}
 
+      {/* Step 4: Confirmation */}
       {step === 3 && (
-        <div className="portal-card p-6 space-y-5">
-          <div className="w-12 h-12 rounded-xl bg-[#34D399]/15 border border-[#34D399]/40 text-[#34D399] flex items-center justify-center">
-            <CheckCircle2 className="w-6 h-6" />
+        <div className="portal-card space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="w-12 h-12 rounded-[14px] bg-[#6FD8B0]/12 border border-[#6FD8B0]/35 text-[#6FD8B0] flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <StatusBadge status={createdTx?.status || 'pending'} label="Pending" />
           </div>
+
           <div>
-            <h2 className="text-xl font-semibold text-white">Deposit notification received</h2>
-            <p className="text-sm text-[#8EA7C7] mt-1 leading-relaxed">
-              Your deposit of <span className="text-white font-semibold portal-tabular">{formatEuro(createdTx?.amount || amountCheck.value)}</span> via {method} has been queued for escrow settlement.
+            <h2 className="text-xl font-semibold text-[#F2F5F4]">Transfer instructions ready</h2>
+            <p className="text-sm text-[#8FA1A8] mt-1 leading-relaxed">
+              Send{' '}
+              <span className="text-[#F2F5F4] font-semibold portal-tabular">
+                {formatEuro(createdTx?.amount || amountCheck.value)}
+              </span>{' '}
+              via {method} and include the required payment reference below so escrow reconciles your deposit.
             </p>
           </div>
 
           {createdTx?.reference && (
-            <div className="portal-surface-elevated p-4 flex items-center justify-between text-xs">
-              <span className="text-[#8EA7C7]">Tracking reference</span>
-              <span className="font-mono font-semibold text-[#C5A880]">{createdTx.reference}</span>
+            <div className="portal-surface-elevated p-4 border-[#6FD8B0]/45 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-[#6FD8B0]">Required payment reference</div>
+                <div className="mt-1 font-mono text-sm font-bold text-[#F2F5F4] truncate">
+                  {createdTx.reference}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void copyValue('Payment reference', createdTx.reference)}
+                aria-label="Copy payment reference"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[14px] border border-[#1F2C33] bg-[#121A1F] flex items-center justify-center text-[#6FD8B0] hover:border-[#6FD8B0] shrink-0 transition-colors"
+              >
+                {copiedField === 'Payment reference' ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </button>
             </div>
           )}
 
-          <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => navigatePortal('ledger')} className="portal-btn-primary flex-1">
+          <div className="portal-surface-elevated p-4 space-y-3 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-[#F2F5F4]">Escrow bank details</span>
+              {portalConfig.isPlaceholder && (
+                <span className="text-xs text-[#FCD34D]">Placeholder values</span>
+              )}
+            </div>
+            {bankDetails.map((row) => (
+              <div key={row.label} className="flex items-center justify-between gap-3">
+                <span className="text-[#8FA1A8] shrink-0">{row.label}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-mono text-[#F2F5F4] truncate">{row.value}</span>
+                  <button
+                    type="button"
+                    onClick={() => void copyValue(row.label, row.value)}
+                    aria-label={`Copy ${row.label}`}
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[14px] border border-[#1F2C33] bg-[#121A1F] flex items-center justify-center text-[#6FD8B0] hover:border-[#6FD8B0] shrink-0 transition-colors"
+                  >
+                    {copiedField === row.label ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => navigatePortal('ledger')}
+              className="portal-btn-primary flex-1"
+            >
               View in ledger
             </button>
-            <button type="button" onClick={() => navigatePortal('overview')} className="portal-btn-secondary flex-1">
+            <button
+              type="button"
+              onClick={() => navigatePortal('overview')}
+              className="portal-btn-secondary flex-1"
+            >
               Back to overview
             </button>
           </div>

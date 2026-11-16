@@ -45,7 +45,13 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     <ToastContext.Provider value={{ showToast, success, error, info, warning, processing }}>
       {children}
       {/* Toast Container */}
-      <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
+      <div
+        className="fixed right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+        style={{
+          top: 'calc(72px + env(safe-area-inset-top, 0px))',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+        }}
+      >
         {toasts.map(toast => {
           let bg = 'bg-white border-[#E3E8E3] text-[#18211F]';
           let icon = <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />;
@@ -56,8 +62,8 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             bg = 'bg-amber-50 border-amber-200 text-amber-950';
             icon = <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />;
           } else if (toast.type === 'processing') {
-            bg = 'bg-[#182D2A] border-[#24423C] text-white';
-            icon = <div className="w-3.5 h-3.5 rounded-full border-2 border-[#B7E36A] border-t-transparent animate-spin shrink-0" />;
+            bg = 'bg-[#121A1F] border-[#1F2C33] text-[#F2F5F4]';
+            icon = <div className="w-3.5 h-3.5 rounded-full border-2 border-[#6FD8B0] border-t-transparent animate-spin shrink-0" />;
           } else if (toast.type === 'info') {
             bg = 'bg-blue-50 border-blue-200 text-blue-950';
             icon = <Info className="w-4 h-4 text-blue-600 shrink-0" />;
@@ -66,17 +72,19 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           return (
             <div
               key={toast.id}
-              className={`pointer-events-auto p-3.5 rounded-xl border shadow-lg flex items-center justify-between gap-3 animate-in slide-in-from-top-3 fade-in duration-200 ${bg}`}
+              className={`pointer-events-auto p-3.5 rounded-[14px] border shadow-lg flex items-center justify-between gap-3 animate-in slide-in-from-top-3 fade-in duration-200 ${bg}`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 {icon}
                 <p className="text-xs font-bold leading-snug truncate">{toast.message}</p>
               </div>
               <button
+                type="button"
+                aria-label="Dismiss notification"
                 onClick={() => removeToast(toast.id)}
-                className="opacity-70 hover:opacity-100 transition-opacity p-1 cursor-pointer shrink-0"
+                className="opacity-70 hover:opacity-100 transition-opacity min-w-[44px] min-h-[44px] -my-2 -mr-2 flex items-center justify-center cursor-pointer shrink-0 rounded-[14px]"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           );

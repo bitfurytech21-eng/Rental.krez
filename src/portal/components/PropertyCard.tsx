@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Building2, ArrowRight } from 'lucide-react';
 import { PortalProperty } from '../types';
 import { formatEuro } from '../utils/format';
+import { StatusBadge } from './StatusBadge';
 
 interface PropertyCardProps {
   property: PortalProperty;
@@ -15,20 +16,26 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSelect }
       ? Math.min(100, Math.round((property.fundedAmount / property.targetAmount) * 100))
       : 0;
   const heroImage = property.images?.[0];
+  const cityDisplay = property.city || property.location;
+
+  const badgeStatus =
+    property.status === 'funded' || property.status === 'active' || property.status === 'funding'
+      ? 'completed'
+      : 'pending';
   const statusLabel =
     property.status === 'funded'
-      ? 'Fully funded'
+      ? 'Completed'
       : property.status === 'upcoming'
-      ? 'Upcoming'
-      : 'Open for subscription';
+      ? 'Pending'
+      : 'Open';
 
   return (
     <button
       type="button"
       onClick={() => onSelect(property)}
-      className="portal-card overflow-hidden text-left flex flex-col hover:border-[#C5A880]/70 transition-colors group"
+      className="portal-card text-left flex flex-col gap-4 hover:border-[#6FD8B0]/65 transition-colors group"
     >
-      <div className="relative h-44 w-full bg-[#152E54] overflow-hidden">
+      <div className="relative h-44 w-full rounded-[12px] bg-[#172228] overflow-hidden border border-[#1F2C33]">
         {heroImage && !imgFailed ? (
           <img
             src={heroImage}
@@ -38,40 +45,39 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSelect }
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#102442] to-[#152E54] text-[#C5A880] px-4 text-center">
-            <Building2 className="w-8 h-8 opacity-80" />
-            <span className="text-xs font-medium text-[#8EA7C7]">{property.location}</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[#172228] text-[#6FD8B0] px-4 text-center">
+            <Building2 className="w-8 h-8 opacity-85" />
+            <span className="text-xs font-medium text-[#8FA1A8]">{cityDisplay}</span>
           </div>
         )}
       </div>
 
-      <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3 w-full">
+      <div className="flex-1 flex flex-col gap-3 w-full">
         <div>
-          <div className="text-xs text-[#8EA7C7] flex items-center gap-1.5 flex-wrap">
-            <span>{property.location}</span>
-            <span aria-hidden="true">·</span>
-            <span>{property.type}</span>
-            <span aria-hidden="true">·</span>
-            <span className={property.status === 'funded' ? 'text-[#34D399]' : 'text-[#C5A880]'}>
-              {statusLabel}
-            </span>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-xs text-[#8FA1A8] flex items-center gap-1.5 flex-wrap">
+              <span>{cityDisplay}</span>
+              <span aria-hidden="true">·</span>
+              <span>{property.type}</span>
+            </div>
+            <StatusBadge status={badgeStatus} label={statusLabel} />
           </div>
-          <h3 className="mt-1.5 text-base font-semibold text-white group-hover:text-[#C5A880] transition-colors">
+          <h3 className="mt-2 text-base font-semibold text-[#F2F5F4] group-hover:text-[#6FD8B0] transition-colors">
             {property.title}
           </h3>
         </div>
 
-        <div className="mt-auto space-y-2 pt-2 border-t border-[#1D3860]">
+        <div className="mt-auto space-y-2.5 pt-3 border-t border-[#1F2C33]">
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <div className="text-[#8EA7C7]">Target net yield</div>
-              <div className="mt-0.5 text-sm font-bold text-[#C5A880] portal-tabular">
-                {property.projectedYield.toFixed(1)}% p.a.
+              <div className="text-[#8FA1A8]">Target yield</div>
+              <div className="mt-0.5 text-base font-bold text-[#6FD8B0] portal-tabular">
+                {property.projectedYield.toFixed(1)}%
               </div>
             </div>
             <div>
-              <div className="text-[#8EA7C7]">Share price</div>
-              <div className="mt-0.5 text-sm font-bold text-white portal-tabular">
+              <div className="text-[#8FA1A8]">Price per share</div>
+              <div className="mt-0.5 text-base font-bold text-[#F2F5F4] portal-tabular">
                 {formatEuro(property.tokenPrice)}
               </div>
             </div>
@@ -79,17 +85,17 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, onSelect }
 
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-[#8EA7C7]">Funding progress</span>
-              <span className="font-semibold text-white portal-tabular">{progress}%</span>
+              <span className="text-[#8FA1A8]">Funding progress</span>
+              <span className="font-semibold text-[#F2F5F4] portal-tabular">{progress}%</span>
             </div>
             <div className="portal-progress-track">
               <div className="portal-progress-fill" style={{ width: `${progress}%` }} />
             </div>
           </div>
 
-          <div className="pt-1 flex items-center justify-between text-xs font-semibold text-[#C5A880]">
-            <span>Inspect dossier &amp; subscribe</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          <div className="pt-1 flex items-center justify-between text-xs font-semibold text-[#6FD8B0]">
+            <span>View property</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
       </div>
