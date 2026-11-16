@@ -64,3 +64,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     ],
   },
 ];
+
+
+export const TEMPLATE_DEFAULT_SPVS = [
+  { name: 'Roquebrune-Cap-Martin, Golf Bleu', code: 'KTZ-KP1102', type: 'Villa', funded: 3540000, target: 5900000, network: 'Solana SPL' },
+  { name: 'Reception apartment, Paris', code: 'KTZ-KP1117', type: 'Apartment', funded: 10191000, target: 12900000, network: 'Solana SPL' },
+  { name: "Château d'Armainvilliers", code: 'KTZ-KP1173', type: 'Château', funded: 176400, target: 180000, network: 'Polygon POS' },
+  { name: 'House, Antibes', code: 'KTZ-KP1183', type: 'Villa', funded: 4028000, target: 5300000, network: 'Solana SPL' },
+  { name: 'The Pink Palace, Le Vesinet', code: 'KTZ-KP1214', type: 'Private mansion', funded: 36100000, target: 38000000, network: 'Base Network' },
+  { name: "Architect's house, Sèvres", code: 'KTZ-P1340A', type: 'House', funded: 3650000, target: 5000000, network: 'Solana SPL' }
+];
+
