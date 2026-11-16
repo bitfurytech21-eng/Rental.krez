@@ -8,6 +8,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
   onNavigateLogin: () => void;
+  onRedirectUnauthorized?: () => void;
   title?: string;
   description?: string;
 }
@@ -16,6 +17,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireAdmin = false,
   onNavigateLogin,
+  onRedirectUnauthorized,
   title = 'Investor Authentication Required',
   description = 'This section contains private financial data, wallet balances, and tokenized investment assets. Please sign in to your verified account to continue.',
 }) => {
@@ -31,9 +33,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       return;
     }
     if (!staffAllowed) {
-      navigateTo('/dashboard');
+      if (onRedirectUnauthorized) onRedirectUnauthorized(); else navigateTo('/dashboard');
     }
-  }, [isLoading, requireAdmin, isAuthenticated, user, staffAllowed, navigateTo]);
+  }, [isLoading, requireAdmin, isAuthenticated, user, staffAllowed, navigateTo, onRedirectUnauthorized]);
 
   if (isLoading) {
     return (
