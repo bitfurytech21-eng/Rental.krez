@@ -158,12 +158,8 @@ export async function fetchWalletBalancesMap(): Promise<Map<string, number>> {
 }
 
 export async function assignPaymentGateToInvestor(userId: string, gateId: string | null, _gateName?: string): Promise<void> {
-  await requireRpcSuccess('assign_gate', [
-    { p_user: userId, p_gate: gateId },
-    { p_user_id: userId, p_gate_id: gateId },
-  ]);
-}
-export async function setInvestorFrozenState(userId: string, frozen: boolean, _reason?: string): Promise<void> {
+  await requireRpcSuccess('assign_gate', [{ p_users: [userId], p_gate: gateId }]);
+}export async function setInvestorFrozenState(userId: string, frozen: boolean, _reason?: string): Promise<void> {
   await requireRpcSuccess('set_frozen', [{ p_user: userId, p_frozen: frozen }]);
 }
 // ============================================================================
@@ -267,47 +263,36 @@ export async function approveDepositSubmission(
   if (!Number.isFinite(actualAmountEur) || actualAmountEur <= 0) {
     throw new Error('Amount actually received must be greater than zero.');
   }
-  const amountCents = Math.round(actualAmountEur * 100);
-  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+  const receivedCents = Math.round(actualAmountEur * 100);
+  if (!Number.isSafeInteger(receivedCents) || receivedCents <= 0) {
     throw new Error('The received amount is outside the supported cents range.');
   }
-  await requireRpcSuccess('approve_deposit', [
-    { p_id: depositId, p_amount_cents: amountCents },
-    { p_deposit: depositId, p_amount_cents: amountCents },
-    { p_deposit_id: depositId, p_amount_cents: amountCents },
-  ]);
-}
-export async function rejectDepositSubmission(
+  await requireRpcSuccess('approve_deposit', [{
+    tx_id: depositId,
+    received_cents: receivedCents,
+  }]);
+}export async function rejectDepositSubmission(
   depositId: string,
   reason: string,
   _isManualSubmission = false
 ): Promise<void> {
   if (!reason.trim()) throw new Error('A rejection reason is required.');
-  await requireRpcSuccess('reject_deposit', [
-    { p_id: depositId, p_reason: reason.trim() },
-    { p_deposit: depositId, p_reason: reason.trim() },
-    { p_deposit_id: depositId, p_reason: reason.trim() },
-  ]);
-}
-// ============================================================================
+  await requireRpcSuccess('reject_deposit', [{
+    tx_id: depositId,
+    reason: reason.trim(),
+  }]);
+}// ============================================================================
 // 5. WITHDRAWALS: approve_withdrawal & reject_withdrawal
 // ============================================================================
 export async function approveWithdrawalRequest(withdrawalId: string): Promise<void> {
-  await requireRpcSuccess('approve_withdrawal', [
-    { p_id: withdrawalId },
-    { p_withdrawal: withdrawalId },
-    { p_withdrawal_id: withdrawalId },
-  ]);
-}
-export async function rejectWithdrawalRequest(withdrawalId: string, reason: string): Promise<void> {
+  await requireRpcSuccess('approve_withdrawal', [{ p_tx: withdrawalId }]);
+}export async function rejectWithdrawalRequest(withdrawalId: string, reason: string): Promise<void> {
   if (!reason.trim()) throw new Error('A rejection reason is required.');
-  await requireRpcSuccess('reject_withdrawal', [
-    { p_id: withdrawalId, p_reason: reason.trim() },
-    { p_withdrawal: withdrawalId, p_reason: reason.trim() },
-    { p_withdrawal_id: withdrawalId, p_reason: reason.trim() },
-  ]);
-}
-// ============================================================================
+  await requireRpcSuccess('reject_withdrawal', [{
+    p_tx: withdrawalId,
+    p_reason: reason.trim(),
+  }]);
+}// ============================================================================
 // 6. PROPERTIES: Supabase properties table + photo storage upload
 // ============================================================================
 export interface SupabasePropertyRow {
@@ -471,37 +456,23 @@ export async function executePayDistribution(params: {
   note?: string;
 }): Promise<{ paidCount: number; totalAmountEur: number; message: string }> {
   const totalCents = Math.round(params.totalAmountEur * 100);
-  if (await hasLiveSupabaseSession()) {
-    const { data, error } = await supabase.rpc('pay_distribution', {
-      p_property: params.propertyId,
-      p_total: totalCents,
-      p_note: params.note?.trim() || null,
-    });
-    if (!error) {
-      const paidCount = Number(
-        (data as any)?.paid_count ??
-          (data as any)?.investors_paid ??
-          (data as any)?.count ??
-          (typeof data === 'number' ? data : 0)
-      );
-      return {
-        paidCount,
-        totalAmountEur: params.totalAmountEur,
-        message: `Distribution executed: ${paidCount} investor${paidCount === 1 ? '' : 's'} paid.`,
-      };
-    }
+  if (!Number.isSafeInteger(totalCents) || totalCents <= 0) {
+    throw new Error('Distribution amount must be a positive integer number of cents.');
   }
-  const json = await apiFetchJson('/admin/distributions/pay', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  });
+  const data = await requireRpcSuccess<any>('pay_distribution', [{
+    p_property: params.propertyId,
+    p_total: totalCents,
+    p_note: params.note?.trim() || null,
+  }]);
+  const paidCount = Number(
+    data?.paid_count ?? data?.investors_paid ?? data?.count ?? (typeof data === 'number' ? data : 0)
+  );
   return {
-    paidCount: Number(json.paidCount ?? json.data?.paidCount ?? 0),
+    paidCount,
     totalAmountEur: params.totalAmountEur,
-    message: json.message || `Paid ${Number(json.paidCount ?? 0)} investors.`,
+    message: `Distribution executed: ${paidCount} investor${paidCount === 1 ? '' : 's'} paid.`,
   };
 }
-
 // ============================================================================
 // 10. DOCUMENTS: private "documents" bucket + documents table
 // ============================================================================
