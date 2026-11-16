@@ -140,6 +140,29 @@ export function listDevPaymentGatesWithCounts(): PaymentGateRecord[] {
     });
 }
 
+type DevHooks = {
+  onDepositCreated?: (deposit: DevManualDepositRecord) => Promise<void> | void;
+  onDepositReviewed?: (deposit: DevManualDepositRecord, approve: boolean, reason?: string) => Promise<void> | void;
+  persist?: () => Promise<void> | void;
+};
+
+let registeredDevHooks: DevHooks = {};
+
+export function registerManualPaymentDevHooks(hooks: DevHooks) {
+  registeredDevHooks = hooks;
+}
+
+export function hydrateManualPaymentDevState(deposits?: DevManualDepositRecord[]) {
+  if (Array.isArray(deposits) && devManualDeposits.length === 0) {
+    devManualDeposits = deposits;
+  }
+}
+
+export function exportManualPaymentDevDeposits(): DevManualDepositRecord[] {
+  return [...devManualDeposits];
+}
+
+
 function matchesFileSignature(bytes: Buffer, mimeType: string): boolean {
   if (mimeType === 'application/pdf') return bytes.subarray(0, 5).toString('ascii') === '%PDF-';
   if (mimeType === 'image/jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
