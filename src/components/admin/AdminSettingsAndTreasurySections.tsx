@@ -255,6 +255,7 @@ export const AdminDashboardSection: React.FC<{
 // 4. DEPOSITS: Assigned Gate, Proof, Pending/Completed/Failed filter, editable received amount dialog
 // ============================================================================
 export const AdminDepositsSection: React.FC<{
+  loading: boolean;
   users: PlatformUser[];
   transactions: any[];
   manualDeposits: any[];
@@ -262,7 +263,7 @@ export const AdminDepositsSection: React.FC<{
   onRefresh: () => void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
-}> = ({ users, transactions, manualDeposits, paymentGates, onRefresh, onSuccess, onError }) => {
+}> = ({ loading, users, transactions, manualDeposits, paymentGates, onRefresh, onSuccess, onError }) => {
   const [filter, setFilter] = useState<'pending' | 'completed' | 'failed' | 'all'>('pending');
   const [sortKey, setSortKey] = useState<'createdAt' | 'investorName' | 'amount' | 'status'>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -356,6 +357,21 @@ export const AdminDepositsSection: React.FC<{
       {label}<span aria-hidden="true">{sortKey === key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
     </button>
   );
+
+  if (loading) {
+    return (
+      <div className="space-y-3" role="status" aria-label="Loading deposit review queue">
+        <div className="h-10 rounded-xl bg-[#121A1F] animate-pulse" />
+        <div className="rounded-2xl border border-[#1F2C33] overflow-hidden">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="grid grid-cols-8 gap-3 p-4 border-b border-[#1F2C33]">
+              {Array.from({ length: 8 }, (_, cell) => <div key={cell} className="h-4 rounded bg-[#1F2C33] animate-pulse" />)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const handleOpenProof = async (row: any) => {
     const url = await createPrivateBucketSignedUrl(
@@ -632,13 +648,16 @@ export const AdminDepositsSection: React.FC<{
 // 5. WITHDRAWALS: masked destination IBAN with reveal, KYC status, confirmation modals
 // ============================================================================
 export const AdminWithdrawalsSection: React.FC<{
+  loading: boolean;
   users: PlatformUser[];
   transactions: any[];
   onRefresh: () => void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
-}> = ({ users, transactions, onRefresh, onSuccess, onError }) => {
+}> = ({ loading, users, transactions, onRefresh, onSuccess, onError }) => {
   const [filter, setFilter] = useState<'pending' | 'completed' | 'rejected' | 'all'>('pending');
+  const [sortKey, setSortKey] = useState<'createdAt' | 'amount' | 'status'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [revealedIds, setRevealedIds] = useState<Record<string, boolean>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -649,10 +668,33 @@ export const AdminWithdrawalsSection: React.FC<{
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
   const rows = useMemo(() => {
-    return transactions
+    const filteredRows = transactions
       .filter((t) => t.type === 'withdrawal')
       .filter((t) => (filter === 'all' ? true : filter === 'completed' ? ['completed', 'approved', 'paid'].includes(t.status) : t.status === filter));
-  }, [transactions, filter]);
+    return filteredRows.sort((a, b) => {
+      const comparison = sortKey === 'amount'
+        ? Number(a.amount) - Number(b.amount)
+        : sortKey === 'createdAt'
+        ? new Date(String(a.createdAt)).getTime() - new Date(String(b.createdAt)).getTime()
+        : String(a.status).localeCompare(String(b.status), undefined, { sensitivity: 'base' });
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [transactions, filter, sortKey, sortDirection]);
+
+  const toggleSort = (key: typeof sortKey) => {
+    if (sortKey === key) {
+      setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection(key === 'status' ? 'asc' : 'desc');
+    }
+  };
+
+  const sortLabel = (key: typeof sortKey, label: string) => (
+    <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1.5 hover:text-[#F2F5F4]" aria-label={`Sort withdrawals by ${label}`}>
+      {label}<span aria-hidden="true">{sortKey === key ? (sortDirection === 'asc' ? '↑' : '↓') : '↕'}</span>
+    </button>
+  );
 
   const handleConfirmApprove = async () => {
     if (!approveTarget) return;
@@ -690,6 +732,21 @@ export const AdminWithdrawalsSection: React.FC<{
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-3" role="status" aria-label="Loading withdrawal review queue">
+        <div className="h-10 rounded-xl bg-[#121A1F] animate-pulse" />
+        <div className="rounded-2xl border border-[#1F2C33] overflow-hidden">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="grid grid-cols-7 gap-3 p-4 border-b border-[#1F2C33]">
+              {Array.from({ length: 7 }, (_, cell) => <div key={cell} className="h-4 rounded bg-[#1F2C33] animate-pulse" />)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -721,11 +778,11 @@ export const AdminWithdrawalsSection: React.FC<{
             <thead>
               <tr className="bg-[#0B0F10] border-b border-[#1F2C33] text-[11px] font-semibold text-[#8FA1A8] uppercase tracking-wider">
                 <th className="py-3 px-4">Investor</th>
-                <th className="py-3 px-4 text-right">Amount</th>
+                <th className="py-3 px-4 text-right">{sortLabel('amount', 'Amount')}</th>
                 <th className="py-3 px-4">Destination IBAN</th>
                 <th className="py-3 px-4">KYC Status</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">{sortLabel('createdAt', 'Date')}</th>
+                <th className="py-3 px-4">{sortLabel('status', 'Status')}</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
