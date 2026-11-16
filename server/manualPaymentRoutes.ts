@@ -140,6 +140,30 @@ export function listDevPaymentGatesWithCounts(): PaymentGateRecord[] {
     });
 }
 
+export interface DevManualDepositRecord {
+  id: string;
+  user_id: string;
+  user_email?: string;
+  user_name?: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'rejected';
+  payment_method: string;
+  reference: string;
+  manual_transaction_id: string;
+  sender_name: string;
+  payment_date: string;
+  fee_amount: number;
+  gross_amount: number;
+  extra_values: Record<string, string>;
+  method_id: string;
+  created_at: string;
+  reviewed_at?: string;
+  rejection_reason?: string;
+}
+
+let devManualDeposits: DevManualDepositRecord[] = [];
+
 type DevHooks = {
   onDepositCreated?: (deposit: DevManualDepositRecord) => Promise<void> | void;
   onDepositReviewed?: (deposit: DevManualDepositRecord, approve: boolean, reason?: string) => Promise<void> | void;
