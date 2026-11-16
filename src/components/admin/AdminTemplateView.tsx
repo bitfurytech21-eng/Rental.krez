@@ -158,7 +158,7 @@ export const AdminTemplateView: React.FC<AdminTemplateViewProps> = ({
           </div>
 
           <div className="bg-white border border-[#e4e6e1] rounded-2xl p-5 shadow-xs space-y-4">
-            {activeSPVs.map((s, idx) => {
+            {activeSPVs.map((s: { name: string; code: string; type: string; network: string; funded: number; target: number }, idx: number) => {
               const pct = Math.min(100, Math.round((s.funded / (s.target || 1)) * 100));
               return (
                 <div key={idx} className="pt-3 first:pt-0 border-t first:border-t-0 border-[#e4e6e1]">
