@@ -8,9 +8,38 @@ const anonKey = clean(process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE
 const serviceRoleKey = clean(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 let serviceClient: SupabaseClient | null = null;
+let devSchemaMissingUntil = 0;
 
 export function isSupabaseServerConfigured(): boolean {
   return Boolean(supabaseUrl && serviceRoleKey && /^https:\/\//i.test(supabaseUrl));
+}
+
+export function isMissingSchemaError(error: any): boolean {
+  const code = String(error?.code || '');
+  const message = String(error?.message || error?.details || error?.hint || '');
+  return (
+    code === 'PGRST205' ||
+    code === 'PGRST202' ||
+    code === '42P01' ||
+    code === '42883' ||
+    /could not find the (table|function)|schema cache|relation .* does not exist/i.test(message)
+  );
+}
+
+export function isSupabaseSchemaReadyInDev(): boolean {
+  if (process.env.NODE_ENV === 'production') return true;
+  return Date.now() >= devSchemaMissingUntil;
+}
+
+export function markSupabaseSchemaMissingInDev(): boolean {
+  if (process.env.NODE_ENV === 'production') return false;
+  const wasReady = Date.now() >= devSchemaMissingUntil;
+  devSchemaMissingUntil = Date.now() + 5 * 60 * 1000;
+  return wasReady;
+}
+
+export function canUseLiveSupabaseData(): boolean {
+  return isSupabaseServerConfigured() && isSupabaseSchemaReadyInDev();
 }
 
 export function isSupabaseAuthConfigured(): boolean {
@@ -189,6 +218,16 @@ export async function databaseHealth() {
   if (!isSupabaseServerConfigured()) {
     return { configured: false, status: 'not_configured', message: 'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on the API server.' };
   }
+  if (!canUseLiveSupabaseData()) {
+    return {
+      configured: true,
+      status: 'dev_fallback',
+      usersCount: null,
+      listingsCount: null,
+      transactionsCount: null,
+      message: 'Supabase tables unavailable in development; using local dev store.'
+    };
+  }
   const client = getSupabaseAdmin();
   const [{ count: users, error: usersError }, { count: properties, error: propertiesError }, { count: transactions, error: transactionsError }] = await Promise.all([
     client.from('user_profiles').select('id', { count: 'exact', head: true }),
@@ -196,6 +235,17 @@ export async function databaseHealth() {
     client.from('payment_transactions').select('id', { count: 'exact', head: true })
   ]);
   const error = usersError || propertiesError || transactionsError;
+  if (error && process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+    markSupabaseSchemaMissingInDev();
+    return {
+      configured: true,
+      status: 'dev_fallback',
+      usersCount: null,
+      listingsCount: null,
+      transactionsCount: null,
+      message: 'Supabase tables unavailable in development; using local dev store.'
+    };
+  }
   return {
     configured: true,
     status: error ? 'degraded' : 'healthy',
@@ -273,6 +323,7 @@ export async function runFinancialRpc(name: string, args: Record<string, unknown
 }
 
 export function toApiTransaction(row: any) {
+  const meta = row.metadata || {};
   return {
     id: row.id,
     userId: row.user_id,
@@ -280,15 +331,28 @@ export function toApiTransaction(row: any) {
     userName: row.user_profiles?.full_name || undefined,
     type: row.type,
     amount: Number(row.amount),
+    feeAmount: Number(row.fee_amount ?? meta.fee ?? 0),
+    netAmount: row.net_amount !== undefined && row.net_amount !== null ? Number(row.net_amount) : undefined,
     currency: row.currency,
     status: row.status,
     method: row.payment_method,
     reference: row.reference,
+    payoutReference: row.payout_reference || meta.payout_reference || undefined,
     txHash: row.tx_hash || undefined,
     createdAt: row.created_at,
     processedAt: row.processed_at || undefined,
-    metadata: row.metadata || {},
-    destination: row.metadata?.destination || undefined,
+    processedBy: row.processed_by_email || meta.processed_by_email || row.processed_by || undefined,
+    processedById: row.processed_by || undefined,
+    reversedTransactionId: row.reversed_transaction_id || meta.reversal_of_id || undefined,
+    reversalOfId: row.reversed_transaction_id || meta.reversal_of_id || undefined,
+    reversalOfReference: meta.reversal_of_reference || undefined,
+    reversedById: meta.reversed_by_id || undefined,
+    reversedByReference: meta.reversed_by_reference || undefined,
+    reversalReason: row.reversal_reason || meta.reversal_reason || undefined,
+    metadata: meta,
+    destIban: row.dest_iban || meta.dest_iban || meta.destination || meta.bankIban || row.tx_hash || undefined,
+    destination: row.dest_iban || meta.dest_iban || meta.destination || meta.bankIban || undefined,
+    proofUrl: meta.proof_url || meta.proof_storage_path || undefined,
     notes: row.notes || undefined
   };
 }

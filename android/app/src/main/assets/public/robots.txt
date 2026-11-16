@@ -1,0 +1,54 @@
+# ==============================================================================
+# L'Agence Real Estate & Tokenized Assets Platform - robots.txt
+# Defines allowed crawler paths and points to canonical sitemap location
+# ==============================================================================
+
+User-agent: *
+
+# Public indexable paths
+Allow: /
+Allow: /properties
+Allow: /property/*
+Allow: /insights
+Allow: /insights/*
+Allow: /wealth
+Allow: /agency
+Allow: /casos-de-exito
+Allow: /club
+Allow: /news
+Allow: /token
+Allow: /investing
+Allow: /faq
+Allow: /contact
+Allow: /legal
+Allow: /terms
+Allow: /privacy
+Allow: /blog
+Allow: /guide
+
+# Static public assets
+Allow: /assets/
+Allow: /favicon.ico
+Allow: /sitemap.xml
+
+# Restricted internal, user-authenticated and admin operational endpoints
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /admin-login
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /portfolio
+Disallow: /transactions
+Disallow: /distributions
+Disallow: /wallet
+Disallow: /deposit
+Disallow: /documents
+Disallow: /referrals
+Disallow: /notifications
+Disallow: /profile
+Disallow: /api/
+Disallow: /api/*
+
+# XML Sitemap locations
+Sitemap: https://kretz.site/sitemap.xml
+Sitemap: https://ais-pre-nkqo66iq2odnbhzlhp3jc3-130818804329.europe-west1.run.app/sitemap.xml

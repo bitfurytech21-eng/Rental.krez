@@ -80,6 +80,8 @@ async function runServer() {
     .map((o) => o.trim().replace(/\/$/, ''))
     .filter(Boolean);
 
+  const CAPACITOR_ORIGINS = ['https://localhost', 'http://localhost', 'capacitor://localhost'];
+
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin) {
@@ -87,7 +89,12 @@ async function runServer() {
       try {
         sameOrigin = new URL(origin).host === req.headers.host;
       } catch (_) {}
-      const allowed = !isProd || sameOrigin || allowedOrigins.includes(origin.replace(/\/$/, ''));
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      const allowed =
+        !isProd ||
+        sameOrigin ||
+        allowedOrigins.includes(normalizedOrigin) ||
+        CAPACITOR_ORIGINS.includes(normalizedOrigin);
       res.header('Vary', 'Origin');
       if (allowed) {
         res.header('Access-Control-Allow-Origin', origin);
@@ -152,6 +159,25 @@ async function runServer() {
   app.get(['/zoho-domain-verification.html', '/zoho-domain-verification_8faa2c8b.html'], (_req: Request, res: Response) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send('38305949');
+  });
+
+  // Direct Android APK download endpoint when built locally
+  app.get('/download/android-apk', (_req: Request, res: Response) => {
+    const apkCandidates = [
+      path.resolve(__dirname, 'android/app/build/outputs/apk/release/app-release.apk'),
+      path.resolve(__dirname, 'android/app/build/outputs/apk/debug/app-debug.apk'),
+    ];
+    const apkPath = apkCandidates.find((candidate) => fs.existsSync(candidate));
+    if (!apkPath) {
+      return res.status(404).json({
+        success: false,
+        error: 'Android APK has not been compiled on this server yet.',
+        code: 'APK_NOT_BUILT',
+      });
+    }
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="lagence-kretz.apk"');
+    return res.sendFile(apkPath);
   });
 
   // Versioned API Routes (/api/v1)

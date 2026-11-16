@@ -50,6 +50,7 @@ import { Breadcrumb } from './components/common/Breadcrumb';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 import { InitialPlatformLoader } from './components/visuals/InitialPlatformLoader';
+import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
@@ -676,6 +677,7 @@ function MainApp() {
       <ViewportDesktopMonitor />
 
       <SchemaJsonLd property={selectedProperty} />
+      <OfflineIndicator />
       {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
     </div>
   );

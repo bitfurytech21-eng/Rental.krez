@@ -107,6 +107,12 @@ export const getBaseUrl = (): string => {
   if (envUrl) {
     return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
   }
+  if (typeof window !== 'undefined') {
+    const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    if (cap?.isNativePlatform?.()) {
+      return 'https://api.kretzdespain.com/api/v1';
+    }
+  }
   // Default to relative /api/v1 for unified full-stack server
   return '/api/v1';
 };

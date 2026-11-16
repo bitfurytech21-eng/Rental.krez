@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getApiUrl, getAuthToken, withActionEmailVerification } from '../../lib/api';
+import { eurToCents, formatCentsEur } from './adminSupabaseGateway';
 
 type Method = {
   id: string; name: string; instructions: string; account_details: Record<string, string>;
@@ -23,10 +24,13 @@ export const AdminManualPaymentManager: React.FC = () => {
   const [extraFields, setExtraFields] = useState('[]');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [notConfigured, setNotConfigured] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<any | null>(null);
   const [rejectingDepositId, setRejectingDepositId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
+  const reviewLockRef = useRef(false);
 
   const headers = useCallback((): Record<string, string> => {
     const token = getAuthToken();
@@ -50,7 +54,7 @@ export const AdminManualPaymentManager: React.FC = () => {
     setMethods(mp.data || []); setDeposits(dp.data || []);
   }, [headers, status]);
 
-  useEffect(() => { load().catch(e => setMessage(e.message)); }, [load]);
+  useEffect(() => { load().catch(e => setErrorMsg(e.message)); }, [load]);
 
   const reset = () => {
     setEditing(null); setName(''); setInstructions('');
@@ -59,7 +63,7 @@ export const AdminManualPaymentManager: React.FC = () => {
   };
 
   const save = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true); setMessage('');
+    e.preventDefault(); setBusy(true); setMessage(''); setErrorMsg('');
     try {
       const parsedDetails = JSON.parse(accountDetails);
       if (!parsedDetails || typeof parsedDetails !== 'object' || Array.isArray(parsedDetails)) throw new Error('Account details must be a JSON object.');
@@ -72,12 +76,14 @@ export const AdminManualPaymentManager: React.FC = () => {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Unable to save payment method.');
       reset(); await load(); setMessage('Payment method saved.');
-    } catch (e: any) { setMessage(e.message || 'Unable to save payment method.'); }
+    } catch (e: any) { setErrorMsg(e.message || 'Unable to save payment method.'); }
     finally { setBusy(false); }
   };
 
   const toggle = async (method: Method) => {
-    setBusy(true);
+    if (reviewLockRef.current) return;
+    reviewLockRef.current = true;
+    setBusy(true); setMessage(''); setErrorMsg('');
     try {
       const response = await fetch(getApiUrl(`/manual-payments/admin/methods/${method.id}`), {
         method: 'PATCH', headers: headers(), body: JSON.stringify({ enabled: !method.enabled })
@@ -85,17 +91,19 @@ export const AdminManualPaymentManager: React.FC = () => {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Unable to update payment method.');
       await load();
-    } catch (e: any) { setMessage(e.message); }
-    finally { setBusy(false); }
+    } catch (e: any) { setErrorMsg(e.message); }
+    finally { reviewLockRef.current = false; setBusy(false); }
   };
 
   const review = async (deposit: any, decision: 'approve' | 'reject', providedReason?: string) => {
+    if (reviewLockRef.current) return;
     const reason = decision === 'reject' ? (providedReason ?? rejectReason).trim() : '';
     if (decision === 'reject' && !reason) {
-      setMessage('Please enter a reason before rejecting this deposit.');
+      setErrorMsg('Please enter a reason before rejecting this deposit.');
       return;
     }
-    setBusy(true); setMessage('');
+    reviewLockRef.current = true;
+    setBusy(true); setMessage(''); setErrorMsg('');
     try {
       await withActionEmailVerification(decision === 'approve' ? 'admin.deposit.approve' : 'admin.deposit.reject', async grantId => {
         const response = await fetch(getApiUrl(`/manual-payments/admin/deposits/${deposit.id}/review`), {
@@ -103,24 +111,28 @@ export const AdminManualPaymentManager: React.FC = () => {
           body: JSON.stringify({ decision, reason })
         });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Deposit review failed.');
+        if (!response.ok) throw new Error(payload.error || payload.message || 'Deposit review failed.');
         return payload;
       });
+      setApproveTarget(null);
       setRejectingDepositId(null);
       setRejectReason('');
-      await load(); setMessage(decision === 'approve' ? 'Deposit approved and wallet credited.' : 'Deposit rejected.');
-    } catch (e: any) { setMessage(e.message || 'Deposit review failed.'); }
-    finally { setBusy(false); }
+      await load();
+      const investorLabel = deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id;
+      const amtStr = formatCentsEur(eurToCents(deposit.amount));
+      setMessage(decision === 'approve' ? `Approved ${amtStr} deposit for ${investorLabel}.` : `Rejected ${amtStr} deposit for ${investorLabel}.`);
+    } catch (e: any) { setErrorMsg(e.message || 'Deposit review failed.'); }
+    finally { reviewLockRef.current = false; setBusy(false); }
   };
 
   const openProof = async (deposit: any) => {
-    setMessage('');
+    setMessage(''); setErrorMsg('');
     try {
       const response = await fetch(getApiUrl(`/manual-payments/admin/deposits/${deposit.id}/proof`), { headers: headers() });
       const payload = await response.json();
       if (!response.ok || !payload.data?.url) throw new Error(payload.error || 'Unable to load proof.');
       setProofUrls(prev => ({ ...prev, [deposit.id]: String(payload.data.url) }));
-    } catch (e: any) { setMessage(e.message); }
+    } catch (e: any) { setErrorMsg(e.message); }
   };
 
   if (notConfigured) {
@@ -152,7 +164,7 @@ export const AdminManualPaymentManager: React.FC = () => {
       </form>
       <div className="mt-6 space-y-2">
         {methods.map(method => <div key={method.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3">
-          <div><b className="text-sm">{method.name}</b><p className="text-xs text-gray-500">Min €{Number(method.minimum_amount).toFixed(2)} · {method.maximum_amount ? `Max €${Number(method.maximum_amount).toFixed(2)}` : 'No maximum'} · {method.fee_type} fee</p></div>
+          <div><b className="text-sm">{method.name}</b><p className="text-xs text-gray-500">Min {formatCentsEur(eurToCents(method.minimum_amount))} · {method.maximum_amount ? `Max ${formatCentsEur(eurToCents(method.maximum_amount))}` : 'No maximum'} · {method.fee_type} fee</p></div>
           <div className="flex gap-2"><button type="button" onClick={()=>{setEditing(method.id);setName(method.name);setInstructions(method.instructions);setAccountDetails(JSON.stringify(method.account_details || {},null,2));setMinimum(String(method.minimum_amount));setMaximum(method.maximum_amount ? String(method.maximum_amount) : '');setFeeType(method.fee_type);setFeeValue(String(method.fee_value));setLogoUrl(method.logo_url || '');setExtraFields(JSON.stringify(method.extra_fields || [],null,2));}} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">Edit</button><button type="button" disabled={busy} onClick={()=>toggle(method)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">{method.enabled ? 'Disable' : 'Enable'}</button></div>
         </div>)}
         {!methods.length && <p className="text-sm text-gray-500">No manual payment methods configured yet.</p>}
@@ -162,7 +174,7 @@ export const AdminManualPaymentManager: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold text-[#18211f]">Manual deposit verification</h2><p className="text-xs text-gray-500 mt-1">Review payment references and privately open uploaded proofs.</p></div><select value={status} onChange={e=>setStatus(e.target.value)} className="rounded-lg border p-2 text-sm"><option value="pending">Pending</option><option value="completed">Approved</option><option value="rejected">Rejected</option></select></div>
       <div className="mt-4 space-y-3">
         {deposits.map(deposit => <article key={deposit.id} className="rounded-xl border p-4">
-          <div className="flex flex-wrap justify-between gap-2"><b className="text-sm">{deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id}</b><b className="text-sm">€{Number(deposit.amount).toFixed(2)}</b></div>
+          <div className="flex flex-wrap justify-between gap-2"><b className="text-sm">{deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id}</b><b className="text-sm tabular-nums">{formatCentsEur(eurToCents(deposit.amount))}</b></div>
           <p className="text-xs text-gray-500 mt-1">{deposit.reference} · {deposit.payment_method} · {deposit.status}</p>
           <p className="text-xs mt-2">Sender: {deposit.sender_name || '—'} · Payment ID: {deposit.manual_transaction_id || '—'} · Date: {deposit.payment_date || '—'}</p>
           <div className="flex flex-wrap gap-2 mt-3">
@@ -178,12 +190,42 @@ export const AdminManualPaymentManager: React.FC = () => {
               </a>
             )}
             {deposit.status === 'pending' && <>
-              <button type="button" disabled={busy} onClick={()=>review(deposit,'approve')} className="rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer">Approve &amp; credit</button>
-              <button type="button" disabled={busy} onClick={()=>{ setRejectingDepositId(deposit.id); setRejectReason(''); }} className="rounded-lg bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer">Reject</button>
+              <button type="button" disabled={busy} onClick={() => setApproveTarget(deposit)} className="rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer">Approve &amp; credit</button>
+              <button type="button" disabled={busy} onClick={() => { setRejectingDepositId(deposit.id); setRejectReason(''); }} className="rounded-lg bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer">Reject</button>
             </>}
           </div>
+          {approveTarget?.id === deposit.id && (
+            <div className="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 space-y-2 text-xs text-emerald-950">
+              <div className="font-bold">Confirm Deposit Approval</div>
+              <div>Action: <strong>Approve Deposit &amp; Credit Wallet</strong></div>
+              <div>Investor: <strong>{deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id}</strong></div>
+              <div>Amount: <strong>{formatCentsEur(eurToCents(deposit.amount))}</strong></div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void review(deposit, 'approve')}
+                  className="rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer"
+                >
+                  {busy ? 'Processing...' : 'Confirm & Credit'}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setApproveTarget(null)}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
           {rejectingDepositId === deposit.id && (
-            <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200 space-y-2">
+            <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200 space-y-2 text-xs text-rose-950">
+              <div className="font-bold">Confirm Deposit Rejection</div>
+              <div>Action: <strong>Reject Deposit</strong></div>
+              <div>Investor: <strong>{deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id}</strong></div>
+              <div>Amount: <strong>{formatCentsEur(eurToCents(deposit.amount))}</strong></div>
               <label className="block text-xs font-semibold text-rose-900">
                 Reason for rejecting this deposit:
                 <input
@@ -197,16 +239,17 @@ export const AdminManualPaymentManager: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || !rejectReason.trim()}
                   onClick={() => void review(deposit, 'reject', rejectReason)}
                   className="rounded-lg bg-rose-700 text-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer"
                 >
-                  Confirm rejection
+                  {busy ? 'Processing...' : 'Confirm rejection'}
                 </button>
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={() => { setRejectingDepositId(null); setRejectReason(''); }}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold cursor-pointer"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -218,6 +261,7 @@ export const AdminManualPaymentManager: React.FC = () => {
         {!deposits.length && <p className="text-sm text-gray-500">No deposits in this queue.</p>}
       </div>
     </div>
-    {message && <p role="status" className="text-sm text-[#1e3a34]">{message}</p>}
+    {message && <p role="status" className="text-sm font-semibold text-emerald-700">{message}</p>}
+    {errorMsg && <p role="alert" className="text-sm font-semibold text-rose-700">{errorMsg}</p>}
   </section>;
 };

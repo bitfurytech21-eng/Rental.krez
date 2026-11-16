@@ -1,7 +1,13 @@
 import { Router, Response } from 'express';
 import crypto from 'crypto';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireStaffSection } from './middleware';
-import { getSupabaseAdmin, isSupabaseServerConfigured } from './supabaseDatabase';
+import {
+  canUseLiveSupabaseData,
+  getSupabaseAdmin,
+  isMissingSchemaError,
+  isSupabaseServerConfigured,
+  markSupabaseSchemaMissingInDev,
+} from './supabaseDatabase';
 import { consumeDashboardActionGrant } from './emailOtp';
 import { sendEmail } from './emailService';
 import { logger } from './logger';
@@ -439,9 +445,12 @@ manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: Au
 });
 
 manualPaymentRouter.get('/admin/methods', requireStaffSection('settings', 'read'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) {
+  const sendDevGates = () => {
     const data = listDevPaymentGatesWithCounts().map((g) => decorateGateRow(g, g.assigned_investors_count || 0));
     return res.json({ success: true, data, requestId: req.id });
+  };
+  if (!canUseLiveSupabaseData()) {
+    return sendDevGates();
   }
   try {
     const client = getSupabaseAdmin();
@@ -460,11 +469,17 @@ manualPaymentRouter.get('/admin/methods', requireStaffSection('settings', 'read'
       data: (data || []).map((row: any) => decorateGateRow(row, countMap.get(String(row.id)) || 0)),
       requestId: req.id
     });
-  } catch { return res.status(503).json({ success: false, error: 'Unable to load manual payment methods.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id }); }
+  } catch (err: any) {
+    if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+      markSupabaseSchemaMissingInDev();
+      return sendDevGates();
+    }
+    return res.status(503).json({ success: false, error: 'Unable to load manual payment methods.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
+  }
 });
 
 manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'write'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) {
+  const createInDev = () => {
     try {
       const payload = safeMethodInput(req.body, req.user!.id);
       const now = new Date().toISOString();
@@ -480,6 +495,9 @@ manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'writ
     } catch (error: any) {
       return res.status(400).json({ success: false, error: error?.message || 'Invalid payment gate configuration.', code: 'INVALID_MANUAL_METHOD', requestId: req.id });
     }
+  };
+  if (!canUseLiveSupabaseData()) {
+    return createInDev();
   }
   try {
     const payload = safeMethodInput(req.body, req.user!.id);
@@ -487,12 +505,16 @@ manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'writ
     if (error) throw error;
     return res.status(201).json({ success: true, data: decorateGateRow(data, 0), requestId: req.id });
   } catch (error: any) {
+    if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+      markSupabaseSchemaMissingInDev();
+      return createInDev();
+    }
     return res.status(400).json({ success: false, error: error?.message === 'INVALID_MANUAL_PAYMENT_METHOD' || error?.message === 'INVALID_EXTRA_FIELDS' ? error.message : 'The payment method could not be created.', code: 'INVALID_MANUAL_METHOD', requestId: req.id });
   }
 });
 
 manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 'write'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) {
+  const updateInDev = () => {
     const idx = devPaymentGates.findIndex((g) => g.id === req.params.id);
     if (idx === -1) return res.status(404).json({ success: false, error: 'Payment gate not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
     try {
@@ -512,6 +534,9 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
     } catch {
       return res.status(400).json({ success: false, error: 'The payment method could not be updated.', code: 'MANUAL_METHOD_UPDATE_FAILED', requestId: req.id });
     }
+  };
+  if (!canUseLiveSupabaseData()) {
+    return updateInDev();
   }
   try {
     const client = getSupabaseAdmin();
@@ -524,13 +549,17 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
     const { count } = await client.from('user_profiles').select('id', { count: 'exact', head: true }).eq('assigned_gate_id', existing.id);
     return res.json({ success: true, data: decorateGateRow(data, count || 0), requestId: req.id });
   } catch (error: any) {
+    if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+      markSupabaseSchemaMissingInDev();
+      return updateInDev();
+    }
     return res.status(400).json({ success: false, error: 'The payment method could not be updated.', code: 'MANUAL_METHOD_UPDATE_FAILED', requestId: req.id });
   }
 });
 
 manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const gateId = req.params.id;
-  if (!isSupabaseServerConfigured()) {
+  const deleteInDev = () => {
     const idx = devPaymentGates.findIndex((g) => g.id === gateId);
     if (idx === -1) return res.status(404).json({ success: false, error: 'Payment gate not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
     let assignedCount = 0;
@@ -547,6 +576,9 @@ manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings',
     }
     devPaymentGates.splice(idx, 1);
     return res.json({ success: true, message: 'Payment gate deleted.', requestId: req.id });
+  };
+  if (!canUseLiveSupabaseData()) {
+    return deleteInDev();
   }
   try {
     const client = getSupabaseAdmin();
@@ -577,7 +609,11 @@ manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings',
       throw error;
     }
     return res.json({ success: true, message: 'Payment gate deleted.', requestId: req.id });
-  } catch {
+  } catch (err: any) {
+    if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+      markSupabaseSchemaMissingInDev();
+      return deleteInDev();
+    }
     return res.status(503).json({ success: false, error: 'Unable to delete payment gate.', code: 'GATE_DELETE_FAILED', requestId: req.id });
   }
 });

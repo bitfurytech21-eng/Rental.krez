@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { User, getAccountTypeLabel } from '../../types/user';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatDate } from '../../lib/utils';
 import { printUserDirectoryReport, UserDirectoryPrintData } from '../../lib/printService';
 import {
   InvestorDocumentRow,
   PaymentGateRecord,
   assignPaymentGateToInvestor,
   createPrivateBucketSignedUrl,
+  eurToCents,
+  formatCentsEur,
   maskIban,
   sendAdminNotificationRecord,
   setInvestorFrozenState,
@@ -39,7 +41,7 @@ interface AdminUserManagementProps {
   paymentGates?: PaymentGateRecord[];
   currentAdminEmail: string;
   readOnly?: boolean;
-  onRefreshAll: () => void;
+  onRefreshAll: () => Promise<void> | void;
   onQuickSuccess: (msg: string) => void;
   onQuickError: (msg: string) => void;
   onNavigateToManualCredit?: (userId: string) => void;
@@ -160,7 +162,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           ? `Assigned payment gate "${gateObj?.name || gateId}" to ${selectedUser.fullName}.`
           : `Cleared assigned payment gate for ${selectedUser.fullName}.`
       );
-      onRefreshAll();
+      await onRefreshAll();
     } catch (err: any) {
       onQuickError(err?.message || 'Unable to assign payment gate.');
     } finally {
@@ -183,7 +185,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         `${selectedUser.fullName} has been ${nextFrozen ? 'FROZEN' : 'UNFROZEN'}.`
       );
       setFreezeModalOpen(false);
-      onRefreshAll();
+      await onRefreshAll();
     } catch (err: any) {
       onQuickError(err?.message || 'Failed to update frozen state.');
     } finally {
@@ -210,7 +212,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       setMessageModalOpen(false);
       setMsgTitle('');
       setMsgBody('');
-      onRefreshAll();
+      await onRefreshAll();
     } catch (err: any) {
       onQuickError(err?.message || 'Unable to send notification.');
     } finally {
@@ -313,13 +315,13 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               <div>
                 <div className="text-[#8FA1A8] text-[11px]">Wallet Balance</div>
                 <div className="text-base font-bold text-[#6FD8B0] tabular-nums mt-0.5">
-                  {formatCurrency(selectedUser.walletBalance || 0)}
+                  {formatCentsEur(eurToCents(selectedUser.walletBalance || 0))}
                 </div>
               </div>
               <div>
                 <div className="text-[#8FA1A8] text-[11px]">Invested Cost</div>
                 <div className="text-base font-bold text-[#F2F5F4] tabular-nums mt-0.5">
-                  {formatCurrency(selectedUser.investedBalance || 0)}
+                  {formatCentsEur(eurToCents(selectedUser.investedBalance || 0))}
                 </div>
               </div>
               <div>
@@ -473,7 +475,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       <td className="py-3 px-4 uppercase font-semibold text-[#F2F5F4]">{tx.type}</td>
                       <td className="py-3 px-4 font-mono text-[#B6C4C9]">{tx.reference}</td>
                       <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">
-                        {formatCurrency(tx.amount)}
+                        {formatCentsEur(eurToCents(tx.amount))}
                       </td>
                       <td className="py-3 px-4 uppercase font-semibold text-[11px] text-[#F2F5F4]">{tx.status}</td>
                     </tr>
@@ -510,7 +512,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                         {Number(h.tokensPurchased || h.shares || 0).toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">
-                        {formatCurrency(h.totalCost ?? h.amountEUR ?? h.total_amount_invested ?? 0)}
+                        {formatCentsEur(eurToCents(h.totalCost ?? h.amountEUR ?? h.total_amount_invested ?? 0))}
                       </td>
                       <td className="py-3 px-4 uppercase font-semibold text-[11px] text-[#6FD8B0]">
                         {h.status || 'confirmed'}
@@ -823,7 +825,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right font-bold text-[#F2F5F4] tabular-nums">
-                      {formatCurrency(u.walletBalance || 0)}
+                      {formatCentsEur(eurToCents(u.walletBalance || 0))}
                     </td>
                     <td className="py-3.5 px-4">
                       {isFrozen ? (

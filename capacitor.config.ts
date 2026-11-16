@@ -1,0 +1,27 @@
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.kretzdespain.lagence',
+  appName: "L'Agence",
+  webDir: 'dist',
+  backgroundColor: '#213138',
+  server: {
+    androidScheme: 'https',
+    hostname: 'localhost',
+    allowNavigation: [
+      'api.kretzdespain.com',
+      'kretzdespain.com',
+      'www.kretzdespain.com',
+      '*.kretzdespain.com',
+      '*.supabase.co',
+    ],
+  },
+  android: {
+    backgroundColor: '#213138',
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
+  },
+};
+
+export default config;

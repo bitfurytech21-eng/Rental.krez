@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
 import { ledger } from '../../lib/ledger';
@@ -15,6 +15,7 @@ import {
   getDefaultSectionForRole,
   getStaffRoleLabel,
   isReadOnlySection,
+  mapHashToFinanceTab,
   mapHashToSection,
   resolveEffectiveStaffRole,
 } from './adminRbac';
@@ -38,6 +39,7 @@ import {
   AdminTransactionsSection,
   AdminWithdrawalsSection,
 } from './AdminSettingsAndTreasurySections';
+import { AdminFinanceSection, FinanceTabId } from './AdminFinanceSection';
 import {
   AdminStatsSummary,
   AuditLogRow,
@@ -45,6 +47,8 @@ import {
   KycSubmissionRow,
   PastDistributionRow,
   PaymentGateRecord,
+  centsToEur,
+  eurToCents,
   fetchAdminNotificationsTable,
   fetchAdminStats,
   fetchAuditLogRows,
@@ -52,8 +56,10 @@ import {
   fetchKycSubmissionsQueue,
   fetchPastDistributions,
   fetchPaymentGatesWithCounts,
+  fetchSettingsRows,
   fetchSupabaseProperties,
   fetchWalletBalancesMap,
+  formatCentsEur,
 } from './adminSupabaseGateway';
 import {
   AlertCircle,
@@ -68,6 +74,7 @@ import {
   Coins,
   ExternalLink,
   FileText,
+  Landmark,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -84,6 +91,7 @@ import {
 const SECTION_ICONS: Record<AdminSectionId, React.ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   investors: Users,
+  finance: Landmark,
   deposits: ArrowDownLeft,
   withdrawals: ArrowUpRight,
   properties: Building2,
@@ -139,6 +147,10 @@ export const AdminPanel: React.FC = () => {
   }, [effectiveRole]);
 
   const [activeSection, setActiveSection] = useState<AdminSectionId>(resolveInitialSection);
+  const [financeTab, setFinanceTab] = useState<FinanceTabId>(() => {
+    if (typeof window === 'undefined') return 'overview';
+    return (mapHashToFinanceTab(window.location.hash) || mapHashToFinanceTab(window.location.pathname) || 'overview') as FinanceTabId;
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -150,9 +162,14 @@ export const AdminPanel: React.FC = () => {
 
   useEffect(() => {
     const syncFromLocation = () => {
-      const fromHash = typeof window !== 'undefined' ? mapHashToSection(window.location.hash) : null;
+      const hashStr = typeof window !== 'undefined' ? window.location.hash : '';
+      const fromHash = hashStr ? mapHashToSection(hashStr) : null;
       const fromPath = mapHashToSection(currentPath);
       const candidate = fromHash || fromPath;
+      const tabCandidate = (hashStr ? mapHashToFinanceTab(hashStr) : null) || mapHashToFinanceTab(currentPath);
+      if (tabCandidate) {
+        setFinanceTab(tabCandidate as FinanceTabId);
+      }
       if (candidate && canAccessSection(effectiveRole, candidate)) {
         setActiveSection(candidate);
       }
@@ -163,11 +180,28 @@ export const AdminPanel: React.FC = () => {
   }, [currentPath, effectiveRole]);
 
   const handleSelectSection = (section: AdminSectionId) => {
+    // Route legacy treasury shortcuts straight to the unified 7-tab Finance workspace
+    const legacyTabMap: Partial<Record<AdminSectionId, FinanceTabId>> = {
+      deposits: 'deposits',
+      withdrawals: 'withdrawals',
+      transactions: 'ledger',
+      distributions: 'investments',
+    };
+    const mappedTab = legacyTabMap[section];
+    if (mappedTab && canAccessSection(effectiveRole, 'finance')) {
+      setFinanceTab(mappedTab);
+      setActiveSection('finance');
+      setMobileMenuOpen(false);
+      if (typeof window !== 'undefined') {
+        window.location.hash = `finance/${mappedTab}`;
+      }
+      return;
+    }
     if (!canAccessSection(effectiveRole, section)) return;
     setActiveSection(section);
     setMobileMenuOpen(false);
     if (typeof window !== 'undefined') {
-      window.location.hash = section;
+      window.location.hash = section === 'finance' ? `finance/${financeTab}` : section;
     }
   };
 
@@ -188,6 +222,7 @@ export const AdminPanel: React.FC = () => {
   const [pastDistributions, setPastDistributions] = useState<PastDistributionRow[]>([]);
   const [paymentGates, setPaymentGates] = useState<PaymentGateRecord[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([]);
+  const [platformLimits, setPlatformLimits] = useState<Record<string, any>>({ withdrawal_fee_eur: 0 });
   const [adminStats, setAdminStats] = useState<AdminStatsSummary>({
     pendingDepositsCount: 0,
     pendingDepositsTotalEur: 0,
@@ -201,6 +236,7 @@ export const AdminPanel: React.FC = () => {
 
   // Manual Credit Modal
   const [creditModalOpen, setCreditModalOpen] = useState(false);
+  const [creditConfirmStep, setCreditConfirmStep] = useState(false);
   const [creditUserId, setCreditUserId] = useState('');
   const [creditAmount, setCreditAmount] = useState<number>(1000);
   const [creditCurrency, setCreditCurrency] = useState('EUR');
@@ -208,6 +244,7 @@ export const AdminPanel: React.FC = () => {
   const [creditReference, setCreditReference] = useState('');
   const [creditNotes, setCreditNotes] = useState('Cleared in treasury settlement account.');
   const [submittingCredit, setSubmittingCredit] = useState(false);
+  const creditLockRef = useRef<boolean>(false);
 
   const showToastSuccess = useCallback((msg: string) => {
     setActionError(null);
@@ -251,6 +288,7 @@ export const AdminPanel: React.FC = () => {
         pastDists,
         sbNotifs,
         logs,
+        settingsRes,
       ] = await Promise.all([
         safeJson('/admin/users'),
         safeJson('/admin/transactions'),
@@ -264,7 +302,11 @@ export const AdminPanel: React.FC = () => {
         fetchPastDistributions(),
         fetchAdminNotificationsTable(),
         fetchAuditLogRows(),
+        fetchSettingsRows().catch(() => null),
       ]);
+      if (settingsRes?.limits) {
+        setPlatformLimits(settingsRes.limits);
+      }
 
       let nextUsers: PlatformUser[] = [];
       if (Array.isArray(usersRes?.data)) {
@@ -306,17 +348,30 @@ export const AdminPanel: React.FC = () => {
             id: String(row.id),
             userId: String(row.userId || row.user_id || ''),
             userEmail: row.userEmail || row.email || undefined,
+            propertyId: row.propertyId || row.property_id || undefined,
             type: String(row.type || 'transaction'),
             amount: Number(row.amount || 0),
+            feeAmount: Number(row.feeAmount ?? row.fee_amount ?? 0),
+            netAmount: row.netAmount !== undefined ? Number(row.netAmount) : row.net_amount !== undefined ? Number(row.net_amount) : undefined,
             currency: String(row.currency || 'EUR'),
             status: String(row.status || 'pending'),
             description: row.description || row.notes || `${row.type || 'tx'} (${row.reference || row.id})`,
             reference: String(row.reference || row.id),
+            payoutReference: row.payoutReference || row.payout_reference || row.metadata?.payout_reference || undefined,
             createdAt: String(row.createdAt || row.created_at || new Date().toISOString()),
             method: String(row.method || row.paymentMethod || 'SEPA Wire'),
             txHash: row.txHash || row.tx_hash || undefined,
-            destination: row.destination || row.metadata?.bankIban || row.txHash || undefined,
+            destIban: row.destIban || row.dest_iban || row.destination || row.metadata?.bankIban || undefined,
+            destination: row.destination || row.destIban || row.dest_iban || row.metadata?.bankIban || row.txHash || undefined,
             proofUrl: row.proofUrl || row.proof_url || undefined,
+            processedBy: row.processedBy || row.processed_by_email || row.processed_by || undefined,
+            processedById: row.processedById || row.processed_by || undefined,
+            processedAt: row.processedAt || row.processed_at || undefined,
+            reversalOfId: row.reversalOfId || row.reversedTransactionId || row.reversed_transaction_id || row.metadata?.reversal_of_id || undefined,
+            reversalOfReference: row.reversalOfReference || row.metadata?.reversal_of_reference || undefined,
+            reversedById: row.reversedById || row.metadata?.reversed_by_id || undefined,
+            reversedByReference: row.reversedByReference || row.metadata?.reversed_by_reference || undefined,
+            reversalReason: row.reversalReason || row.reversal_reason || undefined,
           }))
         : [];
       if (Array.isArray(txRes?.data)) {
@@ -524,6 +579,9 @@ export const AdminPanel: React.FC = () => {
   );
 
   const navBadgeCount = (id: AdminSectionId): number | undefined => {
+    if (id === 'finance' && (pendingDeposits.length + pendingWithdrawals.length) > 0) {
+      return pendingDeposits.length + pendingWithdrawals.length;
+    }
     if (id === 'deposits' && pendingDeposits.length > 0) return pendingDeposits.length;
     if (id === 'withdrawals' && pendingWithdrawals.length > 0) return pendingWithdrawals.length;
     if (id === 'kyc' && pendingKycCount > 0) return pendingKycCount;
@@ -532,10 +590,18 @@ export const AdminPanel: React.FC = () => {
 
   const handleExecuteManualCredit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!creditUserId || creditAmount <= 0) {
+    if (creditLockRef.current || submittingCredit) return;
+    const amtCents = eurToCents(creditAmount);
+    if (!creditUserId || !Number.isFinite(amtCents) || amtCents <= 0) {
       showToastError('Select an investor and enter a positive amount.');
       return;
     }
+    if (!creditConfirmStep) {
+      setCreditConfirmStep(true);
+      return;
+    }
+    const cleanEur = centsToEur(amtCents);
+    creditLockRef.current = true;
     setSubmittingCredit(true);
     try {
       const token = getAuthToken();
@@ -547,7 +613,8 @@ export const AdminPanel: React.FC = () => {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          amount: creditAmount,
+          amount: cleanEur,
+          amountCents: amtCents,
           currency: creditCurrency,
           method: creditMethod,
           reference: creditReference.trim() || undefined,
@@ -555,15 +622,21 @@ export const AdminPanel: React.FC = () => {
         }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error || 'Wallet credit failed.');
+      if (!res.ok) {
+        const msg = body?.error || body?.message || 'Wallet credit failed.';
+        const details = body?.details ? ` — ${body.details}` : '';
+        throw new Error(`${msg}${details}`);
+      }
       setCreditModalOpen(false);
+      setCreditConfirmStep(false);
       setCreditReference('');
-      showToastSuccess(`Credited ${formatCurrency(creditAmount)} (${creditCurrency}) to investor wallet.`);
-      loadData(false);
+      await loadData(false);
+      showToastSuccess(`Credited ${formatCentsEur(amtCents)} (${creditCurrency}) to investor wallet.`);
     } catch (err: any) {
       showToastError(err?.message || 'Unable to execute wallet credit.');
     } finally {
       setSubmittingCredit(false);
+      creditLockRef.current = false;
     }
   };
 
@@ -784,7 +857,11 @@ export const AdminPanel: React.FC = () => {
             {(effectiveRole === 'super_admin' || effectiveRole === 'finance') && (
               <button
                 type="button"
-                onClick={() => setCreditModalOpen(true)}
+                onClick={() => {
+                  setCreditUserId((p) => p || users[0]?.id || '');
+                  setCreditConfirmStep(false);
+                  setCreditModalOpen(true);
+                }}
                 className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Wallet className="w-3.5 h-3.5 text-[#6FD8B0]" />
@@ -862,8 +939,34 @@ export const AdminPanel: React.FC = () => {
                   onNavigateToManualCredit={(uid) => {
                     if (isReadOnlySection(effectiveRole, 'investors')) return;
                     setCreditUserId(uid);
+                    setCreditConfirmStep(false);
                     setCreditModalOpen(true);
                   }}
+                />
+              )}
+
+              {/* 2B. UNIFIED 7-TAB FINANCE WORKSPACE */}
+              {activeSection === 'finance' && canAccessSection(effectiveRole, 'finance') && (
+                <AdminFinanceSection
+                  initialTab={financeTab}
+                  onTabChange={(nextTab) => {
+                    setFinanceTab(nextTab);
+                    if (typeof window !== 'undefined') {
+                      window.location.hash = `finance/${nextTab}`;
+                    }
+                  }}
+                  stats={adminStats}
+                  limits={platformLimits}
+                  users={users}
+                  transactions={transactions}
+                  manualDeposits={manualDeposits}
+                  investments={investments}
+                  properties={properties}
+                  pastDistributions={pastDistributions}
+                  paymentGates={paymentGates}
+                  onRefresh={() => loadData(false)}
+                  onSuccess={showToastSuccess}
+                  onError={showToastError}
                 />
               )}
 
@@ -1017,108 +1120,154 @@ export const AdminPanel: React.FC = () => {
       </div>
 
       {/* Manual Wallet Credit Modal */}
-      {creditModalOpen && (effectiveRole === 'super_admin' || effectiveRole === 'finance') && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleExecuteManualCredit} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1F2C33]">
-              <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-[#6FD8B0]" />
-                <span>Credit Investor Treasury Wallet</span>
-              </h3>
-              <button type="button" onClick={() => setCreditModalOpen(false)} className="text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Target Investor</label>
-                <select
-                  value={creditUserId}
-                  onChange={(e) => setCreditUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+      {creditModalOpen && (effectiveRole === 'super_admin' || effectiveRole === 'finance') && (() => {
+        const creditTarget = users.find((u) => u.id === creditUserId) || users[0];
+        const amtCents = eurToCents(creditAmount);
+        const curCents = eurToCents(creditTarget?.walletBalance ?? 0);
+        const projCents = curCents + amtCents;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <form onSubmit={handleExecuteManualCredit} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#1F2C33]">
+                <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-[#6FD8B0]" />
+                  <span>{creditConfirmStep ? 'Confirm Investor Wallet Credit' : 'Credit Investor Treasury Wallet'}</span>
+                </h3>
+                <button
+                  type="button"
+                  disabled={submittingCredit}
+                  onClick={() => {
+                    setCreditModalOpen(false);
+                    setCreditConfirmStep(false);
+                  }}
+                  className="text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer disabled:opacity-50"
                 >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullName || u.email} ({u.email}) — {formatCurrency(u.walletBalance)}
-                    </option>
-                  ))}
-                </select>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[#B6C4C9] font-semibold mb-1">Amount</label>
-                  <input
-                    type="number"
-                    min={1}
-                    step="0.01"
-                    required
-                    value={creditAmount}
-                    onChange={(e) => setCreditAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                  />
+
+              {!creditConfirmStep ? (
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Target Investor</label>
+                    <select
+                      value={creditUserId}
+                      onChange={(e) => setCreditUserId(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    >
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.fullName || u.email} ({u.email}) — {formatCurrency(u.walletBalance)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[#B6C4C9] font-semibold mb-1">Amount</label>
+                      <input
+                        type="number"
+                        min={0.01}
+                        step="0.01"
+                        required
+                        value={creditAmount}
+                        onChange={(e) => setCreditAmount(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#B6C4C9] font-semibold mb-1">Currency</label>
+                      <select
+                        value={creditCurrency}
+                        onChange={(e) => setCreditCurrency(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                      >
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                        <option value="GBP">GBP</option>
+                        <option value="CHF">CHF</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Settlement Method</label>
+                    <input
+                      type="text"
+                      value={creditMethod}
+                      onChange={(e) => setCreditMethod(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Bank / Settlement Reference</label>
+                    <input
+                      type="text"
+                      value={creditReference}
+                      onChange={(e) => setCreditReference(e.target.value)}
+                      placeholder="Optional wire reference"
+                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Audit Notes</label>
+                    <input
+                      type="text"
+                      value={creditNotes}
+                      onChange={(e) => setCreditNotes(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[#B6C4C9] font-semibold mb-1">Currency</label>
-                  <select
-                    value={creditCurrency}
-                    onChange={(e) => setCreditCurrency(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+              ) : (
+                <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3.5 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
+                  <div>Action: <strong className="text-[#6FD8B0]">Credit Investor Wallet (admin_credit_deposit)</strong></div>
+                  <div>Investor: <strong className="text-[#F2F5F4]">{creditTarget?.fullName || creditTarget?.email || creditUserId}</strong></div>
+                  <div>Amount: <strong className="text-[#6FD8B0]">{formatCentsEur(amtCents)} ({creditCurrency})</strong></div>
+                  <div>Current Balance: <strong>{formatCentsEur(curCents)}</strong></div>
+                  <div>Projected Balance: <strong className="text-[#F2F5F4]">{formatCentsEur(projCents)}</strong></div>
+                  <div>Method: <span className="text-[#F2F5F4]">{creditMethod}</span></div>
+                  {creditReference.trim() && (
+                    <div>Reference: <span className="font-mono text-[#F2F5F4]">{creditReference.trim()}</span></div>
+                  )}
+                  <div>Notes: <span className="text-[#F2F5F4]">{creditNotes.trim() || '—'}</span></div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#1F2C33]">
+                {creditConfirmStep ? (
+                  <button
+                    type="button"
+                    disabled={submittingCredit}
+                    onClick={() => setCreditConfirmStep(false)}
+                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
                   >
-                    <option value="EUR">EUR</option>
-                    <option value="USD">USD</option>
-                    <option value="GBP">GBP</option>
-                    <option value="CHF">CHF</option>
-                  </select>
-                </div>
+                    Back
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={submittingCredit}
+                    onClick={() => {
+                      setCreditModalOpen(false);
+                      setCreditConfirmStep(false);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={submittingCredit || amtCents <= 0}
+                  className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+                >
+                  {submittingCredit ? 'Crediting...' : creditConfirmStep ? 'Confirm & Execute Credit' : 'Review Credit'}
+                </button>
               </div>
-              <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Settlement Method</label>
-                <input
-                  type="text"
-                  value={creditMethod}
-                  onChange={(e) => setCreditMethod(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-                />
-              </div>
-              <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Bank / Settlement Reference</label>
-                <input
-                  type="text"
-                  value={creditReference}
-                  onChange={(e) => setCreditReference(e.target.value)}
-                  placeholder="Optional wire reference"
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                />
-              </div>
-              <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Audit Notes</label>
-                <input
-                  type="text"
-                  value={creditNotes}
-                  onChange={(e) => setCreditNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#1F2C33]">
-              <button
-                type="button"
-                onClick={() => setCreditModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submittingCredit}
-                className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
-              >
-                {submittingCredit ? 'Crediting...' : 'Confirm Credit'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        );
+      })()}
     </div>
   );
 };

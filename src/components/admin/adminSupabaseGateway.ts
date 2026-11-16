@@ -1,6 +1,81 @@
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { getApiUrl, getAuthToken } from '../../lib/api';
 
+// ============================================================================
+// INTEGER CENTS ARITHMETIC & EUR FORMATTING
+// ============================================================================
+export function eurToCents(eur: unknown): number {
+  const n = Number(eur ?? 0);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100);
+}
+
+export function centsToEur(cents: number): number {
+  if (!Number.isFinite(cents)) return 0;
+  return Math.round(cents) / 100;
+}
+
+export function formatCentsEur(cents: number): string {
+  const value = centsToEur(cents);
+  return new Intl.NumberFormat('en-IE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+export function allocateProportionalCents(
+  totalCents: number,
+  holders: Array<{ userId: string; shares: number }>
+): Map<string, number> {
+  const out = new Map<string, number>();
+  const totalShares = holders.reduce((s, h) => s + h.shares, 0);
+  if (totalShares <= 0 || totalCents <= 0 || holders.length === 0) return out;
+  const enriched = holders.map((h, idx) => {
+    const exact = (totalCents * h.shares) / totalShares;
+    const base = Math.floor(exact);
+    return { userId: h.userId, base, frac: exact - base, idx };
+  });
+  let remainder = totalCents - enriched.reduce((s, r) => s + r.base, 0);
+  const byRemainder = [...enriched].sort((a, b) => (b.frac - a.frac) || (a.idx - b.idx));
+  for (let i = 0; i < byRemainder.length && remainder > 0; i++) {
+    byRemainder[i].base += 1;
+    remainder -= 1;
+  }
+  for (const row of enriched) {
+    out.set(row.userId, row.base);
+  }
+  return out;
+}
+
+export function isMissingRpcOrSignatureError(error: any): boolean {
+  if (!error) return false;
+  const code = String(error?.code || '');
+  const msg = String(error?.message || '').toLowerCase();
+  return (
+    code === 'PGRST202' ||
+    code === '42883' ||
+    code === '42P01' ||
+    msg.includes('could not find the function') ||
+    msg.includes('schema cache') ||
+    (msg.includes('function ') && msg.includes('does not exist'))
+  );
+}
+
+export function extractDbRefusalMessage(error: any, fallback = 'Database rejected the operation.'): string {
+  if (!error) return fallback;
+  const msg = String(error?.message || error?.error || '').trim();
+  const details = String(error?.details || '').trim();
+  const hint = String(error?.hint || '').trim();
+  const code = String(error?.code || '').trim();
+  if (!msg) return fallback;
+  let full = code && !msg.includes(code) ? `[${code}] ${msg}` : msg;
+  if (details && !full.includes(details)) full = `${full} — ${details}`;
+  if (hint && !full.includes(hint)) full = `${full} (${hint})`;
+  return full;
+}
+
 export function maskIban(raw?: string | null): string {
   const clean = String(raw || '').replace(/\s+/g, '').toUpperCase();
   if (!clean) return 'Not on file';
@@ -30,7 +105,9 @@ async function apiFetchJson(endpoint: string, init: RequestInit = {}): Promise<a
   const res = await fetch(getApiUrl(endpoint), { credentials: 'include', ...init, headers });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(json?.error || `Request failed (${res.status})`);
+    const msg = json?.error || json?.message || `Request failed (${res.status})`;
+    const details = json?.details ? ` — ${json.details}` : '';
+    throw new Error(`${msg}${details}`);
   }
   return json;
 }
@@ -51,9 +128,9 @@ export interface AdminStatsSummary {
 
 const centsOrEurToEur = (centsVal: unknown, eurVal: unknown): number => {
   if (typeof centsVal === 'number' || (typeof centsVal === 'string' && centsVal !== '')) {
-    return Number(centsVal) / 100;
+    return centsToEur(Math.round(Number(centsVal)));
   }
-  return Number(eurVal || 0);
+  return centsToEur(eurToCents(eurVal));
 };
 
 export async function fetchAdminStats(fallback: {
@@ -96,22 +173,154 @@ export async function fetchAdminStats(fallback: {
 
   const pendingDep = fallback.transactions.filter((t) => t.type === 'deposit' && t.status === 'pending');
   const pendingWth = fallback.transactions.filter((t) => t.type === 'withdrawal' && t.status === 'pending');
-  const aum =
+  const aumCents =
     fallback.investments.length > 0
-      ? fallback.investments.reduce((s, i) => s + Number(i.totalCost ?? i.amountEUR ?? i.total_amount_invested ?? 0), 0)
-      : fallback.users.reduce((s, u) => s + Number(u.investedBalance || 0), 0);
+      ? fallback.investments.reduce((s, i) => s + eurToCents(i.totalCost ?? i.amountEUR ?? i.total_amount_invested ?? 0), 0)
+      : fallback.users.reduce((s, u) => s + eurToCents(u.investedBalance || 0), 0);
 
   return {
     pendingDepositsCount: pendingDep.length,
-    pendingDepositsTotalEur: pendingDep.reduce((s, d) => s + Number(d.amount || 0), 0),
+    pendingDepositsTotalEur: centsToEur(pendingDep.reduce((s, d) => s + eurToCents(d.amount), 0)),
     pendingWithdrawalsCount: pendingWth.length,
-    pendingWithdrawalsTotalEur: pendingWth.reduce((s, w) => s + Number(w.amount || 0), 0),
+    pendingWithdrawalsTotalEur: centsToEur(pendingWth.reduce((s, w) => s + eurToCents(w.amount), 0)),
     kycQueueCount:
       typeof fallback.kycQueueCount === 'number'
         ? fallback.kycQueueCount
         : fallback.users.filter((u) => u.kycStatus === 'pending').length,
     investorsCount: fallback.users.filter((u) => !u.isAdmin && !u.staffRole).length || fallback.users.length,
-    totalAumAtCostEur: aum,
+    totalAumAtCostEur: centsToEur(aumCents),
+    source: 'computed',
+  };
+}
+
+export interface FinanceSummaryBucket {
+  count: number;
+  totalEur: number;
+}
+
+export interface FinanceSummaryResult {
+  walletLiabilitiesEur: number;
+  pendingDepositsCount: number;
+  pendingDepositsTotalEur: number;
+  pendingWithdrawalsCount: number;
+  pendingWithdrawalsTotalEur: number;
+  totalsByKind: Record<string, FinanceSummaryBucket>;
+  totalsByStatus: Record<string, FinanceSummaryBucket>;
+  from?: string | null;
+  to?: string | null;
+  source: 'rpc' | 'api' | 'computed';
+}
+
+function normalizeSummaryBuckets(rawMap: any): Record<string, FinanceSummaryBucket> {
+  const out: Record<string, FinanceSummaryBucket> = {};
+  if (!rawMap || typeof rawMap !== 'object') return out;
+  for (const [key, val] of Object.entries(rawMap)) {
+    const item = val as any;
+    if (!item || typeof item !== 'object') continue;
+    out[String(key)] = {
+      count: Number(item.count || 0),
+      totalEur: Number(item.totalEur ?? item.total ?? 0),
+    };
+  }
+  return out;
+}
+
+export async function fetchFinanceSummary(
+  from: string | undefined,
+  to: string | undefined,
+  fallback: { users: any[]; transactions: any[] }
+): Promise<FinanceSummaryResult> {
+  const fromIso = from ? new Date(`${from}T00:00:00.000Z`).toISOString() : null;
+  const toIso = to ? new Date(`${to}T23:59:59.999Z`).toISOString() : null;
+
+  if (await hasLiveSupabaseSession()) {
+    try {
+      const { data, error } = await supabase.rpc('finance_summary', {
+        p_from: fromIso,
+        p_to: toIso,
+      });
+      if (!error && data && typeof data === 'object') {
+        const raw: any = Array.isArray(data) ? data[0] : data;
+        return {
+          walletLiabilitiesEur: Number(raw.wallet_liabilities ?? raw.walletLiabilitiesEur ?? 0),
+          pendingDepositsCount: Number(raw.pending_deposits_count ?? 0),
+          pendingDepositsTotalEur: Number(raw.pending_deposits_total ?? 0),
+          pendingWithdrawalsCount: Number(raw.pending_withdrawals_count ?? 0),
+          pendingWithdrawalsTotalEur: Number(raw.pending_withdrawals_total ?? 0),
+          totalsByKind: normalizeSummaryBuckets(raw.totals_by_kind),
+          totalsByStatus: normalizeSummaryBuckets(raw.totals_by_status),
+          from: raw.from ?? fromIso,
+          to: raw.to ?? toIso,
+          source: 'rpc',
+        };
+      }
+    } catch {
+      // Fall back to API endpoint
+    }
+  }
+
+  try {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const json = await apiFetchJson(`/admin/finance/summary${suffix}`);
+    const d = json?.data;
+    if (d && typeof d === 'object') {
+      return {
+        walletLiabilitiesEur: Number(d.wallet_liabilities ?? d.walletLiabilitiesEur ?? 0),
+        pendingDepositsCount: Number(d.pending_deposits_count ?? 0),
+        pendingDepositsTotalEur: Number(d.pending_deposits_total ?? 0),
+        pendingWithdrawalsCount: Number(d.pending_withdrawals_count ?? 0),
+        pendingWithdrawalsTotalEur: Number(d.pending_withdrawals_total ?? 0),
+        totalsByKind: normalizeSummaryBuckets(d.totals_by_kind),
+        totalsByStatus: normalizeSummaryBuckets(d.totals_by_status),
+        from: d.from ?? fromIso,
+        to: d.to ?? toIso,
+        source: 'api',
+      };
+    }
+  } catch {
+    // Fall back to local computation
+  }
+
+  const fromMs = fromIso ? new Date(fromIso).getTime() : null;
+  const toMs = toIso ? new Date(toIso).getTime() : null;
+  const walletLiabilitiesCents = fallback.users
+    .filter((u) => !u.isAdmin && !u.staffRole)
+    .reduce((sum, u) => sum + eurToCents(u.walletBalance), 0);
+  const pendingDep = fallback.transactions.filter((t) => t.type === 'deposit' && t.status === 'pending');
+  const pendingWth = fallback.transactions.filter((t) => t.type === 'withdrawal' && t.status === 'pending');
+  const kindCents: Record<string, { count: number; cents: number }> = {};
+  const statusCents: Record<string, { count: number; cents: number }> = {};
+  for (const tx of fallback.transactions) {
+    const ts = new Date(tx.createdAt).getTime();
+    if (fromMs && ts < fromMs) continue;
+    if (toMs && ts > toMs) continue;
+    const k = String(tx.type || 'transaction');
+    const st = String(tx.status || 'pending');
+    const amtCents = eurToCents(tx.amount);
+    if (!kindCents[k]) kindCents[k] = { count: 0, cents: 0 };
+    kindCents[k].count += 1;
+    kindCents[k].cents += amtCents;
+    if (!statusCents[st]) statusCents[st] = { count: 0, cents: 0 };
+    statusCents[st].count += 1;
+    statusCents[st].cents += amtCents;
+  }
+  const totalsByKind: Record<string, FinanceSummaryBucket> = {};
+  for (const [k, v] of Object.entries(kindCents)) totalsByKind[k] = { count: v.count, totalEur: centsToEur(v.cents) };
+  const totalsByStatus: Record<string, FinanceSummaryBucket> = {};
+  for (const [k, v] of Object.entries(statusCents)) totalsByStatus[k] = { count: v.count, totalEur: centsToEur(v.cents) };
+  return {
+    walletLiabilitiesEur: centsToEur(walletLiabilitiesCents),
+    pendingDepositsCount: pendingDep.length,
+    pendingDepositsTotalEur: centsToEur(pendingDep.reduce((s, d) => s + eurToCents(d.amount), 0)),
+    pendingWithdrawalsCount: pendingWth.length,
+    pendingWithdrawalsTotalEur: centsToEur(pendingWth.reduce((s, w) => s + eurToCents(w.amount), 0)),
+    totalsByKind,
+    totalsByStatus,
+    from: fromIso,
+    to: toIso,
     source: 'computed',
   };
 }
@@ -275,26 +484,31 @@ export async function reviewKycSubmission(
 }
 
 // ============================================================================
-// 4. DEPOSITS: approve_deposit (editable received amount) & reject_deposit
+// 4. DEPOSITS: approve_deposit, reject_deposit, admin_credit_deposit
 // ============================================================================
 export async function approveDepositSubmission(
   depositId: string,
   actualAmountEur: number,
   isManualSubmission = false
 ): Promise<void> {
-  if (!Number.isFinite(actualAmountEur) || actualAmountEur <= 0) {
+  const cents = eurToCents(actualAmountEur);
+  if (!Number.isFinite(cents) || cents <= 0) {
     throw new Error('Amount actually received must be greater than zero.');
   }
+  const cleanEur = centsToEur(cents);
   if (await hasLiveSupabaseSession()) {
-    const cents = Math.round(actualAmountEur * 100);
     const rpcAttempts: Array<{ fn: string; args: Record<string, any> }> = [
+      { fn: 'approve_deposit', args: { p_deposit_id: depositId, p_received_amount: cleanEur } },
       { fn: 'approve_deposit', args: { p_id: depositId, p_amount_cents: cents } },
       { fn: 'approve_deposit', args: { p_deposit: depositId, p_amount_cents: cents } },
-      { fn: 'approve_deposit', args: { p_deposit_id: depositId, p_amount: actualAmountEur } },
+      { fn: 'approve_deposit', args: { p_deposit_id: depositId, p_amount: cleanEur } },
     ];
     for (const attempt of rpcAttempts) {
       const { error } = await supabase.rpc(attempt.fn, attempt.args);
       if (!error) return;
+      if (!isMissingRpcOrSignatureError(error)) {
+        throw new Error(extractDbRefusalMessage(error, 'Deposit approval was rejected by the database.'));
+      }
     }
   }
   const endpoint = isManualSubmission
@@ -302,7 +516,7 @@ export async function approveDepositSubmission(
     : `/admin/deposits/${encodeURIComponent(depositId)}/approve`;
   await apiFetchJson(endpoint, {
     method: 'POST',
-    body: JSON.stringify({ amount: actualAmountEur }),
+    body: JSON.stringify({ amount: cleanEur, amountCents: cents }),
   });
 }
 
@@ -316,13 +530,16 @@ export async function rejectDepositSubmission(
   }
   if (await hasLiveSupabaseSession()) {
     const rpcAttempts: Array<{ fn: string; args: Record<string, any> }> = [
+      { fn: 'reject_deposit', args: { p_deposit_id: depositId, p_reason: reason.trim() } },
       { fn: 'reject_deposit', args: { p_id: depositId, p_reason: reason.trim() } },
       { fn: 'reject_deposit', args: { p_deposit: depositId, p_reason: reason.trim() } },
-      { fn: 'reject_deposit', args: { p_deposit_id: depositId, p_reason: reason.trim() } },
     ];
     for (const attempt of rpcAttempts) {
       const { error } = await supabase.rpc(attempt.fn, attempt.args);
       if (!error) return;
+      if (!isMissingRpcOrSignatureError(error)) {
+        throw new Error(extractDbRefusalMessage(error, 'Deposit rejection was refused by the database.'));
+      }
     }
   }
   const endpoint = isManualSubmission
@@ -334,24 +551,69 @@ export async function rejectDepositSubmission(
   });
 }
 
+export async function recordManualDepositRpc(params: {
+  userId: string;
+  amountEur: number;
+  note?: string;
+}): Promise<void> {
+  const amountCents = eurToCents(params.amountEur);
+  if (!params.userId || !Number.isFinite(amountCents) || amountCents <= 0) {
+    throw new Error('Select an investor and enter a positive deposit amount.');
+  }
+  const cleanEur = centsToEur(amountCents);
+  if (await hasLiveSupabaseSession()) {
+    const { error } = await supabase.rpc('admin_credit_deposit', {
+      p_user_id: params.userId,
+      p_amount: cleanEur,
+      p_note: params.note?.trim() || null,
+    });
+    if (!error) return;
+    if (!isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Manual deposit was refused by the database.'));
+    }
+  }
+  await apiFetchJson('/admin/finance/manual-deposit', {
+    method: 'POST',
+    body: JSON.stringify({
+      userId: params.userId,
+      amount: cleanEur,
+      amountCents,
+      note: params.note?.trim() || undefined,
+    }),
+  });
+}
+
 // ============================================================================
-// 5. WITHDRAWALS: approve_withdrawal & reject_withdrawal
+// 5. WITHDRAWALS: approve_withdrawal(tx, payout_ref, fee) & reject_withdrawal
 // ============================================================================
-export async function approveWithdrawalRequest(withdrawalId: string): Promise<void> {
+export async function approveWithdrawalRequest(
+  withdrawalId: string,
+  payoutRef: string,
+  feeEur: number
+): Promise<void> {
+  const cleanRef = String(payoutRef || '').trim();
+  if (!cleanRef || cleanRef.length < 2) {
+    throw new Error('Payout reference (bank transfer ID) is required.');
+  }
+  const feeCents = Math.max(0, eurToCents(feeEur));
+  const cleanFee = centsToEur(feeCents);
   if (await hasLiveSupabaseSession()) {
     const rpcAttempts: Array<Record<string, any>> = [
+      { p_withdrawal_id: withdrawalId, p_payout_ref: cleanRef, p_fee: cleanFee },
+      { p_tx: withdrawalId, p_payout_ref: cleanRef, p_fee: cleanFee },
       { p_id: withdrawalId },
-      { p_withdrawal: withdrawalId },
-      { p_withdrawal_id: withdrawalId },
     ];
     for (const args of rpcAttempts) {
       const { error } = await supabase.rpc('approve_withdrawal', args);
       if (!error) return;
+      if (!isMissingRpcOrSignatureError(error)) {
+        throw new Error(extractDbRefusalMessage(error, 'Withdrawal approval was refused by the database.'));
+      }
     }
   }
   await apiFetchJson(`/admin/withdrawals/${encodeURIComponent(withdrawalId)}/approve`, {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify({ payoutReference: cleanRef, fee: cleanFee, feeCents }),
   });
 }
 
@@ -361,18 +623,120 @@ export async function rejectWithdrawalRequest(withdrawalId: string, reason: stri
   }
   if (await hasLiveSupabaseSession()) {
     const rpcAttempts: Array<Record<string, any>> = [
+      { p_withdrawal_id: withdrawalId, p_reason: reason.trim() },
       { p_id: withdrawalId, p_reason: reason.trim() },
       { p_withdrawal: withdrawalId, p_reason: reason.trim() },
-      { p_withdrawal_id: withdrawalId, p_reason: reason.trim() },
     ];
     for (const args of rpcAttempts) {
       const { error } = await supabase.rpc('reject_withdrawal', args);
       if (!error) return;
+      if (!isMissingRpcOrSignatureError(error)) {
+        throw new Error(extractDbRefusalMessage(error, 'Withdrawal rejection was refused by the database.'));
+      }
     }
   }
   await apiFetchJson(`/admin/withdrawals/${encodeURIComponent(withdrawalId)}/reject`, {
     method: 'POST',
     body: JSON.stringify({ reason: reason.trim() }),
+  });
+}
+
+// ============================================================================
+// 5B. PAYMENTS & CORRECTIONS: admin_charge_fee, admin_adjust, reverse_transaction
+// ============================================================================
+export async function adminChargeFeeRpc(params: {
+  userId: string;
+  amountEur: number;
+  reason?: string;
+}): Promise<void> {
+  const amountCents = eurToCents(params.amountEur);
+  if (!params.userId || !Number.isFinite(amountCents) || amountCents <= 0) {
+    throw new Error('Select an investor and enter a positive fee amount.');
+  }
+  const cleanEur = centsToEur(amountCents);
+  if (await hasLiveSupabaseSession()) {
+    const { error } = await supabase.rpc('admin_charge_fee', {
+      p_user_id: params.userId,
+      p_amount: cleanEur,
+      p_reason: params.reason?.trim() || null,
+    });
+    if (!error) return;
+    if (!isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Fee charge was refused by the database.'));
+    }
+  }
+  await apiFetchJson('/admin/finance/charge-fee', {
+    method: 'POST',
+    body: JSON.stringify({
+      userId: params.userId,
+      amount: cleanEur,
+      amountCents,
+      reason: params.reason?.trim() || undefined,
+    }),
+  });
+}
+
+export async function adminAdjustBalanceRpc(params: {
+  userId: string;
+  deltaEur: number;
+  reason: string;
+}): Promise<void> {
+  const deltaCents = eurToCents(params.deltaEur);
+  if (!params.userId || !Number.isFinite(deltaCents) || deltaCents === 0) {
+    throw new Error('Select an investor and enter a non-zero adjustment amount.');
+  }
+  if (!params.reason || params.reason.trim().length < 3) {
+    throw new Error('A clear reason (min 3 characters) is required for balance adjustments.');
+  }
+  const cleanDelta = centsToEur(deltaCents);
+  if (await hasLiveSupabaseSession()) {
+    const { error } = await supabase.rpc('admin_adjust', {
+      p_user_id: params.userId,
+      p_delta: cleanDelta,
+      p_reason: params.reason.trim(),
+    });
+    if (!error) return;
+    if (!isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Balance adjustment was refused by the database.'));
+    }
+  }
+  await apiFetchJson('/admin/finance/adjust', {
+    method: 'POST',
+    body: JSON.stringify({
+      userId: params.userId,
+      delta: cleanDelta,
+      deltaCents,
+      reason: params.reason.trim(),
+    }),
+  });
+}
+
+export async function reverseTransactionRpc(params: {
+  transactionId: string;
+  reason: string;
+}): Promise<void> {
+  if (!params.transactionId) {
+    throw new Error('Select a completed transaction to reverse.');
+  }
+  if (!params.reason || params.reason.trim().length < 3) {
+    throw new Error('A clear reason (min 3 characters) is required to reverse a transaction.');
+  }
+  if (await hasLiveSupabaseSession()) {
+    const { error } = await supabase.rpc('reverse_transaction', {
+      p_transaction_id: params.transactionId,
+      p_reason: params.reason.trim(),
+    });
+    if (!error) return;
+    if (!isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Transaction reversal was refused by the database.'));
+    }
+  }
+  await apiFetchJson('/admin/finance/reverse', {
+    method: 'POST',
+    body: JSON.stringify({
+      transactionId: params.transactionId,
+      reason: params.reason.trim(),
+    }),
   });
 }
 
@@ -489,19 +853,32 @@ export async function recordInvestmentRpc(params: {
   shares: number;
   sharePriceEur: number;
 }): Promise<void> {
+  const sharesInt = Math.floor(Number(params.shares || 0));
+  const sharePriceCents = eurToCents(params.sharePriceEur);
+  if (!params.userId || !params.propertyId || sharesInt <= 0) {
+    throw new Error('Investor, property, and positive share count are required.');
+  }
   if (await hasLiveSupabaseSession()) {
     const attempts: Array<Record<string, any>> = [
-      { p_user: params.userId, p_property: params.propertyId, p_shares: params.shares },
-      { p_user_id: params.userId, p_property_id: params.propertyId, p_shares: params.shares },
+      { p_user_id: params.userId, p_property_id: params.propertyId, p_shares: sharesInt },
+      { p_user: params.userId, p_property: params.propertyId, p_shares: sharesInt },
     ];
     for (const args of attempts) {
       const { error } = await supabase.rpc('record_investment', args);
       if (!error) return;
+      if (!isMissingRpcOrSignatureError(error)) {
+        throw new Error(extractDbRefusalMessage(error, 'Investment recording was refused by the database.'));
+      }
     }
   }
   await apiFetchJson('/admin/investments', {
     method: 'POST',
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      ...params,
+      shares: sharesInt,
+      sharePriceEur: centsToEur(sharePriceCents),
+      sharePriceCents,
+    }),
   });
 }
 
@@ -529,7 +906,7 @@ export async function fetchPastDistributions(): Promise<PastDistributionRow[]> {
         return (data as any[]).map((r) => ({
           id: String(r.id),
           propertyId: String(r.property_id || ''),
-          totalEur: Number(r.total_cents || 0) / 100,
+          totalEur: centsToEur(Number(r.total_cents || 0)),
           note: r.note || undefined,
           createdBy: r.created_by || undefined,
           createdAt: String(r.created_at || new Date().toISOString()),
@@ -547,34 +924,49 @@ export async function executePayDistribution(params: {
   totalAmountEur: number;
   note?: string;
 }): Promise<{ paidCount: number; totalAmountEur: number; message: string }> {
-  const totalCents = Math.round(params.totalAmountEur * 100);
+  const totalCents = eurToCents(params.totalAmountEur);
+  if (!params.propertyId || !Number.isFinite(totalCents) || totalCents <= 0) {
+    throw new Error('Property and positive EUR distribution total are required.');
+  }
+  const cleanTotalEur = centsToEur(totalCents);
   if (await hasLiveSupabaseSession()) {
-    const { data, error } = await supabase.rpc('pay_distribution', {
-      p_property: params.propertyId,
-      p_total: totalCents,
-      p_note: params.note?.trim() || null,
-    });
-    if (!error) {
-      const paidCount = Number(
-        (data as any)?.paid_count ??
-          (data as any)?.investors_paid ??
-          (data as any)?.count ??
-          (typeof data === 'number' ? data : 0)
-      );
-      return {
-        paidCount,
-        totalAmountEur: params.totalAmountEur,
-        message: `Distribution executed: ${paidCount} investor${paidCount === 1 ? '' : 's'} paid.`,
-      };
+    const rpcAttempts: Array<Record<string, any>> = [
+      { p_property_id: params.propertyId, p_total_amount: cleanTotalEur, p_note: params.note?.trim() || null },
+      { p_property: params.propertyId, p_total: totalCents, p_note: params.note?.trim() || null },
+    ];
+    for (const args of rpcAttempts) {
+      const { data, error } = await supabase.rpc('pay_distribution', args);
+      if (!error) {
+        const paidCount = Number(
+          (data as any)?.recipients_paid ??
+            (data as any)?.paid_count ??
+            (data as any)?.investors_paid ??
+            (data as any)?.count ??
+            (typeof data === 'number' ? data : 0)
+        );
+        return {
+          paidCount,
+          totalAmountEur: cleanTotalEur,
+          message: `Distribution executed: ${paidCount} investor${paidCount === 1 ? '' : 's'} paid.`,
+        };
+      }
+      if (!isMissingRpcOrSignatureError(error)) {
+        throw new Error(extractDbRefusalMessage(error, 'Distribution execution was refused by the database.'));
+      }
     }
   }
   const json = await apiFetchJson('/admin/distributions/pay', {
     method: 'POST',
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      propertyId: params.propertyId,
+      totalAmountEur: cleanTotalEur,
+      totalAmountCents: totalCents,
+      note: params.note?.trim() || undefined,
+    }),
   });
   return {
     paidCount: Number(json.paidCount ?? json.data?.paidCount ?? 0),
-    totalAmountEur: params.totalAmountEur,
+    totalAmountEur: cleanTotalEur,
     message: json.message || `Paid ${Number(json.paidCount ?? 0)} investors.`,
   };
 }
@@ -770,6 +1162,7 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
     min_withdrawal_eur: 250,
     max_withdrawal_eur: 250000,
     min_investment_eur: 500,
+    withdrawal_fee_eur: 0,
     require_kyc_for_withdrawal: true,
   };
   const defaultTemplates = {
@@ -797,7 +1190,7 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
         const limitsRow = (data as any[]).find((r) => r.key === 'limits');
         const templatesRow = (data as any[]).find((r) => r.key === 'email_templates');
         return {
-          limits: limitsRow?.value ?? defaultLimits,
+          limits: { ...defaultLimits, ...(limitsRow?.value || {}) },
           email_templates: templatesRow?.value ?? defaultTemplates,
         };
       }
@@ -810,10 +1203,11 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
     const json = await apiFetchJson('/admin/settings');
     const cfg = json?.data || {};
     return {
-      limits: cfg.limits || {
+      limits: {
         ...defaultLimits,
         min_investment_eur: cfg.minInvestment ?? 500,
         max_withdrawal_eur: cfg.maxInvestmentPerInvestor ?? 250000,
+        ...(cfg.limits || {}),
       },
       email_templates: cfg.email_templates || defaultTemplates,
     };
@@ -870,26 +1264,26 @@ export async function fetchPaymentGatesWithCounts(users: any[]): Promise<Payment
         });
       }
     } catch {
-      // Try manual_payment_methods next
+      // Try manual-payments admin methods next
     }
   }
 
   try {
-    const json = await apiFetchJson('/admin/manual-payment-methods');
+    const json = await apiFetchJson('/manual-payments/admin/methods');
     const list = Array.isArray(json?.data) ? json.data : [];
     return list.map((m: any) => {
-      const accountDetails = m.account_details || m.accountDetails || {};
-      const detailsArr: GateDetailRow[] = Array.isArray(accountDetails)
-        ? accountDetails.map((d: any) => ({ label: String(d.label || ''), value: String(d.value || '') }))
-        : Object.entries(accountDetails).map(([label, value]) => ({ label, value: String(value ?? '') }));
+      const detailSource = m.detail_rows || m.detailRows || m.account_details || m.accountDetails || {};
+      const detailsArr: GateDetailRow[] = Array.isArray(detailSource)
+        ? detailSource.map((d: any) => ({ label: String(d.label || ''), value: String(d.value || '') }))
+        : Object.entries(detailSource).map(([label, value]) => ({ label, value: String(value ?? '') }));
       return {
         id: String(m.id),
-        name: String(m.name || 'Payment Method'),
-        method: String(m.method || m.fee_type || 'sepa_wire'),
+        name: String(m.name || 'Payment Gate'),
+        method: String(m.method || m.fee_type || 'sepa'),
         details: detailsArr,
         instructions: String(m.instructions || ''),
-        active: m.enabled !== false,
-        assignedCount: assignedCounts.get(String(m.id)) || 0,
+        active: m.enabled !== false && m.active !== false,
+        assignedCount: assignedCounts.get(String(m.id)) || Number(m.assigned_investors_count || 0),
         source: 'manual_payment_methods',
       };
     });
@@ -923,18 +1317,21 @@ export async function savePaymentGateRecord(
   }
   const payload = {
     name: gate.name.trim(),
-    instructions: gate.instructions.trim(),
+    method: gate.method.trim() || 'sepa',
+    instructions: gate.instructions.trim() || 'Reference your investor code in the wire memo.',
+    detailRows: cleanDetails,
     accountDetails: accountDetailsMap,
     enabled: gate.active,
+    active: gate.active,
     minimumAmount: 100,
     feeType: 'none',
     feeValue: 0,
     extraFields: [],
   };
   await apiFetchJson(
-    gate.id ? `/admin/manual-payment-methods/${encodeURIComponent(gate.id)}` : '/admin/manual-payment-methods',
+    gate.id ? `/manual-payments/admin/methods/${encodeURIComponent(gate.id)}` : '/manual-payments/admin/methods',
     {
-      method: gate.id ? 'PUT' : 'POST',
+      method: gate.id ? 'PATCH' : 'POST',
       body: JSON.stringify(payload),
     }
   );
@@ -948,7 +1345,7 @@ export async function deletePaymentGateRecord(gate: PaymentGateRecord): Promise<
     const { error } = await supabase.from('payment_gates').delete().eq('id', gate.id);
     if (!error) return;
   }
-  await apiFetchJson(`/admin/manual-payment-methods/${encodeURIComponent(gate.id)}`, { method: 'DELETE' });
+  await apiFetchJson(`/manual-payments/admin/methods/${encodeURIComponent(gate.id)}`, { method: 'DELETE' });
 }
 
 // ============================================================================

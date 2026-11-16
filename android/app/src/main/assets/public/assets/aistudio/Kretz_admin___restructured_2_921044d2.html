@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kretz admin – restructured</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+:root{box-sizing:border-box;--bg:#f6f6f4;--card:#fff;--tx:#1f2b28;--mu:#6b7773;--bd:#e4e6e1;--dk:#22302d;--gr:#3d7a58;--lt:#a9d6a0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a18;--card:#1b2724;--tx:#e8efeb;--mu:#9baba5;--bd:#2c3a36}}
+:root[data-theme="dark"]{--bg:#121a18;--card:#1b2724;--tx:#e8efeb;--mu:#9baba5;--bd:#2c3a36}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 "DM Sans",system-ui,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--card);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;padding:12px 16px}
+.top button{background:none;border:1px solid var(--bd);border-radius:10px;padding:8px 12px}
+.top b{font-weight:700}
+.side{position:fixed;inset:0 auto 0 0;width:290px;max-width:86%;background:var(--dk);color:#cfe0d6;z-index:10;transform:translateX(-105%);transition:transform .2s;overflow-y:auto;padding:20px 12px calc(30px + env(safe-area-inset-bottom,0px))}
+.side.open{transform:none}
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9;display:none}.veil.open{display:block}
+.side h3{font-size:12px;font-weight:500;letter-spacing:.06em;color:#8fb09c;margin:18px 12px 6px;text-transform:none}
+.nv{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:none;border:0;color:#cfe0d6;padding:10px 12px;border-radius:12px;gap:8px}
+.nv.on{background:#35523f;color:#fff}
+.bd{font-size:12px;border-radius:999px;padding:0 8px;background:#6e2c3a;color:#ffd9df}.bd.g{background:#2f5a40;color:#cdeed2}
+.ch{margin:0 0 4px 14px;border-left:1.5px dashed #4a6256;padding-left:6px}.nv.sm{font-size:14px;padding:8px 10px;color:#a9c0b3}.nv.sm.on{color:#fff}
+main{max-width:760px;margin:0 auto;padding:18px 16px 60px}
+.hero{background:var(--dk);color:#fff;border-radius:24px;padding:22px;margin-bottom:16px}
+.hero small{color:var(--lt);font-weight:500}.hero h1{font-size:26px;line-height:1.15;margin:8px 0}
+.hero p{color:#b9cbc1;margin:0 0 14px}
+.btn{background:#4f8c68;color:#fff;border:0;border-radius:12px;padding:10px 16px;margin:0 8px 8px 0}
+.btn.o{background:transparent;border:1px solid #4a5f56;color:#d6e6dc}
+h2{font-size:22px;margin:4px 0 4px}.sub{color:var(--mu);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:16px;margin-bottom:14px}
+.card h4{margin:0 0 4px;font-size:14px;font-weight:700}
+.stat{font-size:28px;font-weight:500}
+.q{display:flex;justify-content:space-between;align-items:center}
+.pill{font-size:12px;background:var(--bd);border-radius:999px;padding:2px 10px}
+.from{font-size:12px;color:var(--mu);margin-top:6px}
+.row{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--bd)}
+.row:first-of-type{border-top:0}
+.row div{flex:1;min-width:0}.row small{display:block;color:var(--mu)}
+.bar{height:7px;background:var(--bd);border-radius:6px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--gr)}
+.go{background:none;border:1px solid var(--bd);border-radius:10px;padding:6px 12px;margin-top:10px}
+ul{padding-left:18px;margin:8px 0 0}li{margin:4px 0}
+</style></head>
+<body>
+<div class="veil" id="veil"></div>
+<aside class="side" id="side" aria-label="Admin navigation"></aside>
+<header class="top"><button id="menu" aria-label="Open menu">Menu</button><b id="crumb">Dashboard</b></header>
+<main id="main"></main>
+<script>
+var N=[
+{g:"Overview",i:[{k:"dashboard",l:"Dashboard"}]},
+{g:"Money",i:[
+{k:"deposits",l:"Deposits",b:0,d:"Review wire proofs and crypto confirmations before they hit the ledger.",f:"Deposit Approvals (0) tab, Pending Deposits card",c:["Pending queue with proof viewer","Approve or reject with a reason","Approved and rejected history"]},
+{k:"withdrawals",l:"Withdrawals",b:0,d:"Investor redemptions that need executive authorization.",f:"Withdrawals tab, Pending Withdrawals card",c:["Pending and locked requests","Approve, reject, or mark paid","Payout history"]},
+{k:"wallets",l:"Settlement wallets",d:"Where investors send funds, by network.",f:"Crypto Settlement Wallets card",c:["USDC (BEP20) on BNB Smart Chain","Bank details for wires","Add or rotate a wallet"]},
+{k:"ledger",l:"Ledger and settlements",d:"One feed of deposits, allocations, identity checks, and approvals.",f:"Live Administrative Stream card",c:["Full ledger with filters","Settled totals","Export audit report"]}]},
+{g:"Investors",i:[
+{k:"users",l:"Users",b:1,bt:"10",d:"Everyone with an account, with suspend and restore.",f:"User Management (10) tab",c:["Search and filter users","1 suspended account","Open a profile"]},
+{k:"kyc",l:"KYC queue",b:1,d:"Passport, DNI, and company documents for MiCA qualification.",f:"KYC Compliance Queue, Pending KYC",c:["1 investor in review","Approve or reject with notes","Document viewer"]},
+{k:"proofs",l:"Proof vault",b:2,d:"Wire slips, crypto screenshots, and KYC uploads.",f:"Upload and Proof Vault card",c:["2 uploads awaiting review","Link each proof to a deposit or user"]},
+{k:"club",l:"Club Privé",d:"Membership tiers and who holds them.",f:"Club Privé Memberships tab",c:["Members and tiers","Grant or revoke membership"]}]},
+{g:"Properties",i:[
+{k:"spv",l:"SPV portfolio",d:"Funding status and token capitalization for each property vehicle.",f:"SPV Portfolio Funding Velocity, Publish New Property",c:[]},
+{k:"issuance",l:"Token issuance",d:"Issue tokens per SPV up to its cap and allocate them to approved investors.",f:"New page for tokenization",c:["Issue tokens","Allocate to investors","Holdings by investor"]},
+{k:"dividends",l:"Dividends",d:"Split rental income across token holders.",f:"Trigger Dividend Cycle button",c:["Choose a property and amount","Preview each investor's share","Distribution history"]},
+{k:"restore",l:"Restore properties and videos",d:"Bring back archived listings and media.",f:"Restore Properties and Videos button",c:["Archived properties","Archived videos","Restore selected"]}]},
+{g:"Compliance and security",i:[
+{k:"audit",l:"Audit trail",d:"Who did what, and when.",f:"Compliance Audit Trail tab, Audit Log Entries (26)",c:["26 records","Filter by admin, action, date","Export audit report"]},
+{k:"security",l:"Admin security",d:"Sign-in credentials and passphrase for admins.",f:"Admin Security tab, Custom Email and Password",c:["Change admin email and password","Passphrase","Active admins"]}]},
+{g:"System",i:[
+{k:"email",l:"Email templates",d:"What investors receive and whether it was delivered.",f:"Email Templates and Delivery tab",c:["Template editor","Delivery log"]},
+{k:"logs",l:"API logs and monitoring",d:"Platform health, API status, and telemetry.",f:"API Logs and System Monitoring tab, Platform Health",c:["API v1 status","Settled transactions","Open system telemetry"]},
+{k:"errors",l:"Frontend error buffer",d:"Errors caught in the investor site.",f:"Frontend Error Buffer tab",c:["Recent errors","Clear buffer"]}]}];
+var OP={},cur="dashboard",AL={deposits:"deposit-system-pending-deposits",withdrawals:"withdrawals-pending-log"};
+function sl(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/-$/,"")}
+function L(l){return {k:sl(l),l:l,d:"The "+l.toLowerCase()+" page from your current admin, kept as is.",f:"Existing admin menu",c:[]}}
+function F(l,subs){var k=sl(l);return {k:k,l:l,s:subs.map(function(x){var a=typeof x==="string"?[x]:x;return {k:k+"-"+sl(a[0]),l:a[0],b:a[1],d:"The "+a[0].toLowerCase()+" page from your current admin, kept as is.",f:l+" menu",c:[]}})}}
+function G(n){return N.filter(function(g){return g.g===n})[0]}
+function bdg(x){return x.b?'<span class="bd">'+(x.bt||x.b)+'</span>':''}
+function tg(k){var x=N.reduce(function(r,g){return r||g.i.filter(function(i){return i.k===k})[0]},null);OP[k]=!(OP[k]||x.s.some(function(y){return y.k===cur}));side(cur)}
+function row(x,c){if(!x.s)return '<button class="nv'+(x.k===c?' on':'')+'" onclick="go(\''+x.k+'\')"><span>'+x.l+'</span>'+bdg(x)+'</button>';
+var o=OP[x.k]||x.s.some(function(y){return y.k===c});
+var h='<button class="nv" onclick="tg(\''+x.k+'\')"><span>'+x.l+'</span><span>'+(x.s.some(function(y){return y.b})?'<span class="bd">!</span> ':'')+(o?'▴':'▾')+'</span></button>';
+if(o){h+='<div class="ch">';x.s.forEach(function(y){h+='<button class="nv sm'+(y.k===c?' on':'')+'" onclick="go(\''+y.k+'\')"><span>'+y.l+'</span>'+bdg(y)+'</button>'});h+='</div>'}return h}
+N.push(
+{g:"Plans and referrals",i:[L("Manage referral"),F("Plan manage",["Time manage","Plan manage"])]},
+{g:"Support and reports",i:[F("Support ticket",["All ticket",["Pending ticket",1289],"Closed ticket","Answered ticket"]),F("Report",["Transaction log","Invest plan log","Commission log"])]},
+{g:"Marketing",i:[L("Promotional tool"),L("Subscribers"),L("Language")]},
+{g:"Website",i:[L("Active template"),L("Manage pages"),F("Section manage",["About","Banner content","Blog section","Breadcrumb","Profit calculator","Contact","Call to action","FAQ","Footer","How work","Links","Login","Plan","Register","Social icon","Subscribe section","Team member","Testimonial","Top investor","Transaction section","We accept section","Why choose us"])]},
+{g:"Site settings",i:[L("Settings"),L("Logo icon setting"),L("Plugins"),L("SEO"),F("Email manager",["Global template","Email templates","Email configure"]),F("SMS manager",["Global setting","SMS gateways","SMS templates"]),L("Holiday setting"),L("GDPR cookie")]});
+G("Money").i=G("Money").i.filter(function(x){return x.k!=="deposits"&&x.k!=="withdrawals"});
+G("Money").i.unshift(F("Deposit system",["Automatic gateways","Manual gateways",["Pending deposits",29],"Approved deposits","Successful deposits","Rejected deposits","All deposits"]),F("Withdrawals",["Withdraw methods",["Pending log",2],"Approved log","Rejected log","Withdrawals log"]));
+G("System").i=G("System").i.filter(function(x){return x.k!=="email"});
+G("System").i.push(L("System information"),L("Custom CSS"),L("Clear cache"));
+find("users").l="Manage users";
+find("deposit-system-pending-deposits").f="Deposit Approvals tab and Pending Deposits card";
+find("withdrawals-pending-log").f="Withdrawals tab and Pending Withdrawals card";
+find("email-manager-email-templates").f="Email Templates and Delivery tab";
+var O=["Overview","Money","Investors","Properties","Plans and referrals","Support and reports","Marketing","Website","Site settings","Compliance and security","System"];
+N.sort(function(a,b){return O.indexOf(a.g)-O.indexOf(b.g)});
+var SPV=[["Roquebrune-Cap-Martin, Golf Bleu","KTZ-KP1102","Villa",3540000,5900000],["Reception apartment, Paris","KTZ-KP1117","Apartment",10191000,12900000],["Château d'Armainvilliers","KTZ-KP1173","Château",176400,180000],["House, Antibes","KTZ-KP1183","Villa",4028000,5300000],["The Pink Palace, Le Vesinet","KTZ-KP1214","Private mansion",36100000,38000000],["Architect's house, Sèvres","KTZ-P1340A","House",3650000,5000000]];
+function $(i){return document.getElementById(i)}
+function eur(n){return "€"+n.toLocaleString()}
+function nav(o){$("side").classList.toggle("open",o);$("veil").classList.toggle("open",o)}
+function find(k){var r=null;N.forEach(function(g){g.i.forEach(function(x){if(x.k===k&&!x.s)r=x;(x.s||[]).forEach(function(y){if(y.k===k)r=y})})});return r}
+function go(k){location.hash=k;nav(false)}
+function side(c){var h='<div style="font-weight:700;color:#fff;font-size:18px;padding:0 12px">Platform admin</div>';
+N.forEach(function(g){h+='<h3>'+g.g+'</h3>';g.i.forEach(function(x){h+=row(x,c)})});$("side").innerHTML=h}
+function dash(){
+var q=[["Pending deposits","€0.00","0 requests","deposits"],["Pending withdrawals","€0.00","0 locked requests","withdrawals"],["Proof vault","2 awaiting review","Wire slips and screenshots","proofs"],["KYC queue","1 investor","In review","kyc"]];
+var h='<div class="hero"><small>Executive command center</small><h1>Platform administration</h1><p>Super admin. 3 items awaiting review.</p><button class="btn" onclick="go(\'dividends\')">Trigger dividend cycle</button><button class="btn o" onclick="go(\'audit\')">Export audit report</button><button class="btn o" onclick="go(\'spv\')">Publish new property</button></div><h2>Action queue</h2><p class="sub">Everything waiting on you, in one place.</p>';
+q.forEach(function(x){h+='<div class="card"><div class="q"><h4>'+x[0]+'</h4></div><div class="stat">'+x[1]+'</div><div class="from">'+x[2]+'</div><button class="go" onclick="go(\''+x[3]+'\')">Open</button></div>'});
+return h+'<div class="card"><h4>Platform health</h4><div class="row"><div>Audit log entries<small>26 records</small></div></div><div class="row"><div>Settled transactions<small>0</small></div></div><div class="row"><div>Active admins<small>admin@kretz.com</small></div></div><button class="go" onclick="go(\'logs\')">Open system telemetry</button></div>'}
+function spv(){var h='<div class="card"><button class="btn">Add property SPV</button></div><div class="card">';
+SPV.forEach(function(s){var p=Math.round(s[3]/s[4]*100);h+='<div class="row"><div><b>'+s[0]+'</b><small>'+s[1]+' · '+s[2]+' · Solana SPL</small><div class="bar"><i style="width:'+p+'%"></i></div><small>'+eur(s[3])+' of '+eur(s[4])+' ('+p+'%)</small></div></div>'});return h+'</div>'}
+function page(x){var h='<div class="card"><p style="margin:0">'+x.d+'</p><div class="from">Moved from: '+x.f+'</div></div>';
+if(x.k==="spv")return h+spv();
+if(x.c&&x.c.length){h+='<div class="card"><h4>On this page</h4><ul>'+x.c.map(function(c){return '<li>'+c+'</li>'}).join("")+'</ul></div>'}return h}
+function draw(){var k=location.hash.slice(1)||"dashboard";k=AL[k]||k;cur=k;var x=find(k)||{k:"dashboard",l:"Dashboard"};
+$("crumb").textContent=x.l;$("main").innerHTML=k==="dashboard"||!find(k)?dash():'<h2>'+x.l+'</h2><p class="sub"></p>'+page(x);side(x.k);window.scrollTo(0,0)}
+$("menu").onclick=function(){nav(true)};$("veil").onclick=function(){nav(false)};
+window.addEventListener("hashchange",draw);draw();
+</script></body></html>
