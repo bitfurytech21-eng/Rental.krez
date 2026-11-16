@@ -653,8 +653,8 @@ export function errorHandler(
 
 /** Canonical staff role normalization shared by authentication and route guards. */
 export type CanonicalStaffRole = 'super_admin' | 'finance' | 'compliance' | 'property_manager' | 'support';
-export function normalizeStaffRole(rawRole?: string | null): CanonicalStaffRole | null {
- if (!rawRole) return null; const role=String(rawRole).trim().toLowerCase().replace(/[\\s-]+/g,'_');
+export function normalizeStaffRole(rawRole?: string | null, isAdmin = false): CanonicalStaffRole | null {
+ if (!rawRole) return isAdmin ? 'super_admin' : null; const role=String(rawRole).trim().toLowerCase().replace(/[\\s-]+/g,'_');
  if (['admin','super_admin','superadmin'].includes(role)) return 'super_admin';
  if (['finance','finance_admin'].includes(role)) return 'finance';
  if (['compliance','compliance_officer','auditor'].includes(role)) return 'compliance';
@@ -668,7 +668,7 @@ export function requireStaffSection(section: string, action: 'read' | 'write' = 
   const role=normalizeStaffRole(req.user.staffRole)||normalizeStaffRole(req.user.role);
   const universal=req.user.isAdmin===true||role==='super_admin'||req.user.role==='admin';
   const grants: Record<string,CanonicalStaffRole[]>={dashboard:['super_admin','finance','compliance','property_manager','support'],deposits:['super_admin','finance'],withdrawals:['super_admin','finance'],transactions:['super_admin','finance'],investors:['super_admin','finance','compliance','support'],kyc:['super_admin','compliance'],properties:['super_admin','property_manager'],investments:['super_admin','finance','property_manager'],distributions:['super_admin','finance'],reports:['super_admin','finance'],settings:['super_admin','finance'],documents:['super_admin','compliance','property_manager','support'],notifications:['super_admin','compliance','support'],'staff-roles':['super_admin'],'audit-log':['super_admin']};
-  const allowed=universal||!!role&&(grants[section]||[]).includes(role)&&(action==='read'||role==='super_admin');
+  const allowed=universal||!!role&&(grants[section]||[]).includes(role)&&(action==='read'||(role as CanonicalStaffRole)==='super_admin');
   if(!allowed)return res.status(403).json({success:false,error:'Access denied for this staff section/action.',code:'FORBIDDEN_STAFF_SECTION',requestId:req.id}); return next();
  };
 }
