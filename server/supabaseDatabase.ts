@@ -47,7 +47,7 @@ export async function signInCustomer(email: string, password: string) {
   const identity = await verifySupabaseAccessToken(data.session.access_token);
   if (!identity) throw new Error('SUPABASE_PROFILE_NOT_PROVISIONED');
   if (identity.status === 'suspended') throw new Error('ACCOUNT_SUSPENDED');
-  if (identity.role !== 'investor') throw new Error('ADMIN_LOGIN_REQUIRED');
+  if (identity.role !== 'investor' && !identity.isAdmin && !identity.staffRole) throw new Error('ADMIN_LOGIN_REQUIRED');
   return { user: identity, session: data.session };
 }
 
@@ -105,7 +105,9 @@ export type VerifiedSupabaseIdentity = {
   id: string;
   email: string;
   fullName: string;
-  role: 'investor' | 'admin' | 'super_admin' | 'finance_admin' | 'operations_admin' | 'support' | 'auditor';
+  role: 'investor' | 'admin' | 'super_admin' | 'finance_admin' | 'operations_admin' | 'finance' | 'compliance' | 'property_manager' | 'support' | 'auditor';
+  isAdmin?: boolean;
+  staffRole?: string | null;
   accountType?: string;
   balance?: number;
   status?: 'active' | 'suspended';
@@ -113,8 +115,27 @@ export type VerifiedSupabaseIdentity = {
 };
 
 const rolePriority: VerifiedSupabaseIdentity['role'][] = [
-  'super_admin', 'admin', 'finance_admin', 'operations_admin', 'support', 'auditor', 'investor'
+  'super_admin', 'admin', 'finance_admin', 'finance', 'operations_admin', 'property_manager', 'compliance', 'support', 'auditor', 'investor'
 ];
+
+function mapAssignedRoleToStaffRole(assigned: Set<string>, profileRole?: string | null): string | null {
+  if (assigned.has('super_admin') || assigned.has('admin') || profileRole === 'super_admin' || profileRole === 'admin') {
+    return 'super_admin';
+  }
+  if (assigned.has('finance') || assigned.has('finance_admin') || profileRole === 'finance' || profileRole === 'finance_admin') {
+    return 'finance';
+  }
+  if (assigned.has('compliance') || assigned.has('auditor') || profileRole === 'compliance' || profileRole === 'auditor') {
+    return 'compliance';
+  }
+  if (assigned.has('property_manager') || assigned.has('operations_admin') || profileRole === 'property_manager' || profileRole === 'operations_admin') {
+    return 'property_manager';
+  }
+  if (assigned.has('support') || profileRole === 'support') {
+    return 'support';
+  }
+  return null;
+}
 
 export async function verifySupabaseAccessToken(token: string): Promise<VerifiedSupabaseIdentity | null> {
   if (!isSupabaseAuthConfigured() || !token) return null;
@@ -127,20 +148,40 @@ export async function verifySupabaseAccessToken(token: string): Promise<Verified
 
   const [{ data: roleRows, error: roleError }, { data: profile, error: profileError }] = await Promise.all([
     authClient.from('user_roles').select('role').eq('user_id', authData.user.id),
-    authClient.from('profiles').select('full_name,account_type,wallet_balance,role').eq('id', authData.user.id).maybeSingle()
+    authClient.from('profiles').select('*').eq('id', authData.user.id).maybeSingle()
   ]);
-  if (roleError || profileError) return null;
+  if (roleError && profileError) return null;
 
   const assigned = new Set((roleRows || []).map((row: any) => String(row.role)));
-  const role = rolePriority.find(candidate => assigned.has(candidate)) || 'investor';
+  const rawStaffRole = typeof (profile as any)?.staff_role === 'string' && (profile as any).staff_role.trim()
+    ? String((profile as any).staff_role).trim()
+    : null;
+  const isAdmin = Boolean(
+    (profile as any)?.is_admin === true ||
+    profile?.role === 'admin' ||
+    profile?.role === 'super_admin' ||
+    assigned.has('super_admin') ||
+    assigned.has('admin')
+  );
+  const staffRole = rawStaffRole || mapAssignedRoleToStaffRole(assigned, profile?.role) || (isAdmin ? 'super_admin' : null);
+  const matchedPriorityRole = rolePriority.find(candidate => assigned.has(candidate));
+  const resolvedRole: VerifiedSupabaseIdentity['role'] = isAdmin
+    ? 'super_admin'
+    : (staffRole && ['finance', 'compliance', 'property_manager', 'support', 'super_admin'].includes(staffRole)
+        ? (staffRole as VerifiedSupabaseIdentity['role'])
+        : (matchedPriorityRole || 'investor'));
+
   return {
     id: authData.user.id,
     email: authData.user.email || '',
     fullName: profile?.full_name || authData.user.user_metadata?.full_name || authData.user.email?.split('@')[0] || 'Investor',
-    role,
+    role: resolvedRole,
+    isAdmin,
+    staffRole,
     accountType: profile?.account_type || 'individual_investor',
     balance: Number(profile?.wallet_balance || 0),
-    status: 'active'
+    status: (profile as any)?.account_status === 'suspended' ? 'suspended' : 'active',
+    suspendedReason: (profile as any)?.suspended_reason || undefined,
   };
 }
 
@@ -310,33 +351,260 @@ export async function listUserInvestments(userId: string) {
 }
 
 export async function listAdminUsers(limit = 500) {
-  const { data, error } = await getSupabaseAdmin().from('user_profiles')
-    .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,account_status,suspended_reason,total_dividends_earned,bank_iban,crypto_deposit_address,created_at,updated_at,user_roles(role)')
-    .order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 1000));
+  const admin = getSupabaseAdmin();
+  const capped = Math.min(Math.max(limit, 1), 1000);
+  const [{ data, error }, profilesRes] = await Promise.all([
+    admin.from('user_profiles')
+      .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,account_status,suspended_reason,total_dividends_earned,bank_iban,crypto_deposit_address,created_at,updated_at,user_roles(role)')
+      .order('created_at', { ascending: false }).limit(capped),
+    admin.from('profiles').select('id,is_admin,staff_role,role').limit(capped)
+  ]);
   if (error) throw error;
-  return data || [];
+  const profileMap = new Map<string, any>();
+  if (!profilesRes.error && Array.isArray(profilesRes.data)) {
+    for (const p of profilesRes.data) {
+      profileMap.set(String(p.id), p);
+    }
+  }
+  return (data || []).map((row: any) => {
+    const p = profileMap.get(String(row.id));
+    return {
+      ...row,
+      is_admin: p?.is_admin === true,
+      staff_role: p?.staff_role ?? null,
+    };
+  });
 }
 
 export async function getPersistentDashboardSummary(userId: string) {
-  const [profile, investments, transactions] = await Promise.all([
+  const [profile, investments, transactions, wallet, complianceSteps] = await Promise.all([
     getUserProfile(userId),
     listUserInvestments(userId),
-    listUserTransactions(userId, 250)
+    listUserTransactions(userId, 500),
+    getWalletSummary(userId),
+    listComplianceSteps(userId).catch(() => []),
   ]);
   if (!profile) return null;
-  const investedCapital = investments.reduce((sum: number, item: any) => sum + Number(item.total_amount_invested || 0), 0);
-  const dividends = investments.reduce((sum: number, item: any) => sum + Number(item.total_dividends_received || 0), 0);
-  const activeProperties = new Set(investments.filter((item: any) => item.status === 'active').map((item: any) => item.plan_id));
-  const monthlyIncome = investments.filter((item: any) => item.status === 'active')
-    .reduce((sum: number, item: any) => sum + Number(item.projected_monthly_income || 0), 0);
+
+  const nowIso = new Date().toISOString();
+  const confirmedInvestments = investments.filter((item: any) => item.status === 'active' || item.status === 'completed' || item.status === 'matured');
+  const pendingInvestments = investments.filter((item: any) => item.status === 'pending' || item.status === 'processing');
+
+  const investedCapital = confirmedInvestments.reduce((sum: number, item: any) => sum + Number(item.current_valuation || item.total_amount_invested || 0), 0);
+  const pendingAllocationsAmount = pendingInvestments.reduce((sum: number, item: any) => sum + Number(item.total_amount_invested || 0), 0)
+    + transactions.filter((t: any) => (t.type === 'investment' || t.type === 'purchase') && t.status === 'pending').reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+
+  const pendingDeposits = transactions
+    .filter((t: any) => t.type === 'deposit' && (t.status === 'pending' || t.status === 'processing'))
+    .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+
+  const reservedWithdrawals = transactions
+    .filter((t: any) => t.type === 'withdrawal' && (t.status === 'pending' || t.status === 'processing'))
+    .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+
+  const availableBalance = Number(wallet?.availableBalance ?? profile.wallet_balance ?? 0);
+  const restrictedCash = profile.account_status === 'suspended' ? availableBalance : 0;
+  const withdrawableCash = profile.account_status === 'suspended' ? 0 : availableBalance;
+
+  const dividendsFromTx = transactions
+    .filter((t: any) => (t.type === 'dividend' || t.type === 'distribution' || t.type === 'payout') && t.status === 'completed')
+    .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+  const dividendsFromInvestments = confirmedInvestments.reduce((sum: number, item: any) => sum + Number(item.total_dividends_received || 0), 0);
+  const dividends = Number(Math.max(dividendsFromTx, dividendsFromInvestments, Number(profile.total_dividends_earned || 0)).toFixed(2));
+
+  const nowDate = new Date();
+  const monthStart = Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), 1);
+  const collectedThisMonth = Number(
+    transactions
+      .filter((t: any) => (t.type === 'dividend' || t.type === 'distribution' || t.type === 'payout') && t.status === 'completed' && new Date(t.created_at).getTime() >= monthStart)
+      .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0)
+      .toFixed(2)
+  );
+
+  const activeProperties = new Set(confirmedInvestments.map((item: any) => item.plan_id));
+  const monthlyIncome = confirmedInvestments
+    .reduce((sum: number, item: any) => sum + Number(item.projected_monthly_income || ((Number(item.total_amount_invested || 0) * Number(item.investment_plans?.estimated_annual_yield || 8.4)) / 100 / 12)), 0);
+
+  const nextDistDate = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+
+  const holdingsList = confirmedInvestments.map((item: any) => {
+    const plan = item.investment_plans || {};
+    const totalPlanTokens = Number(plan.total_tokens || 0);
+    const units = Number(item.tokens_purchased || 0);
+    return {
+      id: item.id,
+      propertyId: item.plan_id,
+      propertyTitle: plan.title || item.plan_id,
+      location: plan.location || '',
+      confirmedUnits: units,
+      ownershipPercent: totalPlanTokens > 0 ? Number(((units / totalPlanTokens) * 100).toFixed(4)) : 0,
+      valuation: Number(item.current_valuation || item.total_amount_invested || 0),
+      valuationDate: item.updated_at || item.purchased_at || nowIso,
+      status: item.status,
+      onChainStatus: item.tx_hash ? 'On-Chain Settled' : 'SPV Book-Entry Confirmed',
+      certificateId: item.certificate_id || null,
+    };
+  });
+
+  const confirmedUnits = holdingsList.reduce((s, h) => s + h.confirmedUnits, 0);
+  const pendingUnits = pendingInvestments.reduce((s: number, item: any) => s + Number(item.tokens_purchased || 0), 0);
+
+  // Build 5-stage Investor Account & Ownership Lifecycle
+  const kycNorm = String(profile.kyc_status || 'pending').toLowerCase();
+  const hasAnyDepositCompleted = transactions.some((t: any) => t.type === 'deposit' && t.status === 'completed');
+  const hasAnyDepositPending = transactions.some((t: any) => t.type === 'deposit' && t.status === 'pending');
+
+  const kycStageStatus: string =
+    kycNorm === 'verified' || kycNorm === 'approved'
+      ? 'Approved'
+      : kycNorm === 'rejected'
+      ? 'Rejected'
+      : complianceSteps.some((s) => s.status === 'rejected')
+      ? 'Action Required'
+      : complianceSteps.some((s) => s.status === 'in_review')
+      ? 'In Review'
+      : 'Not Started';
+
+  const fundingStageStatus: string =
+    availableBalance > 0 || hasAnyDepositCompleted || investedCapital > 0
+      ? 'Completed'
+      : hasAnyDepositPending
+      ? 'Pending'
+      : 'Not Started';
+
+  const holdingsStageStatus: string =
+    confirmedUnits > 0
+      ? 'Completed'
+      : pendingUnits > 0 || pendingAllocationsAmount > 0
+      ? 'Pending'
+      : 'Not Started';
+
+  const yieldsStageStatus: string =
+    dividends > 0
+      ? 'Completed'
+      : confirmedUnits > 0
+      ? 'Pending'
+      : 'Not Started';
+
+  const lifecycleStages = [
+    {
+      stepNumber: 1,
+      key: 'account_registered',
+      title: 'Account Registered',
+      status: 'Completed',
+      summary: `Registered ${new Date(profile.created_at || nowIso).toLocaleDateString('en-GB')}`,
+      actionTab: 'profile',
+      requirements: ['Authenticated investor identity established'],
+      updatedAt: profile.created_at || nowIso,
+    },
+    {
+      stepNumber: 2,
+      key: 'identity_verification',
+      title: 'Identity Verification (KYC/AML)',
+      status: kycStageStatus,
+      summary: kycStageStatus === 'Approved' ? 'Tier-2 EU AML Verified' : kycStageStatus === 'In Review' ? 'Documents queued for compliance officer' : 'Upload passport & proof of address',
+      actionTab: 'verification',
+      requirements: complianceSteps.map((s) => `${s.title}: ${s.status}`),
+      updatedAt: profile.updated_at || nowIso,
+    },
+    {
+      stepNumber: 3,
+      key: 'wallet_funded',
+      title: 'Wallet Funded',
+      status: fundingStageStatus,
+      summary: availableBalance > 0 ? `Cleared EUR ${availableBalance.toFixed(2)}` : hasAnyDepositPending ? `Pending EUR ${pendingDeposits.toFixed(2)}` : 'Initiate SEPA or crypto deposit',
+      actionTab: 'wallet',
+      requirements: ['Minimum €100 SEPA wire or supported crypto settlement'],
+      updatedAt: wallet?.updatedAt || nowIso,
+    },
+    {
+      stepNumber: 4,
+      key: 'asset_tokens_held',
+      title: 'Asset Tokens Held',
+      status: holdingsStageStatus,
+      summary: confirmedUnits > 0 ? `${confirmedUnits} SPV units confirmed across ${activeProperties.size} property` : 'No confirmed property holdings yet',
+      actionTab: 'marketplace',
+      requirements: ['Allocate cleared treasury funds into a landmark SPV offering'],
+      updatedAt: confirmedInvestments[0]?.purchased_at || null,
+    },
+    {
+      stepNumber: 5,
+      key: 'monthly_yields',
+      title: 'Monthly Yields',
+      status: yieldsStageStatus,
+      summary: dividends > 0 ? `EUR ${dividends.toFixed(2)} cumulative rent distributed` : confirmedUnits > 0 ? `Next distribution scheduled ${nextDistDate}` : 'Activated upon confirmed asset allocation',
+      actionTab: 'distributions',
+      requirements: ['Monthly rental distributions credited on the 1st of each month'],
+      updatedAt: transactions.find((t: any) => t.type === 'dividend' || t.type === 'distribution')?.created_at || null,
+    },
+  ];
+  const completedStages = lifecycleStages.filter((s) => s.status === 'Completed' || s.status === 'Approved').length;
+  const progressPercent = Math.round((completedStages / 5) * 100);
+
+  // Build real chronological performance history from verified ledger events
+  const chronologicalTxs = [...transactions]
+    .filter((t: any) => t.status === 'completed')
+    .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  let runningNav = 0;
+  let runningDivs = 0;
+  const performanceHistory: Array<{ timestamp: string; label: string; valuation: number; dividends: number }> = [];
+  for (const tx of chronologicalTxs) {
+    const amt = Number(tx.amount || 0);
+    if (tx.type === 'deposit') runningNav += amt;
+    else if (tx.type === 'withdrawal') runningNav = Math.max(0, runningNav - amt);
+    else if (tx.type === 'dividend' || tx.type === 'distribution' || tx.type === 'payout') {
+      runningDivs += amt;
+      runningNav += amt;
+    }
+    const d = new Date(tx.created_at);
+    performanceHistory.push({
+      timestamp: tx.created_at,
+      label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }),
+      valuation: Number(runningNav.toFixed(2)),
+      dividends: Number(runningDivs.toFixed(2)),
+    });
+  }
+
   return {
-    totalPortfolioValue: Number((Number(profile.wallet_balance || 0) + Number(profile.invested_balance || investedCapital)).toFixed(2)),
-    availableBalance: Number(profile.wallet_balance || 0),
+    totalPortfolioValue: Number((withdrawableCash + Number(profile.invested_balance || investedCapital)).toFixed(2)),
+    availableBalance: withdrawableCash,
     investedCapital: Number(profile.invested_balance || investedCapital),
     totalEarnedDividends: dividends,
     activePropertiesCount: activeProperties.size,
     projectedMonthlyIncome: Number(monthlyIncome.toFixed(2)),
     currency: 'EUR',
+    lastUpdated: nowIso,
+    valuationDate: holdingsList[0]?.valuationDate || profile.updated_at || nowIso,
+    pendingAllocationsCount: pendingInvestments.length,
+    pendingAllocationsAmount: Number(pendingAllocationsAmount.toFixed(2)),
+    cashBreakdown: {
+      available: withdrawableCash,
+      pendingDeposits: Number(pendingDeposits.toFixed(2)),
+      reservedWithdrawals: Number(reservedWithdrawals.toFixed(2)),
+      restricted: Number(restrictedCash.toFixed(2)),
+      currency: 'EUR',
+    },
+    rentSummary: {
+      projectedMonthly: Number(monthlyIncome.toFixed(2)),
+      collectedTotal: dividends,
+      collectedThisMonth,
+      nextDistributionDate: confirmedInvestments.length > 0 ? nextDistDate : null,
+      paymentStatus: collectedThisMonth > 0 ? 'Paid This Cycle' : confirmedInvestments.length > 0 ? 'Scheduled' : 'No Active Entitlements',
+    },
+    holdingsSummary: {
+      confirmedUnits,
+      pendingUnits,
+      activePropertiesCount: activeProperties.size,
+      holdings: holdingsList,
+    },
+    lifecycle: {
+      progressPercent,
+      completedStages,
+      totalStages: 5,
+      stages: lifecycleStages,
+    },
+    performanceHistory,
     recentTransactions: transactions.slice(0, 8).map(toApiTransaction)
   };
 }
@@ -548,6 +816,52 @@ export async function createUserNotification(
   return data;
 }
 
+export async function listAdminNotifications(limit = 150) {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('notifications')
+    .select('id,user_id,title,message,type,read,created_at,user_profiles(email,full_name)')
+    .order('created_at', { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 300));
+  if (!error) return data || [];
+  const fallback = await admin
+    .from('notifications')
+    .select('id,user_id,title,message,type,read,created_at')
+    .order('created_at', { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 300));
+  if (fallback.error) throw fallback.error;
+  return fallback.data || [];
+}
+
+export async function sendAdminNotifications(
+  targetUserId: string | 'all',
+  notif: { title: string; message: string; type?: string }
+) {
+  const admin = getSupabaseAdmin();
+  let userIds: string[] = [];
+  if (targetUserId === 'all') {
+    const { data: users, error } = await admin.from('user_profiles').select('id').limit(1000);
+    if (error) throw error;
+    userIds = (users || []).map((u: any) => String(u.id)).filter(Boolean);
+  } else {
+    userIds = [targetUserId];
+  }
+  if (userIds.length === 0) return [];
+  const nowIso = new Date().toISOString();
+  const rows = userIds.map((uid) => ({
+    id: crypto.randomUUID(),
+    user_id: uid,
+    title: notif.title,
+    message: notif.message,
+    type: notif.type || 'info',
+    read: false,
+    created_at: nowIso,
+  }));
+  const { data, error } = await admin.from('notifications').insert(rows).select('*');
+  if (error) throw error;
+  return data || [];
+}
+
 export async function listUserFavorites(userId: string) {
   const { data, error } = await getSupabaseAdmin().from('user_favorites')
     .select('property_id').eq('user_id', userId).order('created_at', { ascending: false });
@@ -574,12 +888,32 @@ export async function getUserPreferences(userId: string) {
     .select('preferences').eq('user_id', userId).maybeSingle();
   if (error) throw error;
   return data?.preferences || {
-    defaultSort: 'yield-desc', itemsPerPage: 6, currencyDisplay: 'EUR', emailNotifications: true
+    defaultSort: 'yield-desc',
+    itemsPerPage: 6,
+    currencyDisplay: 'EUR',
+    emailNotifications: true,
+    depositAlerts: true,
+    withdrawalUpdates: true,
+    kycUpdates: true,
+    distributionAlerts: true,
+    securityAlerts: true,
   };
 }
 
 export async function saveUserPreferences(userId: string, preferences: Record<string, unknown>) {
-  const allowed = ['defaultSort','itemsPerPage','currencyDisplay','emailNotifications','smsAlerts'];
+  const allowed = [
+    'defaultSort',
+    'itemsPerPage',
+    'currencyDisplay',
+    'emailNotifications',
+    'smsAlerts',
+    'depositAlerts',
+    'withdrawalUpdates',
+    'kycUpdates',
+    'distributionAlerts',
+    'securityAlerts',
+    'treasurySubBalances',
+  ];
   const safe: Record<string, unknown> = {};
   for (const key of allowed) if (preferences[key] !== undefined) safe[key] = preferences[key];
   const current = await getUserPreferences(userId);
@@ -831,26 +1165,49 @@ export async function findTransactionByReferenceOrId(idOrRef: string) {
   if (!clean) return null;
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
   if (isUuid) {
-    const { data } = await admin.from('transactions').select('*').eq('id', clean).maybeSingle();
+    const { data } = await admin.from('payment_transactions').select('*').eq('id', clean).maybeSingle();
     if (data) return data;
   }
-  const { data } = await admin.from('transactions').select('*').eq('reference', clean).maybeSingle();
+  const { data } = await admin.from('payment_transactions').select('*').eq('reference', clean).maybeSingle();
   return data || null;
 }
 
 export async function getAdminIdentityByEmail(email: string): Promise<VerifiedSupabaseIdentity | null> {
   if (!isSupabaseServerConfigured()) return null;
-  const { data, error } = await getSupabaseAdmin().from('user_profiles')
-    .select('id,email,full_name,account_type,wallet_balance,account_status,suspended_reason,user_roles(role)')
-    .eq('email', email.trim().toLowerCase()).maybeSingle();
+  const admin = getSupabaseAdmin();
+  const cleanEmail = email.trim().toLowerCase();
+  const [{ data, error }, { data: profileRow }] = await Promise.all([
+    admin.from('user_profiles')
+      .select('id,email,full_name,account_type,wallet_balance,account_status,suspended_reason,user_roles(role)')
+      .eq('email', cleanEmail).maybeSingle(),
+    admin.from('profiles')
+      .select('id,is_admin,staff_role,role')
+      .eq('email', cleanEmail).maybeSingle()
+  ]);
   if (error) throw error;
   if (!data) return null;
   const assigned = new Set((data.user_roles || []).map((row: any) => String(row.role)));
-  const role = rolePriority.find(candidate => assigned.has(candidate)) || 'investor';
-  if (!['admin','super_admin','finance_admin','operations_admin','support','auditor'].includes(role)) return null;
+  const isAdmin = Boolean(
+    profileRow?.is_admin === true ||
+    profileRow?.role === 'admin' ||
+    profileRow?.role === 'super_admin' ||
+    assigned.has('super_admin') ||
+    assigned.has('admin')
+  );
+  const staffRole = (typeof profileRow?.staff_role === 'string' && profileRow.staff_role.trim())
+    ? profileRow.staff_role.trim()
+    : mapAssignedRoleToStaffRole(assigned, profileRow?.role) || (isAdmin ? 'super_admin' : null);
+  const role = isAdmin
+    ? 'super_admin'
+    : (staffRole && ['finance', 'compliance', 'property_manager', 'support', 'super_admin'].includes(staffRole)
+        ? (staffRole as VerifiedSupabaseIdentity['role'])
+        : (rolePriority.find(candidate => assigned.has(candidate)) || 'investor'));
+  if (!isAdmin && !staffRole && !['admin','super_admin','finance_admin','operations_admin','finance','compliance','property_manager','support','auditor'].includes(role)) {
+    return null;
+  }
   return {
     id: data.id, email: data.email, fullName: data.full_name || 'Administrator',
-    role, accountType: data.account_type, balance: Number(data.wallet_balance || 0),
+    role, isAdmin, staffRole, accountType: data.account_type, balance: Number(data.wallet_balance || 0),
     status: data.account_status === 'suspended' ? 'suspended' : 'active',
     suspendedReason: data.suspended_reason || undefined
   };

@@ -6,7 +6,10 @@ import { useToast } from '../../context/ToastContext';
 import { requestPlatformNotificationPermission, showPlatformNotification } from '../../lib/browserNotifications';
 import { ledger } from '../../lib/ledger';
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
-import { contactApi, userApi } from '../../lib/api';
+import { contactApi, userApi, treasuryApi } from '../../lib/api';
+import { LagenceLogo } from '../common/LagenceLogo';
+import { ColoredPipeline, PipelineStage, PipelineStageStatus } from '../visuals/ColoredPipeline';
+import { PortfolioPerformanceChart } from '../visuals/PortfolioPerformanceChart';
 import { BalanceCard } from '../dashboard/BalanceCard';
 import { PortfolioOverview } from '../dashboard/PortfolioOverview';
 import { MyPropertyInvestments } from '../dashboard/MyPropertyInvestments';
@@ -21,10 +24,13 @@ import { ProfilePage } from './ProfilePage';
 import { PropertyCard } from '../properties/PropertyCard';
 import { PropertyDocumentViewer } from '../documents/PropertyDocumentViewer';
 import { Property } from '../../types/property';
+import { Investment } from '../../types/investment';
+import { Transaction } from '../../types/transaction';
 import { ButtonLoader } from '../common/ButtonLoader';
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowRightLeft,
   Bell,
   Building2,
   TrendingUp,
@@ -65,6 +71,8 @@ import {
   Moon,
   Tag,
   Crown,
+  Landmark,
+  Calendar,
 } from 'lucide-react';
 import { UserMembershipCard } from '../club/UserMembershipCard';
 import { MembershipApplicationModal } from '../club/MembershipApplicationModal';
@@ -154,10 +162,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [bellDropdownOpen, setBellDropdownOpen] = useState(false);
   const [mobileHeaderMenuOpen, setMobileHeaderMenuOpen] = useState(false);
   const [, setLedgerVersion] = useState(0);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  const bellDropdownRef = useRef<HTMLDivElement | null>(null);
   const supportSubjectRef = useRef<HTMLInputElement | null>(null);
+
+  // Live Backend Financial State
+  const [summary, setSummary] = useState<any | null>(null);
+  const [subBalances, setSubBalances] = useState<Record<string, number>>({});
+  const [serverTransactions, setServerTransactions] = useState<Transaction[] | null>(null);
+  const [serverNotifications, setServerNotifications] = useState<any[] | null>(null);
+  const [serverInvestments, setServerInvestments] = useState<Investment[] | null>(null);
+  const [isHydrating, setIsHydrating] = useState<boolean>(true);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [selectedLifecycleKey, setSelectedLifecycleKey] = useState<string>('identity_verification');
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    depositAlerts: true,
+    withdrawalUpdates: true,
+    kycUpdates: true,
+    distributionAlerts: true,
+    securityAlerts: true,
+    emailNotifications: true,
+  });
+  const [isSavingPrefs, setIsSavingPrefs] = useState(false);
 
   // Support Inquiry States
   const [supportSubject, setSupportSubject] = useState('');
@@ -280,6 +310,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setUserDropdownOpen(false);
+        setBellDropdownOpen(false);
         setMobileHeaderMenuOpen(false);
         setIsSearchFocused(false);
         setShowQrModal(false);
@@ -289,6 +320,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setIsSearchFocused(false);
       }
+      if (bellDropdownRef.current && !bellDropdownRef.current.contains(e.target as Node)) {
+        setBellDropdownOpen(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('mousedown', handleClickOutside);
@@ -297,6 +331,166 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const hydrateLiveDashboard = async (silent = false) => {
+    if (!user?.id) return;
+    if (!silent) setIsHydrating(true);
+    try {
+      const results = await Promise.allSettled([
+        userApi.getDashboardSummary(),
+        treasuryApi.getBalances(),
+        userApi.getTransactions({ limit: 250 }),
+        userApi.getNotifications(),
+        userApi.getPortfolio(),
+        userApi.getPreferences(),
+      ]);
+
+      const [sumRes, balRes, txRes, notifRes, portRes, prefRes] = results;
+      let anySuccess = false;
+
+      if (sumRes.status === 'fulfilled' && sumRes.value?.data) {
+        setSummary(sumRes.value.data);
+        anySuccess = true;
+      }
+
+      if (balRes.status === 'fulfilled' && balRes.value?.data?.balances) {
+        setSubBalances(balRes.value.data.balances);
+        anySuccess = true;
+      }
+
+      if (txRes.status === 'fulfilled' && Array.isArray(txRes.value?.data)) {
+        const mappedTxs: Transaction[] = txRes.value.data.map((t: any) => ({
+          id: String(t.id),
+          userId: String(t.userId || t.user_id || user.id),
+          type: (t.type === 'dividend' || t.type === 'payout'
+            ? 'distribution'
+            : t.type === 'purchase'
+            ? 'investment'
+            : t.type) as Transaction['type'],
+          amount: Number(t.amount || 0),
+          currency: String(t.currency || 'EUR'),
+          status: (t.status || 'completed') as Transaction['status'],
+          description: String(
+            t.description || (t.propertyTitle ? `${t.type} — ${t.propertyTitle}` : `${t.type} transaction`)
+          ),
+          reference: String(t.reference || t.id),
+          createdAt: String(t.createdAt || t.created_at || new Date().toISOString()),
+          paymentMethod: String(t.paymentMethod || t.method || 'Internal Ledger'),
+          txHash: t.txHash || t.tx_hash,
+          balanceAfter: Number(t.balanceAfter ?? t.balance_after ?? 0),
+          metadata: {
+            ...(t.metadata || {}),
+            propertyId: t.propertyId || t.property_id || t.metadata?.propertyId,
+            propertyTitle: t.propertyTitle || t.property_title || t.metadata?.propertyTitle,
+            tokens: t.tokensPurchased || t.tokens_purchased || t.metadata?.tokens,
+            bankIban: t.bankIban || t.metadata?.bankIban,
+            destinationAddress: t.destination || t.metadata?.destinationAddress,
+          },
+        }));
+        setServerTransactions(mappedTxs);
+        anySuccess = true;
+      }
+
+      if (notifRes.status === 'fulfilled' && Array.isArray(notifRes.value?.data)) {
+        setServerNotifications(
+          notifRes.value.data.map((n: any) => ({
+            id: String(n.id),
+            userId: user.id,
+            title: String(n.title || 'Account Update'),
+            message: String(n.message || ''),
+            type: n.type || 'info',
+            read: Boolean(n.read),
+            createdAt: String(n.createdAt || n.created_at || new Date().toISOString()),
+          }))
+        );
+        anySuccess = true;
+      }
+
+      if (portRes.status === 'fulfilled') {
+        const rawList =
+          portRes.value?.data?.investments ||
+          portRes.value?.investments ||
+          (Array.isArray(portRes.value?.data) ? portRes.value.data : null);
+        if (Array.isArray(rawList)) {
+          const allProps = ledger.getProperties();
+          const mappedInvs: Investment[] = rawList.map((item: any) => {
+            const propId = String(item.propertyId || item.property_id || '');
+            const prop = allProps.find((p) => p.id === propId || p.slug === propId);
+            const tokensPurchased = Number(item.tokensPurchased ?? item.tokens_purchased ?? 0);
+            const totalInvested = Number(item.totalAmountInvested ?? item.total_amount_invested ?? 0);
+            const pricePerToken =
+              Number(item.purchasePricePerToken ?? item.pricePerToken ?? item.tokenPrice ?? prop?.tokenPrice) ||
+              (tokensPurchased > 0 ? totalInvested / tokensPurchased : 100);
+            const estYield = Number(item.estimatedAnnualYield ?? item.estimated_annual_yield ?? prop?.estimatedAnnualYield ?? 8.4);
+            const durationMonths = Number(item.durationMonths ?? item.duration_months ?? prop?.durationMonths ?? 36);
+            const projectedMonthlyIncome = Number(
+              item.projectedMonthlyIncome ??
+                item.projected_monthly_income ??
+                (totalInvested * (estYield / 100)) / 12
+            );
+            return {
+              id: String(item.id || `inv-${propId}`),
+              userId: String(item.userId || item.user_id || user.id),
+              propertyId: propId,
+              propertyTitle: String(item.propertyTitle || item.property_title || prop?.title || 'Landmark SPV Asset'),
+              propertyImage: String(
+                item.propertyImage || item.property_image || prop?.images?.[0] || prop?.bannerImage || ''
+              ),
+              propertyLocation: String(item.propertyLocation || item.property_location || prop?.location || ''),
+              tokensPurchased,
+              tokenPrice: pricePerToken,
+              totalAmountInvested: totalInvested,
+              currentValuation: Number(item.currentValuation ?? item.current_valuation ?? totalInvested),
+              estimatedAnnualYield: estYield,
+              projectedMonthlyIncome: Number(projectedMonthlyIncome.toFixed(2)),
+              durationMonths,
+              totalDividendsReceived: Number(item.totalDividendsReceived ?? item.total_dividends_received ?? 0),
+              purchasedAt: String(item.purchasedAt || item.purchased_at || item.createdAt || item.created_at || new Date().toISOString()),
+              startDate: String(item.startDate || item.purchasedAt || item.createdAt || new Date().toISOString()),
+              maturityDate: String(item.maturityDate || item.maturity_date || ''),
+              status: (item.status || 'active') as Investment['status'],
+              certificateId: String(item.certificateId || item.certificate_id || `CERT-${String(item.id || '').slice(0, 8)}`),
+              transactionHash: String(item.transactionHash || item.txHash || item.tx_hash || ''),
+            };
+          });
+          setServerInvestments(mappedInvs);
+          anySuccess = true;
+        }
+      }
+
+      if (prefRes.status === 'fulfilled' && prefRes.value?.data) {
+        const p = prefRes.value.data;
+        setNotificationPrefs((prev) => ({
+          depositAlerts: p.depositAlerts ?? prev.depositAlerts,
+          withdrawalUpdates: p.withdrawalUpdates ?? prev.withdrawalUpdates,
+          kycUpdates: p.kycUpdates ?? prev.kycUpdates,
+          distributionAlerts: p.distributionAlerts ?? prev.distributionAlerts,
+          securityAlerts: p.securityAlerts ?? prev.securityAlerts,
+          emailNotifications: p.emailNotifications ?? prev.emailNotifications,
+        }));
+      }
+
+      if (!anySuccess) {
+        setSyncError('Unable to reach treasury & portfolio services. Displayed data may be incomplete.');
+      } else {
+        setSyncError(null);
+        setLastSyncedAt(new Date().toISOString());
+      }
+    } catch (err: any) {
+      setSyncError(err?.message || 'Unable to refresh account records.');
+    } finally {
+      setIsHydrating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    hydrateLiveDashboard(false);
+    const interval = setInterval(() => {
+      hydrateLiveDashboard(true);
+    }, 45000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   const toggleDashboardMode = () => {
     const nextMode = dashboardMode === 'light' ? 'dark' : 'light';
@@ -373,14 +567,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     );
   }
 
-  const investments = ledger.getInvestments(user.id);
-  const transactions = ledger.getTransactions(user.id);
-  const notifications = ledger.getNotifications(user.id);
+  const investments = serverInvestments !== null ? serverInvestments : ledger.getInvestments(user.id);
+  const transactions = serverTransactions !== null ? serverTransactions : ledger.getTransactions(user.id);
+  const notifications = serverNotifications !== null ? serverNotifications : ledger.getNotifications(user.id);
   const properties = ledger.getProperties();
   const frontendProperties = ledger.getFrontendProperties();
 
-  const handleWithdrawalSuccess = () => {
-    refreshUser();
+  const handleWithdrawalSuccess = async () => {
+    await Promise.all([refreshUser(), hydrateLiveDashboard(true)]);
   };
 
   const referralCode = `KRETZ-${(user.email ? user.email.split('@')[0] : user.id.slice(0, 6) || 'VIP')
@@ -638,11 +832,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           onClick={onNavigateHome}
           className="p-4 border-b border-[var(--dash-sidebar-border)] flex items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity"
         >
-          <img
-            src="/assets/aistudio/IMG_7234_bd44519a.jpeg"
-            alt="L'Agence Logo"
-            className="w-7 h-7 rounded-lg object-cover border border-[var(--dash-accent-border)]"
-          />
+          <LagenceLogo className="w-7 h-7 shrink-0" variant="gold" />
           <div className="min-w-0">
             <h2 className="font-bold text-sm text-[var(--dash-text)] tracking-tight leading-tight truncate">
               L&apos;Agence
@@ -773,6 +963,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 className="flex items-center gap-2 text-left cursor-pointer group focus:outline-none"
                 title="Return to Home"
               >
+                <LagenceLogo className="w-6 h-6 shrink-0 md:hidden" variant="gold" />
                 <div className="flex flex-col">
                   <span className="text-base font-bold tracking-tight text-[var(--dash-text)] leading-tight">
                     L&apos;Agence
@@ -995,23 +1186,116 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
             </button>
 
-            {/* Notifications Button */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('notifications')}
-              aria-label="Notifications"
-              title="Notifications"
-              className={`relative size-10 grid place-items-center rounded-xl border transition-colors cursor-pointer ${
-                activeTab === 'notifications'
-                  ? 'bg-[var(--dash-sidebar-active-bg)] text-[var(--dash-text)] border-[var(--dash-accent-border)]'
-                  : 'bg-[var(--dash-header-controls)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)]'
-              }`}
-            >
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <span className="absolute right-2 top-2 size-2 rounded-full bg-[var(--dash-accent)]" />
+            {/* Interactive Notifications Popover */}
+            <div ref={bellDropdownRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setBellDropdownOpen((prev) => !prev)}
+                aria-label="Notifications"
+                aria-expanded={bellDropdownOpen}
+                title="Notifications"
+                className={`relative size-10 grid place-items-center rounded-xl border transition-colors cursor-pointer ${
+                  bellDropdownOpen || activeTab === 'notifications'
+                    ? 'bg-[var(--dash-sidebar-active-bg)] text-[var(--dash-text)] border-[var(--dash-accent-border)]'
+                    : 'bg-[var(--dash-header-controls)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] border-[var(--dash-header-controls-border)] hover:bg-[var(--dash-hover)]'
+                }`}
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--dash-accent)] text-[var(--dash-accent-ink)] text-[10px] font-bold flex items-center justify-center tabular-nums border border-[var(--dash-bg)]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {bellDropdownOpen && (
+                <div className="portal-card absolute right-0 top-[50px] z-50 w-80 sm:w-96 !p-0 shadow-2xl text-left overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-4 py-3 bg-[var(--dash-inner)] border-b border-[var(--dash-card-border)] flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-[var(--dash-text)]">Notifications</span>
+                      <span className="portal-pill ok">{unreadCount} unread</span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServerNotifications((prev) =>
+                            prev ? prev.map((n) => ({ ...n, read: true })) : prev
+                          );
+                          ledger.markAllNotificationsAsRead(user.id);
+                          userApi.markAllNotificationsRead().catch(() => {});
+                        }}
+                        className="text-[11px] font-semibold text-[var(--dash-accent)] hover:underline cursor-pointer"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-[var(--dash-card-border)]">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-[var(--dash-text-muted)]">
+                        No account alerts recorded yet.
+                      </div>
+                    ) : (
+                      notifications.slice(0, 5).map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`px-4 py-3 flex items-start gap-2.5 text-xs ${
+                            notif.read ? 'opacity-75' : 'bg-[var(--dash-highlight)]/40'
+                          }`}
+                        >
+                          <span
+                            className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                              notif.read ? 'bg-[var(--dash-card-border)]' : 'bg-[var(--dash-accent)]'
+                            }`}
+                          />
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-[var(--dash-text)] truncate">{notif.title}</span>
+                              <span className="text-[10px] font-mono text-[var(--dash-text-muted)] shrink-0">
+                                {formatDate(notif.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--dash-text-secondary)] line-clamp-2">
+                              {notif.message}
+                            </p>
+                            {!notif.read && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setServerNotifications((prev) =>
+                                    prev ? prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)) : prev
+                                  );
+                                  ledger.markNotificationAsRead(notif.id);
+                                  userApi.markNotificationRead(notif.id).catch(() => {});
+                                }}
+                                className="text-[10.5px] font-semibold text-[var(--dash-accent)] hover:underline cursor-pointer pt-0.5"
+                              >
+                                Mark as read
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="px-4 py-2.5 bg-[var(--dash-inner)] border-t border-[var(--dash-card-border)] flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBellDropdownOpen(false);
+                        setActiveTab('notifications');
+                      }}
+                      className="text-xs font-semibold text-[var(--dash-accent)] hover:underline cursor-pointer"
+                    >
+                      All Alerts &amp; Preferences &rarr;
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             {/* Account Avatar + Popover Menu (Matches Template #acct / #menu) */}
             <div className="relative">
@@ -1151,97 +1435,537 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Scrollable Content Area */}
         <main className="app-content-scroll">
           <div className="max-w-[1160px] w-full mx-auto space-y-5 relative z-10">
-            {/* 1. OVERVIEW TAB — Matches L'Agence Investor Portal Template */}
+            {/* 1. OVERVIEW TAB — Live Financial & Treasury Dashboard */}
             {activeTab === 'overview' &&
               (() => {
                 const hour = new Date().getHours();
                 const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-                const portfolioValue = user.walletBalance + user.investedBalance;
+
+                const cashBreakdown = summary?.cashBreakdown || {
+                  available: user.walletBalance ?? 0,
+                  pendingDeposits: 0,
+                  reservedWithdrawals: 0,
+                  restricted: 0,
+                  currency: 'EUR',
+                };
+                const totalNetValuation =
+                  typeof summary?.totalPortfolioValue === 'number'
+                    ? summary.totalPortfolioValue
+                    : cashBreakdown.available +
+                      investments.reduce((s, inv) => s + (inv.currentValuation || inv.totalAmountInvested), 0);
+
+                const rentSummary = summary?.rentSummary || {
+                  projectedMonthly: investments.reduce(
+                    (s, inv) => s + ((inv.totalAmountInvested * inv.estimatedAnnualYield) / 100) / 12,
+                    0
+                  ),
+                  collectedTotal: summary?.totalEarnedDividends ?? user.totalEarned ?? 0,
+                  collectedThisMonth: 0,
+                  nextDistributionDate: null,
+                  paymentStatus: investments.length > 0 ? 'Scheduled' : 'No Active Entitlements',
+                };
+
+                const holdingsSummary = summary?.holdingsSummary || {
+                  confirmedUnits: investments.reduce((s, inv) => s + inv.tokensPurchased, 0),
+                  pendingUnits: 0,
+                  activePropertiesCount: investments.length,
+                  holdings: investments.map((inv) => ({
+                    id: inv.id,
+                    propertyId: inv.propertyId,
+                    propertyTitle: inv.propertyTitle,
+                    location: inv.propertyLocation,
+                    confirmedUnits: inv.tokensPurchased,
+                    ownershipPercent: 0,
+                    valuation: inv.currentValuation || inv.totalAmountInvested,
+                    valuationDate: inv.purchasedAt,
+                    status: inv.status,
+                    onChainStatus: inv.transactionHash ? 'On-Chain Settled' : 'SPV Book-Entry Confirmed',
+                  })),
+                };
+
+                const rawLifecycleStages: any[] = Array.isArray(summary?.lifecycle?.stages)
+                  ? summary.lifecycle.stages
+                  : [
+                      {
+                        stepNumber: 1,
+                        key: 'account_registered',
+                        title: 'Account Registered',
+                        status: 'Completed',
+                        summary: `Registered ${formatDate(user.createdAt)}`,
+                        actionTab: 'profile',
+                        requirements: ['Authenticated investor profile established'],
+                      },
+                      {
+                        stepNumber: 2,
+                        key: 'identity_verification',
+                        title: 'Identity Verification (KYC/AML)',
+                        status:
+                          user.kycStatus === 'verified'
+                            ? 'Approved'
+                            : user.kycStatus === 'rejected'
+                            ? 'Rejected'
+                            : user.kycStatus === 'pending'
+                            ? 'In Review'
+                            : 'Not Started',
+                        summary:
+                          user.kycStatus === 'verified'
+                            ? 'EU AML Identity Verified'
+                            : 'Submit Passport / National ID & Proof of Address',
+                        actionTab: 'verification',
+                        requirements: ['Identity scan', 'Proof of address (90 days)', 'Tax residency'],
+                      },
+                      {
+                        stepNumber: 3,
+                        key: 'wallet_funded',
+                        title: 'Wallet Funded',
+                        status: cashBreakdown.available > 0 || cashBreakdown.pendingDeposits > 0 ? 'Completed' : 'Not Started',
+                        summary:
+                          cashBreakdown.available > 0
+                            ? `Cleared ${formatCurrency(cashBreakdown.available)}`
+                            : 'Deposit EUR or supported crypto assets',
+                        actionTab: 'wallet',
+                        requirements: ['Cleared SEPA bank wire or USDC/SOL transfer'],
+                      },
+                      {
+                        stepNumber: 4,
+                        key: 'asset_tokens_held',
+                        title: 'Asset Tokens Held',
+                        status: holdingsSummary.confirmedUnits > 0 ? 'Completed' : 'Not Started',
+                        summary:
+                          holdingsSummary.confirmedUnits > 0
+                            ? `${holdingsSummary.confirmedUnits} confirmed units`
+                            : 'Allocate treasury cash into an SPV offering',
+                        actionTab: 'properties',
+                        requirements: ['Confirmed notarized SPV deed allocation'],
+                      },
+                      {
+                        stepNumber: 5,
+                        key: 'monthly_yields',
+                        title: 'Monthly Yields',
+                        status:
+                          rentSummary.collectedTotal > 0
+                            ? 'Completed'
+                            : holdingsSummary.confirmedUnits > 0
+                            ? 'Pending'
+                            : 'Not Started',
+                        summary:
+                          rentSummary.collectedTotal > 0
+                            ? `${formatCurrency(rentSummary.collectedTotal)} cumulative rent collected`
+                            : 'Distributions activate upon unit ownership',
+                        actionTab: 'distributions',
+                        requirements: ['Monthly rental yield paid on the 1st of each month'],
+                      },
+                    ];
+
+                const pipelineStages: PipelineStage[] = rawLifecycleStages.map((s: any) => ({
+                  id: String(s.key || s.id || `step-${s.stepNumber}`),
+                  stepNumber: Number(s.stepNumber || 0),
+                  title: String(s.title),
+                  description: String(s.summary || ''),
+                  status: (s.status || 'Not Started') as PipelineStageStatus,
+                  timestamp: s.updatedAt || null,
+                  actionTab: s.actionTab === 'marketplace' ? 'properties' : s.actionTab,
+                  requirements: Array.isArray(s.requirements) ? s.requirements : [],
+                  detailNote: s.summary,
+                }));
+
+                const selectedLifecycleStage =
+                  pipelineStages.find((st) => st.id === selectedLifecycleKey) ||
+                  pipelineStages.find((st) => st.status !== 'Completed' && st.status !== 'Approved') ||
+                  pipelineStages[0];
+
+                const topHolding = holdingsSummary.holdings?.[0];
                 const featuredProperties = (frontendProperties.length > 0 ? frontendProperties : properties).slice(0, 4);
+                const treasuryAssets = ['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'SOL'];
 
                 return (
                   <div className="space-y-5 animate-in fade-in duration-200">
-                    {/* Synced Status + Greeting */}
-                    <section className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-[var(--dash-text-muted)]">
-                        <span className="h-2 w-2 rounded-full bg-[var(--dash-accent)]" />
-                        <span>
-                          {realtimeStatus === 'live' ? 'Synced · Personal account' : 'Personal account'}
-                        </span>
+                    {/* Live Sync Status + Greeting Header */}
+                    <section className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-xs text-[var(--dash-text-muted)]">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              syncError
+                                ? 'bg-rose-400'
+                                : realtimeStatus === 'live'
+                                ? 'bg-[var(--dash-accent)]'
+                                : 'bg-emerald-400'
+                            }`}
+                          />
+                          <span>
+                            {isHydrating && !summary
+                              ? 'Synchronizing treasury & custody ledger...'
+                              : realtimeStatus === 'live'
+                              ? 'Live Realtime Sync · Institutional Custody'
+                              : 'Authenticated Account · Backend Synced'}
+                          </span>
+                          {lastSyncedAt && (
+                            <span className="hidden sm:inline font-mono text-[10.5px] opacity-80">
+                              · Updated{' '}
+                              {new Date(lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                        <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-[var(--dash-text)]">
+                          {greeting}, {(user.fullName || 'Investor').trim().split(/\s+/)[0]}
+                        </h1>
                       </div>
-                      <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-[var(--dash-text)]">
-                        {greeting}, {(user.fullName || 'Investor').trim().split(/\s+/)[0]}
-                      </h1>
-                    </section>
 
-                    {/* Hero Portfolio Value Card */}
-                    <section className="portal-card p-5 sm:p-6">
-                      <div className="text-[11px] font-bold tracking-[0.14em] text-[var(--dash-text-muted)]">
-                        TOTAL PORTFOLIO VALUE
-                      </div>
-                      <div className="mt-2 text-[36px] sm:text-[42px] leading-none font-bold tracking-tight tabular-nums text-[var(--dash-text)]">
-                        {formatCurrency(portfolioValue)}
-                      </div>
-                      <p className="mt-2 text-xs sm:text-[13px] text-[var(--dash-text-muted)]">
-                        Cash balance and SPV real estate holdings
-                      </p>
-                      <div className="mt-5 grid grid-cols-2 sm:flex sm:items-center gap-2.5">
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
                         <button
                           type="button"
-                          onClick={() => setIsDepositOpen(true)}
-                          className="portal-btn sm:min-w-[160px] text-sm cursor-pointer"
+                          onClick={() => hydrateLiveDashboard(false)}
+                          disabled={isHydrating}
+                          className="dashboard-secondary-action !h-9 text-xs cursor-pointer"
+                          title="Refresh all live treasury balances and portfolio records"
                         >
-                          Deposit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsWithdrawOpen(true)}
-                          className="portal-btn-outline sm:min-w-[160px] text-sm cursor-pointer"
-                        >
-                          Withdraw
+                          <RefreshCw className={`w-3.5 h-3.5 ${isHydrating ? 'animate-spin' : ''}`} />
+                          <span>Refresh Data</span>
                         </button>
                       </div>
                     </section>
 
-                    {/* 3-Col Summary Strip */}
-                    <section aria-label="Account summary" className="grid grid-cols-3 gap-2.5 sm:gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('portfolio')}
-                        className="portal-card p-3.5 sm:p-4 text-left hover:border-[var(--dash-accent)] transition-colors cursor-pointer"
+                    {syncError && (
+                      <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-xs font-semibold text-[var(--dash-negative)] flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0" />
+                          <span>{syncError}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => hydrateLiveDashboard(false)}
+                          className="px-3 py-1 rounded-lg bg-rose-500 text-white text-[11px] font-bold cursor-pointer shrink-0"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+
+                    {/* 4 Dynamic Financial Summary Cards */}
+                    {isHydrating && !summary ? (
+                      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+                        {[0, 1, 2, 3].map((idx) => (
+                          <div key={idx} className="portal-card p-5 space-y-3 animate-pulse">
+                            <div className="h-3 w-28 rounded bg-[var(--dash-inner)]" />
+                            <div className="h-8 w-36 rounded bg-[var(--dash-inner)]" />
+                            <div className="h-3 w-full rounded bg-[var(--dash-inner)]" />
+                          </div>
+                        ))}
+                      </section>
+                    ) : (
+                      <section
+                        aria-label="Live financial summary"
+                        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5"
                       >
-                        <span className="block text-[21px] sm:text-2xl font-bold tabular-nums text-[var(--dash-text)]">
-                          {investments.length}
-                        </span>
-                        <span className="mt-0.5 block text-[11px] sm:text-xs text-[var(--dash-text-muted)]">
-                          Holdings
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('transactions')}
-                        className="portal-card p-3.5 sm:p-4 text-left hover:border-[var(--dash-accent)] transition-colors cursor-pointer"
-                      >
-                        <span className="block text-[21px] sm:text-2xl font-bold tabular-nums text-[var(--dash-text)]">
-                          {transactions.length}
-                        </span>
-                        <span className="mt-0.5 block text-[11px] sm:text-xs text-[var(--dash-text-muted)]">
-                          Transactions
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('notifications')}
-                        className="portal-card p-3.5 sm:p-4 text-left hover:border-[var(--dash-accent)] transition-colors cursor-pointer"
-                      >
-                        <span className="block text-[21px] sm:text-2xl font-bold tabular-nums text-[var(--dash-text)]">
-                          {unreadCount}
-                        </span>
-                        <span className="mt-0.5 block text-[11px] sm:text-xs text-[var(--dash-text-muted)]">
-                          Alerts
-                        </span>
-                      </button>
+                        {/* 1. Portfolio Net Valuation */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('portfolio')}
+                          className="portal-card p-5 text-left hover:border-[var(--dash-accent)] transition-all cursor-pointer flex flex-col justify-between gap-3"
+                        >
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--dash-text-muted)]">
+                              Portfolio Net Valuation
+                            </span>
+                            <Landmark className="w-4 h-4 text-[var(--dash-accent)] shrink-0" />
+                          </div>
+                          <div>
+                            <div className="text-2xl sm:text-[26px] font-bold tracking-tight tabular-nums text-[var(--dash-text)]">
+                              {formatCurrency(totalNetValuation)}
+                            </div>
+                            <div className="text-[11px] text-[var(--dash-text-muted)] mt-1 flex items-center justify-between gap-2">
+                              <span>
+                                Valuation:{' '}
+                                <span className="font-mono text-[var(--dash-text-secondary)]">
+                                  {summary?.valuationDate ? formatDate(summary.valuationDate) : 'Live'}
+                                </span>
+                              </span>
+                            </div>
+                            {(summary?.pendingAllocationsCount ?? 0) > 0 && (
+                              <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D8B77C]/15 text-[#D8B77C] border border-[#D8B77C]/30">
+                                Pending allocation: {formatCurrency(summary.pendingAllocationsAmount || 0)}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* 2. Available Liquid Cash */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('wallet')}
+                          className="portal-card p-5 text-left hover:border-[var(--dash-accent)] transition-all cursor-pointer flex flex-col justify-between gap-3"
+                        >
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--dash-text-muted)]">
+                              Available Liquid Cash
+                            </span>
+                            <Wallet className="w-4 h-4 text-[var(--dash-positive)] shrink-0" />
+                          </div>
+                          <div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-2xl sm:text-[26px] font-bold tracking-tight tabular-nums text-[var(--dash-text)]">
+                                {formatCurrency(cashBreakdown.available)}
+                              </span>
+                              <span className="text-[10.5px] font-mono font-bold text-[var(--dash-text-muted)]">
+                                {cashBreakdown.currency || 'EUR'}
+                              </span>
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px] text-[var(--dash-text-muted)]">
+                              <span>
+                                Pending:{' '}
+                                <strong className="font-mono text-[var(--dash-warm)]">
+                                  {formatCurrency(cashBreakdown.pendingDeposits)}
+                                </strong>
+                              </span>
+                              <span>
+                                Reserved:{' '}
+                                <strong className="font-mono text-[var(--dash-text-secondary)]">
+                                  {formatCurrency(cashBreakdown.reservedWithdrawals)}
+                                </strong>
+                              </span>
+                              {cashBreakdown.restricted > 0 && (
+                                <span className="text-rose-400">
+                                  Restricted: {formatCurrency(cashBreakdown.restricted)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* 3. Estimated Monthly Rent */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('distributions')}
+                          className="portal-card p-5 text-left hover:border-[var(--dash-accent)] transition-all cursor-pointer flex flex-col justify-between gap-3"
+                        >
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--dash-text-muted)]">
+                              Estimated Monthly Rent
+                            </span>
+                            <Coins className="w-4 h-4 text-[#D8B77C] shrink-0" />
+                          </div>
+                          <div>
+                            <div className="text-2xl sm:text-[26px] font-bold tracking-tight tabular-nums text-[var(--dash-positive)]">
+                              {formatCurrency(rentSummary.projectedMonthly)}
+                              <span className="text-xs font-normal text-[var(--dash-text-muted)]">/mo</span>
+                            </div>
+                            <div className="mt-1.5 flex items-center justify-between gap-2 text-[10.5px]">
+                              <span className="text-[var(--dash-text-muted)]">
+                                Collected:{' '}
+                                <strong className="font-mono text-[var(--dash-text)]">
+                                  {formatCurrency(rentSummary.collectedTotal)}
+                                </strong>
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9.5px] font-semibold ${
+                                  rentSummary.paymentStatus === 'Paid This Cycle'
+                                    ? 'bg-[#43C98B]/15 text-[#6FD8B0] border border-[#43C98B]/30'
+                                    : rentSummary.paymentStatus === 'Scheduled'
+                                    ? 'bg-[#D8B77C]/15 text-[#D8B77C] border border-[#D8B77C]/30'
+                                    : 'bg-[var(--dash-inner)] text-[var(--dash-text-muted)] border border-[var(--dash-card-border)]'
+                                }`}
+                              >
+                                {rentSummary.paymentStatus}
+                              </span>
+                            </div>
+                            {rentSummary.nextDistributionDate && (
+                              <div className="mt-1 text-[10px] text-[var(--dash-text-muted)] flex items-center gap-1 font-mono">
+                                <Calendar className="w-3 h-3 text-[var(--dash-accent)]" />
+                                <span>Next payout: {rentSummary.nextDistributionDate}</span>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* 4. Tokenized Shares Held */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('portfolio')}
+                          className="portal-card p-5 text-left hover:border-[var(--dash-accent)] transition-all cursor-pointer flex flex-col justify-between gap-3"
+                        >
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-[var(--dash-text-muted)]">
+                              Tokenized Shares Held
+                            </span>
+                            <Building2 className="w-4 h-4 text-[var(--dash-accent)] shrink-0" />
+                          </div>
+                          <div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-2xl sm:text-[26px] font-bold tracking-tight tabular-nums text-[var(--dash-text)]">
+                                {Number(holdingsSummary.confirmedUnits || 0).toLocaleString()}
+                              </span>
+                              <span className="text-xs font-semibold text-[var(--dash-text-muted)]">
+                                Verified Units ({holdingsSummary.activePropertiesCount || 0} SPV)
+                              </span>
+                            </div>
+                            {topHolding ? (
+                              <div className="mt-1.5 text-[10.5px] text-[var(--dash-text-muted)] space-y-0.5">
+                                <div className="truncate font-semibold text-[var(--dash-text-secondary)]">
+                                  {topHolding.propertyTitle}
+                                  {topHolding.ownershipPercent > 0 ? ` · ${topHolding.ownershipPercent}%` : ''}
+                                </div>
+                                <div className="text-[10px] text-[var(--dash-positive)] font-mono">
+                                  {topHolding.onChainStatus || 'Confirmed Holding'}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-1.5 text-[10.5px] text-[var(--dash-text-muted)]">
+                                No confirmed SPV share allocations yet
+                              </p>
+                            )}
+                            {(holdingsSummary.pendingUnits ?? 0) > 0 && (
+                              <div className="mt-1 text-[10px] text-[#D8B77C] font-mono">
+                                +{holdingsSummary.pendingUnits} pending allocation units
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      </section>
+                    )}
+
+                    {/* Institutional Treasury Command & Multi-Currency Sub-Balances */}
+                    <section className="portal-card p-5 space-y-4">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-[var(--dash-card-border)]">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--dash-accent)]">
+                            TREASURY COMMAND
+                          </p>
+                          <h2 className="text-sm sm:text-base font-bold text-[var(--dash-text)] mt-0.5">
+                            Multi-Currency Balances &amp; Execution
+                          </h2>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsDepositOpen(true)}
+                            className="portal-btn !h-9 !px-3.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <ArrowDownLeft className="w-3.5 h-3.5" />
+                            <span>Deposit Cash / Crypto</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsWithdrawOpen(true)}
+                            className="portal-btn-outline !h-9 !px-3.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                            <span>Wire Withdrawal</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsTreasuryConverterOpen(true)}
+                            className="portal-btn-outline !h-9 !px-3.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5 text-[var(--dash-accent)]" />
+                            <span>FX &amp; Crypto Converter</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('properties')}
+                            className="portal-btn-outline !h-9 !px-3.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Building2 className="w-3.5 h-3.5 text-[#D8B77C]" />
+                            <span>Acquire Landmark Units</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+                        {treasuryAssets.map((asset) => {
+                          const rawBal =
+                            subBalances[asset] !== undefined
+                              ? Number(subBalances[asset])
+                              : asset === 'EUR'
+                              ? cashBreakdown.available
+                              : 0;
+                          const isCrypto = asset === 'USDC' || asset === 'USDT' || asset === 'SOL';
+                          const decimals = asset === 'SOL' ? 4 : 2;
+                          return (
+                            <button
+                              key={asset}
+                              type="button"
+                              onClick={() => setIsTreasuryConverterOpen(true)}
+                              className="p-3 rounded-xl bg-[var(--dash-inner)] border border-[var(--dash-card-border)] hover:border-[var(--dash-accent)] transition-colors text-left cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-[11px] font-bold font-mono text-[var(--dash-text)]">
+                                  {asset}
+                                </span>
+                                <span className="text-[9px] uppercase text-[var(--dash-text-muted)]">
+                                  {isCrypto ? 'Token' : 'Fiat'}
+                                </span>
+                              </div>
+                              <div className="mt-1 text-sm font-bold font-mono tabular-nums text-[var(--dash-text)] truncate">
+                                {rawBal.toLocaleString('en-US', {
+                                  minimumFractionDigits: decimals,
+                                  maximumFractionDigits: decimals,
+                                })}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </section>
+
+                    {/* Investor Account & Ownership Lifecycle (Interactive 5-Stage Tracker) */}
+                    <section className="space-y-2.5">
+                      <ColoredPipeline
+                        stages={pipelineStages}
+                        progressPercent={summary?.lifecycle?.progressPercent}
+                        completedCount={summary?.lifecycle?.completedStages}
+                        activeStageId={selectedLifecycleStage?.id}
+                        onStageClick={(stage) => setSelectedLifecycleKey(stage.id)}
+                      />
+
+                      {selectedLifecycleStage && (
+                        <div className="portal-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-[var(--dash-text)]">
+                                Stage {selectedLifecycleStage.stepNumber}: {selectedLifecycleStage.title}
+                              </span>
+                              <span className="portal-pill ok">{selectedLifecycleStage.status}</span>
+                            </div>
+                            <p className="text-[var(--dash-text-secondary)]">
+                              {selectedLifecycleStage.detailNote || selectedLifecycleStage.description}
+                            </p>
+                            {selectedLifecycleStage.requirements && selectedLifecycleStage.requirements.length > 0 && (
+                              <div className="flex flex-wrap gap-2 pt-0.5">
+                                {selectedLifecycleStage.requirements.map((reqText, i) => (
+                                  <span
+                                    key={i}
+                                    className="text-[10.5px] font-mono text-[var(--dash-text-muted)] bg-[var(--dash-inner)] border border-[var(--dash-card-border)] px-2 py-0.5 rounded"
+                                  >
+                                    {reqText}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {selectedLifecycleStage.actionTab && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab(selectedLifecycleStage.actionTab!)}
+                              className="portal-btn-outline !h-9 !px-3.5 text-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0 self-start sm:self-center"
+                            >
+                              <span>Open Section</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </section>
+
+                    {/* Historical Portfolio Performance Chart (Real Verified Data Only) */}
+                    <PortfolioPerformanceChart
+                      historyPoints={summary?.performanceHistory || []}
+                      initialValuation={summary?.investedCapital ?? 0}
+                      currentValuation={totalNetValuation}
+                      totalDividends={rentSummary.collectedTotal ?? 0}
+                      onDeposit={() => setIsDepositOpen(true)}
+                      onExploreProperties={() => setActiveTab('properties')}
+                    />
 
                     {/* Holdings Empty Prompt or Your Holdings Snapshot */}
                     {investments.length === 0 ? (
@@ -1306,7 +2030,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                       </section>
                     )}
 
-                    {/* Open for investment — Clean Template Progress Cards */}
+                    {/* Open for investment — Verified European SPV Offerings */}
                     <section className="space-y-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -1702,7 +2426,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     {
                       id: 'support',
                       label: 'Help & Support',
-                      sub: 'Direct advisory desk & Smartsupp live chat',
+                      sub: 'Direct advisory desk & support inquiries (info@kretz.site)',
                       icon: HelpCircle,
                     },
                   ].map((item) => {
@@ -2403,105 +3127,171 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
             {/* 9. NOTIFICATIONS TAB */}
             {activeTab === 'notifications' && (
-              <div className="portal-card p-5 space-y-4 animate-in fade-in duration-200 max-w-4xl mx-auto text-left">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-[var(--dash-card-border)]">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-[var(--dash-text)]">Notifications</h2>
-                    <p className="text-xs text-[var(--dash-text-muted)]">
-                      Account alerts, investment confirmations, and distribution logs.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const permission = await requestPlatformNotificationPermission();
-                        if (permission === 'granted') toast.success('Device notifications enabled.');
-                        else if (permission === 'unsupported')
-                          toast.info('Device notifications are not supported in this browser.');
-                        else toast.info('Device notifications are blocked. Enable them in your browser settings.');
-                      }}
-                      className="portal-btn-outline !h-8 !px-3 text-xs cursor-pointer"
-                    >
-                      Enable device alerts
-                    </button>
-                    <span className="portal-pill ok">{unreadCount} Unread</span>
-                    {unreadCount > 0 && (
+              <div className="space-y-4 animate-in fade-in duration-200 max-w-4xl mx-auto text-left">
+                <div className="portal-card p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-[var(--dash-card-border)]">
+                    <div>
+                      <h2 className="text-base sm:text-lg font-bold text-[var(--dash-text)]">Notifications</h2>
+                      <p className="text-xs text-[var(--dash-text-muted)]">
+                        Deposit confirmations, withdrawal updates, KYC approvals, and distribution alerts.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          ledger.markAllNotificationsAsRead(user.id);
-                          userApi.markAllNotificationsRead().catch(() => {});
-                          toast.info('All notifications marked as read.');
+                        onClick={async () => {
+                          const permission = await requestPlatformNotificationPermission();
+                          if (permission === 'granted') toast.success('Device notifications enabled.');
+                          else if (permission === 'unsupported')
+                            toast.info('Device notifications are not supported in this browser.');
+                          else toast.info('Device notifications are blocked. Enable them in your browser settings.');
                         }}
-                        className="portal-btn !h-8 !px-3 text-xs cursor-pointer"
+                        className="portal-btn-outline !h-8 !px-3 text-xs cursor-pointer"
                       >
-                        Mark all read
+                        Enable device alerts
                       </button>
-                    )}
+                      <span className="portal-pill ok">{unreadCount} Unread</span>
+                      {unreadCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setServerNotifications((prev) =>
+                              prev ? prev.map((n) => ({ ...n, read: true })) : prev
+                            );
+                            ledger.markAllNotificationsAsRead(user.id);
+                            userApi.markAllNotificationsRead().catch(() => {});
+                            toast.info('All notifications marked as read.');
+                          }}
+                          className="portal-btn !h-8 !px-3 text-xs cursor-pointer"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {notifications.length === 0 ? (
-                  <div className="text-center py-8 text-[var(--dash-text-muted)] space-y-2">
-                    <Bell className="w-8 h-8 mx-auto text-[var(--dash-accent)] opacity-50" />
-                    <p className="text-xs font-semibold text-[var(--dash-text)]">No notifications recorded.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-[var(--dash-card-border)]">
-                    {notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        className={`py-3.5 px-2 flex items-start gap-3 transition-colors ${
-                          notif.read ? 'opacity-80' : ''
-                        }`}
-                      >
+                  {notifications.length === 0 ? (
+                    <div className="text-center py-8 text-[var(--dash-text-muted)] space-y-2">
+                      <Bell className="w-8 h-8 mx-auto text-[var(--dash-accent)] opacity-50" />
+                      <p className="text-xs font-semibold text-[var(--dash-text)]">No notifications recorded.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[var(--dash-card-border)]">
+                      {notifications.map((notif) => (
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                            notif.read
-                              ? 'bg-[var(--dash-inner)] text-[var(--dash-text-muted)] border border-[var(--dash-card-border)]'
-                              : 'bg-[var(--dash-accent)] text-[var(--dash-accent-ink)]'
+                          key={notif.id}
+                          className={`py-3.5 px-2 flex items-start gap-3 transition-colors ${
+                            notif.read ? 'opacity-80' : ''
                           }`}
                         >
-                          <Bell className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 space-y-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <h4 className="font-bold text-[var(--dash-text)] text-xs sm:text-sm truncate">
-                                {notif.title}
-                              </h4>
-                              {!notif.read && (
-                                <span className="w-2 h-2 rounded-full bg-[var(--dash-accent)] shrink-0" />
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                              notif.read
+                                ? 'bg-[var(--dash-inner)] text-[var(--dash-text-muted)] border border-[var(--dash-card-border)]'
+                                : 'bg-[var(--dash-accent)] text-[var(--dash-accent-ink)]'
+                            }`}
+                          >
+                            <Bell className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 space-y-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <h4 className="font-bold text-[var(--dash-text)] text-xs sm:text-sm truncate">
+                                  {notif.title}
+                                </h4>
+                                {!notif.read && (
+                                  <span className="w-2 h-2 rounded-full bg-[var(--dash-accent)] shrink-0" />
+                                )}
+                              </div>
+                              <span className="text-[10.5px] text-[var(--dash-text-muted)] font-mono shrink-0">
+                                {formatDate(notif.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[var(--dash-text-secondary)] leading-relaxed">{notif.message}</p>
+
+                            <div className="pt-1 flex items-center justify-end gap-1.5">
+                              {!notif.read ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setServerNotifications((prev) =>
+                                      prev ? prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)) : prev
+                                    );
+                                    ledger.markNotificationAsRead(notif.id);
+                                    userApi.markNotificationRead(notif.id).catch(() => {});
+                                  }}
+                                  className="text-[11px] font-semibold text-[var(--dash-accent)] hover:underline cursor-pointer"
+                                >
+                                  Mark as read
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-[var(--dash-text-muted)]">Read</span>
                               )}
                             </div>
-                            <span className="text-[10.5px] text-[var(--dash-text-muted)] font-mono shrink-0">
-                              {formatDate(notif.createdAt)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-[var(--dash-text-secondary)] leading-relaxed">{notif.message}</p>
-
-                          <div className="pt-1 flex items-center justify-end gap-1.5">
-                            {!notif.read ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  ledger.markNotificationAsRead(notif.id);
-                                  userApi.markNotificationRead(notif.id).catch(() => {});
-                                }}
-                                className="text-[11px] font-semibold text-[var(--dash-accent)] hover:underline cursor-pointer"
-                              >
-                                Mark as read
-                              </button>
-                            ) : (
-                              <span className="text-[10px] text-[var(--dash-text-muted)]">Read</span>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Persistent Notification Preferences */}
+                <div className="portal-card p-5 space-y-3">
+                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[var(--dash-card-border)]">
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--dash-text)]">Notification Preferences</h3>
+                      <p className="text-xs text-[var(--dash-text-muted)]">
+                        Choose which live treasury, compliance, and rental events trigger alerts.
+                      </p>
+                    </div>
+                    {isSavingPrefs && <span className="text-[11px] text-[var(--dash-accent)] font-mono">Saving...</span>}
                   </div>
-                )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    {[
+                      { key: 'depositAlerts', label: 'Deposit Confirmations', desc: 'SEPA wires & crypto settlement updates' },
+                      { key: 'withdrawalUpdates', label: 'Withdrawal Status Updates', desc: 'Wire authorization, approvals & dispatches' },
+                      { key: 'kycUpdates', label: 'KYC & Compliance Reviews', desc: 'Identity & document review outcomes' },
+                      { key: 'distributionAlerts', label: 'Rental Distribution Events', desc: 'Monthly yield payouts & statements' },
+                      { key: 'securityAlerts', label: 'Account Security Events', desc: 'Logins, verification codes & IBAN changes' },
+                      { key: 'emailNotifications', label: 'Email Dispatch Mirror', desc: 'Send official receipts to registered email' },
+                    ].map((pref) => {
+                      const k = pref.key as keyof typeof notificationPrefs;
+                      const enabled = Boolean(notificationPrefs[k]);
+                      return (
+                        <label
+                          key={pref.key}
+                          className="p-3 rounded-xl bg-[var(--dash-inner)] border border-[var(--dash-card-border)] flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--dash-accent-border)] transition-colors"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-semibold text-[var(--dash-text)]">{pref.label}</div>
+                            <div className="text-[10.5px] text-[var(--dash-text-muted)]">{pref.desc}</div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            disabled={isSavingPrefs}
+                            onChange={async (e) => {
+                              const nextVal = e.target.checked;
+                              const nextPrefs = { ...notificationPrefs, [k]: nextVal };
+                              setNotificationPrefs(nextPrefs);
+                              setIsSavingPrefs(true);
+                              try {
+                                await userApi.savePreferences(nextPrefs);
+                                toast.success('Notification preferences updated.');
+                              } catch (err: any) {
+                                setNotificationPrefs(notificationPrefs);
+                                toast.error(err?.message || 'Unable to save preference right now.');
+                              } finally {
+                                setIsSavingPrefs(false);
+                              }
+                            }}
+                            className="w-4 h-4 accent-[#6FD8B0] cursor-pointer shrink-0"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -2618,12 +3408,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      window.dispatchEvent(new CustomEvent('kretz:open-support'));
+                      supportSubjectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setTimeout(() => supportSubjectRef.current?.focus(), 200);
                     }}
                     className="portal-btn !h-10 !px-4 text-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Open Live Chat</span>
+                    <span>Start Support Inquiry</span>
                   </button>
                 </div>
 
@@ -2804,8 +3595,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <ManualDepositModal
         isOpen={isDepositOpen}
         onClose={() => setIsDepositOpen(false)}
-        onSuccess={() => {
-          refreshUser();
+        onSuccess={async () => {
+          await Promise.all([refreshUser(), hydrateLiveDashboard(true)]);
         }}
         onNavigateTransactions={() => setActiveTab('transactions')}
         onNavigateCompliance={() => setActiveTab('verification')}
@@ -2844,7 +3635,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           isOpen={isBuyModalOpen}
           mode={buyModalMode}
           onClose={() => setIsBuyModalOpen(false)}
-          onSuccess={() => refreshUser()}
+          onSuccess={async () => {
+            await Promise.all([refreshUser(), hydrateLiveDashboard(true)]);
+          }}
           onOpenDeposit={() => {
             setIsBuyModalOpen(false);
             setActiveTab('wallet');
@@ -2924,7 +3717,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <TreasuryConverterModal
           isOpen={isTreasuryConverterOpen}
           onClose={() => setIsTreasuryConverterOpen(false)}
-          onSuccessConversion={() => refreshUser()}
+          onSuccessConversion={async () => {
+            await Promise.all([refreshUser(), hydrateLiveDashboard(true)]);
+          }}
           onOpenDeposit={() => {
             setIsTreasuryConverterOpen(false);
             setActiveTab('wallet');

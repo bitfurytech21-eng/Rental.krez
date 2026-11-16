@@ -470,6 +470,215 @@ async function runApiTests() {
       'GET /notifications records investor alerts from compliance, deposit, and withdrawal events'
     );
 
+    // Dashboard Summary (real breakdowns, 5-stage lifecycle & performanceHistory)
+    const dashSummary = await api('GET', '/dashboard/summary', undefined, customerToken);
+    const sumData = dashSummary.json?.data || {};
+    assert(
+      dashSummary.status === 200 &&
+        Boolean(sumData.lastUpdated) &&
+        Boolean(sumData.valuationDate) &&
+        typeof sumData.cashBreakdown?.available === 'number' &&
+        typeof sumData.cashBreakdown?.pendingDeposits === 'number' &&
+        typeof sumData.cashBreakdown?.reservedWithdrawals === 'number' &&
+        typeof sumData.cashBreakdown?.restricted === 'number' &&
+        typeof sumData.rentSummary?.projectedMonthly === 'number' &&
+        typeof sumData.rentSummary?.collectedThisMonth === 'number' &&
+        typeof sumData.holdingsSummary?.confirmedUnits === 'number' &&
+        Array.isArray(sumData.performanceHistory) &&
+        sumData.lifecycle?.stages?.length === 5 &&
+        typeof sumData.lifecycle?.progressPercent === 'number',
+      'GET /dashboard/summary returns cashBreakdown, rentSummary, holdingsSummary, 5-stage lifecycle, performanceHistory, valuationDate, and lastUpdated'
+    );
+
+    // Treasury Rates & FX Conversion
+    const ratesRes = await api('GET', '/treasury/rates', undefined, customerToken);
+    const ratesData = ratesRes.json?.data || {};
+    const expectedAssets = ['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'SOL'];
+    assert(
+      ratesRes.status === 200 &&
+        Boolean(ratesData.quoteId) &&
+        Boolean(ratesData.expiresAt) &&
+        typeof ratesData.limits?.minEur === 'number' &&
+        typeof ratesData.limits?.maxEur === 'number' &&
+        expectedAssets.every((a) => Array.isArray(ratesData.supportedAssets) && ratesData.supportedAssets.includes(a)),
+      'GET /treasury/rates returns quoteId, expiresAt, limits, and all 7 supported assets'
+    );
+
+    const convertOk = await api(
+      'POST',
+      '/treasury/convert',
+      { fromCurrency: 'EUR', toCurrency: 'USDC', amount: 250, quoteId: ratesData.quoteId },
+      customerToken
+    );
+    const convertTxRef = String(convertOk.json?.data?.transaction?.reference || '');
+    assert(
+      convertOk.status === 200 &&
+        convertTxRef.startsWith('FX-') &&
+        Number(convertOk.json?.data?.balances?.USDC || 0) > 0,
+      'POST /treasury/convert executes EUR -> USDC conversion with quoteId and credits USDC sub-balance'
+    );
+
+    const notifAfterFx = await api('GET', '/notifications', undefined, customerToken);
+    assert(
+      notifAfterFx.status === 200 &&
+        Array.isArray(notifAfterFx.json.data) &&
+        notifAfterFx.json.data.some((n: any) => String(n.title || '').includes('Treasury FX Conversion')),
+      'Treasury FX conversion records an investor notification'
+    );
+
+    const convertInsufficient = await api(
+      'POST',
+      '/treasury/convert',
+      { fromCurrency: 'EUR', toCurrency: 'USDC', amount: 200000, quoteId: ratesData.quoteId },
+      customerToken
+    );
+    assert(
+      convertInsufficient.status === 400 &&
+        convertInsufficient.json.code === 'INSUFFICIENT_CURRENCY_BALANCE',
+      'POST /treasury/convert rejects conversion exceeding available source balance'
+    );
+
+    const convertExpiredQuote = await api(
+      'POST',
+      '/treasury/convert',
+      { fromCurrency: 'EUR', toCurrency: 'USDC', amount: 50, quoteId: 'QT-EXPIRED-UNKNOWN' },
+      customerToken
+    );
+    assert(
+      convertExpiredQuote.status === 410 &&
+        convertExpiredQuote.json.code === 'QUOTE_EXPIRED',
+      'POST /treasury/convert rejects unknown/expired quoteId with 410'
+    );
+
+    // Filtered transaction list & detail lookup
+    const filteredTxs = await api('GET', '/transactions?type=fee', undefined, customerToken);
+    const fxTxId = String(convertOk.json?.data?.transaction?.id || '');
+    assert(
+      filteredTxs.status === 200 &&
+        Array.isArray(filteredTxs.json.data) &&
+        filteredTxs.json.data.some((t: any) => t.id === fxTxId),
+      'GET /transactions?type=fee returns FX conversion ledger entry'
+    );
+
+    const singleTxRes = await api('GET', `/transactions/${encodeURIComponent(fxTxId)}`, undefined, customerToken);
+    assert(
+      singleTxRes.status === 200 &&
+        singleTxRes.json.data?.id === fxTxId &&
+        singleTxRes.json.data?.reference === convertTxRef,
+      'GET /transactions/:transactionId returns full transaction detail'
+    );
+
+    // Manual payment methods & deposit submission
+    const manualMethodsRes = await api('GET', '/manual-payments/methods', undefined, customerToken);
+    assert(
+      manualMethodsRes.status === 200 &&
+        Array.isArray(manualMethodsRes.json.data) &&
+        manualMethodsRes.json.data.length >= 3,
+      'GET /manual-payments/methods returns configured bank & crypto deposit rails'
+    );
+
+    const pdfProofBase64 = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n').toString('base64');
+    const manualDepositRes = await api(
+      'POST',
+      '/manual-payments/deposits',
+      {
+        methodId: 'method-sepa-wire',
+        amount: 500,
+        transactionId: `WIRE-${Date.now()}`,
+        senderName: 'Claire Moreau',
+        paymentDate: new Date().toISOString().slice(0, 10),
+        proofMimeType: 'application/pdf',
+        proofBase64: pdfProofBase64,
+        extraValues: { sending_iban: ownIban },
+      },
+      customerToken
+    );
+    assert(
+      manualDepositRes.status === 201 &&
+        manualDepositRes.json.data?.status === 'pending' &&
+        String(manualDepositRes.json.data?.reference || '').startsWith('KZ-MAN-'),
+      'POST /manual-payments/deposits records pending manual deposit in dev/test mode'
+    );
+
+    // User notification preferences persistence
+    const prefUpdateRes = await api(
+      'PUT',
+      '/user/preferences',
+      { depositAlerts: false, withdrawalUpdates: true, kycUpdates: false },
+      customerToken
+    );
+    const prefGetRes = await api('GET', '/user/preferences', undefined, customerToken);
+    assert(
+      prefUpdateRes.status === 200 &&
+        prefGetRes.status === 200 &&
+        prefGetRes.json.data?.depositAlerts === false &&
+        prefGetRes.json.data?.withdrawalUpdates === true &&
+        prefGetRes.json.data?.kycUpdates === false,
+      'PUT /user/preferences persists notification alert toggles cleanly'
+    );
+
+    // Real aggregated Admin Dashboard metrics
+    const adminDashRes = await api('GET', '/admin/dashboard', undefined, adminToken);
+    const adminStats = adminDashRes.json?.data || {};
+    assert(
+      adminDashRes.status === 200 &&
+        typeof adminStats.totalUsers === 'number' &&
+        adminStats.totalUsers >= 1 &&
+        typeof adminStats.totalProperties === 'number' &&
+        typeof adminStats.totalTransactions === 'number' &&
+        adminStats.totalTransactions >= 3 &&
+        typeof adminStats.totalAssetsUnderManagement === 'number' &&
+        typeof adminStats.totalDividendsPaid === 'number' &&
+        typeof adminStats.pendingKYC === 'number' &&
+        typeof adminStats.pendingWithdrawalsCount === 'number',
+      'GET /admin/dashboard returns live aggregated platform metrics'
+    );
+
+    // Role guard: non-staff investors are rejected from admin endpoints
+    const nonStaffUsersRes = await api('GET', '/admin/users', undefined, customerToken);
+    const nonStaffNotifRes = await api('GET', '/admin/notifications', undefined, customerToken);
+    const nonStaffInvRes = await api('GET', '/admin/investments', undefined, customerToken);
+    assert(
+      nonStaffUsersRes.status === 403 &&
+        nonStaffNotifRes.status === 403 &&
+        nonStaffInvRes.status === 403,
+      'Non-staff investor token receives 403 Forbidden on /admin/users, /admin/notifications, /admin/investments'
+    );
+
+    // Admin Investments endpoint returns live array
+    const adminInvRes = await api('GET', '/admin/investments', undefined, adminToken);
+    assert(
+      adminInvRes.status === 200 && Array.isArray(adminInvRes.json?.data),
+      'GET /admin/investments returns array of investor holdings for staff'
+    );
+
+    // Admin Notifications dispatch and history listing
+    const notifTitle = `Compliance Review Notice ${Date.now()}`;
+    const sendNotifRes = await api(
+      'POST',
+      '/admin/notifications',
+      {
+        userId: customerId,
+        type: 'warning',
+        title: notifTitle,
+        message: 'Your supporting documentation is queued for final review.',
+      },
+      adminToken
+    );
+    const listNotifRes = await api('GET', '/admin/notifications', undefined, adminToken);
+    const sentFound = Array.isArray(listNotifRes.json?.data)
+      ? listNotifRes.json.data.some((n: any) => n.title === notifTitle && n.userId === customerId)
+      : false;
+    assert(
+      sendNotifRes.status === 201 &&
+        Array.isArray(sendNotifRes.json?.data) &&
+        sendNotifRes.json.data[0]?.title === notifTitle &&
+        sendNotifRes.json?.sentCount === 1 &&
+        listNotifRes.status === 200 &&
+        sentFound,
+      'POST /admin/notifications dispatches alert and GET /admin/notifications lists it'
+    );
+
     console.log(`\nAPI Smoke & Contract Test Summary: ${passed} passed, ${failed} failed.`);
     if (failed > 0) process.exitCode = 1;
   } finally {

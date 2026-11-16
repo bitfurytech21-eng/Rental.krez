@@ -37,6 +37,7 @@ import { AuthPages } from './components/pages/AuthPages';
 import { PortalShell } from './portal/PortalShell';
 import { AdminPanel } from './components/admin/AdminPanel';
 import { AdminLoginPortal } from './components/admin/AdminLoginPortal';
+import { hasStaffAccess } from './components/admin/adminRbac';
 import { InvestmentGuidePage } from './components/pages/InvestmentGuidePage';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { CookieConsentBanner } from './components/cookies/CookieConsentBanner';
@@ -174,8 +175,8 @@ function MainApp() {
           found.approvedForFrontend === false ||
           !found.assignedFunction;
 
-        // Invariant: Non-admin users cannot access hidden properties on the frontend
-        if (isHidden && user?.role !== 'admin') {
+        // Invariant: Non-staff users cannot access hidden properties on the frontend
+        if (isHidden && !hasStaffAccess(user)) {
           return (
             <main className="min-h-[75vh] bg-background pt-header-offset pb-section-sm flex items-center justify-center px-gutter">
               <div className="max-w-md w-full rounded-card border border-border bg-secondary/55 p-card-pad text-center">
@@ -206,7 +207,7 @@ function MainApp() {
         if (wantsFullDossier) {
           return (
             <div className="pt-16">
-              {isHidden && user?.role === 'admin' && (
+              {isHidden && hasStaffAccess(user) && (
                 <div className="bg-amber-600 text-white px-4 py-2.5 text-center text-xs font-bold flex items-center justify-center gap-2">
                   <span>
                     Administrator Preview Mode: This property is HIDDEN from visitors (Function:{' '}

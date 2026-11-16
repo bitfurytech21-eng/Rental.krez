@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Transaction } from '../../types/transaction';
 import { formatCurrency, formatDate, formatShortHash } from '../../lib/utils';
 import {
@@ -18,6 +18,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { printTransactionReceipt, ReceiptPrintData } from '../../lib/printService';
@@ -48,11 +50,23 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [copiedTxId, setCopiedTxId] = useState<string | null>(null);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
   const pageSize = 10;
   const isCompactPreview = typeof maxRows === 'number';
+
+  useEffect(() => {
+    if (!selectedTx) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedTx(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectedTx]);
 
   const filteredTransactions = useMemo(() => {
     if (isCompactPreview) {
@@ -60,9 +74,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     }
 
     const q = searchQuery.trim().toLowerCase();
+    const fromMs = fromDate ? new Date(`${fromDate}T00:00:00.000Z`).getTime() : null;
+    const toMs = toDate ? new Date(`${toDate}T23:59:59.999Z`).getTime() : null;
+
     return transactions.filter((tx) => {
       if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
       if (statusFilter !== 'all' && tx.status !== statusFilter) return false;
+      if (fromMs !== null || toMs !== null) {
+        const txMs = new Date(tx.createdAt).getTime();
+        if (!Number.isNaN(txMs)) {
+          if (fromMs !== null && txMs < fromMs) return false;
+          if (toMs !== null && txMs > toMs) return false;
+        }
+      }
       if (q) {
         const haystack = [
           tx.description,
@@ -71,6 +95,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           tx.txHash,
           tx.currency,
           tx.type,
+          tx.metadata?.propertyTitle,
+          tx.metadata?.fromCurrency,
+          tx.metadata?.toCurrency,
         ]
           .filter(Boolean)
           .join(' ')
@@ -79,7 +106,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
       }
       return true;
     });
-  }, [transactions, isCompactPreview, maxRows, searchQuery, typeFilter, statusFilter]);
+  }, [transactions, isCompactPreview, maxRows, searchQuery, typeFilter, statusFilter, fromDate, toDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
@@ -91,12 +118,18 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
   }, [filteredTransactions, isCompactPreview, safePage]);
 
   const hasActiveFilters =
-    searchQuery.trim().length > 0 || typeFilter !== 'all' || statusFilter !== 'all';
+    searchQuery.trim().length > 0 ||
+    typeFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    Boolean(fromDate) ||
+    Boolean(toDate);
 
   const clearFilters = () => {
     setSearchQuery('');
     setTypeFilter('all');
     setStatusFilter('all');
+    setFromDate('');
+    setToDate('');
     setCurrentPage(1);
   };
 
@@ -160,9 +193,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     date: formatDate(tx.createdAt),
     userName: user?.fullName || 'Verified Investor',
     userEmail: user?.email || 'investor@lagence.com',
-    propertyTitle: tx.description,
-    tokensPurchased: tx.type === 'investment' ? Math.max(1, Math.floor(tx.amount / 100)) : 1,
-    tokenPrice: tx.type === 'investment' ? 100 : tx.amount,
+    propertyTitle: tx.metadata?.propertyTitle || tx.description,
+    tokensPurchased:
+      tx.metadata?.tokens || (tx.type === 'investment' ? Math.max(1, Math.floor(tx.amount / 100)) : 1),
+    tokenPrice: tx.type === 'investment' && tx.metadata?.tokens ? tx.amount / tx.metadata.tokens : tx.amount,
     totalPaid: tx.amount,
     paymentMethod: tx.paymentMethod || 'Bank Wire / SEPA Instant',
     status: tx.status === 'completed' ? 'Completed' : tx.status === 'pending' ? 'Pending' : 'Verified',
@@ -216,15 +250,17 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
   const getStatusBadge = (status: Transaction['status']) => {
     switch (status) {
       case 'completed':
+      case 'approved':
         return (
           <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[var(--dash-positive)]">
-            <CheckCircle2 className="w-3 h-3" /> Completed
+            <CheckCircle2 className="w-3 h-3" /> {status === 'approved' ? 'Approved' : 'Completed'}
           </span>
         );
       case 'pending':
+      case 'processing':
         return (
           <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-[var(--dash-warm)]">
-            <Clock className="w-3 h-3" /> Pending
+            <Clock className="w-3 h-3" /> {status === 'processing' ? 'Processing' : 'Pending'}
           </span>
         );
       case 'rejected':
@@ -234,7 +270,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           </span>
         );
       default:
-        return <span className="text-[10.5px] text-[var(--dash-text-muted)]">{status}</span>;
+        return <span className="text-[10.5px] text-[var(--dash-text-muted)] capitalize">{status}</span>;
     }
   };
 
@@ -246,6 +282,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           href={getSolanaExplorerUrl(tx.txHash, 'tx', 'devnet')}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
           className="font-mono text-[var(--dash-accent)] hover:underline inline-flex items-center gap-0.5"
           title="Inspect on-chain signature on Solana Explorer"
         >
@@ -259,7 +296,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
     return (
       <button
         type="button"
-        onClick={() => handleCopyHash(tx.id, tx.txHash!)}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCopyHash(tx.id, tx.txHash!);
+        }}
         className="font-mono text-[var(--dash-accent)] hover:opacity-80 inline-flex items-center gap-0.5 cursor-pointer"
         title="Copy internal custody ledger hash"
         aria-label={`Copy ledger hash ${tx.txHash}`}
@@ -279,7 +319,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
         <div className="max-w-md mx-auto space-y-1">
           <h4 className="text-sm font-bold text-[var(--dash-text)]">No transactions yet</h4>
           <p className="text-xs text-[var(--dash-text-muted)] leading-relaxed">
-            Deposits, SPV unit allocations, withdrawals, and monthly rental distributions will appear here once recorded.
+            Deposits, SPV unit allocations, FX conversions, withdrawals, and monthly rental distributions will appear here once recorded.
           </p>
         </div>
       </div>
@@ -288,7 +328,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
 
   return (
     <div className="space-y-3.5">
-      {/* Category Chips + Search & Export Toolbar */}
+      {/* Category Chips + Search, Date Range & Export Toolbar */}
       {!isCompactPreview && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -298,6 +338,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               { id: 'investment', label: 'Investments' },
               { id: 'withdrawal', label: 'Withdrawals' },
               { id: 'distribution', label: 'Distributions' },
+              { id: 'fee', label: 'FX / Fees' },
             ].map((chip) => (
               <button
                 key={chip.id}
@@ -313,9 +354,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
             ))}
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 portal-card p-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1">
-              <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 portal-card p-3">
+            <div className="flex flex-wrap items-center gap-2 flex-1">
+              <div className="relative flex-1 min-w-[200px] max-w-xs">
                 <Search className="w-3.5 h-3.5 text-[var(--dash-text-muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
@@ -324,7 +365,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                     setSearchQuery(e.target.value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Search ref, description, method, hash..."
+                  placeholder="Search ref, asset, method, hash..."
                   aria-label="Search ledger transactions"
                   className="portal-input !h-9 pl-8 pr-7 text-xs"
                 />
@@ -355,8 +396,39 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed</option>
                 <option value="pending">Pending Review</option>
+                <option value="processing">Processing</option>
                 <option value="rejected">Declined</option>
               </select>
+
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="tx-from-date" className="text-[10.5px] text-[var(--dash-text-muted)] inline-flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  <span className="sr-only sm:not-sr-only">From</span>
+                </label>
+                <input
+                  id="tx-from-date"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  aria-label="Filter from date"
+                  className="px-2.5 h-9 rounded-xl border border-[var(--dash-card-border)] bg-[var(--dash-inner)] text-xs text-[var(--dash-text)] focus:outline-none focus:border-[var(--dash-accent)]"
+                />
+                <span className="text-[var(--dash-text-muted)] text-xs">–</span>
+                <input
+                  id="tx-to-date"
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  aria-label="Filter to date"
+                  className="px-2.5 h-9 rounded-xl border border-[var(--dash-card-border)] bg-[var(--dash-inner)] text-xs text-[var(--dash-text)] focus:outline-none focus:border-[var(--dash-accent)]"
+                />
+              </div>
 
               {hasActiveFilters && (
                 <button
@@ -369,7 +441,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               )}
             </div>
 
-            <div className="flex items-center justify-between sm:justify-end gap-2.5">
+            <div className="flex items-center justify-between xl:justify-end gap-2.5 shrink-0">
               <span className="text-[11px] font-semibold text-[var(--dash-text-muted)]">
                 Showing {displayList.length} of {filteredTransactions.length}
               </span>
@@ -410,7 +482,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
         </div>
       ) : (
         <>
-          {/* Mobile Compact Feed (< 640px) matching template .list rows */}
+          {/* Mobile Compact Feed (< 640px) */}
           <div className="sm:hidden portal-card divide-y divide-[var(--dash-card-border)] overflow-hidden">
             {displayList.map((tx) => {
               const isFxConversion = tx.type === 'fee' && tx.reference?.startsWith('FX-');
@@ -423,7 +495,16 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               return (
                 <div
                   key={tx.id}
-                  className="p-3.5 flex items-center justify-between gap-2.5 hover:bg-[var(--dash-hover)] transition-colors"
+                  onClick={() => setSelectedTx(tx)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedTx(tx);
+                    }
+                  }}
+                  className="p-3.5 flex items-center justify-between gap-2.5 hover:bg-[var(--dash-hover)] transition-colors cursor-pointer"
                 >
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
@@ -453,13 +534,18 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                       {prefix}
                       {formatCurrency(tx.amount, tx.currency)}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handlePrintReceipt(tx)}
-                      className="text-[10px] text-[var(--dash-accent)] font-semibold hover:underline cursor-pointer"
-                    >
-                      Receipt
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePrintReceipt(tx);
+                        }}
+                        className="text-[10px] text-[var(--dash-accent)] font-semibold hover:underline cursor-pointer"
+                      >
+                        Receipt
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -493,7 +579,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                     Balance After
                   </th>
                   <th className="py-3 px-3.5 text-[10px] text-center text-[var(--dash-text-muted)] font-bold uppercase tracking-wider">
-                    Receipt
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -507,7 +593,11 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                   const prefix = isFxConversion ? '⇄ ' : isNegative ? '-' : '+';
 
                   return (
-                    <tr key={tx.id} className="hover:bg-[var(--dash-hover)] transition-colors">
+                    <tr
+                      key={tx.id}
+                      onClick={() => setSelectedTx(tx)}
+                      className="hover:bg-[var(--dash-hover)] transition-colors cursor-pointer"
+                    >
                       <td className="py-3 px-3.5">{getTypeBadge(tx.type)}</td>
                       <td className="py-3 px-3.5 max-w-xs">
                         <span className="font-semibold text-[var(--dash-text)] block text-xs truncate">
@@ -548,15 +638,32 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
                         {formatCurrency(tx.balanceAfter)}
                       </td>
                       <td className="py-3 px-3.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handlePrintReceipt(tx)}
-                          className="p-1.5 rounded-lg bg-[var(--dash-inner)] hover:bg-[var(--dash-hover)] text-[var(--dash-text)] transition-colors border border-[var(--dash-card-border)] inline-flex items-center justify-center cursor-pointer"
-                          title="Print Official Receipt"
-                          aria-label={`Print receipt for ${tx.reference}`}
-                        >
-                          <Printer className="w-3.5 h-3.5 text-[var(--dash-accent)]" />
-                        </button>
+                        <div className="inline-flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTx(tx);
+                            }}
+                            className="p-1.5 rounded-lg bg-[var(--dash-inner)] hover:bg-[var(--dash-hover)] text-[var(--dash-text-secondary)] hover:text-[var(--dash-text)] transition-colors border border-[var(--dash-card-border)] inline-flex items-center justify-center cursor-pointer"
+                            title="Inspect Transaction Details"
+                            aria-label={`Inspect transaction ${tx.reference}`}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePrintReceipt(tx);
+                            }}
+                            className="p-1.5 rounded-lg bg-[var(--dash-inner)] hover:bg-[var(--dash-hover)] text-[var(--dash-text)] transition-colors border border-[var(--dash-card-border)] inline-flex items-center justify-center cursor-pointer"
+                            title="Print Official Receipt"
+                            aria-label={`Print receipt for ${tx.reference}`}
+                          >
+                            <Printer className="w-3.5 h-3.5 text-[var(--dash-accent)]" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -594,6 +701,162 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           )}
         </>
       )}
+
+      {/* Responsive Transaction Detail Modal */}
+      {selectedTx && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tx-detail-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedTx(null);
+          }}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="portal-card max-w-lg w-full overflow-hidden shadow-2xl border border-[var(--dash-card-border)] text-left"
+          >
+            <div className="px-5 py-4 bg-[var(--dash-inner)] border-b border-[var(--dash-card-border)] flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  {getTypeBadge(selectedTx.type)}
+                  {getStatusBadge(selectedTx.status)}
+                </div>
+                <h3 id="tx-detail-modal-title" className="text-sm font-bold text-[var(--dash-text)] mt-1.5 truncate">
+                  {selectedTx.description}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTx(null)}
+                aria-label="Close transaction details"
+                className="p-1.5 rounded-lg text-[var(--dash-text-muted)] hover:text-[var(--dash-text)] hover:bg-[var(--dash-hover)] cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-4 rounded-xl bg-[var(--dash-inner)] border border-[var(--dash-card-border)] flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--dash-text-muted)] font-semibold block">
+                    Amount
+                  </span>
+                  <span className="text-xl font-bold font-mono tabular-nums text-[var(--dash-text)] mt-0.5 block">
+                    {formatCurrency(selectedTx.amount, selectedTx.currency)} {selectedTx.currency}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--dash-text-muted)] font-semibold block">
+                    Ledger Balance After
+                  </span>
+                  <span className="text-sm font-bold font-mono tabular-nums text-[var(--dash-accent)] mt-0.5 block">
+                    {formatCurrency(selectedTx.balanceAfter)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 p-3.5 rounded-xl bg-[var(--dash-inner)] border border-[var(--dash-card-border)]">
+                <div className="flex justify-between gap-3">
+                  <span className="text-[var(--dash-text-muted)]">Transaction Reference</span>
+                  <span className="font-mono font-bold text-[var(--dash-text)]">{selectedTx.reference}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-[var(--dash-text-muted)]">Recorded Date &amp; Time</span>
+                  <span className="font-mono text-[var(--dash-text)]">{formatDate(selectedTx.createdAt)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-[var(--dash-text-muted)]">Payment / Settlement Rail</span>
+                  <span className="font-semibold text-[var(--dash-text)]">{selectedTx.paymentMethod || 'Internal Ledger'}</span>
+                </div>
+                {selectedTx.metadata?.propertyTitle && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--dash-text-muted)]">Property Asset</span>
+                    <span className="font-semibold text-[var(--dash-text)]">{selectedTx.metadata.propertyTitle}</span>
+                  </div>
+                )}
+                {selectedTx.metadata?.tokens && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--dash-text-muted)]">Allocated SPV Units</span>
+                    <span className="font-mono font-semibold text-[var(--dash-positive)]">
+                      {selectedTx.metadata.tokens} Units
+                    </span>
+                  </div>
+                )}
+                {selectedTx.metadata?.bankIban && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--dash-text-muted)]">Destination IBAN / Address</span>
+                    <span className="font-mono text-[var(--dash-text)] truncate max-w-[230px]">
+                      {selectedTx.metadata.bankIban}
+                    </span>
+                  </div>
+                )}
+                {selectedTx.metadata?.destinationAddress && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-[var(--dash-text-muted)]">Destination</span>
+                    <span className="font-mono text-[var(--dash-text)] truncate max-w-[230px]">
+                      {selectedTx.metadata.destinationAddress}
+                    </span>
+                  </div>
+                )}
+                {selectedTx.metadata?.fromCurrency && selectedTx.metadata?.toCurrency && (
+                  <>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-[var(--dash-text-muted)]">FX Conversion Pair</span>
+                      <span className="font-mono font-semibold text-[var(--dash-text)]">
+                        {selectedTx.metadata.fromAmount} {selectedTx.metadata.fromCurrency} → {selectedTx.metadata.toAmount} {selectedTx.metadata.toCurrency}
+                      </span>
+                    </div>
+                    {selectedTx.metadata.crossRate && (
+                      <div className="flex justify-between gap-3">
+                        <span className="text-[var(--dash-text-muted)]">Execution Rate / Fee</span>
+                        <span className="font-mono text-[var(--dash-text)]">
+                          1 {selectedTx.metadata.fromCurrency} = {Number(selectedTx.metadata.crossRate).toFixed(6)} {selectedTx.metadata.toCurrency}
+                          {selectedTx.metadata.feeEur ? ` · €${Number(selectedTx.metadata.feeEur).toFixed(2)} fee` : ''}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {selectedTx.txHash && (
+                  <div className="flex justify-between items-center gap-3 pt-2 border-t border-[var(--dash-card-border)]">
+                    <span className="text-[var(--dash-text-muted)]">Settlement Hash</span>
+                    {renderHashBadge(selectedTx)}
+                  </div>
+                )}
+                {(selectedTx.metadata?.rejectionReason || selectedTx.metadata?.notes) && (
+                  <div className="pt-2 border-t border-[var(--dash-card-border)]">
+                    <span className="text-[var(--dash-text-muted)] block mb-0.5">Compliance / Advisory Note</span>
+                    <p className="text-[var(--dash-text-secondary)]">
+                      {selectedTx.metadata.rejectionReason || selectedTx.metadata.notes}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handlePrintReceipt(selectedTx)}
+                  className="flex-1 portal-btn !h-10 text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Official Receipt</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTx(null)}
+                  className="portal-btn-outline !h-10 text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

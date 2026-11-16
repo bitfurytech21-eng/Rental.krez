@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   UserCheck,
   ShieldCheck,
@@ -6,17 +6,34 @@ import {
   Building2,
   TrendingUp,
   Check,
+  AlertCircle,
+  Clock,
   HelpCircle,
 } from 'lucide-react';
 
-export type PipelineStageStatus = 'completed' | 'active' | 'pending' | 'upcoming' | 'failed';
+export type PipelineStageStatus =
+  | 'Not Started'
+  | 'Pending'
+  | 'In Review'
+  | 'Action Required'
+  | 'Approved'
+  | 'Rejected'
+  | 'Completed'
+  | 'completed'
+  | 'active'
+  | 'pending'
+  | 'upcoming'
+  | 'failed';
 
 export interface PipelineStage {
   id: string;
+  stepNumber?: number;
   title: string;
   description: string;
   status: PipelineStageStatus;
-  timestamp?: string;
+  timestamp?: string | null;
+  actionTab?: string;
+  requirements?: string[];
   metrics?: { label: string; value: string };
   detailNote?: string;
   icon?: React.ComponentType<{ className?: string }>;
@@ -26,188 +43,196 @@ export interface ColoredPipelineProps {
   title?: string;
   subtitle?: string;
   stages: PipelineStage[];
+  progressPercent?: number;
+  completedCount?: number;
   activeStageId?: string;
   onStageClick?: (stage: PipelineStage) => void;
-  orientation?: 'horizontal' | 'vertical' | 'auto';
   className?: string;
-  showDetails?: boolean;
 }
 
 const DEFAULT_ICONS = [
-  UserCheck,    // 1. Account
-  ShieldCheck,  // 2. Verification
-  Wallet,       // 3. Funding
-  Building2,    // 4. Investment
-  TrendingUp,   // 5. Returns
+  UserCheck,    // 1. Account Registered
+  ShieldCheck,  // 2. Identity Verification (KYC/AML)
+  Wallet,       // 3. Wallet Funded
+  Building2,    // 4. Asset Tokens Held
+  TrendingUp,   // 5. Monthly Yields
 ];
 
 const SHORT_LABELS = [
-  'Account',
-  'Verification',
-  'Funding',
-  'Investment',
-  'Returns',
+  'Account Registered',
+  'KYC / AML',
+  'Wallet Funded',
+  'Asset Tokens',
+  'Monthly Yields',
 ];
 
+function isDoneStatus(status: PipelineStageStatus): boolean {
+  return status === 'Completed' || status === 'Approved' || status === 'completed';
+}
+
 export const ColoredPipeline: React.FC<ColoredPipelineProps> = ({
+  title = 'Investor Account & Ownership Lifecycle',
+  subtitle,
   stages,
+  progressPercent,
+  completedCount,
   activeStageId,
   onStageClick,
   className = '',
 }) => {
-  const [hoveredStageId, setHoveredStageId] = useState<string | null>(null);
-  const [activeTooltipId, setActiveTooltipId] = useState<string | null>(null);
-
   const getStatusConfig = (status: PipelineStageStatus) => {
     switch (status) {
+      case 'Completed':
+      case 'Approved':
       case 'completed':
         return {
           nodeBg: 'bg-[#43C98B]/15 border-[#43C98B] text-[#43C98B]',
-          glow: 'border-[#43C98B]/40',
-          line: 'bg-[#43C98B]',
-          badgeBg: 'bg-[#43C98B] text-black',
-          badgeText: 'Completed',
-          iconColor: 'text-[#43C98B]',
-          labelColor: 'text-[#F5F5F2]',
+          badgeBg: 'bg-[#43C98B]/15 text-[#6FD8B0] border border-[#43C98B]/40',
+          badgeText: status === 'Approved' ? 'Approved' : 'Completed',
+          iconColor: 'text-[#6FD8B0]',
+          labelColor: 'text-[var(--dash-text)]',
         };
+      case 'In Review':
       case 'active':
         return {
           nodeBg: 'bg-[#55BDE8]/20 border-[#55BDE8] text-[#55BDE8]',
-          glow: 'border-[#55BDE8]',
-          line: 'bg-[#55BDE8]',
-          badgeBg: 'bg-[#55BDE8] text-black',
-          badgeText: 'In Progress',
+          badgeBg: 'bg-[#55BDE8]/15 text-[#55BDE8] border border-[#55BDE8]/40',
+          badgeText: 'In Review',
           iconColor: 'text-[#55BDE8]',
           labelColor: 'text-[#55BDE8]',
         };
+      case 'Pending':
       case 'pending':
         return {
-          nodeBg: 'bg-[#E7B96D]/15 border-[#E7B96D] text-[#E7B96D]',
-          glow: 'border-[#E7B96D]/40',
-          line: 'bg-[#E7B96D]',
-          badgeBg: 'bg-[#E7B96D] text-black',
+          nodeBg: 'bg-[#D8B77C]/15 border-[#D8B77C] text-[#D8B77C]',
+          badgeBg: 'bg-[#D8B77C]/15 text-[#D8B77C] border border-[#D8B77C]/40',
           badgeText: 'Pending',
-          iconColor: 'text-[#E7B96D]',
-          labelColor: 'text-[#E7B96D]',
+          iconColor: 'text-[#D8B77C]',
+          labelColor: 'text-[#D8B77C]',
         };
+      case 'Action Required':
+      case 'Rejected':
       case 'failed':
         return {
-          nodeBg: 'bg-[#E47E80]/15 border-[#E47E80] text-[#E47E80]',
-          glow: 'border-[#E47E80]/40',
-          line: 'bg-[#E47E80]',
-          badgeBg: 'bg-[#E47E80] text-white',
-          badgeText: 'Attention',
-          iconColor: 'text-[#E47E80]',
-          labelColor: 'text-[#E47E80]',
+          nodeBg: 'bg-rose-500/15 border-rose-400 text-rose-300',
+          badgeBg: 'bg-rose-500/15 text-rose-300 border border-rose-400/40',
+          badgeText: status === 'Rejected' ? 'Rejected' : 'Action Required',
+          iconColor: 'text-rose-300',
+          labelColor: 'text-rose-300',
         };
+      case 'Not Started':
       case 'upcoming':
       default:
         return {
-          nodeBg: 'bg-[#1D1E1E] border-[#292B2B] text-[#777979]',
-          glow: 'border-[#292B2B]',
-          line: 'bg-[#292B2B]',
-          badgeBg: 'bg-[#292B2B] text-[#777979]',
-          badgeText: 'Upcoming',
-          iconColor: 'text-[#777979]',
-          labelColor: 'text-[#777979]',
+          nodeBg: 'bg-[var(--dash-inner)] border-[var(--dash-card-border)] text-[var(--dash-text-muted)]',
+          badgeBg: 'bg-[var(--dash-inner)] text-[var(--dash-text-muted)] border border-[var(--dash-card-border)]',
+          badgeText: 'Not Started',
+          iconColor: 'text-[var(--dash-text-muted)]',
+          labelColor: 'text-[var(--dash-text-muted)]',
         };
     }
   };
 
-  const completedIndices = stages
-    .map((s, idx) => (s.status === 'completed' || s.status === 'active' ? idx : -1))
-    .filter((idx) => idx !== -1);
-
-  const maxActiveIdx = completedIndices.length > 0 ? Math.max(...completedIndices) : 0;
-  const progressLinePercent = stages.length > 1
-    ? Math.min(100, Math.max(0, (maxActiveIdx / (stages.length - 1)) * 100))
-    : 0;
+  const doneTotal =
+    typeof completedCount === 'number'
+      ? completedCount
+      : stages.filter((s) => isDoneStatus(s.status)).length;
+  const computedPercent =
+    typeof progressPercent === 'number'
+      ? progressPercent
+      : stages.length > 0
+      ? Math.round((doneTotal / stages.length) * 100)
+      : 0;
 
   return (
     <div
-      aria-label="Investor Account Progress Tracker"
-      className={`relative rounded-[20px] border border-[#292B2B] bg-[#141515] p-4 sm:p-5 shadow-xl ${className}`}
+      aria-label="Investor Account & Ownership Lifecycle"
+      className={`portal-card rounded-[20px] p-4 sm:p-5 space-y-4 ${className}`}
     >
-      <div className="overflow-x-auto no-scrollbar py-2 px-1">
-        <div className="min-w-[320px] sm:min-w-0 relative flex items-center justify-between">
-          {/* Thin Horizontal Connecting Line */}
-          <div className="absolute top-[20px] sm:top-[24px] left-6 right-6 h-[2px] bg-[#292B2B] z-0 rounded-full">
+      {/* Header Row with Real Completion Percentage */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--dash-card-border)]">
+        <div>
+          <h3 className="text-sm sm:text-base font-bold text-[var(--dash-text)] tracking-tight">{title}</h3>
+          <p className="text-xs text-[var(--dash-text-muted)] mt-0.5">
+            {subtitle || 'Click any stage to inspect verification requirements, funding status, and records'}
+          </p>
+        </div>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <span className="text-xs font-mono text-[var(--dash-text-muted)]">
+            {doneTotal}/{stages.length} verified
+          </span>
+          <span className="portal-pill ok tabular-nums font-mono">{computedPercent}% Complete</span>
+        </div>
+      </div>
+
+      {/* Horizontal 5-Stage Interactive Progress Track */}
+      <div className="overflow-x-auto no-scrollbar pt-1 pb-1">
+        <div className="min-w-[540px] relative grid grid-cols-5 gap-2">
+          {/* Connecting Progress Rail */}
+          <div className="absolute top-[22px] left-[10%] right-[10%] h-[2px] bg-[var(--dash-card-border)] z-0 rounded-full">
             <div
-              className="h-full bg-gradient-to-r from-[#43C98B] via-[#55BDE8] to-[#E7B96D] transition-all duration-500 ease-out rounded-full"
-              style={{ width: `${progressLinePercent}%` }}
+              className="h-full bg-gradient-to-r from-[#6FD8B0] to-[#D8B77C] transition-all duration-500 ease-out rounded-full"
+              style={{ width: `${Math.min(100, Math.max(0, computedPercent))}%` }}
             />
           </div>
 
-          {/* 5 Compact Symbolic Nodes */}
           {stages.map((stage, idx) => {
             const config = getStatusConfig(stage.status);
             const IconComponent = stage.icon || DEFAULT_ICONS[idx % DEFAULT_ICONS.length] || HelpCircle;
-            const isHovered = hoveredStageId === stage.id;
-            const isTooltipOpen = activeTooltipId === stage.id || isHovered;
-            const shortLabel = SHORT_LABELS[idx % SHORT_LABELS.length];
+            const isSelected = activeStageId === stage.id;
+            const isDone = isDoneStatus(stage.status);
+            const isAttn = stage.status === 'Action Required' || stage.status === 'Rejected' || stage.status === 'failed';
+            const isPending = stage.status === 'Pending' || stage.status === 'In Review' || stage.status === 'pending' || stage.status === 'active';
+            const displayLabel = stage.title || SHORT_LABELS[idx % SHORT_LABELS.length];
 
             return (
-              <div
+              <button
                 key={stage.id}
-                onMouseEnter={() => setHoveredStageId(stage.id)}
-                onMouseLeave={() => setHoveredStageId(null)}
-                onClick={() => {
-                  setActiveTooltipId(activeTooltipId === stage.id ? null : stage.id);
-                  if (onStageClick) onStageClick(stage);
-                }}
-                className="relative z-10 flex flex-col items-center group cursor-pointer"
-                role="button"
-                tabIndex={0}
-                aria-label={`${shortLabel}: ${config.badgeText}`}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    setActiveTooltipId(activeTooltipId === stage.id ? null : stage.id);
-                    if (onStageClick) onStageClick(stage);
-                  }
-                }}
+                type="button"
+                onClick={() => onStageClick?.(stage)}
+                className={`relative z-10 flex flex-col items-center text-center p-2 rounded-xl transition-all cursor-pointer group ${
+                  isSelected ? 'bg-[var(--dash-hover)] ring-1 ring-[var(--dash-accent-border)]' : 'hover:bg-[var(--dash-hover)]/60'
+                }`}
+                aria-label={`${displayLabel}: ${config.badgeText}`}
               >
-                {/* Compact Circular Icon Container */}
                 <div
-                  className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
-                    config.nodeBg
-                  } ${config.glow}`}
+                  className={`relative w-11 h-11 rounded-full border-2 flex items-center justify-center transition-transform duration-150 group-hover:scale-105 ${config.nodeBg}`}
                 >
-                  <IconComponent className={`w-4 h-4 sm:w-5 sm:h-5 stroke-[2] ${config.iconColor}`} />
-
-                  {/* Status Indicator Badge */}
-                  {stage.status === 'completed' && (
+                  <IconComponent className={`w-4.5 h-4.5 stroke-[2] ${config.iconColor}`} />
+                  {isDone && (
                     <span
                       aria-hidden="true"
-                      className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[#43C98B] text-[#090A0A] flex items-center justify-center font-bold text-[8px] shadow-sm border border-[#141515]"
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#43C98B] text-[#07231A] flex items-center justify-center border border-[#0B0F10]"
                     >
                       <Check className="w-2.5 h-2.5 stroke-[3]" />
                     </span>
                   )}
+                  {isAttn && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center border border-[#0B0F10]"
+                    >
+                      <AlertCircle className="w-2.5 h-2.5 stroke-[2.5]" />
+                    </span>
+                  )}
+                  {isPending && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#D8B77C] text-[#07231A] flex items-center justify-center border border-[#0B0F10]"
+                    >
+                      <Clock className="w-2.5 h-2.5 stroke-[2.5]" />
+                    </span>
+                  )}
                 </div>
 
-                {/* Short Clean Label */}
-                <span className={`text-[11px] sm:text-[12px] font-semibold mt-2 tracking-tight ${config.labelColor}`}>
-                  {shortLabel}
+                <span className={`text-[11px] font-semibold mt-2 leading-tight ${config.labelColor}`}>
+                  {idx + 1}. {SHORT_LABELS[idx] || displayLabel}
                 </span>
 
-                {/* Minimal Tooltip for Secondary Details */}
-                {isTooltipOpen && (
-                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-40 w-48 sm:w-56 p-2.5 rounded-xl bg-[#1D1E1E] text-[#F5F5F2] text-xs shadow-2xl border border-[#292B2B] animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
-                    <div className="flex items-center justify-between pb-1 border-b border-[#292B2B]">
-                      <span className="font-bold text-[#F5F5F2] truncate">{stage.title}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${config.badgeBg}`}>
-                        {config.badgeText}
-                      </span>
-                    </div>
-                    {stage.description && (
-                      <p className="text-[11px] text-[#A5A6A5] mt-1 leading-snug">
-                        {stage.description}
-                      </p>
-                    )}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px w-0 h-0 border-x-5 border-x-transparent border-t-5 border-t-[#1D1E1E]" />
-                  </div>
-                )}
-              </div>
+                <span className={`mt-1.5 inline-block text-[9.5px] font-semibold px-2 py-0.5 rounded-full ${config.badgeBg}`}>
+                  {config.badgeText}
+                </span>
+              </button>
             );
           })}
         </div>

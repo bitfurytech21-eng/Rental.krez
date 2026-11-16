@@ -3,7 +3,8 @@ import { User, UserRole, AccountType } from '../types/user';
 import { ledger } from './ledger';
 import { supabase, isSupabaseConfigured, getAuthRedirectUrl } from './supabaseClient';
 import { Session } from '@supabase/supabase-js';
-import { setAuthToken, apiRequest, authApi } from './api';
+import { setAuthToken, apiRequest, authApi, userApi, getAuthToken } from './api';
+import { hasStaffAccess } from '../components/admin/adminRbac';
 
 interface RegisterResult {
   user: any;
@@ -41,7 +42,7 @@ interface AuthContextType {
     countryCode?: string
   ) => Promise<RegisterResult>;
   logout: () => Promise<void>;
-  refreshUser: () => void;
+  refreshUser: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<boolean>;
   updatePassword: (newPassword: string) => Promise<void>;
   updateUserEmail: (newEmail: string) => Promise<void>;
@@ -64,18 +65,141 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(false);
   const isConfigured = isSupabaseConfigured();
 
-  const refreshUser = () => {
+  const hydrateUserFromBackendAndProfile = async (
+    baseUser: User,
+    accessToken?: string | null
+  ): Promise<User> => {
+    let enriched: User = { ...baseUser };
+    try {
+      if (isConfigured) {
+        const { data: profileRow, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', baseUser.id)
+          .maybeSingle();
+
+        if (!error && profileRow) {
+          const isAdminFlag = Boolean((profileRow as any).is_admin === true || (profileRow as any).role === 'admin' || (profileRow as any).role === 'super_admin');
+          const staffRoleVal = typeof (profileRow as any).staff_role === 'string' && (profileRow as any).staff_role.trim()
+            ? String((profileRow as any).staff_role).trim()
+            : null;
+          enriched = {
+            ...enriched,
+            fullName: profileRow.full_name || enriched.fullName,
+            accountType: (profileRow.account_type as AccountType) || enriched.accountType,
+            kycStatus: (profileRow.kyc_status as any) || enriched.kycStatus,
+            walletBalance: typeof profileRow.wallet_balance === 'number' ? profileRow.wallet_balance : Number(profileRow.wallet_balance ?? enriched.walletBalance ?? 0),
+            investedBalance: typeof profileRow.invested_balance === 'number' ? profileRow.invested_balance : Number(profileRow.invested_balance ?? enriched.investedBalance ?? 0),
+            totalEarned: typeof profileRow.total_dividends_earned === 'number' ? profileRow.total_dividends_earned : Number(profileRow.total_dividends_earned ?? enriched.totalEarned ?? 0),
+            country: profileRow.country || enriched.country,
+            phoneNumber: profileRow.phone_number || enriched.phoneNumber,
+            bankIban: profileRow.bank_iban || (profileRow as any).iban || enriched.bankIban,
+            bankAccountHolder: profileRow.bank_account_holder || (profileRow as any).bank_holder || enriched.bankAccountHolder,
+            frozen: Boolean((profileRow as any).frozen),
+            status: (profileRow as any).account_status === 'suspended' || (profileRow as any).frozen ? 'suspended' : enriched.status,
+            suspendedReason: (profileRow as any).suspended_reason || enriched.suspendedReason,
+            isAdmin: isAdminFlag,
+            staffRole: staffRoleVal,
+            role: (isAdminFlag ? 'admin' : staffRoleVal ? (staffRoleVal as UserRole) : enriched.role),
+          };
+        }
+      }
+
+      if (accessToken && !accessToken.startsWith('kretz_adm_')) {
+        try {
+          const meRes = await userApi.getProfile();
+          const me = (meRes as any)?.data || (meRes as any)?.user || meRes;
+          if (me && (me.id || me.email)) {
+            const serverIsAdmin = typeof me.isAdmin === 'boolean' ? me.isAdmin : enriched.isAdmin;
+            const serverStaffRole = me.staffRole !== undefined ? me.staffRole : enriched.staffRole;
+            enriched = {
+              ...enriched,
+              fullName: me.fullName || enriched.fullName,
+              kycStatus: (me.kycStatus || enriched.kycStatus) as any,
+              walletBalance: Number(me.walletBalance ?? me.balance ?? enriched.walletBalance ?? 0),
+              investedBalance: Number(me.investedBalance ?? enriched.investedBalance ?? 0),
+              totalEarned: Number(me.totalEarned ?? enriched.totalEarned ?? 0),
+              country: me.country ?? enriched.country,
+              phoneNumber: me.phoneNumber ?? enriched.phoneNumber,
+              bankIban: me.bankIban ?? enriched.bankIban,
+              bankAccountHolder: me.bankAccountHolder ?? enriched.bankAccountHolder,
+              isAdmin: serverIsAdmin,
+              staffRole: serverStaffRole,
+              role: serverIsAdmin ? 'admin' : serverStaffRole ? (serverStaffRole as UserRole) : ((me.role as UserRole) || enriched.role),
+            };
+          }
+        } catch {
+          // Server profile endpoint optional during initial Supabase hydration
+        }
+      }
+    } catch {
+      // Preserve baseUser when profile enrichment fails
+    }
+    return enriched;
+  };
+
+  const refreshUser = async (): Promise<void> => {
     if (!user) return;
+    const activeToken = getAuthToken() || (typeof window !== 'undefined' ? localStorage.getItem('kretz_auth_token') : null);
+    if (activeToken && !activeToken.startsWith('kretz_adm_')) {
+      try {
+        const res = await userApi.getProfile();
+        const serverUser = res?.data || res?.user || res;
+        if (serverUser && (serverUser.id || serverUser.email)) {
+          const walletBal = typeof serverUser.walletBalance === 'number'
+            ? serverUser.walletBalance
+            : typeof serverUser.balance === 'number'
+            ? serverUser.balance
+            : user.walletBalance;
+          const nextIsAdmin = typeof serverUser.isAdmin === 'boolean' ? serverUser.isAdmin : user.isAdmin;
+          const nextStaffRole = serverUser.staffRole !== undefined ? serverUser.staffRole : user.staffRole;
+          const nextUser: User = {
+            ...user,
+            ...serverUser,
+            id: serverUser.id || user.id,
+            email: serverUser.email || user.email,
+            fullName: serverUser.fullName || user.fullName,
+            isAdmin: nextIsAdmin,
+            staffRole: nextStaffRole,
+            role: nextIsAdmin ? 'admin' : nextStaffRole ? (nextStaffRole as UserRole) : ((serverUser.role as UserRole) || user.role),
+            kycStatus: (serverUser.kycStatus || user.kycStatus) as any,
+            walletBalance: Number(walletBal ?? 0),
+            investedBalance: Number(serverUser.investedBalance ?? user.investedBalance ?? 0),
+            totalEarned: Number(serverUser.totalEarned ?? user.totalEarned ?? 0),
+            bankIban: serverUser.bankIban ?? user.bankIban,
+            bankAccountHolder: serverUser.bankAccountHolder ?? user.bankAccountHolder,
+            phoneNumber: serverUser.phoneNumber ?? user.phoneNumber,
+            address: serverUser.address ?? user.address,
+            city: serverUser.city ?? user.city,
+            postalCode: serverUser.postalCode ?? user.postalCode,
+            country: serverUser.country ?? user.country,
+            taxId: serverUser.taxId ?? user.taxId,
+            avatarUrl: serverUser.avatarUrl ?? user.avatarUrl,
+            cryptoDepositAddress: serverUser.cryptoDepositAddress ?? user.cryptoDepositAddress,
+            frozen: typeof serverUser.frozen === 'boolean' ? serverUser.frozen : user.frozen,
+          };
+          setUser(nextUser);
+          return;
+        }
+      } catch {
+        // Fallback to local ledger snapshot if profile endpoint is temporarily unreachable
+      }
+    }
     const fresh = ledger.getUserById(user.id);
     if (fresh) {
-      setUser({ ...fresh });
+      setUser((prev) => ({
+        ...fresh,
+        isAdmin: prev?.isAdmin,
+        staffRole: prev?.staffRole,
+        role: prev?.isAdmin ? 'admin' : prev?.staffRole ? (prev.staffRole as UserRole) : fresh.role,
+      }));
     }
   };
 
   useEffect(() => {
     if (!user?.id) return;
     const unsubscribe = ledger.subscribe(() => {
-      // Do not overwrite server-verified custom administrator email/profile from local seed ledger
+      // Do not overwrite server-verified custom administrator email/profile or Supabase staff flags
       const activeTok = typeof window !== 'undefined' ? localStorage.getItem('kretz_auth_token') : null;
       if (activeTok && activeTok.startsWith('kretz_adm_')) {
         return;
@@ -84,7 +208,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (fresh) {
         setUser((prev) => {
           if (!prev) return { ...fresh };
-          return { ...fresh };
+          return {
+            ...fresh,
+            isAdmin: prev.isAdmin,
+            staffRole: prev.staffRole,
+            role: prev.isAdmin ? 'admin' : prev.staffRole ? (prev.staffRole as UserRole) : fresh.role,
+          };
         });
       }
     });
@@ -128,12 +257,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedToken.startsWith('kretz_adm_')) {
       authApi.getAdminSession()
         .then((res: any) => {
-          if (res?.user && res.user.role === 'admin') {
+          if (res?.user && (res.user.role === 'admin' || res.user.isAdmin || res.user.staffRole)) {
             const adm: User = {
               id: res.user.id || 'usr-admin-01',
               email: res.user.email,
               fullName: res.user.fullName || 'Executive Administrator',
-              role: 'admin',
+              role: (res.user.role || 'admin') as UserRole,
+              isAdmin: res.user.isAdmin !== undefined ? Boolean(res.user.isAdmin) : true,
+              staffRole: res.user.staffRole ?? 'super_admin',
               accountType: 'admin',
               kycStatus: 'verified',
               walletBalance: res.user.balance ?? 0,
@@ -183,6 +314,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               sUser.country,
               sUser.phoneNumber
             );
+            synced.isAdmin = Boolean(sUser.isAdmin || sUser.role === 'admin' || sUser.role === 'super_admin');
+            synced.staffRole = sUser.staffRole ?? (synced.isAdmin ? 'super_admin' : null);
             if (typeof sUser.balance === 'number') {
               synced.walletBalance = sUser.balance;
             }
@@ -217,7 +350,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Fetch active Supabase session
     supabase.auth
       .getSession()
-      .then(({ data: { session: initialSession }, error }) => {
+      .then(async ({ data: { session: initialSession }, error }) => {
         if (isResolved) return;
         isResolved = true;
         clearTimeout(failsafeTimer);
@@ -239,11 +372,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             'investor',
             (initialSession.user.user_metadata?.account_type as AccountType) || undefined
           );
-          setUser(synced);
           setSession(initialSession);
           setToken(initialSession.access_token);
           setAuthToken(initialSession.access_token);
           localStorage.setItem(CURRENT_USER_KEY, synced.id);
+          const hydrated = await hydrateUserFromBackendAndProfile(synced, initialSession.access_token);
+          setUser(hydrated);
         } else {
           // No active Supabase session
           setUser(null);
@@ -290,11 +424,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'investor',
           (currentSession.user.user_metadata?.account_type as AccountType) || undefined
         );
-        setUser(synced);
         setSession(currentSession);
         setToken(currentSession.access_token);
         setAuthToken(currentSession.access_token);
         localStorage.setItem(CURRENT_USER_KEY, synced.id);
+        const hydrated = await hydrateUserFromBackendAndProfile(synced, currentSession.access_token);
+        setUser(hydrated);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setSession(null);
@@ -361,7 +496,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Authentication failed. Invalid email address or password.');
       }
 
-      if (serverUser.role === 'admin') {
+      if (serverUser.role === 'admin' && !serverUser.staffRole && !serverUser.isAdmin) {
         throw new Error('Administrator accounts must authenticate via the Administrator Gateway at /admin/login.');
       }
 
@@ -369,19 +504,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         serverUser.id,
         serverUser.email,
         serverUser.fullName || cleanEmail.split('@')[0] || 'Investor',
-        'investor',
+        (serverUser.role as UserRole) || 'investor',
         (serverUser.accountType as AccountType) || 'individual_investor',
         serverUser.country,
         serverUser.phoneNumber
       );
 
+      synced.isAdmin = Boolean(serverUser.isAdmin || serverUser.role === 'admin' || serverUser.role === 'super_admin');
+      synced.staffRole = serverUser.staffRole ?? (synced.isAdmin ? 'super_admin' : null);
       if (typeof serverUser.balance === 'number') {
         synced.walletBalance = serverUser.balance;
       }
 
-      setUser(synced);
       setToken(serverToken);
       setAuthToken(serverToken);
+      const hydrated = await hydrateUserFromBackendAndProfile(synced, serverToken);
+      setUser(hydrated);
 
       // The API returns the Supabase refresh token as well as the access token.
       // Persist both in the Supabase client so AuthProvider can restore the same
@@ -466,24 +604,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data.user.user_metadata?.full_name || email.split('@')[0] || 'Investor',
       'investor'
     );
-    setUser(synced);
     setSession(data.session);
-    const standardToken = data.session?.access_token || (synced.role === 'admin' ? 'admin_sess_' + synced.id : 'sess_' + synced.id);
+    const standardToken = data.session?.access_token || 'sess_' + synced.id;
     setToken(standardToken);
     setAuthToken(standardToken);
     localStorage.setItem(CURRENT_USER_KEY, synced.id);
+    const hydrated = await hydrateUserFromBackendAndProfile(synced, standardToken);
+    setUser(hydrated);
     try {
       ledger.recordAuditLog(
-        synced.id,
-        synced.email,
+        hydrated.id,
+        hydrated.email,
         'LOGIN_SUCCESS',
-        `User ${synced.email} authenticated successfully (${synced.role}).`,
+        `User ${hydrated.email} authenticated successfully (${hydrated.role}).`,
         'auth',
         'success',
-        { targetUserId: synced.id, targetUserEmail: synced.email }
+        { targetUserId: hydrated.id, targetUserEmail: hydrated.email }
       );
     } catch (e) {}
-    return synced;
+    return hydrated;
   };
 
   // Connect Register form to real Supabase account creation with user metadata and email verification
@@ -963,17 +1102,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         skipAuth: true
       });
     } catch (err: any) {
+      // Allow Supabase-provisioned staff/admins (profiles.is_admin = true or non-null profiles.staff_role)
+      // to sign in through /admin/login when legacy gateway credentials don't match.
+      if (isConfigured && !emailCode) {
+        try {
+          const { data: sbData, error: sbErr } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: pass,
+          });
+          if (!sbErr && sbData?.user && sbData?.session?.access_token) {
+            const base = ledger.syncSupabaseUser(
+              sbData.user.id,
+              sbData.user.email || cleanEmail,
+              sbData.user.user_metadata?.full_name || cleanEmail.split('@')[0] || 'Staff',
+              'investor'
+            );
+            setToken(sbData.session.access_token);
+            setAuthToken(sbData.session.access_token);
+            const hydrated = await hydrateUserFromBackendAndProfile(base, sbData.session.access_token);
+            if (hasStaffAccess(hydrated)) {
+              setSession(sbData.session);
+              setUser(hydrated);
+              localStorage.setItem(CURRENT_USER_KEY, hydrated.id);
+              return hydrated;
+            }
+            await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+            setToken(null);
+            setAuthToken(null);
+            throw new Error('This account does not have staff or administrator privileges.');
+          }
+        } catch (sbCatch: any) {
+          if (sbCatch?.message?.includes('staff or administrator privileges')) {
+            throw sbCatch;
+          }
+        }
+      }
       if (import.meta.env.PROD) {
-        // The API wrapper already exposes safe server error messages and codes.
-        // Preserve those messages so configuration, access and credential failures
-        // are distinguishable from an actual network outage.
         throw new Error(err?.message || 'Administrator authentication service is unavailable. Please try again shortly.');
       }
       if (err?.status === 405 || err?.status === 404 || String(err?.message || '').includes('405') || String(err?.message || '').includes('Failed to fetch')) {
         const localAdmin = ledger.getUserByEmail(cleanEmail) || ledger.getUsers().find(u => u.role === 'admin');
         if (localAdmin && localAdmin.role === 'admin') {
           const fakeAdminToken = `kretz_adm_local_${Math.random().toString(36).slice(2)}${Date.now()}`;
-          const adminUser: User = { ...localAdmin, email: cleanEmail };
+          const adminUser: User = { ...localAdmin, email: cleanEmail, isAdmin: true, staffRole: 'super_admin' };
           setSession(null);
           setUser(adminUser);
           setToken(fakeAdminToken);
@@ -1016,7 +1187,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: res.user?.id || 'usr-admin-01',
       email: res.user?.email || cleanEmail,
       fullName: res.user?.fullName || 'Executive Administrator',
-      role: 'admin',
+      role: (res.user?.role || 'admin') as UserRole,
+      isAdmin: res.user?.isAdmin !== undefined ? Boolean(res.user.isAdmin) : true,
+      staffRole: res.user?.staffRole ?? 'super_admin',
       accountType: 'admin',
       kycStatus: 'verified',
       walletBalance: res.user?.balance ?? 0,
@@ -1176,7 +1349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         token,
         isAuthenticated: !!user,
-        isAdmin: user?.role === 'admin',
+        isAdmin: hasStaffAccess(user),
         isLoading,
         isConfigured,
         isRecoveryMode,

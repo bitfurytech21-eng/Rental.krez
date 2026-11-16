@@ -76,7 +76,14 @@ export const PropertyDailyDistributionsView: React.FC<PropertyDailyDistributions
 
   const handleDownloadCsv = (propertyId?: string) => {
     const url = distributionApi.getExportUrl(propertyId === 'all' ? undefined : propertyId, 'csv');
-    window.open(url, '_blank');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `distributions-${propertyId || 'all'}.csv`;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   if (loading && summaries.length === 0) {

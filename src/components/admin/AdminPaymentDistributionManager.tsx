@@ -220,7 +220,12 @@ export const AdminPaymentDistributionManager: React.FC = () => {
 
   const handleDownloadCsv = (propId?: string) => {
     const url = distributionApi.getExportUrl(propId === 'all' ? undefined : propId, 'csv');
-    window.open(url, '_blank');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `distributions-${propId && propId !== 'all' ? propId : 'all'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   // Calculations for Admin Overview

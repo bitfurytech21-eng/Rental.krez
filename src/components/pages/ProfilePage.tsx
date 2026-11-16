@@ -164,13 +164,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     };
 
     try {
+      await userApi.updateProfile(updates);
       ledger.updateUserProfile(user.id, updates);
-      try {
-        await userApi.updateProfile(updates);
-      } catch {
-        // Local ledger remains synchronized if user session exists only in browser ledger
-      }
-      refreshUser();
+      await refreshUser();
       setBankIban(normalizedIban);
       setMessage('Personal investor profile and SEPA payout IBAN updated.');
       toast.success('Investor profile & banking details saved.');
@@ -224,25 +220,40 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         reader.readAsDataURL(kycFile);
       });
 
-      ledger.uploadVerificationDocument({
-        userId: user.id,
-        userName: user.fullName,
-        userEmail: user.email,
+      const uploadRes = await userApi.uploadComplianceDocument({
         category: 'kyc_identity',
-        title: `${docType} — Identity Verification`,
         documentType: docType,
-        fileUrl: dataUrl,
         fileName: kycFile.name,
+        mimeType: kycFile.type || 'application/octet-stream',
         fileSize: kycFile.size,
+        fileDataUrl: dataUrl,
       });
 
-      ledger.updateKYCStatus(user.id, 'pending', docType);
-      refreshUser();
+      try {
+        ledger.uploadVerificationDocument({
+          userId: user.id,
+          userName: user.fullName,
+          userEmail: user.email,
+          category: 'kyc_identity',
+          title: `${docType} — Identity Verification`,
+          documentType: docType,
+          fileUrl: dataUrl,
+          fileName: kycFile.name,
+          fileSize: kycFile.size,
+        });
+        ledger.updateKYCStatus(user.id, 'pending', docType);
+      } catch {
+        // Non-blocking local mirror
+      }
+
+      await refreshUser();
+      const uploadedName = kycFile.name;
       setKycFile(null);
       if (kycFileInputRef.current) {
         kycFileInputRef.current.value = '';
       }
-      const confirmMsg = `Identity document (${kycFile.name}) uploaded and queued for compliance review.`;
+      const confirmMsg =
+        uploadRes?.message || `Identity document (${uploadedName}) uploaded and queued for compliance review.`;
       setMessage(confirmMsg);
       toast.success('KYC identity document submitted for review.');
     } catch (err: any) {
@@ -254,20 +265,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   };
 
-  const handleAvatarUpload = (base64: string) => {
-    ledger.updateUserAvatar(user.id, base64);
-    userApi.updateProfile({ avatarUrl: base64 }).catch(() => {});
-    refreshUser();
-    setMessage('Profile picture updated.');
-    toast.success('Profile photo updated.');
+  const handleAvatarUpload = async (base64: string) => {
+    try {
+      await userApi.updateProfile({ avatarUrl: base64 });
+      ledger.updateUserAvatar(user.id, base64);
+      await refreshUser();
+      setMessage('Profile picture updated.');
+      toast.success('Profile photo updated.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Unable to update profile picture right now.');
+    }
   };
 
-  const handleAvatarRemove = () => {
-    ledger.updateUserAvatar(user.id, '');
-    userApi.updateProfile({ avatarUrl: '' }).catch(() => {});
-    refreshUser();
-    setMessage('Custom profile picture removed.');
-    toast.info('Profile photo removed.');
+  const handleAvatarRemove = async () => {
+    try {
+      await userApi.updateProfile({ avatarUrl: '' });
+      ledger.updateUserAvatar(user.id, '');
+      await refreshUser();
+      setMessage('Custom profile picture removed.');
+      toast.info('Profile photo removed.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Unable to remove profile picture right now.');
+    }
   };
 
   const renderKYCBadge = (status: KYCStatus) => {

@@ -153,24 +153,25 @@ export const ManualDepositModal: React.FC<Props> = ({
         <dl className="divide-y divide-[#1F2C33] rounded-2xl border border-[#1F2C33] bg-[#121A1F] text-sm">
           <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Amount</dt><dd className="font-semibold">{money(numericAmount)}</dd></div>
           <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Method</dt><dd className="text-right font-semibold">{selected.name}</dd></div>
+          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Limits</dt><dd className="font-mono text-xs text-[#8FA1A8]">{money(Number(selected.minimum_amount))} – {selected.maximum_amount ? money(Number(selected.maximum_amount)) : 'No cap'}</dd></div>
           <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Fee</dt><dd className="font-semibold">{money(fee)}</dd></div>
           <div className="flex justify-between gap-3 p-3.5"><dt className="font-semibold">Total to pay</dt><dd className="font-bold text-[#6FD8B0]">{money(numericAmount+fee)}</dd></div>
         </dl>
         <div className="space-y-3 rounded-2xl border border-[#1F2C33] bg-[#121A1F] p-4">
-          <h4 className="text-sm font-semibold">Payment instructions</h4>
-          {Object.entries(selected.account_details || {}).map(([key,value])=><div key={key} className="flex items-center justify-between gap-3 text-xs"><span className="text-[#8FA1A8]">{key}</span><span className="flex items-center gap-2 text-right font-semibold break-all">{String(value)}<button type="button" onClick={()=>copy(String(value))} className="shrink-0 text-[#6FD8B0]">Copy</button></span></div>)}
+          <h4 className="text-sm font-semibold">Transfer &amp; Wallet Instructions</h4>
+          {Object.entries(selected.account_details || {}).map(([key,value])=><div key={key} className="flex items-center justify-between gap-3 text-xs"><span className="text-[#8FA1A8]">{key}</span><span className="flex items-center gap-2 text-right font-semibold break-all font-mono">{String(value)}<button type="button" onClick={()=>copy(String(value))} className="shrink-0 text-[#6FD8B0] cursor-pointer hover:underline">Copy</button></span></div>)}
           <p className="whitespace-pre-wrap text-xs leading-relaxed text-[#8FA1A8]">{selected.instructions}</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-xs text-[#8FA1A8]">Sender name<input required value={senderName} onChange={e=>setSenderName(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm text-[#F2F5F4]" /></label>
           <label className="block text-xs text-[#8FA1A8]">Payment date<input required type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm text-[#F2F5F4]" /></label>
         </div>
-        <label className="block text-xs text-[#8FA1A8]">Bank / payment transaction ID<input required minLength={4} maxLength={120} value={transactionId} onChange={e=>setTransactionId(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm text-[#F2F5F4]" /></label>
+        <label className="block text-xs text-[#8FA1A8]">Bank reference / on-chain transaction hash<input required minLength={4} maxLength={120} value={transactionId} onChange={e=>setTransactionId(e.target.value)} placeholder="e.g. SEPA-2026... or 5xK...txHash" className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm font-mono text-[#F2F5F4]" /></label>
         {selected.extra_fields?.map(field=><label key={field.key} className="block text-xs text-[#8FA1A8]">{field.label}<input required={Boolean(field.required)} value={extraValues[field.key]||''} onChange={e=>setExtraValues(prev=>({...prev,[field.key]:e.target.value}))} className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm text-[#F2F5F4]" /></label>)}
         <label className="block text-xs text-[#8FA1A8]">Proof of payment (JPG, PNG, WEBP or PDF · max 5 MB)<input ref={fileRef} required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>chooseFile(e.target.files?.[0])} className="mt-1 w-full rounded-xl border border-dashed border-[#2F4650] p-3 text-xs text-[#F2F5F4]" /></label>
         {proof && <p className="text-xs text-[#6FD8B0]">{proof.name} · {(proof.size/1024).toFixed(0)} KB</p>}
-        <div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>setStep(2)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold">Back</button><button type="submit" disabled={busy || !proof || !isVerified} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">{busy?'Submitting…':'Confirm deposit'}</button></div>
-        <p className="text-center text-[11px] leading-relaxed text-[#8FA1A8]">Your wallet is not credited at submission. Funds are added only after an administrator verifies and approves the payment.</p>
+        <div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>setStep(2)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold cursor-pointer">Back</button><button type="submit" disabled={busy || !proof || !isVerified} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40 cursor-pointer">{busy?'Submitting…':'Confirm deposit'}</button></div>
+        <p className="text-center text-[11px] leading-relaxed text-[#8FA1A8]">Your wallet is not credited at submission. Funds are added only after finance or blockchain settlement is verified.</p>
       </form>}
 
       {step === 4 && submitted && <section className="space-y-4 text-center">

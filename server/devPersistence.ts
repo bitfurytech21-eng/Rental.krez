@@ -8,6 +8,11 @@ export interface DevAuthSnapshot {
   sessions: any[];
   complianceDocs: Record<string, any[]>;
   complianceSteps?: Record<string, any[]>;
+  transactions?: any[];
+  notifications?: Record<string, any[]>;
+  subBalances?: Record<string, Record<string, number>>;
+  preferences?: Record<string, Record<string, any>>;
+  manualDeposits?: any[];
 }
 
 const EMPTY_SNAPSHOT: DevAuthSnapshot = {
@@ -15,6 +20,11 @@ const EMPTY_SNAPSHOT: DevAuthSnapshot = {
   sessions: [],
   complianceDocs: {},
   complianceSteps: {},
+  transactions: [],
+  notifications: {},
+  subBalances: {},
+  preferences: {},
+  manualDeposits: [],
 };
 
 export function isLocalDevPersistenceEnabled(): boolean {
@@ -50,6 +60,20 @@ export async function loadDevAuthSnapshot(): Promise<DevAuthSnapshot> {
         parsed?.complianceSteps && typeof parsed.complianceSteps === 'object'
           ? parsed.complianceSteps
           : {},
+      transactions: Array.isArray(parsed?.transactions) ? parsed.transactions : [],
+      notifications:
+        parsed?.notifications && typeof parsed.notifications === 'object'
+          ? parsed.notifications
+          : {},
+      subBalances:
+        parsed?.subBalances && typeof parsed.subBalances === 'object'
+          ? parsed.subBalances
+          : {},
+      preferences:
+        parsed?.preferences && typeof parsed.preferences === 'object'
+          ? parsed.preferences
+          : {},
+      manualDeposits: Array.isArray(parsed?.manualDeposits) ? parsed.manualDeposits : [],
     };
   } catch {
     return EMPTY_SNAPSHOT;

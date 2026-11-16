@@ -449,6 +449,14 @@ export const blogApi = {
 /**
  * User Profile, Dashboard & Portfolio Endpoints
  */
+export const securityApi = {
+  requestActionCode: (actionScope: string) =>
+    api.post<{ success: boolean; maskedEmail?: string; expiresInSeconds?: number }>('/security/action-code/request', { actionScope }),
+
+  verifyActionCode: (actionScope: string, code: string) =>
+    api.post<{ success: boolean; grantId: string }>('/security/action-code/verify', { actionScope, code: code.trim() }),
+};
+
 export const userApi = {
   getProfile: () =>
     api.get<any>('/user/profile'),
@@ -462,8 +470,35 @@ export const userApi = {
   getDashboardSummary: () =>
     api.get<any>('/dashboard/summary'),
 
-  getTransactions: () =>
-    api.get<any[]>('/transactions'),
+  getTransactions: (params?: {
+    type?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) =>
+    api.get<{ success: boolean; data: any[]; total?: number }>('/transactions', { params }),
+
+  getTransaction: (transactionId: string) =>
+    api.get<{ success: boolean; data: any }>(`/transactions/${encodeURIComponent(transactionId)}`),
+
+  getComplianceSteps: () =>
+    api.get<{ success: boolean; data: any[] }>('/compliance/steps'),
+
+  getComplianceDocuments: () =>
+    api.get<{ success: boolean; data: any[] }>('/compliance/documents'),
+
+  uploadComplianceDocument: (payload: {
+    category: 'kyc_identity' | 'proof_of_address' | 'accredited_proof';
+    documentType: string;
+    fileName: string;
+    mimeType: string;
+    fileSize: number;
+    fileDataUrl?: string;
+  }) =>
+    api.post<{ success: boolean; data: any; documents: any[]; steps: any[]; message?: string }>('/compliance/documents', payload),
 
   getNotifications: () =>
     api.get<any>('/notifications'),
@@ -513,12 +548,28 @@ export const userApi = {
  */
 export const treasuryApi = {
   getRates: () =>
-    api.get<{ success: boolean; data: { base: string; ratesToEur: Record<string, number>; feePercent: number; updatedAt: string } }>('/treasury/rates'),
+    api.get<{
+      success: boolean;
+      data: {
+        base: string;
+        available: boolean;
+        providerStatus: 'live' | 'unavailable';
+        providerSource?: string;
+        quoteId?: string;
+        expiresAt?: string;
+        ratesToEur?: Record<string, number>;
+        feePercent: number;
+        limits: { minEur: number; maxEur: number };
+        supportedAssets: string[];
+        networks?: Record<string, string>;
+        updatedAt?: string;
+      };
+    }>('/treasury/rates'),
 
   getBalances: () =>
     api.get<{ success: boolean; data: { balances: Record<string, number> } }>('/treasury/balances'),
 
-  convert: (payload: { fromCurrency: string; toCurrency: string; amount: number; clientEurBalance?: number }) =>
+  convert: (payload: { fromCurrency: string; toCurrency: string; amount: number; quoteId?: string }) =>
     api.post<{
       success: boolean;
       data: {
@@ -527,7 +578,10 @@ export const treasuryApi = {
         toCurrency: string;
         fromAmount: number;
         toAmount: number;
+        crossRate?: number;
+        feePercent?: number;
         feeEur: number;
+        providerSource?: string;
         balances: Record<string, number>;
         transaction: any;
       };
@@ -542,22 +596,60 @@ export const financialApi = {
   deposit: (payload: { amount: number; currency?: string; method?: string; txHash?: string; idempotencyKey?: string }) =>
     api.post<any>('/deposits', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
-  withdraw: (payload: { amount: number; destination: string; method?: string; idempotencyKey?: string }) =>
-    withActionEmailVerification('investor.withdrawal.create', (grantId) => apiRequest<any>('/withdrawals', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
+  withdraw: (payload: { amount: number; destination: string; method?: string; idempotencyKey?: string; grantId?: string }) => {
+    const { grantId, ...body } = payload;
+    if (grantId) {
+      return apiRequest<any>('/withdrawals', {
+        method: 'POST',
+        body: { ...body, idempotencyKey: body.idempotencyKey || createIdempotencyKey() },
+        headers: { 'X-Action-Verification': grantId },
+      });
+    }
+    return withActionEmailVerification('investor.withdrawal.create', (verifiedGrant) =>
+      apiRequest<any>('/withdrawals', {
+        method: 'POST',
+        body: { ...body, idempotencyKey: body.idempotencyKey || createIdempotencyKey() },
+        headers: { 'X-Action-Verification': verifiedGrant },
+      })
+    );
+  },
 
-  invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string }) =>
-    withActionEmailVerification('investor.investment.create', (grantId) => apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
+  invest: (payload: { propertyId: string; tokensCount: number; paymentMethod?: string; feePercent?: number; idempotencyKey?: string; grantId?: string }) => {
+    const { grantId, ...body } = payload;
+    return apiRequest<any>('/investments', {
+      method: 'POST',
+      body: { ...body, idempotencyKey: body.idempotencyKey || createIdempotencyKey() },
+      headers: grantId ? { 'X-Action-Verification': grantId } : undefined,
+    });
+  },
 };
 
 export const investmentsApi = {
   getMyInvestments: () =>
     api.get<any>('/portfolio'),
 
-  executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; feePercent?: number; idempotencyKey?: string }) =>
-    withActionEmailVerification('investor.investment.create', (grantId) => apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
+  executeInvestment: (payload: { propertyId: string; tokensCount: number; paymentMethod: string; feePercent?: number; idempotencyKey?: string; grantId?: string }) => {
+    const { grantId, ...body } = payload;
+    return apiRequest<any>('/investments', {
+      method: 'POST',
+      body: { ...body, idempotencyKey: body.idempotencyKey || createIdempotencyKey() },
+      headers: grantId ? { 'X-Action-Verification': grantId } : undefined,
+    });
+  },
 
-  reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string }) =>
-    withActionEmailVerification('investor.investment.create', (grantId) => apiRequest<any>('/investments', { method: 'POST', body: { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey(), paymentMethod: 'Reinvested Account Balance', mode: 'reinvest' }, headers: { 'X-Action-Verification': grantId } })),
+  reinvest: (payload: { propertyId: string; tokensCount: number; idempotencyKey?: string; grantId?: string }) => {
+    const { grantId, ...body } = payload;
+    return apiRequest<any>('/investments', {
+      method: 'POST',
+      body: {
+        ...body,
+        idempotencyKey: body.idempotencyKey || createIdempotencyKey(),
+        paymentMethod: 'Reinvested Account Balance',
+        mode: 'reinvest',
+      },
+      headers: grantId ? { 'X-Action-Verification': grantId } : undefined,
+    });
+  },
 };
 
 /**
@@ -567,14 +659,17 @@ export const walletApi = {
   getBalance: () =>
     api.get<{ balance: number; subBalances?: Record<string, number>; currency: string }>('/wallet/balance'),
 
-  getTransactions: (params?: { limit?: number; offset?: number }) =>
-    api.get<any[]>('/transactions', { params }),
+  getTransactions: (params?: { type?: string; status?: string; from?: string; to?: string; search?: string; limit?: number; offset?: number }) =>
+    api.get<{ success: boolean; data: any[]; total?: number }>('/transactions', { params }),
+
+  getWithdrawals: () =>
+    api.get<{ success: boolean; data: any[]; total?: number }>('/withdrawals'),
 
   createDepositRequest: (payload: { amount: number; currency: string; method: string; txHash?: string; idempotencyKey?: string }) =>
-    api.post<any>('/deposits', { ...payload, idempotencyKey: createIdempotencyKey() }),
+    api.post<any>('/deposits', { ...payload, idempotencyKey: payload.idempotencyKey || createIdempotencyKey() }),
 
-  createWithdrawalRequest: (payload: { amount: number; destination: string; method: string; idempotencyKey?: string }) =>
-    withActionEmailVerification('investor.withdrawal.create', (grantId) => apiRequest<any>('/withdrawals', { method: 'POST', body: { ...payload, idempotencyKey: createIdempotencyKey() }, headers: { 'X-Action-Verification': grantId } })),
+  createWithdrawalRequest: (payload: { amount: number; destination: string; method: string; idempotencyKey?: string; grantId?: string }) =>
+    financialApi.withdraw(payload),
 };
 
 /**
@@ -659,6 +754,12 @@ export const adminApi = {
 
   getAuditLogs: (params?: { limit?: number }) =>
     api.get<any[]>('/admin/audit-logs', { params }),
+
+  getNotifications: () =>
+    api.get<any[]>('/admin/notifications'),
+
+  sendNotification: (payload: { userId: string; title: string; message: string; type?: 'info' | 'success' | 'warning' }) =>
+    api.post<any>('/admin/notifications', payload),
 };
 
 /**

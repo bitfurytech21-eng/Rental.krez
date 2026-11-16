@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../context/ToastContext';
 import { ledger, DocumentCategory } from '../../lib/ledger';
+import { userApi } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, ShieldCheck, ArrowRight } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle2, AlertCircle, ShieldCheck, ArrowRight, RefreshCw } from 'lucide-react';
 
 interface ComplianceVaultSectionProps {
   onNavigateProfile: () => void;
@@ -26,26 +27,70 @@ export const ComplianceVaultSection: React.FC<ComplianceVaultSectionProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [serverSteps, setServerSteps] = useState<any[]>([]);
+  const [serverDocs, setServerDocs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchComplianceData = useCallback(async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const [stepsRes, docsRes] = await Promise.all([
+        userApi.getComplianceSteps(),
+        userApi.getComplianceDocuments(),
+      ]);
+      setServerSteps(Array.isArray(stepsRes?.data) ? stepsRes.data : []);
+      setServerDocs(Array.isArray(docsRes?.data) ? docsRes.data : []);
+    } catch (err: any) {
+      setLoadError(err?.message || 'Unable to load live compliance status.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchComplianceData();
+  }, [fetchComplianceData]);
+
   if (!user) return null;
 
-  const docs = ledger.getVerificationDocuments(user.id);
-  const hasIdentityDoc = user.kycStatus === 'verified' || docs.some((d) => d.category === 'kyc_identity');
-  const hasAddressDoc =
-    user.kycStatus === 'verified' ||
-    docs.some((d) => d.category === 'proof_of_address' || d.documentType?.toLowerCase().includes('address'));
-  const hasQuestionnaire =
-    user.kycStatus === 'verified' ||
-    docs.some((d) => d.category === 'accredited_proof' || Boolean(user.taxId));
+  const docs = serverDocs.length > 0 ? serverDocs : ledger.getVerificationDocuments(user.id);
 
-  const renderStatusPill = (done: boolean, pendingCondition: boolean) => {
-    if (user.kycStatus === 'verified') {
-      return <span className="portal-pill ok">Verified</span>;
+  const resolveStepStatus = (stepKey: string, fallbackDone: boolean) => {
+    const matchedStep = serverSteps.find((s) => s.stepKey === stepKey || s.key === stepKey);
+    const raw = String(matchedStep?.status || '').toLowerCase();
+    if (raw === 'verified' || raw === 'approved' || raw === 'completed' || user.kycStatus === 'verified') {
+      return { label: 'Verified', cls: 'ok' };
     }
-    if (done || pendingCondition) {
-      return <span className="portal-pill wait">In review</span>;
+    if (raw === 'rejected') {
+      return { label: 'Rejected', cls: 'bad' };
     }
-    return <span className="portal-pill">Not started</span>;
+    if (raw === 'action_required') {
+      return { label: 'Action Required', cls: 'wait' };
+    }
+    if (raw === 'in_review') {
+      return { label: 'In Review', cls: 'wait' };
+    }
+    if (raw === 'pending') {
+      return { label: 'Pending', cls: 'wait' };
+    }
+    if (fallbackDone || user.kycStatus === 'pending') {
+      return { label: 'In Review', cls: 'wait' };
+    }
+    return { label: 'Not Started', cls: '' };
   };
+
+  const hasIdentityDoc = docs.some((d) => d.category === 'kyc_identity');
+  const hasAddressDoc = docs.some(
+    (d) => d.category === 'proof_of_address' || String(d.documentType || '').toLowerCase().includes('address')
+  );
+  const hasQuestionnaire = docs.some((d) => d.category === 'accredited_proof') || Boolean(user.taxId);
+
+  const identityPill = resolveStepStatus('kyc_identity', hasIdentityDoc);
+  const addressPill = resolveStepStatus('proof_of_address', hasAddressDoc);
+  const suitabilityPill = resolveStepStatus('investor_profile', hasQuestionnaire);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
@@ -85,32 +130,42 @@ export const ComplianceVaultSection: React.FC<ComplianceVaultSectionProps> = ({
         reader.readAsDataURL(selectedFile);
       });
 
-      const titleMap: Partial<Record<DocumentCategory, string>> = {
-        kyc_identity: `${docType} — Identity Verification`,
-        proof_of_address: `${docType} — Proof of Address`,
-        accredited_proof: `${docType} — Investor Suitability`,
-      };
-
-      ledger.uploadVerificationDocument({
-        userId: user.id,
-        userName: user.fullName,
-        userEmail: user.email,
-        category,
-        title: titleMap[category] || `${docType} — Compliance Document`,
+      const uploadRes = await userApi.uploadComplianceDocument({
+        category: category as 'kyc_identity' | 'proof_of_address' | 'accredited_proof',
         documentType: docType,
-        fileUrl: dataUrl,
         fileName: selectedFile.name,
+        mimeType: selectedFile.type || 'application/octet-stream',
         fileSize: selectedFile.size,
+        fileDataUrl: dataUrl,
       });
 
-      if (user.kycStatus !== 'verified') {
-        ledger.updateKYCStatus(user.id, 'pending', docType);
+      if (Array.isArray(uploadRes?.documents)) setServerDocs(uploadRes.documents);
+      if (Array.isArray(uploadRes?.steps)) setServerSteps(uploadRes.steps);
+
+      // Sync local UI mirror cleanly without risking unverified failure
+      try {
+        ledger.uploadVerificationDocument({
+          userId: user.id,
+          userName: user.fullName,
+          userEmail: user.email,
+          category,
+          title: `${docType} — ${category.replace(/_/g, ' ')}`,
+          documentType: docType,
+          fileUrl: dataUrl,
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+        });
+        if (user.kycStatus !== 'verified') {
+          ledger.updateKYCStatus(user.id, 'pending', docType);
+        }
+      } catch {
+        // Non-blocking cache mirror
       }
 
-      refreshUser();
+      await refreshUser();
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      toast.success('Compliance document uploaded and queued for review.');
+      toast.success(uploadRes?.message || 'Compliance document uploaded and queued for review.');
     } catch (err: any) {
       const msg = err?.message || 'Unable to upload verification document.';
       setError(msg);
@@ -130,46 +185,84 @@ export const ComplianceVaultSection: React.FC<ComplianceVaultSectionProps> = ({
             Identity, residential address, and EU AML verification status for your account.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onNavigateWallet}
-          className="dashboard-secondary-action cursor-pointer"
-        >
-          Go to Wallet <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchComplianceData}
+            disabled={isLoading}
+            className="dashboard-secondary-action cursor-pointer"
+            title="Refresh compliance records"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
+          </button>
+          <button
+            type="button"
+            onClick={onNavigateWallet}
+            className="dashboard-secondary-action cursor-pointer"
+          >
+            Go to Wallet <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
-      {/* Checklist Card matching Template */}
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs font-semibold text-[var(--dash-negative)] flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchComplianceData}
+            className="px-2.5 py-1 rounded-lg bg-rose-500 text-white text-[10.5px] font-bold cursor-pointer shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Live Compliance Checklist Card */}
       <div className="portal-card divide-y divide-[var(--dash-card-border)]">
-        <div className="p-4 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-[var(--dash-text)]">Identity verification</div>
-            <div className="text-xs text-[var(--dash-text-muted)] mt-0.5">
-              Passport or EU national identity card
-            </div>
+        {isLoading && serverSteps.length === 0 ? (
+          <div className="p-5 space-y-3 animate-pulse">
+            <div className="h-10 rounded-xl bg-[var(--dash-inner)]" />
+            <div className="h-10 rounded-xl bg-[var(--dash-inner)]" />
+            <div className="h-10 rounded-xl bg-[var(--dash-inner)]" />
           </div>
-          {renderStatusPill(hasIdentityDoc, user.kycStatus === 'pending')}
-        </div>
+        ) : (
+          <>
+            <div className="p-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-[var(--dash-text)]">Identity verification</div>
+                <div className="text-xs text-[var(--dash-text-muted)] mt-0.5">
+                  Passport or EU national identity card
+                </div>
+              </div>
+              <span className={`portal-pill ${identityPill.cls}`}>{identityPill.label}</span>
+            </div>
 
-        <div className="p-4 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-[var(--dash-text)]">Proof of address</div>
-            <div className="text-xs text-[var(--dash-text-muted)] mt-0.5">
-              Recent utility bill or bank statement (within 90 days)
+            <div className="p-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-[var(--dash-text)]">Proof of address</div>
+                <div className="text-xs text-[var(--dash-text-muted)] mt-0.5">
+                  Recent utility bill or bank statement (within 90 days)
+                </div>
+              </div>
+              <span className={`portal-pill ${addressPill.cls}`}>{addressPill.label}</span>
             </div>
-          </div>
-          {renderStatusPill(hasAddressDoc, user.kycStatus === 'pending')}
-        </div>
 
-        <div className="p-4 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold text-[var(--dash-text)]">Investor profile &amp; fiscal ID</div>
-            <div className="text-xs text-[var(--dash-text-muted)] mt-0.5">
-              Suitability assessment &amp; tax residency declaration
+            <div className="p-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-[var(--dash-text)]">Investor profile &amp; fiscal ID</div>
+                <div className="text-xs text-[var(--dash-text-muted)] mt-0.5">
+                  Suitability assessment &amp; tax residency declaration
+                </div>
+              </div>
+              <span className={`portal-pill ${suitabilityPill.cls}`}>{suitabilityPill.label}</span>
             </div>
-          </div>
-          {renderStatusPill(hasQuestionnaire, user.kycStatus === 'pending')}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Document Submission Form */}
@@ -280,25 +373,33 @@ export const ComplianceVaultSection: React.FC<ComplianceVaultSectionProps> = ({
         <div className="portal-card p-5 space-y-3">
           <h3 className="text-sm font-bold text-[var(--dash-text)]">Submitted Compliance Files</h3>
           <div className="divide-y divide-[var(--dash-card-border)]">
-            {docs.map((d) => (
-              <div key={d.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FileText className="w-4 h-4 text-[var(--dash-accent)] shrink-0" />
-                  <div className="min-w-0">
-                    <div className="font-semibold text-[var(--dash-text)] truncate">{d.title}</div>
-                    <div className="text-[11px] text-[var(--dash-text-muted)] truncate">
-                      {d.fileName} · {formatDate(d.uploadedAt)}
+            {docs.map((d) => {
+              const docStatus = String(d.status || 'pending').toLowerCase();
+              const isOk = docStatus === 'approved' || docStatus === 'verified';
+              const isWait = docStatus === 'pending' || docStatus === 'in_review';
+              return (
+                <div key={d.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileText className="w-4 h-4 text-[var(--dash-accent)] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[var(--dash-text)] truncate">
+                        {d.title || `${d.documentType || 'Compliance Document'}`}
+                      </div>
+                      <div className="text-[11px] text-[var(--dash-text-muted)] truncate">
+                        {d.fileName} · {formatDate(d.uploadedAt || d.createdAt)}
+                      </div>
                     </div>
                   </div>
+                  <span className={`portal-pill ${isOk ? 'ok' : isWait ? 'wait' : ''}`}>
+                    {isOk ? 'Verified' : isWait ? 'In Review' : d.status}
+                  </span>
                 </div>
-                <span className={`portal-pill ${d.status === 'approved' ? 'ok' : d.status === 'pending' ? 'wait' : ''}`}>
-                  {d.status === 'approved' ? 'Verified' : d.status === 'pending' ? 'In review' : d.status}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
     </div>
   );
 };
+

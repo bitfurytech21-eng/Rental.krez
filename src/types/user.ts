@@ -8,7 +8,21 @@ export type AccountType =
   | 'property_owner'
   | 'admin';
 
-export type UserRole = AccountType | 'investor' | 'admin';
+export type StaffRole =
+  | 'super_admin'
+  | 'finance'
+  | 'compliance'
+  | 'property_manager'
+  | 'support';
+
+export type UserRole =
+  | AccountType
+  | StaffRole
+  | 'investor'
+  | 'admin'
+  | 'finance_admin'
+  | 'operations_admin'
+  | 'auditor';
 
 export type KYCStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 
@@ -116,6 +130,8 @@ export interface User {
   email: string;
   fullName: string;
   role: UserRole;
+  isAdmin?: boolean;
+  staffRole?: string | null;
   accountType?: AccountType;
   kycStatus: KYCStatus;
   kycDocumentType?: string;
@@ -128,6 +144,7 @@ export interface User {
   country?: string;
   cryptoDepositAddress?: string;
   bankIban?: string;
+  bankAccountHolder?: string;
   avatarUrl?: string;
   // Relevant fields for account types
   jointHolderName?: string;
@@ -141,6 +158,9 @@ export interface User {
   postalCode?: string;
   twoFactorEnabled?: boolean;
   status?: 'active' | 'suspended';
+  frozen?: boolean;
+  assignedGateId?: string | null;
+  assignedGateName?: string | null;
   suspendedReason?: string;
 }
 

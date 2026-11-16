@@ -198,216 +198,197 @@ export const AdminMonitoringView: React.FC = () => {
   const getLevelBadge = (level: string) => {
     switch (level) {
       case 'error':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200">ERROR</span>;
+        return <span className="text-[11px] font-bold text-rose-400">ERROR</span>;
       case 'warn':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">WARN</span>;
+        return <span className="text-[11px] font-bold text-amber-400">WARN</span>;
       case 'debug':
-        return <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200">DEBUG</span>;
+        return <span className="text-[11px] font-bold text-[#8FA1A8]">DEBUG</span>;
       default:
-        return <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">INFO</span>;
+        return <span className="text-[11px] font-bold text-[#6FD8B0]">INFO</span>;
     }
   };
 
   const getCategoryBadge = (category: string) => {
-    const map: Record<string, { bg: string; text: string }> = {
-      access: { bg: 'bg-blue-50', text: 'text-blue-700' },
-      auth: { bg: 'bg-purple-50', text: 'text-purple-700' },
-      admin: { bg: 'bg-stone-100', text: 'text-stone-800' },
-      api: { bg: 'bg-red-50', text: 'text-red-700' },
-      marketplace: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
-      payments: { bg: 'bg-teal-50', text: 'text-teal-700' },
-      database: { bg: 'bg-amber-50', text: 'text-amber-800' },
-      security: { bg: 'bg-rose-50', text: 'text-rose-800' },
-      system: { bg: 'bg-gray-100', text: 'text-gray-700' }
-    };
-    const c = map[category] || { bg: 'bg-gray-50', text: 'text-gray-700' };
-    return <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${c.bg} ${c.text}`}>{category}</span>;
+    return <span className="text-[11px] font-mono text-[#B6C4C9]">{category}</span>;
   };
 
   const getStatusBadge = (statusCode?: number) => {
-    if (!statusCode) return <span className="text-[#A0A8A5] text-xs font-mono">—</span>;
-    if (statusCode >= 500) return <span className="text-xs font-mono font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{statusCode}</span>;
-    if (statusCode >= 400) return <span className="text-xs font-mono font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{statusCode}</span>;
-    if (statusCode >= 300) return <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{statusCode}</span>;
-    return <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">{statusCode}</span>;
+    if (!statusCode) return <span className="text-[#8FA1A8] text-xs font-mono">—</span>;
+    if (statusCode >= 500) return <span className="text-xs font-mono font-bold text-rose-400 tabular-nums">{statusCode}</span>;
+    if (statusCode >= 400) return <span className="text-xs font-mono font-bold text-amber-400 tabular-nums">{statusCode}</span>;
+    if (statusCode >= 300) return <span className="text-xs font-mono font-bold text-sky-400 tabular-nums">{statusCode}</span>;
+    return <span className="text-xs font-mono font-bold text-[#6FD8B0] tabular-nums">{statusCode}</span>;
   };
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & KPI Cards */}
+      {/* Top KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Health */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs flex items-center justify-between">
+        <div className="bg-[#121A1F] p-5 rounded-xl border border-[#1F2C33] flex items-center justify-between">
           <div>
-            <span className="text-[11px] uppercase tracking-wider font-bold text-[#69736F]">System Status</span>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">System Status</span>
             <div className="flex items-center gap-2 mt-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-base font-extrabold text-[#18211F]">OPERATIONAL</span>
+              <span className="w-2 h-2 rounded-full bg-[#6FD8B0]" />
+              <span className="text-sm font-bold text-[#F2F5F4]">OPERATIONAL</span>
             </div>
-            <span className="text-[10px] text-[#A0A8A5]">Uptime: {Math.floor((metrics?.uptimeSeconds || 3600) / 60)}m</span>
+            <span className="text-[11px] text-[#8FA1A8]">Uptime: {Math.floor((metrics?.uptimeSeconds || 3600) / 60)}m</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Total Logs */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] uppercase tracking-wider font-bold text-[#69736F]">Total Requests Logged</span>
-            <div className="text-xl font-extrabold text-[#18211F] mt-1">{totalLogs}</div>
-            <span className="text-[10px] text-[#A0A8A5]">Circular buffer: 2,000 max</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-            <Layers className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
 
-        {/* Error Rate */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs flex items-center justify-between">
+        <div className="bg-[#121A1F] p-5 rounded-xl border border-[#1F2C33] flex items-center justify-between">
           <div>
-            <span className="text-[11px] uppercase tracking-wider font-bold text-[#69736F]">Error Count</span>
-            <div className="text-xl font-extrabold text-red-600 mt-1">{metrics?.errorCount || 0}</div>
-            <span className="text-[10px] text-[#A0A8A5]">{metrics?.warnCount || 0} warnings recorded</span>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Requests Logged</span>
+            <div className="text-xl font-bold text-[#F2F5F4] mt-1 tabular-nums">{totalLogs}</div>
+            <span className="text-[11px] text-[#8FA1A8]">Buffer: 2,000 max</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-            <AlertTriangle className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center">
+            <Layers className="w-4 h-4" />
           </div>
         </div>
 
-        {/* Average Latency */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs flex items-center justify-between">
+        <div className="bg-[#121A1F] p-5 rounded-xl border border-[#1F2C33] flex items-center justify-between">
           <div>
-            <span className="text-[11px] uppercase tracking-wider font-bold text-[#69736F]">Avg Response Time</span>
-            <div className="text-xl font-extrabold text-[#18211F] mt-1">{metrics?.avgLatencyMs || 14} ms</div>
-            <span className="text-[10px] text-emerald-600 font-semibold">Fast (p95: ~32ms)</span>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Error Count</span>
+            <div className="text-xl font-bold text-rose-400 mt-1 tabular-nums">{metrics?.errorCount || 0}</div>
+            <span className="text-[11px] text-[#8FA1A8]">{metrics?.warnCount || 0} warnings</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-            <Zap className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-rose-400 flex items-center justify-center">
+            <AlertTriangle className="w-4 h-4" />
           </div>
         </div>
 
-        {/* Database & Subsystems */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs flex items-center justify-between">
+        <div className="bg-[#121A1F] p-5 rounded-xl border border-[#1F2C33] flex items-center justify-between">
           <div>
-            <span className="text-[11px] uppercase tracking-wider font-bold text-[#69736F]">Database Engine</span>
-            <div className="text-xs font-extrabold text-[#18211F] mt-1">In-Memory Journal</div>
-            <span className="text-[10px] text-blue-600 font-semibold">Postgres / Drizzle Ready</span>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Avg Response</span>
+            <div className="text-xl font-bold text-[#F2F5F4] mt-1 tabular-nums">{metrics?.avgLatencyMs || 14} ms</div>
+            <span className="text-[11px] text-[#6FD8B0] font-medium">API Latency</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-            <Database className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center">
+            <Zap className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="bg-[#121A1F] p-5 rounded-xl border border-[#1F2C33] flex items-center justify-between">
+          <div>
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Database Engine</span>
+            <div className="text-xs font-bold text-[#F2F5F4] mt-1">Supabase Postgres</div>
+            <span className="text-[11px] text-[#6FD8B0] font-medium">Connected</span>
+          </div>
+          <div className="w-9 h-9 rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center">
+            <Database className="w-4 h-4" />
           </div>
         </div>
       </div>
 
       {/* Subsystem Status Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-[#E3E8E3] shadow-xs flex flex-wrap items-center justify-between gap-4 text-xs">
+      <div className="bg-[#121A1F] p-4 rounded-xl border border-[#1F2C33] flex flex-wrap items-center justify-between gap-4 text-xs">
         <div className="flex items-center gap-6 flex-wrap">
-          <span className="font-bold text-[#18211F] flex items-center gap-2">
-            <Server className="w-4 h-4 text-[#27845D]" /> Subsystems:
+          <span className="font-bold text-[#F2F5F4] flex items-center gap-2">
+            <Server className="w-4 h-4 text-[#6FD8B0]" /> Subsystems:
           </span>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span className="text-[#69736F]">Auth API: <strong className="text-[#18211F]">12ms</strong></span>
+          <div className="flex items-center gap-2 text-[#8FA1A8]">
+            <span>Auth API</span>
+            <strong className="text-[#F2F5F4] font-mono">12ms</strong>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span className="text-[#69736F]">Marketplace: <strong className="text-[#18211F]">15ms</strong></span>
+          <div className="flex items-center gap-2 text-[#8FA1A8]">
+            <span>Marketplace</span>
+            <strong className="text-[#F2F5F4] font-mono">15ms</strong>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span className="text-[#69736F]">Escrow & Payments: <strong className="text-[#18211F]">22ms</strong></span>
+          <div className="flex items-center gap-2 text-[#8FA1A8]">
+            <span>Escrow &amp; Payments</span>
+            <strong className="text-[#F2F5F4] font-mono">22ms</strong>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span className="text-[#69736F]">Security Rate Limiting: <strong className="text-emerald-700">Enforced</strong></span>
+          <div className="flex items-center gap-2 text-[#8FA1A8]">
+            <span>Rate Limiting</span>
+            <strong className="text-[#6FD8B0]">Enforced</strong>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#69736F]">
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#B6C4C9]">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded text-[#27845D] focus:ring-[#27845D]"
+              className="rounded accent-[#6FD8B0]"
             />
-            <span>Live Auto-Refresh (8s)</span>
+            <span>Auto-Refresh (8s)</span>
           </label>
           <button
+            type="button"
             onClick={fetchLogsAndMetrics}
             disabled={isLoading}
-            className="btn btn-secondary py-1.5 px-3 text-xs flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] hover:bg-[#162026] text-[#F2F5F4] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-[#6FD8B0] ${isLoading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
           <button
+            type="button"
             onClick={() => handleExport('json')}
             disabled={exporting}
-            className="btn btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export Sanitized JSON</span>
+            <span>Export JSON</span>
           </button>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-5 rounded-2xl border border-[#E3E8E3] shadow-xs space-y-4">
+      <div className="bg-[#121A1F] p-5 rounded-2xl border border-[#1F2C33] space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
-          {/* Search */}
           <div className="lg:col-span-5 relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A0A8A5]" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
             <input
               type="text"
               placeholder="Search by event, message, user email, or route..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchLogsAndMetrics()}
-              className="w-full pl-9 pr-3 py-2 text-xs border border-[#E3E8E3] rounded-xl focus:outline-none focus:border-[#27845D]"
+              className="w-full pl-9 pr-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4] placeholder-[#526066] focus:outline-none focus:border-[#6FD8B0]"
             />
           </div>
 
-          {/* Request ID Lookup */}
           <div className="lg:col-span-3 relative">
-            <Terminal className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#A0A8A5]" />
+            <Terminal className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
             <input
               type="text"
               placeholder="Lookup Request ID (req-xxx)..."
               value={requestIdFilter}
               onChange={(e) => setRequestIdFilter(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchLogsAndMetrics()}
-              className="w-full pl-9 pr-3 py-2 text-xs font-mono border border-[#E3E8E3] rounded-xl focus:outline-none focus:border-[#27845D]"
+              className="w-full pl-9 pr-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs font-mono text-[#F2F5F4] placeholder-[#526066] focus:outline-none focus:border-[#6FD8B0]"
             />
           </div>
 
-          {/* Category Dropdown */}
           <div className="lg:col-span-2">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full py-2 px-3 text-xs border border-[#E3E8E3] rounded-xl focus:outline-none focus:border-[#27845D] font-semibold text-[#18211F]"
+              className="w-full py-2 px-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs font-semibold text-[#F2F5F4] focus:outline-none focus:border-[#6FD8B0]"
             >
               <option value="all">All Categories</option>
-              <option value="access">access (HTTP Traffic)</option>
-              <option value="auth">auth (Logins & Sessions)</option>
-              <option value="admin">admin (Administrative Overrides)</option>
-              <option value="api">api (Exceptions & Errors)</option>
-              <option value="marketplace">marketplace (Listings & Investments)</option>
-              <option value="payments">payments (Deposits & Webhooks)</option>
-              <option value="database">database (Ledger Persistence)</option>
-              <option value="security">security (Rate Limits & Auth Guards)</option>
-              <option value="system">system (Lifecycle & Health)</option>
+              <option value="access">access</option>
+              <option value="auth">auth</option>
+              <option value="admin">admin</option>
+              <option value="api">api</option>
+              <option value="marketplace">marketplace</option>
+              <option value="payments">payments</option>
+              <option value="database">database</option>
+              <option value="security">security</option>
+              <option value="system">system</option>
             </select>
           </div>
 
-          {/* Severity Dropdown */}
           <div className="lg:col-span-2">
             <select
               value={selectedLevel}
               onChange={(e) => setSelectedLevel(e.target.value)}
-              className="w-full py-2 px-3 text-xs border border-[#E3E8E3] rounded-xl focus:outline-none focus:border-[#27845D] font-semibold text-[#18211F]"
+              className="w-full py-2 px-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs font-semibold text-[#F2F5F4] focus:outline-none focus:border-[#6FD8B0]"
             >
               <option value="all">All Severities</option>
               <option value="info">INFO</option>
@@ -418,27 +399,27 @@ export const AdminMonitoringView: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Route Filter Pills */}
         <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
-          <span className="text-[#69736F] font-semibold text-[11px] flex items-center gap-1">
+          <span className="text-[#8FA1A8] font-semibold text-[11px] flex items-center gap-1">
             <Filter className="w-3.5 h-3.5" /> Route Filter:
           </span>
           {[
-            { label: 'All Active Routes', val: 'all' },
-            { label: '/login (Auth)', val: '/api/v1/auth' },
-            { label: '/admin (Admin Panel)', val: '/api/v1/admin' },
-            { label: '/marketplace (Offerings)', val: '/api/v1/marketplace' },
-            { label: '/deposits (Payments)', val: '/api/v1/deposits' },
-            { label: '/withdrawals (Compliance)', val: '/api/v1/withdrawals' },
-            { label: '/investments (Fractional)', val: '/api/v1/investments' }
+            { label: 'All Routes', val: 'all' },
+            { label: '/auth', val: '/api/v1/auth' },
+            { label: '/admin', val: '/api/v1/admin' },
+            { label: '/marketplace', val: '/api/v1/marketplace' },
+            { label: '/deposits', val: '/api/v1/deposits' },
+            { label: '/withdrawals', val: '/api/v1/withdrawals' },
+            { label: '/investments', val: '/api/v1/investments' }
           ].map(r => (
             <button
               key={r.val}
+              type="button"
               onClick={() => setSelectedRoute(r.val)}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
                 selectedRoute === r.val
-                  ? 'bg-[#182D2A] text-white shadow-xs'
-                  : 'bg-[#F6F7F4] text-[#69736F] hover:bg-gray-200'
+                  ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                  : 'bg-[#0B0F10] border border-[#1F2C33] text-[#B6C4C9] hover:text-[#F2F5F4]'
               }`}
             >
               {r.label}
@@ -448,56 +429,54 @@ export const AdminMonitoringView: React.FC = () => {
       </div>
 
       {/* Log Entries Table */}
-      <div className="bg-white rounded-2xl border border-[#E3E8E3] shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-[#E3E8E3] flex justify-between items-center bg-[#FAFBF9]">
+      <div className="bg-[#121A1F] rounded-2xl border border-[#1F2C33] overflow-hidden">
+        <div className="p-4 border-b border-[#1F2C33] flex justify-between items-center bg-[#0B0F10]">
           <div className="flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-[#27845D]" />
-            <h3 className="text-sm font-bold text-[#18211F]">Structured Real-Time Server Logs</h3>
-            <span className="text-xs text-[#69736F]">({logs.length} entries shown)</span>
+            <Terminal className="w-4 h-4 text-[#6FD8B0]" />
+            <h3 className="text-sm font-bold text-[#F2F5F4]">Structured Real-Time Server Logs</h3>
+            <span className="text-xs text-[#8FA1A8]">({logs.length} entries)</span>
           </div>
-          <div className="flex items-center gap-3 text-xs text-[#69736F]">
-            <span className="flex items-center gap-1">
-              <Shield className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Sensitive secrets automatically redacted</span>
-            </span>
-          </div>
+          <span className="flex items-center gap-1 text-xs text-[#8FA1A8]">
+            <Shield className="w-3.5 h-3.5 text-[#6FD8B0]" />
+            <span>Secrets automatically redacted</span>
+          </span>
         </div>
 
         {logs.length === 0 ? (
-          <div className="py-16 text-center text-[#69736F]">
-            <Terminal className="w-8 h-8 mx-auto text-[#A0A8A5] mb-2 opacity-50" />
-            <p className="text-sm font-semibold">No logs found matching current filter parameters.</p>
-            <p className="text-xs text-[#A0A8A5] mt-1">Try clearing the search query or selecting "All Categories".</p>
+          <div className="py-16 text-center text-[#8FA1A8]">
+            <Terminal className="w-8 h-8 mx-auto text-[#526066] mb-2" />
+            <p className="text-sm font-semibold text-[#F2F5F4]">No logs found matching current filter parameters.</p>
+            <p className="text-xs text-[#8FA1A8] mt-1">Try clearing the search query or selecting All Categories.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#F6F7F4] text-[#69736F] font-bold border-b border-[#E3E8E3]">
+              <thead className="bg-[#0B0F10] text-[#8FA1A8] font-semibold border-b border-[#1F2C33] uppercase text-[11px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4 w-8"></th>
                   <th className="py-3 px-4">Timestamp (UTC)</th>
                   <th className="py-3 px-4">Severity</th>
                   <th className="py-3 px-4">Category</th>
                   <th className="py-3 px-4">Request ID</th>
-                  <th className="py-3 px-4">Method & Route</th>
+                  <th className="py-3 px-4">Method &amp; Route</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Latency</th>
                   <th className="py-3 px-4">Message</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E3E8E3]">
+              <tbody className="divide-y divide-[#1F2C33]">
                 {logs.map((log) => {
                   const isExpanded = expandedLogId === log.id;
                   return (
                     <React.Fragment key={log.id}>
-                      <tr 
+                      <tr
                         onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
-                        className={`hover:bg-[#F9FAF8] transition-colors cursor-pointer ${isExpanded ? 'bg-[#F2F5F0]' : ''}`}
+                        className={`hover:bg-[#162026] transition-colors cursor-pointer ${isExpanded ? 'bg-[#162026]' : ''}`}
                       >
-                        <td className="py-3 px-3 text-[#A0A8A5]">
+                        <td className="py-3 px-3 text-[#8FA1A8]">
                           {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-[#69736F] font-mono text-[11px]">
+                        <td className="py-3 px-4 whitespace-nowrap text-[#B6C4C9] font-mono text-[11px]">
                           {log.timestamp.replace('T', ' ').slice(0, 19)}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
@@ -506,65 +485,65 @@ export const AdminMonitoringView: React.FC = () => {
                         <td className="py-3 px-4 whitespace-nowrap">
                           {getCategoryBadge(log.category)}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-[#18211F]">
+                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-[#F2F5F4]">
                           <div className="flex items-center gap-1.5 group">
                             <span>{log.requestId}</span>
                             <button
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCopyId(log.requestId);
                               }}
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#27845D] transition-opacity"
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#6FD8B0] transition-opacity cursor-pointer"
                               title="Copy Request ID"
                             >
-                              {copiedId === log.requestId ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                              {copiedId === log.requestId ? <Check className="w-3 h-3 text-[#6FD8B0]" /> : <Copy className="w-3 h-3" />}
                             </button>
                           </div>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px]">
                           {log.method ? (
-                            <span className="font-bold text-[#182D2A] mr-1.5">{log.method}</span>
+                            <span className="font-bold text-[#6FD8B0] mr-1.5">{log.method}</span>
                           ) : null}
-                          <span className="text-[#495057]">{log.route || '—'}</span>
+                          <span className="text-[#B6C4C9]">{log.route || '—'}</span>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           {getStatusBadge(log.statusCode)}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-[#69736F]">
+                        <td className="py-3 px-4 whitespace-nowrap font-mono text-[11px] text-[#8FA1A8] tabular-nums">
                           {typeof log.durationMs === 'number' ? `${log.durationMs}ms` : '—'}
                         </td>
-                        <td className="py-3 px-4 max-w-xs truncate text-[#18211F] font-medium" title={log.message}>
+                        <td className="py-3 px-4 max-w-xs truncate text-[#F2F5F4] font-medium" title={log.message}>
                           {log.message}
                         </td>
                       </tr>
 
-                      {/* Expanded JSON Inspector */}
                       {isExpanded && (
-                        <tr className="bg-[#182D2A] text-white">
+                        <tr className="bg-[#0B0F10]">
                           <td colSpan={9} className="p-4">
                             <div className="space-y-3">
-                              <div className="flex items-center justify-between text-xs text-[#A0A8A5] border-b border-white/10 pb-2">
+                              <div className="flex flex-wrap items-center justify-between text-xs text-[#8FA1A8] border-b border-[#1F2C33] pb-2 gap-2">
                                 <div className="flex items-center gap-2">
-                                  <Terminal className="w-4 h-4 text-[#B7E36A]" />
-                                  <span className="font-bold text-white">Event Details & Sanitized Payload</span>
-                                  <span className="font-mono text-[#B7E36A]">({log.eventType})</span>
+                                  <Terminal className="w-4 h-4 text-[#6FD8B0]" />
+                                  <span className="font-bold text-[#F2F5F4]">Event Details &amp; Payload</span>
+                                  <span className="font-mono text-[#6FD8B0]">({log.eventType})</span>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                  <span>Service: <strong className="text-white">{log.serviceName}</strong></span>
-                                  <span>Environment: <strong className="text-white">{log.environment}</strong></span>
-                                  <span>User ID: <strong className="text-white">{log.userId || 'anonymous'}</strong></span>
+                                  <span>Service: <strong className="text-[#F2F5F4]">{log.serviceName}</strong></span>
+                                  <span>Environment: <strong className="text-[#F2F5F4]">{log.environment}</strong></span>
+                                  <span>User ID: <strong className="text-[#F2F5F4]">{log.userId || 'anonymous'}</strong></span>
                                 </div>
                               </div>
 
-                              <pre className="text-[11px] font-mono text-emerald-300 bg-black/40 p-3 rounded-xl overflow-x-auto border border-white/5 max-h-60">
+                              <pre className="text-[11px] font-mono text-[#6FD8B0] bg-[#121A1F] p-3 rounded-xl overflow-x-auto border border-[#1F2C33] max-h-60">
                                 {JSON.stringify(log, null, 2)}
                               </pre>
 
-                              <div className="flex justify-between items-center text-[11px] text-[#A0A8A5]">
-                                <span>Outcome: <strong className="text-white uppercase">{log.outcome}</strong></span>
+                              <div className="flex justify-between items-center text-[11px] text-[#8FA1A8]">
+                                <span>Outcome: <strong className="text-[#F2F5F4] uppercase">{log.outcome}</strong></span>
                                 <div className="flex items-center gap-2">
-                                  <Lock className="w-3 h-3 text-[#B7E36A]" />
-                                  <span>Security Policy: Sensitive fields redacted prior to log persistence.</span>
+                                  <Lock className="w-3 h-3 text-[#6FD8B0]" />
+                                  <span>Sensitive fields redacted prior to persistence.</span>
                                 </div>
                               </div>
                             </div>

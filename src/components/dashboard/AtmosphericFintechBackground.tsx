@@ -239,6 +239,14 @@ export const AtmosphericFintechBackground: React.FC = () => {
       className="fixed inset-0 pointer-events-none select-none overflow-hidden z-0"
       style={{ backgroundColor: '#050706' }}
     >
+      {/* Layer 0: Subtle Animated Architectural Backdrop Photo */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.06] animate-graphite-metallic-sheen bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url('/assets/aistudio/IMG_7668_dab9a604.jpeg')`,
+        }}
+      />
+
       {/* Layer 1: Deep Architectural Graphite Foundation Grid (extreme low opacity) */}
       <div 
         className="absolute inset-0 opacity-[0.02] pointer-events-none"

@@ -24,7 +24,10 @@ export type UserRoleType =
   | 'admin' 
   | 'super_admin' 
   | 'finance_admin' 
-  | 'operations_admin' 
+  | 'operations_admin'
+  | 'finance'
+  | 'compliance'
+  | 'property_manager'
   | 'support' 
   | 'auditor';
 
@@ -35,6 +38,8 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     email: string;
     role: UserRoleType;
+    isAdmin?: boolean;
+    staffRole?: string | null;
     fullName?: string;
     accountType?: string;
     country?: string;
@@ -236,6 +241,8 @@ export async function authenticateToken(
               id: identity.id,
               email: identity.email,
               role: identity.role,
+              isAdmin: identity.isAdmin ?? true,
+              staffRole: identity.staffRole ?? 'super_admin',
               fullName: identity.fullName,
               accountType: identity.accountType,
               balance: identity.balance,
@@ -254,6 +261,8 @@ export async function authenticateToken(
         id: adminSession.sub,
         email: adminSession.email,
         role: 'admin',
+        isAdmin: true,
+        staffRole: 'super_admin',
         fullName: adminSession.fullName,
         status: 'active'
       };
@@ -261,7 +270,7 @@ export async function authenticateToken(
     }
 
     // 4. Verify Supabase access tokens with Supabase Auth and load the authoritative
-    // role from user_roles. User-editable JWT metadata is never used for authorization.
+    // role from user_roles and profiles.is_admin / profiles.staff_role.
     if (token.includes('.') && isSupabaseAuthConfigured()) {
       const identity = await verifySupabaseAccessToken(token);
       if (identity) {
@@ -269,6 +278,8 @@ export async function authenticateToken(
           id: identity.id,
           email: identity.email,
           role: identity.role,
+          isAdmin: identity.isAdmin,
+          staffRole: identity.staffRole,
           fullName: identity.fullName,
           accountType: identity.accountType,
           balance: identity.balance,
@@ -329,6 +340,8 @@ export async function authenticateToken(
         id: userId || 'usr-admin-01',
         email: 'admin@kretz.com',
         role: 'admin',
+        isAdmin: true,
+        staffRole: 'super_admin',
         fullName: 'Executive Administrator',
         status: 'active'
       };
@@ -476,8 +489,19 @@ export function requireAdmin(
     });
   }
 
-  const ADMIN_ROLES: UserRoleType[] = ['admin', 'super_admin', 'finance_admin', 'operations_admin', 'support', 'auditor'];
-  if (!ADMIN_ROLES.includes(req.user.role)) {
+  const ADMIN_ROLES: UserRoleType[] = [
+    'admin',
+    'super_admin',
+    'finance_admin',
+    'operations_admin',
+    'finance',
+    'compliance',
+    'property_manager',
+    'support',
+    'auditor'
+  ];
+  const hasStaffFlag = req.user.isAdmin === true || (typeof req.user.staffRole === 'string' && req.user.staffRole.trim().length > 0);
+  if (!hasStaffFlag && !ADMIN_ROLES.includes(req.user.role)) {
     logger.log({
       level: 'error',
       category: 'security',

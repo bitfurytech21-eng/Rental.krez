@@ -272,53 +272,53 @@ export const AdminAccountSettings: React.FC = () => {
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-[#18211F] tracking-tight">
-            Admin Console Security & Custom Login Credentials
+          <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">
+            Admin Console Security &amp; Custom Login Credentials
           </h2>
-          <p className="text-xs text-[#52605C] mt-1">
+          <p className="text-xs text-[#8FA1A8] mt-1">
             Configure your custom Administrator Login Email, bcrypt-protected password for{' '}
-            <code className="font-mono text-[#182D2A]">/admin/login</code>, and Executive Pass Gate code.
+            <code className="font-mono text-[#6FD8B0]">/admin/login</code>, and Executive Pass Gate code.
           </p>
         </div>
 
-        <div className="text-xs text-[#52605C] font-mono">
+        <div className="text-xs text-[#8FA1A8] font-mono">
           {loadingConfig ? (
             <span className="inline-flex items-center gap-1.5">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#27845D]" />
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#6FD8B0]" />
               Syncing...
             </span>
           ) : (
             <span>
-              Active Login: <strong className="text-[#18211F]">{activeServerEmail}</strong> ·{' '}
-              <span className="text-[#27845D] font-semibold">{modeLabel}</span>
+              Active Login: <strong className="text-[#F2F5F4]">{activeServerEmail}</strong> ·{' '}
+              <span className="text-[#6FD8B0] font-semibold">{modeLabel}</span>
             </span>
           )}
         </div>
       </div>
 
       {credSuccessMsg && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-semibold flex items-start gap-2.5">
-          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-medium flex items-start gap-2.5">
+          <Check className="w-4 h-4 text-[#6FD8B0] shrink-0 mt-0.5" />
           <span>{credSuccessMsg}</span>
         </div>
       )}
 
       {credErrorMsg && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-semibold flex items-start gap-2.5">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-xl text-xs font-medium flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
           <span>{credErrorMsg}</span>
         </div>
       )}
 
       {/* 1. Custom Administrator Email & Password Form */}
-      <form onSubmit={handleSaveCredentials} className="bg-white rounded-2xl border border-[#E3E8E3] p-6 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E3E8E3]">
-          <h3 className="text-sm font-bold text-[#18211F] flex items-center gap-2">
-            <Key className="w-4 h-4 text-[#27845D]" />
-            <span>Custom Administrator Email & Password (/admin/login)</span>
+      <form onSubmit={handleSaveCredentials} className="bg-[#121A1F] rounded-2xl border border-[#1F2C33] p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#1F2C33]">
+          <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
+            <Key className="w-4 h-4 text-[#6FD8B0]" />
+            <span>Custom Administrator Email &amp; Password (/admin/login)</span>
           </h3>
           {lastUpdatedAt && (
-            <span className="text-[11px] text-[#52605C] font-mono">
+            <span className="text-[11px] text-[#8FA1A8] font-mono">
               Updated {new Date(lastUpdatedAt).toLocaleString()}
             </span>
           )}
@@ -326,23 +326,23 @@ export const AdminAccountSettings: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-[#52605C] mb-1.5">
+            <label className="block text-xs font-semibold text-[#B6C4C9] mb-1.5">
               Administrator Display Name
             </label>
             <div className="relative">
-              <User className="w-3.5 h-3.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <User className="w-3.5 h-3.5 text-[#8FA1A8] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={adminName}
                 onChange={(e) => setAdminName(e.target.value)}
                 placeholder="Executive Administrator"
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs font-medium text-[#18211F] focus:outline-none focus:border-[#27845D]"
+                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-medium text-[#F2F5F4] placeholder-[#526066] focus:outline-none focus:border-[#6FD8B0]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#52605C] mb-1.5">
+            <label className="block text-xs font-semibold text-[#B6C4C9] mb-1.5">
               Custom Admin Login Email
             </label>
             <input
@@ -351,15 +351,15 @@ export const AdminAccountSettings: React.FC = () => {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="you@yourdomain.com"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs font-medium text-[#18211F] focus:outline-none focus:border-[#27845D]"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-medium text-[#F2F5F4] placeholder-[#526066] focus:outline-none focus:border-[#6FD8B0]"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
           <div>
-            <label className="block text-xs font-semibold text-[#52605C] mb-1.5">
-              Current Admin Password <span className="text-rose-600">*</span>
+            <label className="block text-xs font-semibold text-[#B6C4C9] mb-1.5">
+              Current Admin Password <span className="text-rose-400">*</span>
             </label>
             <div className="relative">
               <input
@@ -369,13 +369,13 @@ export const AdminAccountSettings: React.FC = () => {
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Required to authorize"
                 autoComplete="current-password"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs font-mono text-[#18211F] pr-9 focus:outline-none focus:border-[#27845D]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-mono text-[#F2F5F4] placeholder-[#526066] pr-9 focus:outline-none focus:border-[#6FD8B0]"
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword((v) => !v)}
                 aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer"
               >
                 {showCurrentPassword ? (
                   <EyeOff className="w-3.5 h-3.5" />
@@ -384,13 +384,13 @@ export const AdminAccountSettings: React.FC = () => {
                 )}
               </button>
             </div>
-            <p className="text-[11px] text-[#69736F] mt-1">
+            <p className="text-[11px] text-[#8FA1A8] mt-1">
               Enter your active password to verify ownership.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#52605C] mb-1.5">
+            <label className="block text-xs font-semibold text-[#B6C4C9] mb-1.5">
               New Admin Password
             </label>
             <div className="relative">
@@ -400,13 +400,13 @@ export const AdminAccountSettings: React.FC = () => {
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Min. 8 characters (optional)"
                 autoComplete="new-password"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs font-mono text-[#18211F] pr-9 focus:outline-none focus:border-[#27845D]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-mono text-[#F2F5F4] placeholder-[#526066] pr-9 focus:outline-none focus:border-[#6FD8B0]"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword((v) => !v)}
                 aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer"
               >
                 {showNewPassword ? (
                   <EyeOff className="w-3.5 h-3.5" />
@@ -415,13 +415,13 @@ export const AdminAccountSettings: React.FC = () => {
                 )}
               </button>
             </div>
-            <p className="text-[11px] text-[#69736F] mt-1">
+            <p className="text-[11px] text-[#8FA1A8] mt-1">
               Hashed server-side with bcrypt (cost 12). Leave blank to keep current password.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[#52605C] mb-1.5">
+            <label className="block text-xs font-semibold text-[#B6C4C9] mb-1.5">
               Confirm New Password
             </label>
             <input
@@ -431,19 +431,19 @@ export const AdminAccountSettings: React.FC = () => {
               placeholder="Repeat new password"
               autoComplete="new-password"
               disabled={!newPassword}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs font-mono text-[#18211F] disabled:bg-gray-50 disabled:text-gray-400 focus:outline-none focus:border-[#27845D]"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-mono text-[#F2F5F4] placeholder-[#526066] disabled:opacity-40 focus:outline-none focus:border-[#6FD8B0]"
             />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#E3E8E3]">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#1F2C33]">
           <div>
             {isCustomConfigured && (
               <button
                 type="button"
                 disabled={resettingCredentials}
                 onClick={handleResetToEnvironmentDefault}
-                className="px-3.5 py-2 rounded-xl border border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-3.5 py-2 rounded-xl border border-[#1F2C33] bg-[#0B0F10] hover:bg-[#162026] text-[#B6C4C9] font-semibold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>
@@ -456,17 +456,17 @@ export const AdminAccountSettings: React.FC = () => {
           <button
             type="submit"
             disabled={savingCredentials}
-            className="px-5 py-2.5 bg-[#27845D] hover:bg-[#1f6b4b] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            className="px-5 py-2.5 bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] font-bold text-xs rounded-xl cursor-pointer disabled:opacity-50 flex items-center gap-2 transition-colors"
           >
             {savingCredentials ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Encrypting & Saving...</span>
+                <span>Encrypting &amp; Saving...</span>
               </>
             ) : (
               <>
                 <Check className="w-3.5 h-3.5" />
-                <span>Update Admin Email & Password</span>
+                <span>Update Admin Email &amp; Password</span>
               </>
             )}
           </button>
@@ -474,27 +474,27 @@ export const AdminAccountSettings: React.FC = () => {
       </form>
 
       {/* 2. Admin Pass Gate Security */}
-      <div className="bg-white rounded-2xl border border-[#E3E8E3] p-6 space-y-4">
+      <div className="bg-[#121A1F] rounded-2xl border border-[#1F2C33] p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[#18211F] flex items-center gap-2">
-            <Lock className="w-4 h-4 text-[#27845D]" />
+          <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
+            <Lock className="w-4 h-4 text-[#6FD8B0]" />
             <span>Admin Pass Gate Security (/admin)</span>
           </h3>
-          <span className="text-xs font-semibold text-[#27845D]">Pass Gate Enforced</span>
+          <span className="text-xs font-semibold text-[#6FD8B0]">Pass Gate Enforced</span>
         </div>
 
-        <p className="text-xs text-[#52605C] leading-relaxed">
+        <p className="text-xs text-[#8FA1A8] leading-relaxed">
           Direct visits to{' '}
-          <code className="bg-slate-100 text-[#182D2A] px-1.5 py-0.5 rounded font-mono text-[11px]">
+          <code className="bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] px-1.5 py-0.5 rounded font-mono text-[11px]">
             /admin
           </code>{' '}
-          prompt for this secondary executive passcode checkpoint before opening the administrative console.
+          can optionally prompt for this secondary executive passcode checkpoint.
         </p>
 
-        <div className="p-4 bg-[#F8FAF8] rounded-xl border border-[#E3E8E3] space-y-3">
+        <div className="p-4 bg-[#0B0F10] rounded-xl border border-[#1F2C33] space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#52605C] mb-1.5">
+              <label className="block text-xs font-semibold text-[#B6C4C9] mb-1.5">
                 Executive Pass Gate Code
               </label>
               <div className="relative">
@@ -503,13 +503,13 @@ export const AdminAccountSettings: React.FC = () => {
                   value={passGateCode}
                   onChange={(e) => setPassGateCode(e.target.value)}
                   placeholder="Enter custom pass gate code"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E3E8E3] text-xs font-mono font-medium text-[#18211F] pr-10"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#121A1F] border border-[#1F2C33] text-xs font-mono font-medium text-[#F2F5F4] pr-10 focus:outline-none focus:border-[#6FD8B0]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPasscode(!showPasscode)}
                   aria-label={showPasscode ? 'Hide pass gate code' : 'Show pass gate code'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer"
                 >
                   {showPasscode ? (
                     <EyeOff className="w-3.5 h-3.5" />
@@ -518,9 +518,9 @@ export const AdminAccountSettings: React.FC = () => {
                   )}
                 </button>
               </div>
-              <p className="text-[11px] text-gray-500 mt-1">
+              <p className="text-[11px] text-[#8FA1A8] mt-1">
                 Default master code:{' '}
-                <span className="font-mono font-semibold text-emerald-700">kretz2026</span>
+                <span className="font-mono font-semibold text-[#6FD8B0]">kretz2026</span>
               </p>
             </div>
 
@@ -529,14 +529,14 @@ export const AdminAccountSettings: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleUpdatePasscode}
-                  className="flex-1 py-2 px-3 bg-[#182D2A] hover:bg-[#27845D] text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                  className="flex-1 py-2 px-3 bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] font-bold text-xs rounded-xl transition-colors cursor-pointer"
                 >
                   Update Passcode
                 </button>
                 <button
                   type="button"
                   onClick={handleResetPasscode}
-                  className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+                  className="py-2 px-3 bg-[#121A1F] border border-[#1F2C33] hover:bg-[#162026] text-[#B6C4C9] font-semibold text-xs rounded-xl transition-colors cursor-pointer"
                   title="Reset to default code kretz2026"
                 >
                   Reset Default
@@ -545,17 +545,17 @@ export const AdminAccountSettings: React.FC = () => {
               <button
                 type="button"
                 onClick={handleLockNow}
-                className="w-full py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Lock className="w-3.5 h-3.5 text-amber-700" />
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
                 <span>Lock Admin Pass Gate Now</span>
               </button>
             </div>
           </div>
 
           {passcodeSavedMsg && (
-            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs font-semibold flex items-center gap-2">
-              <Check className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-300 text-xs font-medium flex items-center gap-2">
+              <Check className="w-3.5 h-3.5 text-[#6FD8B0]" />
               <span>{passcodeSavedMsg}</span>
             </div>
           )}
@@ -563,18 +563,18 @@ export const AdminAccountSettings: React.FC = () => {
       </div>
 
       {/* 3. Hardware 2FA Governance */}
-      <div className="bg-white rounded-2xl border border-[#E3E8E3] p-6 space-y-4">
-        <h3 className="text-sm font-bold text-[#18211F] flex items-center gap-2">
-          <Shield className="w-4 h-4 text-[#27845D]" />
-          <span>Security & Governance</span>
+      <div className="bg-[#121A1F] rounded-2xl border border-[#1F2C33] p-6 space-y-4">
+        <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
+          <Shield className="w-4 h-4 text-[#6FD8B0]" />
+          <span>Security &amp; Governance</span>
         </h3>
 
-        <div className="flex items-center justify-between p-4 bg-[#F8FAF8] rounded-xl border border-[#E3E8E3]">
+        <div className="flex items-center justify-between p-4 bg-[#0B0F10] rounded-xl border border-[#1F2C33]">
           <div>
-            <div className="text-xs font-bold text-[#18211F]">
+            <div className="text-xs font-bold text-[#F2F5F4]">
               Hardware 2FA / TOTP Authenticator
             </div>
-            <div className="text-[11px] text-[#52605C]">
+            <div className="text-[11px] text-[#8FA1A8]">
               Enforce YubiKey or Authenticator App for off-market listing approvals
             </div>
           </div>
@@ -582,7 +582,9 @@ export const AdminAccountSettings: React.FC = () => {
             type="button"
             onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
-              twoFactorEnabled ? 'bg-[#27845D] text-white' : 'bg-gray-200 text-gray-700'
+              twoFactorEnabled
+                ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                : 'bg-[#121A1F] border border-[#1F2C33] text-[#8FA1A8]'
             }`}
           >
             {twoFactorEnabled ? 'Enabled' : 'Disabled'}

@@ -13,7 +13,12 @@ import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
 import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
-import { manualPaymentRouter } from './manualPaymentRoutes';
+import {
+  manualPaymentRouter,
+  registerManualPaymentDevHooks,
+  hydrateManualPaymentDevState,
+  exportManualPaymentDevDeposits,
+} from './manualPaymentRoutes';
 import {
   handleTranslationRequest,
   handleGetProviders,
@@ -78,6 +83,7 @@ import {
   getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs, getAdminIdentityByEmail,
   createPersistentInvestmentPlan, updatePersistentInvestmentPlan,
   listUserNotifications, markUserNotificationRead, markAllUserNotificationsRead, createUserNotification,
+  listAdminNotifications, sendAdminNotifications,
   listUserFavorites, saveUserFavorite, removeUserFavorite, getUserPreferences, saveUserPreferences,
   listComplianceDocuments, addComplianceDocument, listAdminComplianceDocuments, reviewComplianceDocument,
   listComplianceSteps, upsertComplianceStep, getWalletSummary, findTransactionByReferenceOrId,
@@ -498,6 +504,25 @@ async function ensureDevStateHydrated(): Promise<void> {
           devComplianceStepsByUser.set(uid, steps);
         }
       }
+      if (Array.isArray(snap.transactions) && mockTransactions.length === 0) {
+        mockTransactions.push(...snap.transactions);
+      }
+      for (const [uid, list] of Object.entries(snap.notifications || {})) {
+        if (Array.isArray(list) && !userNotificationsStore.has(uid)) {
+          userNotificationsStore.set(uid, list);
+        }
+      }
+      for (const [uid, bals] of Object.entries(snap.subBalances || {})) {
+        if (bals && typeof bals === 'object' && !userSubBalancesStore.has(uid)) {
+          userSubBalancesStore.set(uid, bals);
+        }
+      }
+      for (const [uid, prefs] of Object.entries(snap.preferences || {})) {
+        if (prefs && typeof prefs === 'object' && !userPreferencesStore.has(uid)) {
+          userPreferencesStore.set(uid, prefs);
+        }
+      }
+      hydrateManualPaymentDevState(snap.manualDeposits);
       hydrateServerSessions(snap.sessions);
       devStateHydrated = true;
     })();
@@ -515,13 +540,89 @@ async function persistDevState(): Promise<void> {
   for (const [uid, steps] of devComplianceStepsByUser.entries()) {
     complianceSteps[uid] = steps;
   }
+  const notifications: Record<string, any[]> = {};
+  for (const [uid, list] of userNotificationsStore.entries()) {
+    notifications[uid] = list.slice(0, 150);
+  }
+  const subBalances: Record<string, Record<string, number>> = {};
+  for (const [uid, bals] of userSubBalancesStore.entries()) {
+    subBalances[uid] = bals;
+  }
+  const preferences: Record<string, Record<string, any>> = {};
+  for (const [uid, prefs] of userPreferencesStore.entries()) {
+    preferences[uid] = prefs;
+  }
   await saveDevAuthSnapshot({
     customers: Array.from(devCustomersById.values()),
     sessions: exportServerSessions(),
     complianceDocs,
     complianceSteps,
+    transactions: mockTransactions.slice(0, 1000),
+    notifications,
+    subBalances,
+    preferences,
+    manualDeposits: exportManualPaymentDevDeposits().slice(0, 500),
   });
 }
+
+registerManualPaymentDevHooks({
+  onDepositCreated: async (deposit) => {
+    const depTx = {
+      id: deposit.id,
+      userId: deposit.user_id,
+      userEmail: deposit.user_email || '',
+      type: 'deposit',
+      amount: deposit.amount,
+      feeAmount: deposit.fee_amount,
+      currency: deposit.currency || 'EUR',
+      status: 'pending',
+      method: deposit.payment_method,
+      reference: deposit.reference,
+      txHash: deposit.manual_transaction_id,
+      createdAt: deposit.created_at,
+      metadata: {
+        manualDepositId: deposit.id,
+        senderName: deposit.sender_name,
+        paymentDate: deposit.payment_date,
+        manualTransactionId: deposit.manual_transaction_id,
+        extraValues: deposit.extra_values,
+      },
+    };
+    mockTransactions.unshift(depTx);
+    pushUserNotification(deposit.user_id, {
+      title: 'Deposit proof submitted',
+      message: `Your €${deposit.amount.toFixed(2)} ${deposit.payment_method} deposit (${deposit.reference}) is pending finance verification.`,
+      type: 'info',
+    });
+  },
+  onDepositReviewed: async (deposit, approve, reason) => {
+    const tx = mockTransactions.find((t) => t.id === deposit.id || t.reference === deposit.reference);
+    if (tx) {
+      tx.status = approve ? 'completed' : 'rejected';
+      tx.processedAt = deposit.reviewed_at || new Date().toISOString();
+      if (!approve && reason) tx.notes = reason;
+    }
+    const cust = devCustomersById.get(deposit.user_id);
+    if (cust && approve) {
+      cust.balance = Math.round((Number(cust.balance || 0) + Number(deposit.amount || 0)) * 100) / 100;
+      if (userSubBalancesStore.has(cust.id)) {
+        userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+      }
+      pushUserNotification(cust.id, {
+        title: 'Deposit approved',
+        message: `Your EUR ${deposit.amount.toFixed(2)} deposit (${deposit.reference}) has been approved and credited.`,
+        type: 'success',
+      });
+    } else if (cust && !approve) {
+      pushUserNotification(cust.id, {
+        title: 'Deposit declined',
+        message: `Deposit ${deposit.reference} was declined: ${reason || 'Proof could not be verified.'}`,
+        type: 'warning',
+      });
+    }
+  },
+  persist: persistDevState,
+});
 
 registerDevSessionPersistence(ensureDevStateHydrated, persistDevState);
 
@@ -542,6 +643,11 @@ function toPublicDevCustomer(record: DevCustomerRecord) {
     phoneNumber: record.phoneNumber,
     isEmailVerified: record.isEmailVerified ?? true,
     status: record.status || 'active',
+    frozen: Boolean((record as any).frozen ?? record.status === 'suspended'),
+    isAdmin: Boolean((record as any).isAdmin ?? (record.role === 'admin' || record.role === 'super_admin')),
+    staffRole: (record as any).staffRole ?? (record.role && record.role !== 'investor' ? record.role : null),
+    assignedGateId: (record as any).assignedGateId ?? null,
+    assignedGateName: (record as any).assignedGateName ?? null,
     suspendedReason: record.suspendedReason,
     address: record.address,
     city: record.city,
@@ -705,16 +811,132 @@ const membershipApplicationsStore: Array<Record<string, any>> = [];
 const userReferralsStore = new Map<string, Array<{ id: string; email: string; date: string; status: 'invited' | 'registered' | 'funded'; reward: number; referralCode?: string }>>();
 const userNotificationsStore = new Map<string, any[]>();
 
-const TREASURY_FX_RATES_TO_EUR: Record<string, number> = {
+const TREASURY_FX_RATES_TO_EUR_TEST: Record<string, number> = {
   EUR: 1.0,
   USD: 0.92,
   GBP: 1.18,
   CHF: 1.06,
   USDC: 0.92,
   USDT: 0.92,
-  SOL: 158.4
+  SOL: 158.4,
 };
 const TREASURY_FX_FEE_PERCENT = 0.15;
+const TREASURY_MIN_EUR = 10;
+const TREASURY_MAX_EUR = 250000;
+const TREASURY_QUOTE_TTL_MS = 60_000;
+
+interface CachedLiveRates {
+  ratesToEur: Record<string, number>;
+  fetchedAt: number;
+  source: string;
+}
+
+let liveRatesCache: CachedLiveRates | null = null;
+const activeTreasuryQuotes = new Map<
+  string,
+  { ratesToEur: Record<string, number>; feePercent: number; expiresAt: number; source: string }
+>();
+
+async function fetchLiveTreasuryRates(): Promise<{
+  available: boolean;
+  ratesToEur?: Record<string, number>;
+  updatedAt?: string;
+  source?: string;
+  error?: string;
+}> {
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      available: true,
+      ratesToEur: { ...TREASURY_FX_RATES_TO_EUR_TEST },
+      updatedAt: new Date().toISOString(),
+      source: 'test-deterministic-feed',
+    };
+  }
+
+  const now = Date.now();
+  if (liveRatesCache && now - liveRatesCache.fetchedAt < TREASURY_QUOTE_TTL_MS) {
+    return {
+      available: true,
+      ratesToEur: { ...liveRatesCache.ratesToEur },
+      updatedAt: new Date(liveRatesCache.fetchedAt).toISOString(),
+      source: liveRatesCache.source,
+    };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const [fiatRes, cryptoRes] = await Promise.all([
+      fetch('https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF', { signal: controller.signal }),
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,tether,solana&vs_currencies=eur', {
+        signal: controller.signal,
+      }),
+    ]);
+    clearTimeout(timer);
+
+    if (!fiatRes.ok || !cryptoRes.ok) {
+      throw new Error('Upstream FX/Crypto provider returned non-200 status');
+    }
+
+    const fiatJson: any = await fiatRes.json();
+    const cryptoJson: any = await cryptoRes.json();
+
+    const usdPerEur = Number(fiatJson?.rates?.USD);
+    const gbpPerEur = Number(fiatJson?.rates?.GBP);
+    const chfPerEur = Number(fiatJson?.rates?.CHF);
+    const usdcEur = Number(cryptoJson?.['usd-coin']?.eur);
+    const usdtEur = Number(cryptoJson?.tether?.eur);
+    const solEur = Number(cryptoJson?.solana?.eur);
+
+    if (
+      !Number.isFinite(usdPerEur) || usdPerEur <= 0 ||
+      !Number.isFinite(gbpPerEur) || gbpPerEur <= 0 ||
+      !Number.isFinite(chfPerEur) || chfPerEur <= 0 ||
+      !Number.isFinite(usdcEur) || usdcEur <= 0 ||
+      !Number.isFinite(usdtEur) || usdtEur <= 0 ||
+      !Number.isFinite(solEur) || solEur <= 0
+    ) {
+      throw new Error('Incomplete exchange rate payload received from upstream provider');
+    }
+
+    const ratesToEur: Record<string, number> = {
+      EUR: 1.0,
+      USD: Number((1 / usdPerEur).toFixed(6)),
+      GBP: Number((1 / gbpPerEur).toFixed(6)),
+      CHF: Number((1 / chfPerEur).toFixed(6)),
+      USDC: Number(usdcEur.toFixed(6)),
+      USDT: Number(usdtEur.toFixed(6)),
+      SOL: Number(solEur.toFixed(4)),
+    };
+
+    liveRatesCache = {
+      ratesToEur,
+      fetchedAt: now,
+      source: 'Frankfurter ECB + CoinGecko Live Feed',
+    };
+
+    return {
+      available: true,
+      ratesToEur,
+      updatedAt: new Date(now).toISOString(),
+      source: liveRatesCache.source,
+    };
+  } catch (err: any) {
+    // Allow brief 5-minute stale-while-revalidate grace only if we previously received genuine live market rates
+    if (liveRatesCache && now - liveRatesCache.fetchedAt < 5 * 60_000) {
+      return {
+        available: true,
+        ratesToEur: { ...liveRatesCache.ratesToEur },
+        updatedAt: new Date(liveRatesCache.fetchedAt).toISOString(),
+        source: `${liveRatesCache.source} (Cached)`,
+      };
+    }
+    return {
+      available: false,
+      error: err?.message || 'Live FX and crypto rate feed is temporarily unreachable.',
+    };
+  }
+}
 
 function getOrInitUserSubBalances(userId: string, eurBalance: number): Record<string, number> {
   let balances = userSubBalancesStore.get(userId);
@@ -1499,11 +1721,18 @@ router.post(
  * GET /api/v1/admin/session & /api/v1/auth/admin-session
  */
 router.get(['/admin/session', '/auth/admin/session'], (req: AuthenticatedRequest, res: Response) => {
-  const adminRoles = ['admin','super_admin','finance_admin','operations_admin','support','auditor'];
-  if (req.user && adminRoles.includes(req.user.role)) {
+  const adminRoles = ['admin','super_admin','finance_admin','operations_admin','finance','compliance','property_manager','support','auditor'];
+  const hasStaff = Boolean(req.user && (req.user.isAdmin || (typeof req.user.staffRole === 'string' && req.user.staffRole.trim()) || adminRoles.includes(req.user.role)));
+  if (req.user && hasStaff) {
     return res.json({
       success: true,
-      data: { ...req.user, permissionsRole: req.user.role, role: 'admin' },
+      data: {
+        ...req.user,
+        permissionsRole: req.user.staffRole || req.user.role,
+        isAdmin: Boolean(req.user.isAdmin),
+        staffRole: req.user.staffRole ?? null,
+        role: req.user.isAdmin ? 'admin' : (req.user.staffRole || req.user.role || 'admin')
+      },
       requestId: req.id
     });
   }
@@ -2108,7 +2337,10 @@ router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => 
       const safeUser = profile ? {
         id: req.user.id, email: profile.email || req.user.email,
         fullName: profile.full_name || req.user.fullName,
-        role: req.user.role, accountType: profile.account_type || req.user.accountType,
+        role: req.user.role,
+        isAdmin: Boolean(req.user.isAdmin),
+        staffRole: req.user.staffRole ?? null,
+        accountType: profile.account_type || req.user.accountType,
         country: profile.country, phoneNumber: profile.phone_number,
         balance: Number(profile.wallet_balance ?? req.user.balance ?? 0),
         kycStatus: profile.kyc_status || 'pending', status
@@ -2222,9 +2454,13 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
     const users = await listAdminUsers();
     const data = users.map((u: any) => ({
       id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number,
-      role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','support','auditor'].includes(role)) || 'investor',
+      role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','finance','compliance','property_manager','support','auditor'].includes(role)) || (u.is_admin ? 'super_admin' : (u.staff_role || 'investor')),
+      isAdmin: Boolean(u.is_admin),
+      staffRole: u.staff_role ?? null,
+      frozen: Boolean(u.frozen ?? u.account_status === 'suspended'),
+      assignedGateId: u.assigned_gate_id ?? null,
       accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0),
-      kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), bankIban: u.bank_iban || undefined, cryptoDepositAddress: u.crypto_deposit_address || undefined, status: u.account_status || 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
+      kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), bankIban: u.bank_iban || u.iban || undefined, bankAccountHolder: u.bank_account_holder || u.bank_holder || u.full_name, cryptoDepositAddress: u.crypto_deposit_address || undefined, status: (u.frozen || u.account_status === 'suspended') ? 'suspended' : 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
     }));
     return res.json({ success: true, data, total: data.length, requestId: req.id });
   } catch (error: any) {
@@ -2613,12 +2849,26 @@ router.post('/admin/users/:id/kyc', requireAdmin, requireActionEmailVerification
  */
 const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const { status, reason } = req.body || {};
-  if (status !== 'active' && status !== 'suspended') return res.status(400).json({ success: false, error: 'Status must be either active or suspended.', code: 'INVALID_STATUS', requestId: req.id });
-  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const { status, reason, frozen } = req.body || {};
+  const resolvedStatus = typeof frozen === 'boolean' ? (frozen ? 'suspended' : 'active') : status;
+  if (resolvedStatus !== 'active' && resolvedStatus !== 'suspended') {
+    return res.status(400).json({ success: false, error: 'Status must be either active or suspended.', code: 'INVALID_STATUS', requestId: req.id });
+  }
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const cust = devCustomersById.get(id);
+    if (!cust) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    cust.status = resolvedStatus;
+    (cust as any).frozen = resolvedStatus === 'suspended';
+    cust.suspendedReason = resolvedStatus === 'suspended' ? (reason || 'Account frozen by staff') : undefined;
+    await persistDevState();
+    return res.json({ success: true, data: toPublicDevCustomer(cust), message: `Investor account ${resolvedStatus === 'suspended' ? 'frozen' : 'unfrozen'}.`, requestId: req.id });
+  }
   try {
-    const profile = await runFinancialRpc('kretz_admin_set_user_status', { p_user_id: id, p_admin_id: req.user!.id, p_status: status, p_reason: reason || null });
-    return res.json({ success: true, data: profile, message: `User status successfully updated to ${status.toUpperCase()}.`, requestId: req.id });
+    const profile = await runFinancialRpc('kretz_admin_set_user_status', { p_user_id: id, p_admin_id: req.user!.id, p_status: resolvedStatus, p_reason: reason || null });
+    return res.json({ success: true, data: profile, message: `User status successfully updated to ${resolvedStatus.toUpperCase()}.`, requestId: req.id });
   } catch (error: any) {
     const message = String(error?.message || '');
     const statusCode = message.includes('USER_NOT_FOUND') ? 404 : message.includes('INVALID_STATUS') ? 400 : message.includes('SELF_SUSPENSION_FORBIDDEN') || message.includes('REQUIRED') ? 403 : 503;
@@ -2628,6 +2878,55 @@ const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) 
 
 router.patch('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 router.post('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
+
+router.patch('/admin/users/:id/assign-gate', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const gateId = req.body?.gateId ? String(req.body.gateId).trim() : null;
+  const gateName = req.body?.gateName ? String(req.body.gateName).trim() : null;
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const cust = devCustomersById.get(id);
+    if (!cust) return res.status(404).json({ success: false, error: 'Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    (cust as any).assignedGateId = gateId;
+    (cust as any).assignedGateName = gateName;
+    await persistDevState();
+    return res.json({ success: true, data: toPublicDevCustomer(cust), message: gateId ? 'Payment gate assigned.' : 'Assigned payment gate cleared.', requestId: req.id });
+  }
+  try {
+    const { data, error } = await getSupabaseAdmin().rpc('assign_gate', { p_user: id, p_gate: gateId });
+    if (error) throw error;
+    return res.json({ success: true, data, message: 'Payment gate updated.', requestId: req.id });
+  } catch (err: any) {
+    return res.status(503).json({ success: false, error: err?.message || 'Unable to assign payment gate.', code: 'ASSIGN_GATE_FAILED', requestId: req.id });
+  }
+});
+
+router.post('/admin/staff-role', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = String(req.body?.userId || '').trim();
+  const role = req.body?.role ? String(req.body.role).trim() : null;
+  if (!userId) return res.status(400).json({ success: false, error: 'userId is required.', code: 'INVALID_PAYLOAD', requestId: req.id });
+  if (!isSupabaseServerConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+    }
+    const cust = devCustomersById.get(userId);
+    if (!cust) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    (cust as any).staffRole = role;
+    (cust as any).isAdmin = role === 'super_admin' || role === 'admin';
+    cust.role = (role || 'investor') as any;
+    await persistDevState();
+    return res.json({ success: true, data: toPublicDevCustomer(cust), message: role ? `Assigned role ${role}.` : 'Staff role removed.', requestId: req.id });
+  }
+  try {
+    const { data, error } = await getSupabaseAdmin().rpc('set_staff_role', { p_user: userId, p_role: role || '' });
+    if (error) throw error;
+    return res.json({ success: true, data, message: role ? `Assigned role ${role}.` : 'Staff role removed.', requestId: req.id });
+  } catch (err: any) {
+    return res.status(503).json({ success: false, error: err?.message || 'Unable to update staff role.', code: 'SET_STAFF_ROLE_FAILED', requestId: req.id });
+  }
+});
 
 /**
  * POST /api/v1/admin/users/:id/credit
@@ -2678,7 +2977,13 @@ router.get(['/marketplace/listings', '/properties', '/listings'], async (req: Au
       items = [...mockListings];
     }
   }
-  const canViewUnpublished = Boolean(req.user && ['admin','super_admin','operations_admin'].includes(req.user.role));
+  const canViewUnpublished = Boolean(
+    req.user &&
+    (req.user.isAdmin ||
+      req.user.staffRole === 'property_manager' ||
+      req.user.staffRole === 'super_admin' ||
+      ['admin', 'super_admin', 'operations_admin', 'property_manager'].includes(req.user.role))
+  );
   if (!canViewUnpublished) items = items.filter(p => p.status !== 'hidden' && p.status !== 'draft');
 
   if (search) {
@@ -2797,7 +3102,13 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: Authent
  */
 router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const body = req.body || {};
-  if (isSupabaseServerConfigured() && !['admin','super_admin','operations_admin'].includes(req.user!.role)) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
+  const canManageProperties = Boolean(
+    req.user!.isAdmin ||
+    req.user!.staffRole === 'property_manager' ||
+    req.user!.staffRole === 'super_admin' ||
+    ['admin', 'super_admin', 'operations_admin', 'property_manager'].includes(req.user!.role)
+  );
+  if (isSupabaseServerConfigured() && !canManageProperties) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
   if (!body.title || !body.location || !body.targetAmount) {
     return res.status(400).json({
       success: false,
@@ -2870,7 +3181,13 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
  */
 router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  if (isSupabaseServerConfigured() && !['admin','super_admin','operations_admin'].includes(req.user!.role)) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
+  const canManageProperties = Boolean(
+    req.user!.isAdmin ||
+    req.user!.staffRole === 'property_manager' ||
+    req.user!.staffRole === 'super_admin' ||
+    ['admin', 'super_admin', 'operations_admin', 'property_manager'].includes(req.user!.role)
+  );
+  if (isSupabaseServerConfigured() && !canManageProperties) return res.status(403).json({ success: false, error: 'Property management privileges are required.', code: 'PROPERTY_MANAGEMENT_FORBIDDEN', requestId: req.id });
   if (isSupabaseServerConfigured()) {
     try {
       const property = await updatePersistentInvestmentPlan(id, req.body || {});
@@ -3255,13 +3572,40 @@ router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'
  */
 router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id;
+  const typeFilter = typeof req.query.type === 'string' ? req.query.type.trim().toLowerCase() : 'all';
+  const statusFilter = typeof req.query.status === 'string' ? req.query.status.trim().toLowerCase() : 'all';
+  const searchQuery = typeof req.query.search === 'string' ? req.query.search.trim().toLowerCase() : '';
+  const fromDate = typeof req.query.from === 'string' && req.query.from ? new Date(req.query.from).getTime() : null;
+  const toDate = typeof req.query.to === 'string' && req.query.to ? new Date(req.query.to + 'T23:59:59.999Z').getTime() : null;
+  const limitParam = Math.min(Math.max(Number(req.query.limit) || 250, 1), 500);
+  const offsetParam = Math.max(Number(req.query.offset) || 0, 0);
+
+  const applyFilters = (list: any[]) =>
+    list.filter((t) => {
+      if (typeFilter && typeFilter !== 'all' && String(t.type || '').toLowerCase() !== typeFilter) return false;
+      if (statusFilter && statusFilter !== 'all' && String(t.status || '').toLowerCase() !== statusFilter) return false;
+      const ts = new Date(t.createdAt || t.created_at || 0).getTime();
+      if (fromDate && !Number.isNaN(fromDate) && ts < fromDate) return false;
+      if (toDate && !Number.isNaN(toDate) && ts > toDate) return false;
+      if (searchQuery) {
+        const hay = [t.description, t.reference, t.paymentMethod, t.method, t.txHash, t.currency, t.type, t.propertyTitle]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!hay.includes(searchQuery)) return false;
+      }
+      return true;
+    });
+
   if (shouldUseSupabaseForCustomer(req)) {
     try {
       const rows = req.user?.role === 'admin' || req.user?.role === 'super_admin' || req.user?.role === 'finance_admin'
         ? await listAdminTransactions(undefined, undefined, 250)
         : await listUserTransactions(userId, 250);
       const formatted = rows.map((row: any) => ({ ...toApiTransaction(row), user_id: row.user_id, userId: row.user_id, created_at: row.created_at, paymentMethod: row.payment_method }));
-      return res.json({ success: true, data: formatted, total: formatted.length, requestId: req.id });
+      const filtered = applyFilters(formatted);
+      const paged = filtered.slice(offsetParam, offsetParam + limitParam);
+      return res.json({ success: true, data: paged, total: filtered.length, requestId: req.id });
     } catch (error: any) {
       logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-transactions-db', eventType: 'TRANSACTION_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Transaction query failed.' });
       return res.status(503).json({ success: false, error: 'Transaction history is temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id });
@@ -3269,14 +3613,12 @@ router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: 
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent transaction storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const userEmail = req.user?.email?.toLowerCase();
-  
+
   // If user is ordinary investor, filter to their transactions
-  const txs = req.user?.role === 'admin' 
-    ? mockTransactions 
+  const txs = req.user?.role === 'admin'
+    ? mockTransactions
     : mockTransactions.filter(t => t.userId === userId || (userEmail && t.userEmail?.toLowerCase() === userEmail));
 
-  // Ensure transaction model conforms to standard data structure:
-  // id, user_id, type (deposit, withdrawal, purchase, payout), amount, currency, status, reference, created_at
   const formattedTxs = txs.map(t => ({
     id: t.id,
     user_id: t.userId,
@@ -3288,20 +3630,56 @@ router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: 
     reference: t.reference,
     created_at: t.createdAt || t.created_at || new Date().toISOString(),
     createdAt: t.createdAt || t.created_at || new Date().toISOString(),
-    description: t.description || `${t.type} transaction`,
+    processedAt: t.processedAt,
+    description: t.description || (t.propertyTitle ? `${t.type} — ${t.propertyTitle}` : `${t.type} transaction`),
     paymentMethod: t.paymentMethod || t.method || 'System',
     propertyId: (t as any).propertyId,
     propertyTitle: (t as any).propertyTitle,
     tokensPurchased: (t as any).tokensPurchased,
-    txHash: (t as any).txHash
+    txHash: (t as any).txHash,
+    destination: (t as any).destination,
+    notes: (t as any).notes,
+    metadata: (t as any).metadata || {},
   }));
+
+  const filtered = applyFilters(formattedTxs);
+  const paged = filtered.slice(offsetParam, offsetParam + limitParam);
 
   res.json({
     success: true,
-    data: formattedTxs,
-    total: formattedTxs.length,
+    data: paged,
+    total: filtered.length,
     requestId: req.id
   });
+});
+
+/**
+ * GET /api/v1/transactions/:transactionId
+ */
+router.get('/transactions/:transactionId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const key = req.params.transactionId;
+  if (shouldUseSupabaseForCustomer(req)) {
+    try {
+      const row: any = await findTransactionByReferenceOrId(key);
+      if (!row || (row.user_id !== userId && req.user?.role === 'investor')) {
+        return res.status(404).json({ success: false, error: 'Transaction not found.', code: 'TRANSACTION_NOT_FOUND', requestId: req.id });
+      }
+      return res.json({ success: true, data: { ...toApiTransaction(row), paymentMethod: row.payment_method }, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Transaction details are temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  const userEmail = req.user?.email?.toLowerCase();
+  const tx = mockTransactions.find(
+    (t) =>
+      (t.id === key || t.reference === key) &&
+      (req.user?.role === 'admin' || t.userId === userId || (userEmail && t.userEmail?.toLowerCase() === userEmail))
+  );
+  if (!tx) {
+    return res.status(404).json({ success: false, error: 'Transaction not found.', code: 'TRANSACTION_NOT_FOUND', requestId: req.id });
+  }
+  return res.json({ success: true, data: tx, requestId: req.id });
 });
 
 /**
@@ -3326,6 +3704,7 @@ router.patch('/notifications/:id/read', requireAuth, async (req: AuthenticatedRe
   const target = list.find(n => n.id === req.params.id);
   if (target) {
     target.read = true;
+    await persistDevState();
   }
   res.json({
     success: true,
@@ -3339,10 +3718,109 @@ router.post('/notifications/read-all', requireAuth, async (req: AuthenticatedReq
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   list.forEach(n => { n.read = true; });
+  await persistDevState();
   res.json({
     success: true,
     data: { markedRead: list.length },
     requestId: req.id
+  });
+});
+
+router.get('/admin/notifications', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  if (isSupabaseServerConfigured()) {
+    try {
+      const rows = await listAdminNotifications(200);
+      const data = rows.map((n: any) => ({
+        id: n.id,
+        userId: n.user_id,
+        userEmail: n.user_profiles?.email || undefined,
+        userName: n.user_profiles?.full_name || undefined,
+        title: n.title,
+        message: n.message,
+        type: n.type || 'info',
+        read: Boolean(n.read),
+        createdAt: n.created_at,
+      }));
+      return res.json({ success: true, data, total: data.length, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'ADMIN_NOTIFICATIONS_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const allNotifs: any[] = [];
+  for (const [uid, list] of userNotificationsStore.entries()) {
+    const cust = devCustomersById.get(uid);
+    for (const item of list) {
+      allNotifs.push({
+        id: item.id,
+        userId: uid,
+        userEmail: cust?.email || 'investor@kretz.com',
+        userName: cust?.fullName || 'Investor',
+        title: item.title,
+        message: item.message,
+        type: item.type || 'info',
+        read: Boolean(item.read),
+        createdAt: item.createdAt,
+      });
+    }
+  }
+  allNotifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return res.json({ success: true, data: allNotifs, total: allNotifs.length, requestId: req.id });
+});
+
+router.post('/admin/notifications', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const targetUserId = typeof req.body?.userId === 'string' && req.body.userId.trim() ? req.body.userId.trim() : 'all';
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  const type = ['info', 'success', 'warning'].includes(String(req.body?.type)) ? String(req.body.type) : 'info';
+
+  if (!title || title.length < 2 || !message || message.length < 4) {
+    return res.status(400).json({ success: false, error: 'Title and message are required to send a notification.', code: 'INVALID_NOTIFICATION_PAYLOAD', requestId: req.id });
+  }
+
+  if (isSupabaseServerConfigured()) {
+    try {
+      const inserted = await sendAdminNotifications(targetUserId, { title, message, type });
+      return res.status(201).json({
+        success: true,
+        data: inserted,
+        sentCount: inserted.length,
+        message: targetUserId === 'all' ? `Notification broadcast to ${inserted.length} investor accounts.` : 'Notification dispatched to investor.',
+        requestId: req.id,
+      });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Unable to dispatch notification to the database.', code: 'ADMIN_NOTIFICATION_SEND_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+
+  const targetIds = targetUserId === 'all' ? Array.from(devCustomersById.keys()) : [targetUserId];
+  const nowIso = new Date().toISOString();
+  const created: any[] = [];
+  for (const uid of targetIds) {
+    const entry = {
+      id: `notif-${crypto.randomBytes(5).toString('hex')}`,
+      title,
+      message,
+      type,
+      read: false,
+      createdAt: nowIso,
+    };
+    const existing = userNotificationsStore.get(uid) || [];
+    userNotificationsStore.set(uid, [entry, ...existing]);
+    created.push({ ...entry, userId: uid });
+  }
+  await persistDevState();
+  return res.status(201).json({
+    success: true,
+    data: created,
+    sentCount: created.length,
+    message: targetUserId === 'all' ? `Notification broadcast to ${created.length} investor accounts.` : 'Notification dispatched to investor.',
+    requestId: req.id,
   });
 });
 
@@ -3405,7 +3883,12 @@ router.get('/user/preferences', requireAuth, async (req: AuthenticatedRequest, r
     defaultSort: 'yield-desc',
     itemsPerPage: 6,
     currencyDisplay: 'EUR',
-    emailNotifications: true
+    emailNotifications: true,
+    depositAlerts: true,
+    withdrawalUpdates: true,
+    kycUpdates: true,
+    distributionAlerts: true,
+    securityAlerts: true,
   };
   res.json({
     success: true,
@@ -3420,6 +3903,7 @@ router.put('/user/preferences', requireAuth, async (req: AuthenticatedRequest, r
   const current = userPreferencesStore.get(req.user!.id) || {};
   const next = { ...current, ...(req.body || {}), updatedAt: new Date().toISOString() };
   userPreferencesStore.set(req.user!.id, next);
+  await persistDevState();
   res.json({
     success: true,
     data: next,
@@ -3743,6 +4227,68 @@ router.get('/admin/documents', requireAdmin, async (req: AuthenticatedRequest, r
   return res.json({ success: true, data: allDocs, total: allDocs.length, requestId: req.id });
 });
 
+router.post('/admin/documents/upload', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = String(req.body?.userId || '').trim();
+  const title = String(req.body?.title || '').trim();
+  const fileName = String(req.body?.fileName || 'document.pdf').trim();
+  const fileDataUrl = String(req.body?.fileDataUrl || '');
+  const fileSize = Number(req.body?.fileSize || fileDataUrl.length || 1024);
+  if (!userId || !title) {
+    return res.status(400).json({ success: false, error: 'Investor and document title are required.', code: 'INVALID_DOCUMENT_PAYLOAD', requestId: req.id });
+  }
+  if (isSupabaseServerConfigured()) {
+    return res.status(400).json({ success: false, error: 'Use Supabase documents storage bucket when Supabase is active.', code: 'USE_SUPABASE_STORAGE', requestId: req.id });
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Document storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const existing = devComplianceDocsByUser.get(userId) || [];
+  const doc = {
+    id: `doc-${crypto.randomBytes(5).toString('hex')}`,
+    userId,
+    category: 'statement' as any,
+    documentType: 'Investor Document',
+    title,
+    fileName,
+    fileSize,
+    mimeType: 'application/pdf',
+    status: 'verified' as const,
+    fileDataUrl,
+    uploadedAt: new Date().toISOString(),
+    reviewedAt: new Date().toISOString(),
+  };
+  devComplianceDocsByUser.set(userId, [doc, ...existing]);
+  await persistDevState();
+  return res.status(201).json({ success: true, data: doc, message: 'Investor document uploaded.', requestId: req.id });
+});
+
+router.delete('/admin/documents/:docId', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { docId } = req.params;
+  if (isSupabaseServerConfigured()) {
+    try {
+      const { error } = await getSupabaseAdmin().from('documents').delete().eq('id', docId);
+      if (error) throw error;
+      return res.json({ success: true, message: 'Document deleted.', requestId: req.id });
+    } catch (err: any) {
+      return res.status(503).json({ success: false, error: err?.message || 'Failed to delete document.', code: 'DOCUMENT_DELETE_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Document storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  let removed = false;
+  for (const [uid, list] of devComplianceDocsByUser.entries()) {
+    const next = list.filter((d) => d.id !== docId);
+    if (next.length !== list.length) {
+      devComplianceDocsByUser.set(uid, next);
+      removed = true;
+    }
+  }
+  if (!removed) return res.status(404).json({ success: false, error: 'Document not found.', code: 'DOCUMENT_NOT_FOUND', requestId: req.id });
+  await persistDevState();
+  return res.json({ success: true, message: 'Document deleted.', requestId: req.id });
+});
+
 router.post('/admin/documents/:docId/review', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { docId } = req.params;
   const approved = req.body?.approved !== false;
@@ -3838,24 +4384,91 @@ router.post('/admin/documents/:docId/review', requireAdmin, async (req: Authenti
 /**
  * Multi-Currency Treasury Desk Rates & Conversion (/api/v1/treasury/*)
  */
-router.get('/treasury/rates', (_req: AuthenticatedRequest, res: Response) => {
+router.get('/treasury/rates', async (req: AuthenticatedRequest, res: Response) => {
+  const live = await fetchLiveTreasuryRates();
+  if (!live.available || !live.ratesToEur) {
+    return res.status(503).json({
+      success: false,
+      error: live.error || 'Live exchange rate feed is currently unavailable. Conversions are paused.',
+      code: 'RATE_PROVIDER_UNAVAILABLE',
+      data: {
+        base: 'EUR',
+        available: false,
+        providerStatus: 'unavailable',
+        feePercent: TREASURY_FX_FEE_PERCENT,
+        limits: { minEur: TREASURY_MIN_EUR, maxEur: TREASURY_MAX_EUR },
+        supportedAssets: ['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'SOL'],
+      },
+      requestId: req.id,
+    });
+  }
+
+  const quoteId = `QT-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+  const expiresAtMs = Date.now() + TREASURY_QUOTE_TTL_MS;
+  activeTreasuryQuotes.set(quoteId, {
+    ratesToEur: live.ratesToEur,
+    feePercent: TREASURY_FX_FEE_PERCENT,
+    expiresAt: expiresAtMs,
+    source: live.source || 'Live Feed',
+  });
+  // Prune expired quotes
+  if (activeTreasuryQuotes.size > 200) {
+    const now = Date.now();
+    for (const [k, q] of activeTreasuryQuotes.entries()) {
+      if (q.expiresAt < now) activeTreasuryQuotes.delete(k);
+    }
+  }
+
   res.json({
     success: true,
     data: {
       base: 'EUR',
-      ratesToEur: TREASURY_FX_RATES_TO_EUR,
+      available: true,
+      providerStatus: 'live',
+      providerSource: live.source,
+      quoteId,
+      expiresAt: new Date(expiresAtMs).toISOString(),
+      ratesToEur: live.ratesToEur,
       feePercent: TREASURY_FX_FEE_PERCENT,
-      updatedAt: new Date().toISOString()
-    }
+      limits: {
+        minEur: TREASURY_MIN_EUR,
+        maxEur: TREASURY_MAX_EUR,
+      },
+      supportedAssets: ['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'SOL'],
+      networks: {
+        EUR: 'SEPA / Euro Clearing',
+        USD: 'SWIFT / USD Clearing',
+        GBP: 'Faster Payments / CHAPS',
+        CHF: 'SIC Swiss Clearing',
+        USDC: 'Solana SPL / BNB Smart Chain (BEP20)',
+        USDT: 'Solana SPL',
+        SOL: 'Solana Mainnet',
+      },
+      updatedAt: live.updatedAt || new Date().toISOString(),
+    },
+    requestId: req.id,
   });
 });
 
 router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (shouldUseSupabaseForCustomer(req)) {
     try {
-      const profile = await getUserProfile(req.user!.id);
+      const [profile, prefs] = await Promise.all([
+        getUserProfile(req.user!.id),
+        getUserPreferences(req.user!.id).catch(() => ({} as Record<string, any>)),
+      ]);
       if (!profile) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-      return res.json({ success: true, data: { balances: { EUR: Number(profile.wallet_balance || 0) } }, requestId: req.id });
+      const savedSub = (prefs as any)?.treasurySubBalances || {};
+      const balances = {
+        EUR: Number(profile.wallet_balance || 0),
+        USD: Number(savedSub.USD || 0),
+        GBP: Number(savedSub.GBP || 0),
+        CHF: Number(savedSub.CHF || 0),
+        USDC: Number(savedSub.USDC || 0),
+        USDT: Number(savedSub.USDT || 0),
+        SOL: Number(savedSub.SOL || 0),
+      };
+      return res.json({ success: true, data: { balances }, requestId: req.id });
     } catch {
       return res.status(503).json({ success: false, error: 'Treasury balances are temporarily unavailable.', code: 'TREASURY_DATABASE_UNAVAILABLE', requestId: req.id });
     }
@@ -3879,40 +4492,99 @@ router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, 
 });
 
 router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (shouldUseSupabaseForCustomer(req)) {
-    return res.status(501).json({ success: false, error: 'Multi-currency conversion is not enabled on the persistent wallet yet. Your EUR balance is safe and unchanged.', code: 'FX_PERSISTENCE_NOT_ENABLED', requestId: req.id });
-  }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent treasury storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const { fromCurrency, toCurrency, amount } = req.body || {};
+  const { fromCurrency, toCurrency, amount, quoteId } = req.body || {};
   const from = String(fromCurrency || '').toUpperCase();
   const to = String(toCurrency || '').toUpperCase();
   const numericAmount = Number(amount);
 
-  if (!TREASURY_FX_RATES_TO_EUR[from] || !TREASURY_FX_RATES_TO_EUR[to]) {
+  const supported = new Set(['EUR', 'USD', 'GBP', 'CHF', 'USDC', 'USDT', 'SOL']);
+  if (!supported.has(from) || !supported.has(to)) {
     return res.status(400).json({
       success: false,
-      error: 'Unsupported currency pair selected.',
+      error: 'Unsupported currency or asset selected.',
       code: 'UNSUPPORTED_CURRENCY',
-      requestId: req.id
+      requestId: req.id,
     });
   }
-
   if (from === to) {
     return res.status(400).json({
       success: false,
       error: 'Source and target currencies must be different.',
       code: 'SAME_CURRENCY',
-      requestId: req.id
+      requestId: req.id,
     });
   }
-
-  if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) {
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
     return res.status(400).json({
       success: false,
       error: 'Conversion amount must be greater than zero.',
       code: 'INVALID_AMOUNT',
-      requestId: req.id
+      requestId: req.id,
     });
+  }
+
+  let ratesToEur: Record<string, number> | undefined;
+  let rateSource = 'Live Feed';
+  if (quoteId && typeof quoteId === 'string') {
+    const q = activeTreasuryQuotes.get(quoteId);
+    if (!q) {
+      return res.status(410).json({
+        success: false,
+        error: 'FX quote is unrecognized or has already been settled. Request a fresh quote.',
+        code: 'QUOTE_EXPIRED',
+        requestId: req.id,
+      });
+    }
+    if (q.expiresAt < Date.now()) {
+      activeTreasuryQuotes.delete(quoteId);
+      return res.status(410).json({
+        success: false,
+        error: 'This live FX quote has expired. Refresh rates to execute at current market pricing.',
+        code: 'QUOTE_EXPIRED',
+        requestId: req.id,
+      });
+    }
+    ratesToEur = q.ratesToEur;
+    rateSource = q.source;
+  } else {
+    const live = await fetchLiveTreasuryRates();
+    if (!live.available || !live.ratesToEur) {
+      return res.status(503).json({
+        success: false,
+        error: live.error || 'Live exchange rate provider is currently unavailable. Conversions cannot execute.',
+        code: 'RATE_PROVIDER_UNAVAILABLE',
+        requestId: req.id,
+      });
+    }
+    ratesToEur = live.ratesToEur;
+    rateSource = live.source || 'Live Feed';
+  }
+
+  const valueInEur = numericAmount * ratesToEur[from];
+  if (valueInEur < TREASURY_MIN_EUR || valueInEur > TREASURY_MAX_EUR) {
+    return res.status(400).json({
+      success: false,
+      error: `Conversion value (€${valueInEur.toFixed(2)}) must be between €${TREASURY_MIN_EUR.toFixed(2)} and €${TREASURY_MAX_EUR.toLocaleString()}.`,
+      code: 'CONVERSION_LIMIT_EXCEEDED',
+      requestId: req.id,
+    });
+  }
+
+  const feeInEur = Math.round(valueInEur * (TREASURY_FX_FEE_PERCENT / 100) * 100) / 100;
+  const netEur = Math.max(0, valueInEur - feeInEur);
+  const convertedAmount = Number((netEur / ratesToEur[to]).toFixed(to === 'SOL' ? 6 : 2));
+  const crossRate = Number((ratesToEur[from] / ratesToEur[to]).toFixed(6));
+
+  if (shouldUseSupabaseForCustomer(req)) {
+    return res.status(501).json({
+      success: false,
+      error: 'Multi-currency conversion settlement requires multi-asset escrow activation on the cloud ledger. Your EUR balance is safe and unchanged.',
+      code: 'FX_PERSISTENCE_NOT_ENABLED',
+      requestId: req.id,
+    });
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent treasury storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
 
   const userRecord = await findUserRecordForRequest(req);
@@ -3938,11 +4610,6 @@ router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, 
     });
   }
 
-  const valueInEur = numericAmount * TREASURY_FX_RATES_TO_EUR[from];
-  const feeInEur = Math.round(valueInEur * (TREASURY_FX_FEE_PERCENT / 100) * 100) / 100;
-  const netEur = Math.max(0, valueInEur - feeInEur);
-  const convertedAmount = Number((netEur / TREASURY_FX_RATES_TO_EUR[to]).toFixed(to === 'SOL' ? 6 : 2));
-
   balances[from] = Number((availableSource - numericAmount).toFixed(from === 'SOL' ? 6 : 2));
   balances[to] = Number(((balances[to] || 0) + convertedAmount).toFixed(to === 'SOL' ? 6 : 2));
   activeUser.balance = balances.EUR;
@@ -3957,6 +4624,7 @@ router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, 
     currency: 'EUR',
     status: 'completed',
     method: `Treasury FX (${from} → ${to})`,
+    description: `Treasury Conversion: ${numericAmount} ${from} → ${convertedAmount} ${to}`,
     reference: ref,
     createdAt: new Date().toISOString(),
     metadata: {
@@ -3964,15 +4632,19 @@ router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, 
       toCurrency: to,
       fromAmount: numericAmount,
       toAmount: convertedAmount,
-      feeEur: feeInEur
+      crossRate,
+      feePercent: TREASURY_FX_FEE_PERCENT,
+      feeEur: feeInEur,
+      providerSource: rateSource,
     }
   };
   mockTransactions.unshift(fxTx as any);
   pushUserNotification(activeUser.id, {
     title: 'Treasury FX Conversion Executed',
-    message: `Converted ${numericAmount} ${from} into ${convertedAmount} ${to} (Fee: €${feeInEur.toFixed(2)}).`,
-    type: 'financial'
+    message: `Converted ${numericAmount} ${from} into ${convertedAmount} ${to} (Fee: €${feeInEur.toFixed(2)}). Ref: ${ref}`,
+    type: 'success'
   });
+  await persistDevState();
 
   res.json({
     success: true,
@@ -3982,7 +4654,10 @@ router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, 
       toCurrency: to,
       fromAmount: numericAmount,
       toAmount: convertedAmount,
+      crossRate,
+      feePercent: TREASURY_FX_FEE_PERCENT,
       feeEur: feeInEur,
+      providerSource: rateSource,
       balances,
       transaction: fxTx
     },
@@ -4111,6 +4786,12 @@ router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Res
   };
 
   mockTransactions.unshift(depositTx);
+  pushUserNotification(req.user!.id, {
+    title: 'Deposit request recorded',
+    message: `Your €${numAmount.toFixed(2)} ${method} deposit (${ref}) is pending verification.`,
+    type: 'info',
+  });
+  await persistDevState();
 
   // Send branded deposit initiated email with escrow instructions
   const userRecipient = resolvedRecipient;
@@ -4702,6 +5383,12 @@ router.post('/investments', requireAuth, requireActionEmailVerification('investo
   };
 
   mockTransactions.unshift(invTx as any);
+  pushUserNotification(req.user!.id, {
+    title: 'Property token allocation confirmed',
+    message: `Acquired ${count} tokens in ${prop.title} (€${principalCost.toFixed(2)}, ref ${certId}).`,
+    type: 'success',
+  });
+  await persistDevState();
 
   const userRecipient = req.user?.email || 'investor@kretz.com';
   sendEmail({
@@ -5139,7 +5826,10 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
     const profile = await getUserProfile(req.user!.id);
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     return res.json({ success: true, data: {
-      ...req.user, fullName: profile.full_name, country: profile.country,
+      ...req.user,
+      isAdmin: Boolean(req.user!.isAdmin),
+      staffRole: req.user!.staffRole ?? null,
+      fullName: profile.full_name, country: profile.country,
       accountType: profile.account_type, balance: Number(profile.wallet_balance || 0),
       kycStatus: profile.kyc_status, phoneNumber: profile.phone_number,
       bankIban: profile.bank_iban,
@@ -5167,32 +5857,242 @@ router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, 
     }
   }
   const userRecord = await findUserRecordForRequest(req);
-  const availableBalance = userRecord ? userRecord.balance : (req.user?.balance ?? 0);
-  const userInvTxs = mockTransactions.filter(
-    t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
-  );
+  const availableBalance = userRecord ? Number(userRecord.balance || 0) : Number(req.user?.balance ?? 0);
+  const userEmail = (userRecord?.email || req.user?.email || '').toLowerCase();
+  const matchesUser = (t: any) => t.userId === userId || (userEmail && t.userEmail?.toLowerCase() === userEmail);
+
+  const userAllTxs = mockTransactions.filter(matchesUser);
+  const userInvTxs = userAllTxs.filter(t => (t.type === 'investment' || t.type === 'purchase') && t.status === 'completed');
+  const pendingInvTxs = userAllTxs.filter(t => (t.type === 'investment' || t.type === 'purchase') && t.status === 'pending');
+
   const investedTotal = userInvTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-  const uniqueProps = new Set(userInvTxs.map(t => (t as any).propertyId)).size;
-  const earnedDividends = mockTransactions
-    .filter(
-      t =>
-        t.userId === userId &&
-        (t.type === 'dividend' || t.type === 'payout' || t.type === 'distribution') &&
-        t.status === 'completed'
-    )
+  const pendingAllocationsAmount = pendingInvTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const pendingDeposits = userAllTxs
+    .filter(t => t.type === 'deposit' && (t.status === 'pending' || t.status === 'processing'))
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-  const projectedMonthlyIncome = Number(((investedTotal * 0.084) / 12).toFixed(2));
+  const reservedWithdrawals = userAllTxs
+    .filter(t => t.type === 'withdrawal' && (t.status === 'pending' || t.status === 'processing'))
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const restrictedCash = userRecord?.status === 'suspended' ? availableBalance : 0;
+  const withdrawableCash = userRecord?.status === 'suspended' ? 0 : availableBalance;
+
+  const earnedDividends = userAllTxs
+    .filter(t => (t.type === 'dividend' || t.type === 'payout' || t.type === 'distribution') && t.status === 'completed')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+  const nowDate = new Date();
+  const monthStart = Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), 1);
+  const collectedThisMonth = Number(
+    userAllTxs
+      .filter(t => (t.type === 'dividend' || t.type === 'payout' || t.type === 'distribution') && t.status === 'completed' && new Date(t.createdAt).getTime() >= monthStart)
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+      .toFixed(2)
+  );
+
+  // Aggregate confirmed holdings by property with ownership %
+  const holdingsMap = new Map<string, any>();
+  for (const tx of userInvTxs) {
+    const propId = String(tx.propertyId || 'prop-unknown');
+    const prop = mockListings.find(p => p.id === propId || p.slug === propId);
+    const units = Number(tx.tokensPurchased || 0);
+    const amount = Number(tx.amount || 0);
+    const totalTokens = Number(prop?.totalTokens || 0);
+    const prev = holdingsMap.get(propId);
+    if (prev) {
+      prev.confirmedUnits += units;
+      prev.valuation = Number((prev.valuation + amount).toFixed(2));
+      prev.ownershipPercent = totalTokens > 0 ? Number(((prev.confirmedUnits / totalTokens) * 100).toFixed(4)) : 0;
+      prev.valuationDate = tx.createdAt || prev.valuationDate;
+    } else {
+      holdingsMap.set(propId, {
+        id: tx.id,
+        propertyId: propId,
+        propertyTitle: tx.propertyTitle || prop?.title || 'Tokenized Property SPV',
+        location: prop?.location || '',
+        confirmedUnits: units,
+        ownershipPercent: totalTokens > 0 ? Number(((units / totalTokens) * 100).toFixed(4)) : 0,
+        valuation: Number(amount.toFixed(2)),
+        valuationDate: tx.createdAt || nowDate.toISOString(),
+        status: 'active',
+        onChainStatus: tx.txHash ? 'On-Chain Settled' : 'SPV Book-Entry Confirmed',
+        certificateId: tx.reference || null,
+      });
+    }
+  }
+  const holdingsList = Array.from(holdingsMap.values());
+  const confirmedUnits = holdingsList.reduce((s, h) => s + h.confirmedUnits, 0);
+  const pendingUnits = pendingInvTxs.reduce((s, t) => s + Number(t.tokensPurchased || 0), 0);
+  const uniqueProps = holdingsList.length;
+
+  const projectedMonthlyIncome = holdingsList.reduce((sum, h) => {
+    const prop = mockListings.find(p => p.id === h.propertyId);
+    const annualYield = prop?.monthlyTargetRate ? prop.monthlyTargetRate * 12 : prop?.projectedYield || 8.4;
+    // Cap synthetic monthly conversion reasonably using 8.4% annual default unless property explicit net rate is present
+    const effectiveAnnualRate = Math.min(annualYield, 18);
+    return sum + (h.valuation * (effectiveAnnualRate / 100)) / 12;
+  }, 0);
+
+  const complianceSteps = buildDevComplianceSteps(userId, userRecord?.kycStatus);
+  const kycNorm = String(userRecord?.kycStatus || 'pending').toLowerCase();
+  const hasCompletedDeposit = userAllTxs.some(t => t.type === 'deposit' && t.status === 'completed');
+  const hasPendingDeposit = userAllTxs.some(t => t.type === 'deposit' && t.status === 'pending');
+
+  const kycStageStatus: string =
+    kycNorm === 'verified' || kycNorm === 'approved'
+      ? 'Approved'
+      : kycNorm === 'rejected'
+      ? 'Rejected'
+      : complianceSteps.some((s) => s.status === 'rejected')
+      ? 'Action Required'
+      : complianceSteps.some((s) => s.status === 'in_review')
+      ? 'In Review'
+      : 'Not Started';
+
+  const fundingStageStatus: string =
+    availableBalance > 0 || hasCompletedDeposit || investedTotal > 0
+      ? 'Completed'
+      : hasPendingDeposit
+      ? 'Pending'
+      : 'Not Started';
+
+  const holdingsStageStatus: string =
+    confirmedUnits > 0
+      ? 'Completed'
+      : pendingUnits > 0 || pendingAllocationsAmount > 0
+      ? 'Pending'
+      : 'Not Started';
+
+  const yieldsStageStatus: string =
+    earnedDividends > 0
+      ? 'Completed'
+      : confirmedUnits > 0
+      ? 'Pending'
+      : 'Not Started';
+
+  const nextDistDate = new Date(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+
+  const lifecycleStages = [
+    {
+      stepNumber: 1,
+      key: 'account_registered',
+      title: 'Account Registered',
+      status: 'Completed',
+      summary: `Registered ${userRecord?.createdAt ? new Date(userRecord.createdAt).toLocaleDateString('en-GB') : 'Verified Member'}`,
+      actionTab: 'profile',
+      requirements: ['Authenticated investor profile established'],
+      updatedAt: userRecord?.createdAt || nowDate.toISOString(),
+    },
+    {
+      stepNumber: 2,
+      key: 'identity_verification',
+      title: 'Identity Verification (KYC/AML)',
+      status: kycStageStatus,
+      summary: kycStageStatus === 'Approved' ? 'Tier-2 EU AML Verified' : kycStageStatus === 'In Review' ? 'Documents awaiting compliance sign-off' : 'Submit government ID & proof of address',
+      actionTab: 'verification',
+      requirements: complianceSteps.map((s) => `${s.title}: ${s.status}`),
+      updatedAt: nowDate.toISOString(),
+    },
+    {
+      stepNumber: 3,
+      key: 'wallet_funded',
+      title: 'Wallet Funded',
+      status: fundingStageStatus,
+      summary: availableBalance > 0 ? `Cleared €${availableBalance.toFixed(2)}` : hasPendingDeposit ? `Pending €${pendingDeposits.toFixed(2)}` : 'Initiate SEPA wire or crypto transfer',
+      actionTab: 'wallet',
+      requirements: ['Minimum €100 SEPA wire or supported crypto settlement'],
+      updatedAt: nowDate.toISOString(),
+    },
+    {
+      stepNumber: 4,
+      key: 'asset_tokens_held',
+      title: 'Asset Tokens Held',
+      status: holdingsStageStatus,
+      summary: confirmedUnits > 0 ? `${confirmedUnits} units confirmed across ${uniqueProps} property` : 'No confirmed property holdings yet',
+      actionTab: 'marketplace',
+      requirements: ['Allocate cleared treasury funds into a landmark SPV offering'],
+      updatedAt: holdingsList[0]?.valuationDate || null,
+    },
+    {
+      stepNumber: 5,
+      key: 'monthly_yields',
+      title: 'Monthly Yields',
+      status: yieldsStageStatus,
+      summary: earnedDividends > 0 ? `€${earnedDividends.toFixed(2)} cumulative rent distributed` : confirmedUnits > 0 ? `Next distribution scheduled ${nextDistDate}` : 'Activated upon confirmed asset allocation',
+      actionTab: 'distributions',
+      requirements: ['Monthly rental distributions credited on the 1st of each month'],
+      updatedAt: userAllTxs.find(t => t.type === 'dividend' || t.type === 'distribution')?.createdAt || null,
+    },
+  ];
+  const completedStages = lifecycleStages.filter(s => s.status === 'Completed' || s.status === 'Approved').length;
+  const progressPercent = Math.round((completedStages / 5) * 100);
+
+  // Build real chronological performance history strictly from completed events
+  const chronological = [...userAllTxs]
+    .filter(t => t.status === 'completed')
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  let runningNav = 0;
+  let runningDivs = 0;
+  const performanceHistory: Array<{ timestamp: string; label: string; valuation: number; dividends: number }> = [];
+  for (const tx of chronological) {
+    const amt = Number(tx.amount || 0);
+    if (tx.type === 'deposit') runningNav += amt;
+    else if (tx.type === 'withdrawal') runningNav = Math.max(0, runningNav - amt);
+    else if (tx.type === 'dividend' || tx.type === 'distribution' || tx.type === 'payout') {
+      runningDivs += amt;
+      runningNav += amt;
+    }
+    const d = new Date(tx.createdAt);
+    performanceHistory.push({
+      timestamp: tx.createdAt,
+      label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }),
+      valuation: Number(runningNav.toFixed(2)),
+      dividends: Number(runningDivs.toFixed(2)),
+    });
+  }
 
   res.json({
     success: true,
     data: {
-      totalPortfolioValue: Number((availableBalance + investedTotal).toFixed(2)),
-      availableBalance,
-      investedCapital: investedTotal,
-      totalEarnedDividends: earnedDividends,
+      totalPortfolioValue: Number((withdrawableCash + investedTotal).toFixed(2)),
+      availableBalance: withdrawableCash,
+      investedCapital: Number(investedTotal.toFixed(2)),
+      totalEarnedDividends: Number(earnedDividends.toFixed(2)),
       activePropertiesCount: uniqueProps,
-      projectedMonthlyIncome,
-      currency: 'EUR'
+      projectedMonthlyIncome: Number(projectedMonthlyIncome.toFixed(2)),
+      currency: 'EUR',
+      lastUpdated: nowDate.toISOString(),
+      valuationDate: holdingsList[0]?.valuationDate || nowDate.toISOString(),
+      pendingAllocationsCount: pendingInvTxs.length,
+      pendingAllocationsAmount: Number(pendingAllocationsAmount.toFixed(2)),
+      cashBreakdown: {
+        available: withdrawableCash,
+        pendingDeposits: Number(pendingDeposits.toFixed(2)),
+        reservedWithdrawals: Number(reservedWithdrawals.toFixed(2)),
+        restricted: Number(restrictedCash.toFixed(2)),
+        currency: 'EUR',
+      },
+      rentSummary: {
+        projectedMonthly: Number(projectedMonthlyIncome.toFixed(2)),
+        collectedTotal: Number(earnedDividends.toFixed(2)),
+        collectedThisMonth,
+        nextDistributionDate: holdingsList.length > 0 ? nextDistDate : null,
+        paymentStatus: collectedThisMonth > 0 ? 'Paid This Cycle' : holdingsList.length > 0 ? 'Scheduled' : 'No Active Entitlements',
+      },
+      holdingsSummary: {
+        confirmedUnits,
+        pendingUnits,
+        activePropertiesCount: uniqueProps,
+        holdings: holdingsList,
+      },
+      lifecycle: {
+        progressPercent,
+        completedStages,
+        totalStages: 5,
+        stages: lifecycleStages,
+      },
+      performanceHistory,
+      recentTransactions: userAllTxs.slice(0, 8),
     },
     requestId: req.id
   });
@@ -5355,15 +6255,26 @@ router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, async (req: Authe
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const customers = Array.from(devCustomersById.values());
+  const totalAssetsUnderManagement = mockTransactions
+    .filter(t => (t.type === 'investment' || t.type === 'purchase') && t.status === 'completed')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const totalDividendsPaid = mockTransactions
+    .filter(t => (t.type === 'dividend' || t.type === 'payout' || t.type === 'distribution') && t.status === 'completed')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  const pendingKYC = customers.filter(c => String(c.kycStatus || 'pending').toLowerCase() === 'pending').length;
+  const pendingWithdrawalsCount = mockTransactions.filter(t => t.type === 'withdrawal' && t.status === 'pending').length;
   res.json({
     success: true,
     data: {
-      totalUsers: 142,
-      totalAssetsUnderManagement: 48500000,
-      totalDividendsPaid: 1240000,
-      pendingKYC: 4,
-      pendingWithdrawalsCount: 2,
-      systemUptimePercent: 99.98
+      totalUsers: customers.length,
+      totalProperties: mockListings.length,
+      totalTransactions: mockTransactions.length,
+      totalAssetsUnderManagement: Number(totalAssetsUnderManagement.toFixed(2)),
+      totalDividendsPaid: Number(totalDividendsPaid.toFixed(2)),
+      pendingKYC,
+      pendingWithdrawalsCount,
+      systemUptimePercent: 100
     },
     requestId: req.id
   });
@@ -5374,9 +6285,76 @@ router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest,
     try { return res.json({ success: true, data: await listPersistentInvestments(), requestId: req.id }); }
     catch (error: any) { return res.status(503).json({ success: false, error: 'Investment records are temporarily unavailable.', code: 'INVESTMENT_DATABASE_UNAVAILABLE', requestId: req.id }); }
   }
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const devInvestments = mockTransactions
+    .filter((t) => t.type === 'investment' || t.type === 'purchase')
+    .map((t) => ({
+      id: t.id,
+      userId: t.userId,
+      userEmail: (t as any).userEmail || devCustomersById.get(t.userId)?.email,
+      userName: (t as any).userName || devCustomersById.get(t.userId)?.fullName,
+      propertyId: t.propertyId || '',
+      propertyTitle: t.propertyTitle || t.description || 'Property SPV',
+      tokensPurchased: Number(t.tokensPurchased || 0),
+      totalCost: Number(t.amount || 0),
+      currency: t.currency || 'EUR',
+      status: t.status || 'completed',
+      purchaseDate: t.createdAt,
+      certificateId: (t as any).reference || t.id,
+    }));
+  return res.json({ success: true, data: devInvestments, requestId: req.id });
+});
+
+router.post('/admin/investments', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = String(req.body?.userId || '').trim();
+  const propertyId = String(req.body?.propertyId || '').trim();
+  const shares = Math.max(1, Math.floor(Number(req.body?.shares || 0)));
+  if (!userId || !propertyId || !Number.isFinite(shares) || shares <= 0) {
+    return res.status(400).json({ success: false, error: 'Investor, property, and positive share count are required.', code: 'INVALID_INVESTMENT_PAYLOAD', requestId: req.id });
+  }
+  if (isSupabaseServerConfigured()) {
+    try {
+      const { data, error } = await getSupabaseAdmin().rpc('record_investment', { p_user: userId, p_property: propertyId, p_shares: shares });
+      if (error) throw error;
+      return res.status(201).json({ success: true, data, message: 'Investment recorded.', requestId: req.id });
+    } catch (err: any) {
+      return res.status(503).json({ success: false, error: err?.message || 'Unable to record investment.', code: 'RECORD_INVESTMENT_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const cust = devCustomersById.get(userId);
+  const prop = mockListings.find((p) => p.id === propertyId);
+  const sharePrice = Number(req.body?.sharePriceEur || prop?.tokenPrice || 500);
+  const totalCost = Math.round(shares * sharePrice * 100) / 100;
+  const tx = {
+    id: `inv-${crypto.randomBytes(5).toString('hex')}`,
+    userId,
+    userEmail: cust?.email,
+    userName: cust?.fullName,
+    type: 'investment' as const,
+    amount: totalCost,
+    currency: 'EUR',
+    status: 'completed' as const,
+    method: 'Staff Allocation',
+    reference: `KZ-INV-${crypto.randomInt(100000, 999999)}`,
+    propertyId,
+    propertyTitle: prop?.title || propertyId,
+    tokensPurchased: shares,
+    createdAt: new Date().toISOString(),
+  };
+  mockTransactions.unshift(tx as any);
+  if (cust) {
+    cust.investedBalance = Math.round((Number(cust.investedBalance || 0) + totalCost) * 100) / 100;
+  }
+  if (prop) {
+    prop.fundedAmount = Number(prop.fundedAmount || 0) + totalCost;
+  }
+  await persistDevState();
+  return res.status(201).json({ success: true, data: tx, message: `Recorded ${shares} shares (€${totalCost.toFixed(2)}) for ${cust?.fullName || userId}.`, requestId: req.id });
 });
 
 router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
@@ -5421,6 +6399,7 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
 });
 
 router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEmailVerification('admin.deposit.approve'), async (req: AuthenticatedRequest, res: Response) => {
+  const actualAmount = Number(req.body?.amount);
   if (!isSupabaseServerConfigured()) {
     if (process.env.NODE_ENV === 'production') {
       return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
@@ -5428,6 +6407,9 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEma
     const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.type === 'deposit');
     if (!tx) return res.status(404).json({ success: false, error: 'Deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
     if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Deposit is no longer pending.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+    if (Number.isFinite(actualAmount) && actualAmount > 0) {
+      tx.amount = Math.round(actualAmount * 100) / 100;
+    }
     tx.status = 'completed';
     const cust = devCustomersById.get(tx.userId);
     if (cust) {
@@ -6750,6 +7732,74 @@ router.get('/admin/distributions/records', requireAdmin, (req: AuthenticatedRequ
       totalAmountEUR: Math.round(records.reduce((acc, r) => acc + r.calculatedDailyAmountEUR, 0) * 100) / 100
     },
     requestId: req.id
+  });
+});
+
+router.post('/admin/distributions/pay', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const propertyId = String(req.body?.propertyId || '').trim();
+  const totalAmountEur = Number(req.body?.totalAmountEur || 0);
+  const note = String(req.body?.note || '').trim();
+  if (!propertyId || !Number.isFinite(totalAmountEur) || totalAmountEur <= 0) {
+    return res.status(400).json({ success: false, error: 'Property and positive distribution amount are required.', code: 'INVALID_DISTRIBUTION_PAYLOAD', requestId: req.id });
+  }
+  if (isSupabaseServerConfigured()) {
+    try {
+      const { data, error } = await getSupabaseAdmin().rpc('pay_distribution', {
+        p_property: propertyId,
+        p_total: Math.round(totalAmountEur * 100),
+        p_note: note || null,
+      });
+      if (error) throw error;
+      return res.json({ success: true, data, paidCount: Number((data as any)?.paid_count || (data as any)?.investors_paid || 0), message: 'Distribution executed via database function.', requestId: req.id });
+    } catch (err: any) {
+      return res.status(503).json({ success: false, error: err?.message || 'Unable to process distribution.', code: 'DISTRIBUTION_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const holdingsByUser = new Map<string, number>();
+  for (const t of mockTransactions) {
+    if ((t.type === 'investment' || t.type === 'purchase') && t.status === 'completed' && t.propertyId === propertyId) {
+      const units = Number((t as any).tokensPurchased || 0);
+      if (units > 0) holdingsByUser.set(t.userId, (holdingsByUser.get(t.userId) || 0) + units);
+    }
+  }
+  const totalShares = Array.from(holdingsByUser.values()).reduce((s, n) => s + n, 0);
+  if (totalShares <= 0) {
+    return res.status(400).json({ success: false, error: 'No active shareholdings found for this property.', code: 'NO_PROPERTY_HOLDERS', requestId: req.id });
+  }
+  const prop = mockListings.find((p) => p.id === propertyId);
+  let paidCount = 0;
+  for (const [uid, shares] of holdingsByUser.entries()) {
+    const payout = Math.round(((shares / totalShares) * totalAmountEur) * 100) / 100;
+    if (payout <= 0) continue;
+    const cust = devCustomersById.get(uid);
+    if (cust) cust.balance = Math.round((Number(cust.balance || 0) + payout) * 100) / 100;
+    mockTransactions.unshift({
+      id: `dist-${crypto.randomBytes(5).toString('hex')}`,
+      userId: uid,
+      userEmail: cust?.email,
+      type: 'dividend',
+      amount: payout,
+      currency: 'EUR',
+      status: 'completed',
+      method: 'Property Yield Distribution',
+      reference: `KZ-DIST-${crypto.randomInt(100000, 999999)}`,
+      propertyId,
+      propertyTitle: prop?.title || propertyId,
+      notes: note || undefined,
+      createdAt: new Date().toISOString(),
+    } as any);
+    paidCount += 1;
+  }
+  await persistDevState();
+  return res.json({
+    success: true,
+    data: { paidCount, totalAmountEur, propertyId, note },
+    paidCount,
+    message: `Paid €${totalAmountEur.toFixed(2)} across ${paidCount} investor${paidCount === 1 ? '' : 's'}.`,
+    requestId: req.id,
   });
 });
 
