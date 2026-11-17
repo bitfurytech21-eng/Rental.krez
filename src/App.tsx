@@ -26,6 +26,7 @@ import { PropertyDetailView } from './components/properties/PropertyDetailView';
 import { TokenPage } from './components/pages/TokenPage';
 import { FAQPage } from './components/pages/FAQPage';
 import { LegalPage } from './components/pages/LegalPage';
+import { PublicLegalDocumentPage } from './components/pages/PublicLegalDocumentPage';
 import { TrustCenterPage } from './components/pages/TrustCenterPage';
 import { TeamPage } from './components/pages/TeamPage';
 import { WealthPage } from './components/pages/WealthPage';
@@ -437,12 +438,19 @@ function MainApp() {
       case '/transparency':
         return <TrustCenterPage onNavigate={navigateTo} />;
 
+      case '/terms':
+        return <PublicLegalDocumentPage document="terms" />;
+
+      case '/privacy':
+        return <PublicLegalDocumentPage document="privacy" />;
+
+      case '/risk-warning':
+        return <PublicLegalDocumentPage document="risk-warning" />;
+
       case '/legal':
       case '/compliance':
       case '/disclosures':
-      case '/cookies':
-      case '/terms':
-      case '/privacy': {
+      case '/cookies': {
         const docSlug = searchParams.get('doc') || undefined;
         const legalMode =
           basePath === '/privacy'
