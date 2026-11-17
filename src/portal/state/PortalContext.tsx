@@ -331,7 +331,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const refreshAll = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -420,6 +423,23 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Keep existing state if a background refresh fails.
     }
   }, [user]);
+
+  // Drop user-scoped portal snapshots immediately when the authenticated user disappears or changes.
+  useEffect(() => {
+    if (user?.id) return;
+    setSummary(null);
+    setPortfolio(null);
+    setBalance(0);
+    setSubBalances({ EUR: 0 });
+    setProperties([]);
+    setTransactions([]);
+    setNotifications([]);
+    setUnreadCount(0);
+    setProfile(null);
+    setLastSyncedAt(null);
+    setError(null);
+    setLoading(false);
+  }, [user?.id]);
 
   useEffect(() => {
     void refreshAll();
