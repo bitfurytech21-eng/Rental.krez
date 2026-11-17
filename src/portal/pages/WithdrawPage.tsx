@@ -70,7 +70,7 @@ export const WithdrawPage: React.FC = () => {
                 {!isVerified && !hasBankAccount
                   ? 'Complete all outstanding items in the Compliance Vault and link your personal SEPA bank account before requesting a withdrawal.'
                   : !isVerified
-                  ? `Your KYC review is currently ${profile?.kycStatus === 'rejected' ? 'rejected' : profile?.kycStatus === 'in_review' ? 'in review' : 'incomplete'}. Complete or correct your identity document, proof of address, and investor questionnaire in the Compliance Vault before requesting a withdrawal.`
+                  ? `Your KYC review is currently ${profile?.kycStatus === 'rejected' ? 'rejected' : profile?.kycStatus === 'in_review' ? 'in review' : 'incomplete'}. Open the Compliance Vault to see which verification step is outstanding or needs correction, including any reviewer feedback, before requesting a withdrawal.`
                   : 'Add your personal SEPA IBAN in Profile & Banking before requesting a withdrawal.'}
               </p>
             </div>
