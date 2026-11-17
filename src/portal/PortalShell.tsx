@@ -3,6 +3,7 @@ import { useAuth } from '../lib/auth';
 import './styles/portal.css';
 import { useToast } from '../context/ToastContext';
 import { PortalProvider, usePortal } from './state/PortalContext';
+import { LoadingSkeleton, ErrorBanner } from './components/LoadingSkeleton';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -24,7 +25,7 @@ import { SupportPage } from './pages/SupportPage';
 
 const PortalLayout: React.FC = () => {
   const toast = useToast();
-  const { route, selectedPropertySlug, sampleDataEnabled, setSampleDataEnabled } = usePortal();
+  const { route, selectedPropertySlug, sampleDataEnabled, setSampleDataEnabled, loading, error, refreshAll } = usePortal();
   const mainRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
@@ -100,7 +101,14 @@ const PortalLayout: React.FC = () => {
                 </button>
               </div>
             )}
-            {renderRoute()}
+            {loading && !sampleDataEnabled ? (
+              <LoadingSkeleton rows={5} />
+            ) : (
+              <>
+                {error && <ErrorBanner message={error} onRetry={() => void refreshAll()} />}
+                {renderRoute()}
+              </>
+            )}
           </div>
         </main>
         <BottomNav />
