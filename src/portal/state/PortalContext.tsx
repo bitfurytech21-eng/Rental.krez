@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { useNavigation } from '../../context/NavigationContext';
 import { portalApi } from '../services/portalApi';
 import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
@@ -378,23 +379,92 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setNotifications(res.items);
       setUnreadCount(res.unreadCount);
     } catch {
-      // Keep existing state on silent background poll
+      // Keep existing state on silent background refresh
+    }
+  }, [user]);
+
+  const refreshFinancialData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [summaryRes, portfolioRes, walletRes, txRes] = await Promise.all([
+        portalApi.getDashboardSummary(),
+        portalApi.getPortfolio(),
+        portalApi.getWalletBalance(),
+        portalApi.getTransactions(),
+      ]);
+      setSummary(summaryRes);
+      setPortfolio(portfolioRes);
+      setBalance(walletRes.balance);
+      setSubBalances(walletRes.subBalances);
+      setTransactions(txRes);
+      setLastSyncedAt(new Date());
+    } catch {
+      // Preserve the last good snapshot if a background refresh fails.
     }
   }, [user]);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     try {
-      const p = await portalApi.getProfile();
+      const [p, walletRes, summaryRes] = await Promise.all([
+        portalApi.getProfile(),
+        portalApi.getWalletBalance(),
+        portalApi.getDashboardSummary(),
+      ]);
       setProfile(p);
+      setBalance(walletRes.balance);
+      setSubBalances(walletRes.subBalances);
+      setSummary(summaryRes);
+      setLastSyncedAt(new Date());
     } catch {
-      // Keep existing state
+      // Keep existing state if a background refresh fails.
     }
   }, [user]);
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
+
+  // One user-scoped channel keeps the portal, transaction list, holdings and bell in sync.
+  // Holdings are a view over investments, so listen to the underlying investments table.
+  useEffect(() => {
+    if (!user?.id || sampleDataEnabled || !isSupabaseConfigured()) return;
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = (refresh: () => void) => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(refresh, 180);
+    };
+
+    const channel = supabase
+      .channel(`investor-portal-live:${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'ledger_transactions',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule(() => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'investments',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule(() => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'profiles',
+        filter: `id=eq.${user.id}`,
+      }, () => schedule(() => { void refreshProfile(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule(() => { void refreshNotifications(); }))
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('Investor live updates are temporarily unavailable.', err);
+        }
+      });
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, sampleDataEnabled, refreshFinancialData, refreshProfile, refreshNotifications]);
 
   const navigatePortal = useCallback(
     (nextRoute: PortalRoute, options?: { propertySlug?: string }) => {
