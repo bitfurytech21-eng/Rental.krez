@@ -142,6 +142,8 @@ export const portalApi = {
       investedBalance: Number(d.investedBalance || 0),
       balanceCents: eurToCents(d.balance || 0),
       investedBalanceCents: eurToCents(d.investedBalance || 0),
+      balanceCents: eurToCents(d.balance || 0),
+      investedBalanceCents: eurToCents(d.investedBalance || 0),
       kycStatus: String(d.kycStatus || 'pending'),
       status: String(d.status || 'active'),
       address: String(d.address || ''),
