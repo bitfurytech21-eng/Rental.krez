@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../lib/auth';
 import './styles/portal.css';
 import { useToast } from '../context/ToastContext';
 import { PortalProvider, usePortal } from './state/PortalContext';
@@ -108,10 +109,21 @@ const PortalLayout: React.FC = () => {
   );
 };
 
-export const PortalShell: React.FC = () => {
+const PortalAuthGate: React.FC = () => {
+  const { user, isLoading } = useAuth();
+
+  React.useEffect(() => {
+    if (!isLoading && !user && typeof window !== 'undefined') {
+      window.location.replace('/#login');
+    }
+  }, [isLoading, user]);
+
+  if (isLoading || !user) return null;
   return (
     <PortalProvider>
       <PortalLayout />
     </PortalProvider>
   );
 };
+
+export const PortalShell: React.FC = () => <PortalAuthGate />;
