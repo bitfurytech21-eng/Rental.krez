@@ -68,9 +68,9 @@ export const WithdrawPage: React.FC = () => {
               <h2 className="text-lg font-semibold text-[#F2F5F4]">Withdrawals unavailable</h2>
               <p className="text-sm text-[#8FA1A8] mt-1.5 leading-relaxed">
                 {!isVerified && !hasBankAccount
-                  ? 'You must complete identity verification and link your personal SEPA bank account before requesting a withdrawal.'
+                  ? 'Complete all outstanding items in the Compliance Vault and link your personal SEPA bank account before requesting a withdrawal.'
                   : !isVerified
-                  ? 'Your identity must be verified in the Compliance Vault before you can request a withdrawal.'
+                  ? `Your KYC review is currently ${profile?.kycStatus === 'rejected' ? 'rejected' : profile?.kycStatus === 'in_review' ? 'in review' : 'incomplete'}. Complete or correct your identity document, proof of address, and investor questionnaire in the Compliance Vault before requesting a withdrawal.`
                   : 'Add your personal SEPA IBAN in Profile & Banking before requesting a withdrawal.'}
               </p>
             </div>
