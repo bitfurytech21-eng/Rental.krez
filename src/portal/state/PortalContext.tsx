@@ -431,9 +431,15 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!user?.id || sampleDataEnabled || !isSupabaseConfigured()) return;
 
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = (refresh: () => void) => {
+    const pendingRefreshes = new Map<string, () => void>();
+    const schedule = (key: string, refresh: () => void) => {
+      pendingRefreshes.set(key, refresh);
       if (refreshTimer) clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(refresh, 180);
+      refreshTimer = setTimeout(() => {
+        const refreshes = Array.from(pendingRefreshes.values());
+        pendingRefreshes.clear();
+        refreshes.forEach((run) => run());
+      }, 180);
     };
 
     const channel = supabase
@@ -441,7 +447,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'ledger_transactions',
         filter: `user_id=eq.${user.id}`,
-      }, () => schedule(() => { void refreshFinancialData(); }))
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'investments',
         filter: `user_id=eq.${user.id}`,
@@ -449,11 +455,11 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'profiles',
         filter: `id=eq.${user.id}`,
-      }, () => schedule(() => { void refreshProfile(); }))
+      }, () => schedule('profile', () => { void refreshProfile(); }))
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'notifications',
         filter: `user_id=eq.${user.id}`,
-      }, () => schedule(() => { void refreshNotifications(); }))
+      }, () => schedule('notifications', () => { void refreshNotifications(); }))
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn('Investor live updates are temporarily unavailable.', err);
@@ -462,6 +468,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer);
+      pendingRefreshes.clear();
       void supabase.removeChannel(channel);
     };
   }, [user?.id, sampleDataEnabled, refreshFinancialData, refreshProfile, refreshNotifications]);
