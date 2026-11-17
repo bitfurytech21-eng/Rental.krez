@@ -131,8 +131,9 @@ export const CompliancePage: React.FC = () => {
     try {
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError || auth.user?.id !== user.id) throw new Error('Your secure investor session has expired. Please sign in again.');
-      let path = insertRetry?.path;
-      if (retryInsert && path && insertRetry.docType === activeStep) {
+      let path: string;
+      if (retryInsert && insertRetry?.path && insertRetry.docType === activeStep) {
+        path = insertRetry.path;
         await insertSubmission(path, activeStep);
       } else {
         if (!selectedFile) throw new Error('Choose a document before submitting.');
