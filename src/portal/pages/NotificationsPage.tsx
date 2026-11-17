@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
 import { useAuth } from '../../lib/auth';
-import { supabase } from '../../lib/supabaseClient';
 import { portalApi } from '../services/portalApi';
 import { formatDateTime } from '../utils/format';
 import { EmptyState } from '../components/EmptyState';
@@ -12,7 +11,7 @@ import { StatusBadge } from '../components/StatusBadge';
 
 export const NotificationsPage: React.FC = () => {
   const toast = useToast();
-  const { user } = useAuth();
+  useAuth();
   const {
     loading,
     notifications,
@@ -26,21 +25,6 @@ export const NotificationsPage: React.FC = () => {
   const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sampleReadIds, setSampleReadIds] = useState<Set<string>>(new Set());
-
-  // KYC decision triggers write to notifications; refresh immediately and poll as a fallback.
-  useEffect(() => {
-    if (!user?.id || sampleDataEnabled) return;
-    const channel = supabase.channel('investor-notifications-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
-        void refreshNotifications();
-      })
-      .subscribe();
-    const poll = window.setInterval(() => { void refreshNotifications(); }, 30000);
-    return () => {
-      window.clearInterval(poll);
-      void supabase.removeChannel(channel);
-    };
-  }, [user?.id, sampleDataEnabled, refreshNotifications]);
 
   if (loading && !sampleDataEnabled && notifications.length === 0) {
     return <LoadingSkeleton rows={3} />;
