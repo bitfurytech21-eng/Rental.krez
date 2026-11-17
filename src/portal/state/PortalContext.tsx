@@ -451,7 +451,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'investments',
         filter: `user_id=eq.${user.id}`,
-      }, () => schedule(() => { void refreshFinancialData(); }))
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'profiles',
         filter: `id=eq.${user.id}`,
