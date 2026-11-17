@@ -944,6 +944,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(CURRENT_USER_KEY);
     localStorage.removeItem('kretz_auth_token');
     localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+    // Clear portal-only cached preview state; live financial data is held in memory and is reset on unmount.
+    try {
+      sessionStorage.removeItem('portal_sample_data_enabled');
+      sessionStorage.removeItem('portal_action_banner_dismissed');
+    } catch {
+      // Storage may be unavailable in private browsing contexts.
+    }
   };
 
   // Send password reset email via Supabase recovery flow with server fallback
