@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
-import { useAuth } from '../../lib/auth';
 import { portalApi } from '../services/portalApi';
 import { formatDateTime } from '../utils/format';
 import { EmptyState } from '../components/EmptyState';
@@ -11,7 +10,6 @@ import { StatusBadge } from '../components/StatusBadge';
 
 export const NotificationsPage: React.FC = () => {
   const toast = useToast();
-  useAuth();
   const {
     loading,
     notifications,
