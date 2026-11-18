@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import QRCode from 'qrcode';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -150,6 +151,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
 
   // Shared lookup maps
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+  const gateById = useMemo(() => new Map(paymentGates.map((gate) => [gate.id, gate.name])), [paymentGates]);
   const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
   const investorsOnly = useMemo(
     () => users.filter((u) => u.role === 'investor' && !u.isAdmin && !u.staffRole),
@@ -2794,7 +2796,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                           <select
                             disabled={assignBusyUid === inv.id}
                             value={inv.assignedGateId || ''}
-                            onChange={(e) => handleAssignGateToInvestor(inv.id, e.target.value)}
+                            onChange={(e) => handleAssignGateToInvestor(inv.id, 'bank', e.target.value)}
                             aria-label={`Assign payment gate for ${inv.fullName || inv.email}`}
                             className="min-h-[44px] px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
                           >
