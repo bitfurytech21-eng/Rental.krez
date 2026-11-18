@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { Building2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
@@ -91,7 +92,7 @@ export const PropertyDetailPage: React.FC = () => {
           if (fallback) {
             setProperty(fallback);
           } else {
-            setError(err?.message || 'Unable to load property offering details.');
+            setError(safeErrorMessage(err, 'Unable to load property offering details.'));
           }
         }
       } finally {
@@ -268,7 +269,7 @@ export const PropertyDetailPage: React.FC = () => {
       toast.success(`Subscribed to ${tokensCount} shares in ${property.title}.`);
       await refreshAll();
     } catch (err: any) {
-      const msg = err?.message || 'Unable to execute property subscription.';
+      const msg = safeErrorMessage(err, 'Unable to execute property subscription.');
       setError(msg);
       toast.error(msg);
     } finally {

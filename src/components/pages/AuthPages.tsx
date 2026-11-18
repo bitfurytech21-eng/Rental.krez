@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
 import { getPasswordChecklist, isValidEmail, isValidPassword } from '../../lib/validation';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
-import { AccountType, ACCOUNT_TYPES, UserRole } from '../../types/user';
 import {
   Shield,
   ShieldCheck,
@@ -15,15 +15,11 @@ import {
   Lock,
   ExternalLink,
   Info,
-  Globe,
-  Phone,
   Tag,
   Gift,
   Eye,
   EyeOff
 } from 'lucide-react';
-import { authApi } from '../../lib/api';
-import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from '../../data/countries';
 import { ledger } from '../../lib/ledger';
 import authLuxuryKeyBg from '../../assets/images/auth_luxury_key_1794021673223.jpg';
 
@@ -43,9 +39,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const {
     login,
     register,
+    resendSignupConfirmation,
     sendPasswordReset,
     updatePassword,
-    isConfigured,
     isRecoveryMode,
     setIsRecoveryMode
   } = useAuth();
@@ -65,12 +61,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   // Form states
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>(DEFAULT_COUNTRY.code);
-  const [phoneCountryCode, setPhoneCountryCode] = useState<string>(DEFAULT_COUNTRY.code);
-  const [phoneDigits, setPhoneDigits] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountType, setAccountType] = useState<AccountType>('individual_investor');
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [referralCode, setReferralCode] = useState<string>(() => {
@@ -89,13 +81,45 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [verificationPending, setVerificationPending] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedRisk, setAcceptedRisk] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
+  const [failedLoginAttempts, setFailedLoginAttempts] = useState(() => {
+    try { return Number(sessionStorage.getItem('auth_login_failed_attempts') || 0); } catch { return 0; }
+  });
+  const [loginCooldown, setLoginCooldown] = useState(() => {
+    try {
+      const until = Number(sessionStorage.getItem('auth_login_lock_until') || 0);
+      return Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    } catch { return 0; }
+  });
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setResendCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
+
+  useEffect(() => {
+    if (loginCooldown <= 0) return;
+    const timer = window.setTimeout(() => setLoginCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [loginCooldown]);
+
+  useEffect(() => {
+    if (loginCooldown === 0) {
+      try { sessionStorage.removeItem('auth_login_lock_until'); } catch {}
+    }
+  }, [loginCooldown]);
 
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
     setOfferRegister(false);
     setOfferLogin(false);
     setShowPassword(false);
+    setResetSent(false);
+    setPasswordResetSuccess(false);
     setEmailCode('');
     setRequiresEmailCode(false);
     setMode(newMode);
@@ -108,6 +132,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setError(null);
     setOfferRegister(false);
     setOfferLogin(false);
+    if (loginCooldown > 0) {
+      setError(`Please wait ${loginCooldown} seconds before trying again.`);
+      return;
+    }
     if (!isValidEmail(email)) {
       setError('Please provide a valid email address.');
       return;
@@ -119,19 +147,42 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setLoading(true);
     try {
       await login(email, password, emailCode || undefined);
+      setFailedLoginAttempts(0);
+      setLoginCooldown(0);
+      try { sessionStorage.removeItem('auth_login_failed_attempts'); sessionStorage.removeItem('auth_login_lock_until'); } catch {}
       onSuccess();
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
         setRequiresEmailCode(true);
-        setError(err?.message || 'A six-digit security code has been sent to your email address.');
+        setError('A six-digit security code has been sent to your email address.');
         return;
       }
       const msg = String(err?.message || '');
-      if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
-        setError('Authentication service is currently unavailable. Please check your credentials and try again.');
+      if (err?.code === 'INVALID_EMAIL_CODE') {
+        setError('The security code is invalid or expired. Request a new code and try again.');
+      } else if (
+        err?.code === 'INVALID_CREDENTIALS' ||
+        /invalid login credentials|invalid email address or password|email or password|email not confirmed/i.test(msg)
+      ) {
+        const nextAttempts = failedLoginAttempts + 1;
+        setFailedLoginAttempts(nextAttempts);
+        try { sessionStorage.setItem('auth_login_failed_attempts', String(nextAttempts)); } catch {}
+        if (nextAttempts >= 5) {
+          const lockUntil = Date.now() + 30_000;
+          setLoginCooldown(30);
+          setFailedLoginAttempts(0);
+          try {
+            sessionStorage.setItem('auth_login_failed_attempts', '0');
+            sessionStorage.setItem('auth_login_lock_until', String(lockUntil));
+          } catch {}
+          setError('Email or password is incorrect. Please wait 30 seconds before trying again.');
+        } else {
+          setError('Email or password is incorrect');
+        }
+      } else if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
+        setError('Authentication service is currently unavailable. Please try again shortly.');
       } else {
-        setOfferRegister(err?.code === 'ACCOUNT_NOT_FOUND_DEV');
-        setError(msg || 'Login failed. Please verify your credentials.');
+        setError('Authentication service is currently unavailable. Please try again shortly.');
       }
     } finally {
       setLoading(false);
@@ -152,41 +203,23 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please provide a valid email address.');
       return;
     }
+    if (password.length < 12) {
+      setError('Password must be at least 12 characters long.');
+      return;
+    }
     const passCheck = isValidPassword(password);
     if (!passCheck.valid) {
-      setError(passCheck.reason || 'Password must be at least 8 characters.');
+      setError(passCheck.reason || 'Please choose a stronger password.');
       return;
     }
-
-    if (!selectedCountryCode) {
-      setError('Please select your country of residence.');
+    if (!acceptedTerms || !acceptedRisk) {
+      setError('Please accept both required acknowledgements before creating your account.');
       return;
     }
-    const cleanPhoneDigits = phoneDigits.replace(/\D/g, '');
-    if (!cleanPhoneDigits) {
-      setError('Phone number digits are required.');
-      return;
-    }
-
-    const currentCountry = getCountryByCode(selectedCountryCode);
-    const phoneCountry = getCountryByCode(phoneCountryCode);
-    const fullPhoneNumber = `${phoneCountry.dialCode} ${phoneDigits.trim()}`;
-
-    const selectedOption = ACCOUNT_TYPES.find(a => a.id === accountType);
-    const determinedRole: UserRole = selectedOption?.role || (accountType === 'admin' ? 'admin' : 'investor');
 
     setLoading(true);
     try {
-      const result = await register(
-        email,
-        password,
-        fullName,
-        determinedRole,
-        accountType,
-        currentCountry.name,
-        fullPhoneNumber,
-        currentCountry.code
-      );
+      const result = await register(email, password, cleanName, acceptedTerms, acceptedRisk);
 
       if (referralCode) {
         try {
@@ -201,6 +234,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
       if (result.requiresVerification) {
         setVerificationPending(true);
+        setResendCooldown(60);
       } else {
         onSuccess();
       }
@@ -213,8 +247,22 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           err?.code === 'EMAIL_ALREADY_EXISTS' ||
           /already exists|already registered/i.test(msg)
         );
-        setError(msg || 'Registration failed. Please check your information.');
+        setError('Registration failed. Please check your information.');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (resendCooldown > 0 || loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await resendSignupConfirmation(email);
+      setResendCooldown(60);
+    } catch (err: any) {
+      setError(safeErrorMessage(err, 'Could not resend the confirmation email. Please try again later.'));
     } finally {
       setLoading(false);
     }
@@ -230,14 +278,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
     setLoading(true);
     try {
-      try {
-        await authApi.sendPasswordReset(email);
-      } catch {}
       await sendPasswordReset(email);
-      setResetSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to dispatch password recovery link.');
+    } catch {
+      // Keep the response identical whether the address exists or delivery cannot be confirmed.
     } finally {
+      setResetSent(true);
       setLoading(false);
     }
   };
@@ -245,9 +290,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (password.length < 12) {
+      setError('New password must be at least 12 characters long.');
+      return;
+    }
     const passCheck = isValidPassword(password);
     if (!passCheck.valid) {
-      setError(passCheck.reason || 'New password must be at least 8 characters long.');
+      setError(passCheck.reason || 'Choose a stronger password.');
       return;
     }
     if (password !== confirmPassword) {
@@ -261,13 +310,15 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setPasswordResetSuccess(true);
       setIsRecoveryMode(false);
     } catch (err: any) {
-      setError(err.message || 'Failed to update password.');
+      setError(safeErrorMessage(err, 'Failed to update password.'));
     } finally {
       setLoading(false);
     }
   };
 
   const passChecks = getPasswordChecklist(password);
+  const passwordStrength = [passChecks.minLength, passChecks.hasUpper, passChecks.hasLower, passChecks.hasDigit].filter(Boolean).length;
+  const passwordStrengthLabel = password.length === 0 ? 'Not entered' : passwordStrength <= 1 ? 'Weak' : passwordStrength <= 3 ? 'Fair' : 'Strong';
 
   return (
     <div className="py-10 sm:py-12 px-4 sm:px-6 bg-[#070A11] min-h-[calc(100vh-160px)] flex items-center justify-center text-white relative overflow-hidden">
@@ -418,8 +469,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           {mode === 'login' && (
             <form onSubmit={handleLogin} noValidate className="space-y-4">
               <div className="form-field space-y-1">
-                <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
+                <label htmlFor="login-email" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
                 <input
+                  id="login-email"
                   type="email"
                   required
                   autoComplete="email"
@@ -432,7 +484,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <div className="form-field space-y-1">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password</label>
+                  <label htmlFor="login-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password</label>
                   <button
                     type="button"
                     onClick={() => switchMode('forgot-password')}
@@ -443,7 +495,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 </div>
                 <div className="relative">
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    id="login-password"
+                  type={showPassword ? 'text' : 'password'}
                     required
                     autoComplete="current-password"
                     placeholder="••••••••"
@@ -466,9 +519,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               {requiresEmailCode && (
                 <div className="form-field space-y-1">
-                  <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email security code</label>
+                  <label htmlFor="login-email-code" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email security code</label>
                   <input
-                    type="text"
+                    id="login-email-code"
+                  type="password"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     pattern="[0-9]{6}"
@@ -485,7 +539,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || loginCooldown > 0}
                 className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? (
@@ -493,6 +547,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     <span className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
                     <span>Signing in...</span>
                   </>
+                ) : loginCooldown > 0 ? (
+                  `Try again in ${loginCooldown}s`
                 ) : preservedProperty ? (
                   `Sign In & Continue to ${preservedProperty.title.split(' ')[0]}`
                 ) : (
@@ -519,9 +575,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               {!verificationPending ? (
                 <form onSubmit={handleRegister} noValidate className="space-y-4">
                   <div className="form-field space-y-1">
-                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Full Legal Name</label>
+                    <label htmlFor="register-name" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Full Name</label>
                     <input
-                      type="text"
+                      id="register-name"
+                  type="text"
                       required
                       placeholder="Arthur Vance"
                       value={fullName}
@@ -531,9 +588,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   </div>
 
                   <div className="form-field space-y-1">
-                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
+                    <label htmlFor="register-email" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
                     <input
-                      type="email"
+                      id="register-email"
+                  type="email"
                       required
                       placeholder="arthur@example.com"
                       value={email}
@@ -542,80 +600,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     />
                   </div>
 
-                  {/* Country of Residence Selection */}
                   <div className="form-field space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-[#C5A880]" />
-                        <span>Country of Residence</span>
-                      </label>
-                      <span className="text-[10px] font-bold text-[#C5A880] bg-[#0B1B30] px-2 py-0.5 rounded-full border border-[#1D3860]">
-                        SPV Compliance
-                      </span>
-                    </div>
-                    <select
-                      value={selectedCountryCode}
-                      onChange={(e) => {
-                        const newCode = e.target.value;
-                        setSelectedCountryCode(newCode);
-                        setPhoneCountryCode(newCode);
-                      }}
-                      className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#C5A880]"
-                    >
-                      {COUNTRIES.map((country) => (
-                        <option key={country.code} value={country.code} className="bg-[#102442] text-white">
-                          {country.flag} {country.name} ({country.dialCode})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Country Code & Phone Number Digits */}
-                  <div className="form-field space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-[#C5A880]" />
-                        <span>Phone Number</span>
-                      </label>
-                      <span className="text-[10px] text-[#8EA7C7]">Country Code & Digits</span>
-                    </div>
-
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-5 sm:col-span-4">
-                        <select
-                          value={phoneCountryCode}
-                          onChange={(e) => setPhoneCountryCode(e.target.value)}
-                          className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-2.5 py-3 font-semibold text-white focus:outline-none focus:border-[#C5A880] truncate"
-                          title="Select Country Dialing Code"
-                        >
-                          {COUNTRIES.map((c) => (
-                            <option key={`dial-${c.code}`} value={c.code} className="bg-[#102442] text-white">
-                              {c.flag} {c.dialCode} ({c.code})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="col-span-7 sm:col-span-8">
-                        <input
-                          type="tel"
-                          required
-                          placeholder={getCountryByCode(phoneCountryCode).placeholder || 'Phone digits'}
-                          value={phoneDigits}
-                          onChange={(e) => setPhoneDigits(e.target.value.replace(/[^\d\s-]/g, ''))}
-                          className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="form-field space-y-1">
-                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Min 8 Characters)</label>
+                    <label htmlFor="register-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Minimum 12 Characters)</label>
                     <div className="relative">
                       <input
+                        id="register-password"
                         type={showPassword ? 'text' : 'password'}
                         required
-                        minLength={8}
+                        minLength={12}
                         autoComplete="new-password"
                         placeholder="Create secure password"
                         value={password}
@@ -633,7 +625,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-1.5 pt-1.5 text-[11px]">
                       {[
-                        { ok: passChecks.minLength, label: '8+ characters' },
+                        { ok: passChecks.minLength, label: '12+ characters' },
                         { ok: passChecks.hasUpper, label: 'Uppercase (A–Z)' },
                         { ok: passChecks.hasLower, label: 'Lowercase (a–z)' },
                         { ok: passChecks.hasDigit, label: 'Number (0–9)' },
@@ -647,12 +639,53 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                         </div>
                       ))}
                     </div>
+                    <div className="pt-2" aria-label={`Password strength: ${passwordStrengthLabel}`}>
+                      <div className="mb-1.5 flex items-center justify-between text-[10px] text-[#8EA7C7]">
+                        <span>Password strength</span>
+                        <span className={passwordStrength >= 4 ? 'text-emerald-400 font-bold' : passwordStrength >= 2 ? 'text-amber-300 font-bold' : 'text-[#8EA7C7]'}>
+                          {passwordStrengthLabel}
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[#1D3860]">
+                        <div
+                          className={`h-full rounded-full transition-all ${passwordStrength >= 4 ? 'bg-emerald-400' : passwordStrength >= 2 ? 'bg-amber-300' : 'bg-red-400'}`}
+                          style={{ width: `${passwordStrength * 25}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-xl border border-[#1D3860] bg-[#0B1B30] p-4">
+                    <label className="flex items-start gap-3 text-xs leading-relaxed text-[#D6DEEA] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#C5A880]"
+                      />
+                      <span>
+                        I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="font-bold text-[#C5A880] underline underline-offset-2">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer" className="font-bold text-[#C5A880] underline underline-offset-2">Privacy Policy</a>.
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 text-xs leading-relaxed text-[#D6DEEA] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={acceptedRisk}
+                        onChange={(e) => setAcceptedRisk(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#C5A880]"
+                      />
+                      <span>
+                        I understand that capital is at risk and target returns are not guaranteed. Read the <a href="/risk-warning" target="_blank" rel="noreferrer" className="font-bold text-[#C5A880] underline underline-offset-2">Risk Warning</a>.
+                      </span>
+                    </label>
                   </div>
 
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                    disabled={loading || !acceptedTerms || !acceptedRisk}
+                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     {loading ? (
                       <>
@@ -682,7 +715,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] flex items-center justify-center mx-auto shadow-md">
                     <Mail className="w-7 h-7" />
                   </div>
-                  <h3 className="text-xl font-black text-white">Verify Your Email</h3>
+                  <h3 className="text-xl font-black text-white">Check your email to confirm your account</h3>
                   <div className="p-4 bg-[#0B1B30] rounded-2xl border border-[#1D3860] text-xs text-[#8EA7C7] leading-relaxed text-left space-y-2">
                     <p>
                       We have dispatched a verification link to <strong className="text-white">{email}</strong>.
@@ -692,11 +725,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     </p>
                   </div>
                   <button
-                    onClick={() => switchMode('login')}
-                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={loading || resendCooldown > 0}
+                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Proceed to Sign In
+                    {loading ? 'Resending...' : resendCooldown > 0 ? `Resend email in ${resendCooldown}s` : 'Resend email'}
                   </button>
+                  <p className="text-[11px] text-[#8EA7C7]">You must confirm your email before you can sign in.</p>
                 </div>
               )}
             </div>
@@ -704,10 +740,23 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
           {/* 3. FORGOT PASSWORD */}
           {mode === 'forgot-password' && (
+            resetSent ? (
+              <div role="status" aria-live="polite" className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+                <Mail className="mx-auto h-8 w-8 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Check your email</h3>
+                <p className="text-xs leading-relaxed text-[#C7D4E7]">
+                  If that email exists, we’ve sent a link. Follow the instructions in your inbox to set a new password.
+                </p>
+                <button type="button" onClick={() => switchMode('login')} className="text-xs font-bold text-[#C5A880] hover:underline">
+                  Back to Sign In
+                </button>
+              </div>
+            ) : (
             <form onSubmit={handleResetRequest} noValidate className="space-y-4">
               <div className="form-field space-y-1">
-                <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Registered Email Address</label>
+                <label htmlFor="forgot-email" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Registered Email Address</label>
                 <input
+                  id="forgot-email"
                   type="email"
                   required
                   autoComplete="email"
@@ -736,15 +785,27 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 </button>
               </div>
             </form>
+            )
           )}
 
           {/* 4. RESET PASSWORD */}
           {mode === 'reset-password' && (
+            passwordResetSuccess ? (
+              <div role="status" aria-live="polite" className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Your password has been updated</h3>
+                <p className="text-xs leading-relaxed text-[#C7D4E7]">You can now sign in with your new password.</p>
+                <button type="button" onClick={() => switchMode('login')} className="text-xs font-bold text-[#C5A880] hover:underline">
+                  Back to Sign In
+                </button>
+              </div>
+            ) : (
             <form onSubmit={handleUpdatePassword} noValidate className="space-y-4">
               <div className="form-field space-y-1">
-                <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 8 Characters)</label>
+                <label htmlFor="reset-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 12 Characters)</label>
                 <div className="relative">
                   <input
+                    id="reset-password"
                     type={showPassword ? 'text' : 'password'}
                     required
                     autoComplete="new-password"
@@ -765,8 +826,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               </div>
 
               <div className="form-field space-y-1">
-                <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Confirm New Password</label>
+                <label htmlFor="reset-confirm-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Confirm New Password</label>
                 <input
+                  id="reset-confirm-password"
                   type="password"
                   required
                   placeholder="Repeat new password"
@@ -778,12 +840,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || password.length < 12 || password !== confirmPassword}
                 className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? 'Updating Password...' : 'Update Password'}
               </button>
             </form>
+            )
           )}
         </div>
       </div>

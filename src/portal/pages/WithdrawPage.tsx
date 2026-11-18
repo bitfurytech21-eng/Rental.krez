@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import React, { useState } from 'react';
 import {
   Landmark,
@@ -68,9 +69,9 @@ export const WithdrawPage: React.FC = () => {
               <h2 className="text-lg font-semibold text-[#F2F5F4]">Withdrawals unavailable</h2>
               <p className="text-sm text-[#8FA1A8] mt-1.5 leading-relaxed">
                 {!isVerified && !hasBankAccount
-                  ? 'You must complete identity verification and link your personal SEPA bank account before requesting a withdrawal.'
+                  ? 'Complete all outstanding items in the Compliance Vault and link your personal SEPA bank account before requesting a withdrawal.'
                   : !isVerified
-                  ? 'Your identity must be verified in the Compliance Vault before you can request a withdrawal.'
+                  ? `Your KYC review is currently ${profile?.kycStatus === 'rejected' ? 'rejected' : profile?.kycStatus === 'in_review' ? 'in review' : 'incomplete'}. Open the Compliance Vault to see which verification step is outstanding or needs correction, including any reviewer feedback, before requesting a withdrawal.`
                   : 'Add your personal SEPA IBAN in Profile & Banking before requesting a withdrawal.'}
               </p>
             </div>
@@ -155,7 +156,7 @@ export const WithdrawPage: React.FC = () => {
         toast.info(`6-digit security code sent to ${reqRes.maskedEmail || 'your email'}.`);
       }
     } catch (err: any) {
-      setSubmitError(err?.message || 'Unable to send security verification code.');
+      setSubmitError(safeErrorMessage(err, 'Unable to send security verification code.'));
     } finally {
       setRequestingCode(false);
     }
@@ -213,7 +214,7 @@ export const WithdrawPage: React.FC = () => {
       toast.success('Withdrawal request submitted.');
       await refreshAll();
     } catch (err: any) {
-      const msg = err?.message || 'Unable to submit withdrawal request.';
+      const msg = safeErrorMessage(err, 'Unable to submit withdrawal request.');
       setSubmitError(msg);
       toast.error(msg);
     } finally {
@@ -404,7 +405,7 @@ export const WithdrawPage: React.FC = () => {
               </div>
               <input
                 id="withdraw-otp"
-                type="text"
+                type="password"
                 inputMode="numeric"
                 maxLength={6}
                 value={otpCode}

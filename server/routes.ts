@@ -12,6 +12,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
+import { requireLatestLegalConsent } from './legalConsent';
 import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
 import {
   manualPaymentRouter,
@@ -112,6 +113,7 @@ router.use('/manual-payments', manualPaymentRouter);
 const DASHBOARD_ACTION_SCOPES = new Set([
   'investor.withdrawal.create',
   'investor.investment.create',
+  'investor.profile.bank.update',
   'admin.deposit.approve',
   'admin.deposit.reject',
   'admin.withdrawal.approve',
@@ -217,6 +219,49 @@ const requireActionEmailVerification = (actionScope: string) =>
     }
   };
 
+
+const requireBankChangeEmailVerification = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const input = req.body || {};
+  const includesBankFields =
+    Object.prototype.hasOwnProperty.call(input, 'bankIban') ||
+    Object.prototype.hasOwnProperty.call(input, 'bankAccountHolder');
+  if (!includesBankFields) return next();
+
+  try {
+    let existing: any = null;
+    if (shouldUseSupabaseForCustomer(req)) {
+      existing = await getUserProfile(req.user!.id);
+    } else {
+      existing = devCustomersById.get(req.user!.id) || null;
+    }
+    if (!existing) return next();
+
+    const currentIban = String(existing.bank_iban ?? existing.bankIban ?? existing.iban ?? '')
+      .replace(/\\s+/g, '').toUpperCase();
+    const nextIban = typeof input.bankIban === 'string'
+      ? input.bankIban.replace(/\\s+/g, '').toUpperCase()
+      : currentIban;
+    const currentHolder = String(existing.bank_account_holder ?? existing.bankAccountHolder ?? existing.bank_holder ?? existing.full_name ?? existing.fullName ?? '')
+      .trim().toLowerCase();
+    const nextHolder = typeof input.bankAccountHolder === 'string'
+      ? input.bankAccountHolder.trim().toLowerCase()
+      : currentHolder;
+
+    if (currentIban === nextIban && currentHolder === nextHolder) return next();
+    return requireActionEmailVerification('investor.profile.bank.update')(req, res, next);
+  } catch {
+    return res.status(503).json({
+      success: false,
+      error: 'Unable to verify this bank-account change. Please try again.',
+      code: 'BANK_CHANGE_VERIFICATION_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+};
 
 const maskLoginEmail = (email: string) => {
   const [local, domain] = email.split('@');
@@ -3500,8 +3545,8 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
   }
 };
-router.patch('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
-router.put('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
+router.patch('/user/profile', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
+router.put('/user/profile', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
 
 /**
  * GET /api/v1/portfolio
@@ -3775,7 +3820,7 @@ router.get('/transactions/:transactionId', requireAuth, async (req: Authenticate
  * GET /api/v1/notifications
  */
 router.get('/notifications', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (shouldUseSupabaseForCustomer(req)) { try { const rows = await listUserNotifications(req.user!.id); const data = rows.map((n: any) => ({ id: n.id, title: n.title, message: n.message, type: n.type, read: n.read, createdAt: n.created_at, metadata: n.metadata })); return res.json({ success: true, data, unreadCount: data.filter((n: any) => !n.read).length, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'NOTIFICATION_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (shouldUseSupabaseForCustomer(req)) { try { const rows = await listUserNotifications(req.user!.id); const data = rows.map((n: any) => ({ id: n.id, title: n.title, message: n.message || n.body || '', type: n.type || 'info', read: n.read, createdAt: n.created_at, metadata: n.metadata || null })); return res.json({ success: true, data, unreadCount: data.filter((n: any) => !n.read).length, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'NOTIFICATION_DATABASE_UNAVAILABLE', requestId: req.id }); } }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   res.json({
@@ -4580,7 +4625,7 @@ router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, 
   });
 });
 
-router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/treasury/convert', requireAuth, requireLatestLegalConsent, async (req: AuthenticatedRequest, res: Response) => {
   const { fromCurrency, toCurrency, amount, quoteId } = req.body || {};
   const from = String(fromCurrency || '').toUpperCase();
   const to = String(toCurrency || '').toUpperCase();
@@ -4785,7 +4830,7 @@ router.get('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Resp
 /**
  * POST /api/v1/deposits
  */
-router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.depositsEnabled) {
     return res.status(403).json({
       success: false,
@@ -4989,7 +5034,7 @@ router.get('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: R
 /**
  * POST /api/v1/withdrawals
  */
-router.post('/withdrawals', requireAuth, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/withdrawals', requireAuth, requireLatestLegalConsent, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.withdrawalsEnabled) {
     return res.status(403).json({
       success: false,
@@ -5285,7 +5330,7 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, requireLatestLegalConsent, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
@@ -5930,7 +5975,7 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
   }
 });
 
-router.patch('/users/me', requireAuth, updateAuthenticatedCustomerProfile);
+router.patch('/users/me', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
 
 // Dashboard summary & performance endpoints
 router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

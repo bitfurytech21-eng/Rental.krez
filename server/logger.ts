@@ -43,6 +43,13 @@ export interface StructuredLog {
 const SENSITIVE_KEYS = new Set([
   'password',
   'pass',
+  'pin',
+  'code',
+  'otp',
+  'emailcode',
+  'onetimecode',
+  'verificationcode',
+  'securitycode',
   'token',
   'refreshtoken',
   'auth',
@@ -56,8 +63,22 @@ const SENSITIVE_KEYS = new Set([
   'cvv',
   'cardnumber',
   'recoverycode',
-  'accesstoken'
+  'accesstoken',
+  'session',
+  'sessionid',
+  'jwt',
+  'signature'
 ]);
+
+/** Redact credential-like values embedded in human-readable log messages. */
+export function sanitizeLogMessage(message: string): string {
+  return String(message || '')
+    .replace(/[\r\n]/g, ' ')
+    .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, 'Bearer [REDACTED]')
+    .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, '[REDACTED TOKEN]')
+    .replace(/(password|passphrase|passcode|otp|pin|code|(?:one[ _-]time|verification|security|email)[ _-]?code|(?:access|refresh|session)[ _-]?token|token|authorization)\s*[:=]?\s*["']?[^,\s;'"<>]+/gi, '$1 [REDACTED]')
+    .replace(/\b\d{6}\b/g, '[REDACTED CODE]');
+}
 
 /**
  * Deep recursive sanitizer to redact passwords, tokens, and payment secrets
@@ -67,7 +88,7 @@ export function sanitizeLogData(data: any): any {
   if (typeof data !== 'object') {
     if (typeof data === 'string') {
       // Prevent log injection by removing CRLF characters
-      return data.replace(/[\r\n]/g, ' ');
+      return sanitizeLogMessage(data);
     }
     return data;
   }
@@ -79,12 +100,12 @@ export function sanitizeLogData(data: any): any {
   const cleaned: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
     const lowerKey = key.toLowerCase().replace(/[^a-z]/g, '');
-    if (SENSITIVE_KEYS.has(lowerKey)) {
+    if (SENSITIVE_KEYS.has(lowerKey) || /(password|passphrase|passcode|pin|otp|code|token|secret|authorization|cookie|session|jwt|signature)/.test(lowerKey)) {
       cleaned[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
       cleaned[key] = sanitizeLogData(value);
     } else if (typeof value === 'string') {
-      cleaned[key] = value.replace(/[\r\n]/g, ' ');
+      cleaned[key] = sanitizeLogMessage(value);
     } else {
       cleaned[key] = value;
     }
@@ -144,7 +165,7 @@ class SystemLogger {
       serviceName: this.serviceName,
       ...entry,
       metadata: entry.metadata ? sanitizeLogData(entry.metadata) : undefined,
-      message: entry.message ? entry.message.replace(/[\r\n]/g, ' ') : ''
+      message: entry.message ? sanitizeLogMessage(entry.message) : ''
     };
 
     // Circular buffer: remove oldest if exceeding limit
