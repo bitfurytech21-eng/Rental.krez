@@ -113,6 +113,7 @@ router.use('/manual-payments', manualPaymentRouter);
 const DASHBOARD_ACTION_SCOPES = new Set([
   'investor.withdrawal.create',
   'investor.investment.create',
+  'investor.profile.bank.update',
   'admin.deposit.approve',
   'admin.deposit.reject',
   'admin.withdrawal.approve',
@@ -218,6 +219,49 @@ const requireActionEmailVerification = (actionScope: string) =>
     }
   };
 
+
+const requireBankChangeEmailVerification = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const input = req.body || {};
+  const includesBankFields =
+    Object.prototype.hasOwnProperty.call(input, 'bankIban') ||
+    Object.prototype.hasOwnProperty.call(input, 'bankAccountHolder');
+  if (!includesBankFields) return next();
+
+  try {
+    let existing: any = null;
+    if (shouldUseSupabaseForCustomer(req)) {
+      existing = await getUserProfile(req.user!.id);
+    } else {
+      existing = devCustomersById.get(req.user!.id) || null;
+    }
+    if (!existing) return next();
+
+    const currentIban = String(existing.bank_iban ?? existing.bankIban ?? existing.iban ?? '')
+      .replace(/\\s+/g, '').toUpperCase();
+    const nextIban = typeof input.bankIban === 'string'
+      ? input.bankIban.replace(/\\s+/g, '').toUpperCase()
+      : currentIban;
+    const currentHolder = String(existing.bank_account_holder ?? existing.bankAccountHolder ?? existing.bank_holder ?? '')
+      .trim().toLowerCase();
+    const nextHolder = typeof input.bankAccountHolder === 'string'
+      ? input.bankAccountHolder.trim().toLowerCase()
+      : currentHolder;
+
+    if (currentIban === nextIban && currentHolder === nextHolder) return next();
+    return requireActionEmailVerification('investor.profile.bank.update')(req, res, next);
+  } catch {
+    return res.status(503).json({
+      success: false,
+      error: 'Unable to verify this bank-account change. Please try again.',
+      code: 'BANK_CHANGE_VERIFICATION_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+};
 
 const maskLoginEmail = (email: string) => {
   const [local, domain] = email.split('@');
@@ -3501,8 +3545,8 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
   }
 };
-router.patch('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
-router.put('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
+router.patch('/user/profile', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
+router.put('/user/profile', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
 
 /**
  * GET /api/v1/portfolio
@@ -5931,7 +5975,7 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
   }
 });
 
-router.patch('/users/me', requireAuth, updateAuthenticatedCustomerProfile);
+router.patch('/users/me', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
 
 // Dashboard summary & performance endpoints
 router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
