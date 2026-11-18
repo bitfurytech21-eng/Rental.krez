@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { Download, FileText, Printer } from 'lucide-react';
 import { getAuthToken } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
@@ -36,7 +37,7 @@ export const ReportsPage: React.FC = () => {
       setStatement(data);
       setUploadedDocs(docs);
     } catch (err: any) {
-      setError(err?.message || 'Unable to load statements and tax documents.');
+      setError(safeErrorMessage(err, 'Unable to load statements and tax documents.'));
     } finally {
       setLoading(false);
     }
@@ -144,7 +145,7 @@ export const ReportsPage: React.FC = () => {
       );
       toast.success('Distribution tax CSV downloaded.');
     } catch (err: any) {
-      toast.error(err?.message || 'Unable to download tax CSV right now.');
+      toast.error(safeErrorMessage(err, 'Unable to download tax CSV right now.'));
     } finally {
       setDownloading(null);
     }
