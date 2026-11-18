@@ -758,9 +758,12 @@ manualPaymentRouter.get('/admin/deposits/:id/proof', requireStaffSection('deposi
       .select('proof_storage_path').eq('id', req.params.id).maybeSingle();
     if (error) throw error;
     if (!row?.proof_storage_path) return res.status(404).json({ success: false, error: 'Proof file not found.', code: 'PROOF_NOT_FOUND', requestId: req.id });
-    const { data, error: signedError } = await getSupabaseAdmin().storage.from('manual-payment-proofs').createSignedUrl(row.proof_storage_path, 60);
-    if (signedError) throw signedError;
-    return res.json({ success: true, data: { url: data.signedUrl, expiresInSeconds: 60 }, requestId: req.id });
+    const storage = getSupabaseAdmin().storage;
+    let signed = await storage.from('proofs').createSignedUrl(row.proof_storage_path, 60);
+    // Keep older submissions readable from the legacy private bucket.
+    if (signed.error) signed = await storage.from('manual-payment-proofs').createSignedUrl(row.proof_storage_path, 60);
+    if (signed.error || !signed.data?.signedUrl) throw signed.error || new Error('PROOF_SIGNING_FAILED');
+    return res.json({ success: true, data: { url: signed.data.signedUrl, expiresInSeconds: 60 }, requestId: req.id });
   } catch { return res.status(503).json({ success: false, error: 'Proof file could not be opened.', code: 'PROOF_ACCESS_FAILED', requestId: req.id }); }
 });
 
