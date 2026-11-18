@@ -777,7 +777,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Password recovery is temporarily unavailable.');
     }
 
-    const redirectUrl = getAuthRedirectUrl('/#reset-password');
+    const redirectUrl = getAuthRedirectUrl('/reset-password');
     const { error } = await supabase.auth.resetPasswordForEmail(clean, {
       redirectTo: redirectUrl,
     });
@@ -787,6 +787,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Complete password reset when user clicks the recovery link
   const updatePassword = async (newPassword: string): Promise<void> => {
+    if (!isRecoveryMode) {
+      throw new Error('Open the password-reset link from your email before setting a new password.');
+    }
     if (!isConfigured) {
       setIsRecoveryMode(false);
       return;
