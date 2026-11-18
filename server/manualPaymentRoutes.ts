@@ -227,36 +227,33 @@ function matchesFileSignature(bytes: Buffer, mimeType: string): boolean {
   return false;
 }
 
+const GATE_META_METHOD = '__gate_method';
+const GATE_META_NETWORK = '__usdt_network';
+const GATE_META_WALLET = '__usdt_wallet_address';
+const GATE_META_ROWS = '__bank_detail_rows';
+const RESERVED_GATE_KEYS = new Set([GATE_META_METHOD, GATE_META_NETWORK, GATE_META_WALLET, GATE_META_ROWS]);
+
 function normalizeDetailRows(body: any, existing?: any): { detail_rows: GateDetailRow[]; account_details: Record<string, string> } {
-  if (Array.isArray(body?.detailRows ?? body?.detail_rows)) {
-    const raw = (body.detailRows ?? body.detail_rows) as any[];
-    const cleaned: GateDetailRow[] = raw
-      .map((item) => ({
-        label: String(item?.label || '').trim().slice(0, 80),
-        value: String(item?.value || '').trim().slice(0, 500),
-      }))
-      .filter((item) => item.label.length > 0 && item.value.length > 0);
-    const map: Record<string, string> = {};
-    for (const row of cleaned) {
-      map[row.label] = row.value;
-    }
-    return { detail_rows: cleaned, account_details: map };
-  }
-  const existingRows = Array.isArray(existing?.detail_rows) && existing.detail_rows.length > 0
-    ? existing.detail_rows
-    : Object.entries((body?.accountDetails && typeof body.accountDetails === 'object' ? body.accountDetails : existing?.account_details) || {})
-        .map(([label, value]) => ({ label, value: String(value ?? '') }))
-        .filter((r) => r.label.trim().length > 0 && r.value.trim().length > 0);
-  const map: Record<string, string> = {};
-  for (const row of existingRows) {
-    map[row.label] = row.value;
-  }
-  return { detail_rows: existingRows, account_details: map };
+  const source = body?.detailRows ?? body?.detail_rows;
+  const stored = existing?.account_details && typeof existing.account_details === 'object' ? existing.account_details : {};
+  const raw = Array.isArray(source) ? source : Array.isArray(stored[GATE_META_ROWS]) ? stored[GATE_META_ROWS] :
+    Object.entries(body?.accountDetails && typeof body.accountDetails === 'object' ? body.accountDetails : stored)
+      .filter(([label]) => !RESERVED_GATE_KEYS.has(label))
+      .map(([label, value]) => ({ label, value: String(value ?? '') }));
+  const detail_rows = raw.map((item: any) => ({
+    label: String(item?.label || '').trim().slice(0, 80),
+    value: String(item?.value || '').trim().slice(0, 500),
+  })).filter((item: GateDetailRow) => item.label && item.value);
+  const account_details: Record<string, string> = {};
+  for (const row of detail_rows) account_details[row.label] = row.value;
+  return { detail_rows, account_details };
 }
 
 function safeMethodInput(body: any, actorId: string, existing?: any) {
   const name = String(body?.name ?? existing?.name ?? '').trim();
-  const method = String(body?.method ?? existing?.method ?? 'sepa').trim().toLowerCase() || 'sepa';
+  const previousDetails = existing?.account_details && typeof existing.account_details === 'object' ? existing.account_details : {};
+  const requestedMethod = String(body?.method ?? previousDetails[GATE_META_METHOD] ?? 'bank').trim().toLowerCase();
+  const method = ['sepa', 'wire', 'bank_wire'].includes(requestedMethod) ? 'bank' : requestedMethod;
   const instructions = String(body?.instructions ?? existing?.instructions ?? '').trim();
   const minimum = Number(body?.minimumAmount ?? existing?.minimum_amount ?? 100);
   const maximumRaw = body?.maximumAmount ?? existing?.maximum_amount ?? null;
@@ -264,6 +261,7 @@ function safeMethodInput(body: any, actorId: string, existing?: any) {
   const feeType = (String(body?.feeType ?? existing?.fee_type ?? 'none')) as 'none' | 'fixed' | 'percent';
   const feeValue = Number(body?.feeValue ?? existing?.fee_value ?? 0);
   if (name.length < 2 || name.length > 100 || instructions.length > 10000 ||
+      !['bank', 'usdt'].includes(method) ||
       !Number.isFinite(minimum) || minimum <= 0 ||
       (maximum !== null && (!Number.isFinite(maximum) || maximum < minimum)) ||
       !['none', 'fixed', 'percent'].includes(feeType) ||
@@ -271,50 +269,67 @@ function safeMethodInput(body: any, actorId: string, existing?: any) {
       feeValue > (feeType === 'percent' ? 100 : 1000000)) {
     throw new Error('INVALID_MANUAL_PAYMENT_METHOD');
   }
-  const extraFields = Array.isArray(body?.extraFields) ? body.extraFields : (existing?.extra_fields || []);
-  if (extraFields.length > 10 || extraFields.some((field: any) =>
-    !field || typeof field.label !== 'string' || field.label.trim().length < 2 ||
-    field.label.length > 80 || typeof field.key !== 'string' ||
-    !/^[a-z][a-z0-9_]{1,39}$/.test(field.key)
-  )) throw new Error('INVALID_EXTRA_FIELDS');
-
-  const activeFlag =
-    typeof body?.active === 'boolean'
-      ? body.active
-      : typeof body?.enabled === 'boolean'
-        ? body.enabled
-        : (existing?.active ?? existing?.enabled ?? true);
-
-  const { detail_rows, account_details } = normalizeDetailRows(body, existing);
-
+  const activeFlag = typeof body?.active === 'boolean' ? body.active :
+    typeof body?.enabled === 'boolean' ? body.enabled : (existing?.enabled ?? true);
+  const { detail_rows } = normalizeDetailRows(body, existing);
+  const network = String(body?.network ?? previousDetails[GATE_META_NETWORK] ?? '').trim().toUpperCase();
+  const walletAddress = String(body?.walletAddress ?? body?.wallet_address ?? previousDetails[GATE_META_WALLET] ?? '').trim();
+  if (method === 'bank' && (!detail_rows.length || detail_rows.some(row => !row.label || !row.value))) {
+    throw new Error('BANK_DETAILS_REQUIRED');
+  }
+  if (method === 'usdt') {
+    const validNetwork = ['TRC20', 'ERC20', 'BEP20'].includes(network);
+    const validAddress = network === 'TRC20'
+      ? /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(walletAddress)
+      : ['ERC20', 'BEP20'].includes(network) ? /^0x[a-fA-F0-9]{40}$/.test(walletAddress) : false;
+    if (!validNetwork || !validAddress) throw new Error('INVALID_USDT_NETWORK_OR_ADDRESS');
+  }
+  const account_details: Record<string, any> = { ...previousDetails, [GATE_META_METHOD]: method };
+  for (const key of Object.keys(account_details)) {
+    if (!RESERVED_GATE_KEYS.has(key)) delete account_details[key];
+  }
+  if (method === 'bank') {
+    for (const row of detail_rows) account_details[row.label] = row.value;
+    account_details[GATE_META_ROWS] = detail_rows;
+    delete account_details[GATE_META_NETWORK];
+    delete account_details[GATE_META_WALLET];
+  } else {
+    account_details[GATE_META_NETWORK] = network;
+    account_details[GATE_META_WALLET] = walletAddress;
+    delete account_details[GATE_META_ROWS];
+  }
   return {
     name,
-    method,
     logo_url: typeof (body?.logoUrl ?? existing?.logo_url) === 'string' ? String(body?.logoUrl ?? existing?.logo_url).slice(0, 1000) : null,
     instructions,
     account_details,
-    detail_rows,
     minimum_amount: minimum,
     maximum_amount: maximum,
     fee_type: feeType,
     fee_value: feeValue,
-    extra_fields: extraFields,
+    extra_fields: Array.isArray(body?.extraFields) ? body.extraFields : (existing?.extra_fields || []),
     enabled: activeFlag,
-    active: activeFlag,
     sort_order: Number.isInteger(body?.sortOrder) ? body.sortOrder : (existing?.sort_order || 0),
     updated_by: actorId
   };
 }
 
 function decorateGateRow(row: any, assignedCount = 0) {
+  const stored = row.account_details && typeof row.account_details === 'object' ? row.account_details : {};
   const { detail_rows, account_details } = normalizeDetailRows({}, row);
-  const active = row.active ?? row.enabled ?? true;
+  const methodValue = String(row.method || stored[GATE_META_METHOD] || 'bank').toLowerCase();
+  const method = ['sepa', 'wire', 'bank_wire'].includes(methodValue) ? 'bank' : methodValue;
+  const active = row.enabled !== false;
   return {
     ...row,
-    method: row.method || 'sepa',
+    method,
+    network: String(stored[GATE_META_NETWORK] || ''),
+    wallet_address: String(stored[GATE_META_WALLET] || ''),
     detail_rows,
     detailRows: detail_rows,
-    account_details,
+    account_details: method === 'usdt'
+      ? { Network: String(stored[GATE_META_NETWORK] || ''), 'Wallet address': String(stored[GATE_META_WALLET] || '') }
+      : account_details,
     active,
     enabled: active,
     assigned_investors_count: assignedCount,
@@ -329,7 +344,7 @@ manualPaymentRouter.get('/methods', async (req: AuthenticatedRequest, res: Respo
   }
   try {
     const { data, error } = await getSupabaseAdmin().from('manual_payment_methods')
-      .select('id,name,method,logo_url,instructions,account_details,detail_rows,minimum_amount,maximum_amount,fee_type,fee_value,extra_fields,active,enabled')
+      .select('*')
       .eq('enabled', true).order('sort_order').order('created_at');
     if (error) throw error;
     return res.json({ success: true, data: (data || []).map((r) => decorateGateRow(r)), requestId: req.id });
@@ -457,12 +472,12 @@ manualPaymentRouter.get('/admin/methods', requireStaffSection('settings', 'read'
     const client = getSupabaseAdmin();
     const [{ data, error }, { data: assignedRows }] = await Promise.all([
       client.from('manual_payment_methods').select('*').order('sort_order').order('created_at'),
-      client.from('user_profiles').select('assigned_gate_id').not('assigned_gate_id', 'is', null),
+      client.from('profiles').select('payment_gate_id').not('payment_gate_id', 'is', null),
     ]);
     if (error) throw error;
     const countMap = new Map<string, number>();
     for (const row of assignedRows || []) {
-      const gid = String((row as any).assigned_gate_id || '');
+      const gid = String((row as any).payment_gate_id || '');
       if (gid) countMap.set(gid, (countMap.get(gid) || 0) + 1);
     }
     return res.json({
@@ -547,7 +562,7 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
     const payload = safeMethodInput(req.body, req.user!.id, existing);
     const { data, error } = await client.from('manual_payment_methods').update(payload).eq('id', existing.id).select('*').single();
     if (error) throw error;
-    const { count } = await client.from('user_profiles').select('id', { count: 'exact', head: true }).eq('assigned_gate_id', existing.id);
+    const { count } = await client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', existing.id);
     return res.json({ success: true, data: decorateGateRow(data, count || 0), requestId: req.id });
   } catch (error: any) {
     if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
@@ -584,9 +599,9 @@ manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings',
   try {
     const client = getSupabaseAdmin();
     const { count, error: countErr } = await client
-      .from('user_profiles')
+      .from('profiles')
       .select('id', { count: 'exact', head: true })
-      .eq('assigned_gate_id', gateId);
+      .eq('payment_gate_id', gateId);
     if (countErr) throw countErr;
     if ((count || 0) > 0) {
       return res.status(409).json({
