@@ -476,13 +476,15 @@ manualPaymentRouter.get('/admin/methods', requireStaffSection('settings', 'read'
     const client = getSupabaseAdmin();
     const [{ data, error }, { data: assignedRows }] = await Promise.all([
       client.from('manual_payment_methods').select('*').order('sort_order').order('created_at'),
-      client.from('profiles').select('payment_gate_id').not('payment_gate_id', 'is', null),
+      client.from('profiles').select('payment_gate_id,usdt_payment_gate_id'),
     ]);
     if (error) throw error;
     const countMap = new Map<string, number>();
     for (const row of assignedRows || []) {
-      const gid = String((row as any).payment_gate_id || '');
-      if (gid) countMap.set(gid, (countMap.get(gid) || 0) + 1);
+      for (const assignedId of [(row as any).payment_gate_id, (row as any).usdt_payment_gate_id]) {
+        const gid = String(assignedId || '');
+        if (gid) countMap.set(gid, (countMap.get(gid) || 0) + 1);
+      }
     }
     return res.json({
       success: true,
@@ -572,8 +574,11 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
     const payload = safeMethodInput(req.body, req.user!.id, existing);
     const { data, error } = await client.from('manual_payment_methods').update(payload).eq('id', existing.id).select('*').single();
     if (error) throw error;
-    const { count } = await client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', existing.id);
-    return res.json({ success: true, data: decorateGateRow(data, count || 0), requestId: req.id });
+    const [{ count: bankCount }, { count: usdtCount }] = await Promise.all([
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', existing.id),
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('usdt_payment_gate_id', existing.id),
+    ]);
+    return res.json({ success: true, data: decorateGateRow(data, (bankCount || 0) + (usdtCount || 0)), requestId: req.id });
   } catch (error: any) {
     if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
       markSupabaseSchemaMissingInDev();
@@ -608,12 +613,14 @@ manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings',
   }
   try {
     const client = getSupabaseAdmin();
-    const { count, error: countErr } = await client
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('payment_gate_id', gateId);
-    if (countErr) throw countErr;
-    if ((count || 0) > 0) {
+    const [{ count: bankCount, error: bankCountErr }, { count: usdtCount, error: usdtCountErr }] = await Promise.all([
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', gateId),
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('usdt_payment_gate_id', gateId),
+    ]);
+    if (bankCountErr) throw bankCountErr;
+    if (usdtCountErr) throw usdtCountErr;
+    const count = (bankCount || 0) + (usdtCount || 0);
+    if (count > 0) {
       return res.status(409).json({
         success: false,
         error: `This payment gate is currently assigned to ${count} investor(s). Deactivate it instead of deleting.`,
