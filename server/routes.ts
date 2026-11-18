@@ -245,7 +245,7 @@ const requireBankChangeEmailVerification = async (
     const nextIban = typeof input.bankIban === 'string'
       ? input.bankIban.replace(/\\s+/g, '').toUpperCase()
       : currentIban;
-    const currentHolder = String(existing.bank_account_holder ?? existing.bankAccountHolder ?? existing.bank_holder ?? '')
+    const currentHolder = String(existing.bank_account_holder ?? existing.bankAccountHolder ?? existing.bank_holder ?? existing.full_name ?? existing.fullName ?? '')
       .trim().toLowerCase();
     const nextHolder = typeof input.bankAccountHolder === 'string'
       ? input.bankAccountHolder.trim().toLowerCase()
