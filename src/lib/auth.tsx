@@ -1174,6 +1174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         adminLogin,
         customizeAdminCredentials,
         register,
+        resendSignupConfirmation,
         logout,
         refreshUser,
         sendPasswordReset,
