@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { useNavigation } from '../../context/NavigationContext';
 import { portalApi } from '../services/portalApi';
@@ -369,7 +370,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setPortalConfig(configRes);
       setLastSyncedAt(new Date());
     } catch (err: any) {
-      setError(err?.message || 'Unable to synchronize your investor portal with the server.');
+      setError(safeErrorMessage(err, 'Unable to synchronize your investor portal with the server.'));
     } finally {
       setLoading(false);
     }
