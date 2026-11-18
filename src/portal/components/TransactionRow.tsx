@@ -23,6 +23,18 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
   const isOutflow =
     typeKey === 'withdrawal' || typeKey === 'investment' || typeKey === 'purchase';
   const signedAmount = isOutflow ? -Math.abs(transaction.amount) : Math.abs(transaction.amount);
+  const methodValue = String(transaction.paymentMethod || '').toLowerCase();
+  const isUsdtDeposit = typeKey === 'deposit' && methodValue.includes('usdt');
+  const methodLabel = isUsdtDeposit ? 'USDT' : methodValue.includes('bank') || methodValue.includes('sepa')
+    ? 'Bank'
+    : transaction.paymentMethod;
+  const metadata = transaction.metadata || {};
+  const rawUsdtAmount = metadata.usdt_amount ?? metadata.amount_usdt ?? metadata.original_usdt_amount;
+  const usdtAmount = rawUsdtAmount == null || rawUsdtAmount === '' ? null : Number(rawUsdtAmount);
+  const isCompletedUsdtDeposit = isUsdtDeposit && transaction.status.toLowerCase() === 'completed';
+  const amountDisplay = isCompletedUsdtDeposit && usdtAmount !== null && Number.isFinite(usdtAmount) && usdtAmount > 0
+    ? `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(usdtAmount)} USDT credited as ${formatEuro(Math.abs(transaction.amount), true)}`
+    : formatEuro(signedAmount, true);
 
   const title =
     transaction.propertyTitle ||
@@ -41,7 +53,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
           {transaction.paymentMethod && (
             <>
               <span aria-hidden="true">·</span>
-              <span>{transaction.paymentMethod}</span>
+              <span>{methodLabel}</span>
             </>
           )}
         </div>
@@ -53,7 +65,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
             isOutflow ? 'text-[#F2F5F4]' : 'text-[#6FD8B0]'
           }`}
         >
-          {formatEuro(signedAmount, true)}
+          {amountDisplay}
         </div>
         <StatusBadge status={transaction.status} />
       </div>
