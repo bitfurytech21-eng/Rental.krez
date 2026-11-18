@@ -341,19 +341,40 @@ function decorateGateRow(row: any, assignedCount = 0) {
   };
 }
 
-manualPaymentRouter.get('/methods', async (req: AuthenticatedRequest, res: Response) => {
+manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) {
-    const active = listDevPaymentGatesWithCounts().filter((g) => g.active).map((g) => decorateGateRow(g, g.assigned_investors_count || 0));
+    const assignedId = getDevAssignedGateId(req.user!.id);
+    const active = listDevPaymentGatesWithCounts()
+      .filter((gate) => gate.active && gate.id === assignedId)
+      .map((gate) => decorateGateRow(gate, gate.assigned_investors_count || 0));
     return res.json({ success: true, data: active, requestId: req.id });
   }
   try {
-    const { data, error } = await getSupabaseAdmin().from('manual_payment_methods')
+    const client = getSupabaseAdmin();
+    const { data: profile, error: profileError } = await client.from('profiles')
+      .select('payment_gate_id,usdt_payment_gate_id')
+      .eq('id', req.user!.id)
+      .maybeSingle();
+    if (profileError) throw profileError;
+    const assigned = [
+      { id: profile?.payment_gate_id, method: 'bank' },
+      { id: profile?.usdt_payment_gate_id, method: 'usdt' },
+    ].filter((item) => Boolean(item.id));
+    if (!assigned.length) return res.json({ success: true, data: [], requestId: req.id });
+
+    const { data, error } = await client.from('manual_payment_methods')
       .select('*')
-      .eq('enabled', true).order('sort_order').order('created_at');
+      .in('id', assigned.map((item) => item.id))
+      .eq('enabled', true)
+      .order('sort_order').order('created_at');
     if (error) throw error;
-    return res.json({ success: true, data: (data || []).map((r) => decorateGateRow(r)), requestId: req.id });
+
+    const expectedById = new Map(assigned.map((item) => [String(item.id), item.method]));
+    const available = (data || []).map((row) => decorateGateRow(row))
+      .filter((row) => row.method === expectedById.get(String(row.id)));
+    return res.json({ success: true, data: available, requestId: req.id });
   } catch {
-    return res.status(503).json({ success: false, error: 'Manual payment methods are temporarily unavailable.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
+    return res.status(503).json({ success: false, error: 'Your assigned payment methods are temporarily unavailable.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
   }
 });
 
