@@ -12,6 +12,7 @@ import express from 'express';
 import http from 'http';
 import v1Routes, { __testSetCustomerFinancialState } from './routes';
 import { correlationAndTimingMiddleware, authenticateToken, errorHandler } from './middleware';
+import { setDevAssignedGateId } from './manualPaymentRoutes';
 
 let passed = 0;
 let failed = 0;
@@ -136,6 +137,9 @@ async function runApiTests() {
     });
     const customerToken = String(loginRes.json?.data?.token || '');
     const customerId = String(loginRes.json?.user?.id || validRegistration.json?.user?.id || '');
+    // Give this smoke-test investor exactly one sandbox bank gate. The API
+    // must not expose unassigned bank or USDT rails.
+    if (customerId) setDevAssignedGateId(customerId, 'method-sepa-wire');
     assert(
       loginRes.status === 200 && Boolean(customerToken) && Boolean(customerId),
       'Customer email login succeeds and issues an active session token'
@@ -573,7 +577,8 @@ async function runApiTests() {
     assert(
       manualMethodsRes.status === 200 &&
         Array.isArray(manualMethodsRes.json.data) &&
-        manualMethodsRes.json.data.length >= 3,
+        manualMethodsRes.json.data.length === 1 &&
+        manualMethodsRes.json.data[0]?.id === 'method-sepa-wire',
       'GET /manual-payments/methods returns configured bank & crypto deposit rails'
     );
 
