@@ -165,7 +165,7 @@ class SystemLogger {
       serviceName: this.serviceName,
       ...entry,
       metadata: entry.metadata ? sanitizeLogData(entry.metadata) : undefined,
-      message: entry.message ? entry.message.replace(/[\r\n]/g, ' ') : ''
+      message: entry.message ? sanitizeLogMessage(entry.message) : ''
     };
 
     // Circular buffer: remove oldest if exceeding limit
