@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import {
   AlertTriangle,
   ArrowDownLeft,
@@ -869,11 +870,11 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
   const [editingGateId, setEditingGateId] = useState<string | undefined>(undefined);
   const [editingGateSource, setEditingGateSource] = useState<'payment_gates' | 'manual_payment_methods'>('manual_payment_methods');
   const [gateName, setGateName] = useState('');
-  const [gateMethod, setGateMethod] = useState('sepa');
-  const [gateDetails, setGateDetails] = useState<GateDetailRow[]>([
-    { label: 'Beneficiary', value: "L'Agence Treasury SPV" },
-    { label: 'IBAN / Address', value: '' },
-  ]);
+  const [gateMethod, setGateMethod] = useState<'bank' | 'usdt'>('bank');
+  const [gateDetails, setGateDetails] = useState<GateDetailRow[]>([]);
+  const [gateNetwork, setGateNetwork] = useState('TRC20');
+  const [gateWalletAddress, setGateWalletAddress] = useState('');
+  const [gateQrDataUrl, setGateQrDataUrl] = useState('');
   const [gateInstructions, setGateInstructions] = useState('');
   const [gateActive, setGateActive] = useState(true);
   const [savingGate, setSavingGate] = useState(false);
@@ -885,11 +886,10 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
     setEditingGateId(undefined);
     setEditingGateSource(paymentGates[0]?.source || 'manual_payment_methods');
     setGateName('');
-    setGateMethod('sepa');
-    setGateDetails([
-      { label: 'Beneficiary', value: "L'Agence Treasury SPV" },
-      { label: 'IBAN / Address', value: '' },
-    ]);
+    setGateMethod('bank');
+    setGateDetails([{ label: '', value: '' }]);
+    setGateNetwork('TRC20');
+    setGateWalletAddress('');
     setGateInstructions('');
     setGateActive(true);
     setGateModalOpen(true);
@@ -899,18 +899,67 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
     setEditingGateId(g.id);
     setEditingGateSource(g.source);
     setGateName(g.name);
-    setGateMethod(g.method);
-    setGateDetails(g.details.length > 0 ? g.details : [{ label: 'Beneficiary', value: '' }]);
+    setGateMethod(g.method === 'usdt' ? 'usdt' : 'bank');
+    setGateDetails(g.details.length > 0 ? g.details : [{ label: '', value: '' }]);
+    setGateNetwork(g.network || 'TRC20');
+    setGateWalletAddress(g.walletAddress || '');
     setGateInstructions(g.instructions);
     setGateActive(g.active);
     setGateModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!gateModalOpen || gateMethod !== 'usdt' || !gateWalletAddress.trim()) {
+      setGateQrDataUrl('');
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(gateWalletAddress.trim(), { width: 220, margin: 1 })
+      .then((url: string) => { if (!cancelled) setGateQrDataUrl(url); })
+      .catch(() => { if (!cancelled) setGateQrDataUrl(''); });
+    return () => { cancelled = true; };
+  }, [gateModalOpen, gateMethod, gateWalletAddress]);
 
   const handleSaveGate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gateName.trim()) {
       onError('Payment gate name is required.');
       return;
+    }
+    const cleanDetails = gateDetails.filter((row) => row.label.trim() || row.value.trim());
+    if (gateMethod === 'bank' && (!cleanDetails.length || cleanDetails.some((row) => !row.label.trim() || !row.value.trim()))) {
+      onError('Every bank detail row needs both a label and a value.');
+      return;
+    }
+    if (gateMethod === 'usdt') {
+      const address = gateWalletAddress.trim();
+      const valid = gateNetwork === 'TRC20'
+        ? /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address)
+        : ['ERC20', 'BEP20'].includes(gateNetwork) && /^0x[a-fA-F0-9]{40}$/.test(address);
+      if (!valid) {
+        onError(gateNetwork === 'TRC20'
+          ? 'TRC20 wallet addresses must start with T and contain 34 characters.'
+          : 'ERC20 and BEP20 wallet addresses must start with 0x and contain 42 characters.');
+        return;
+      }
+    }
+    const previousGate = editingGateId ? paymentGates.find((gate) => gate.id === editingGateId) : undefined;
+    if (previousGate) {
+      const oldDetails = previousGate.details.map((row) => `${row.label}: ${row.value}`).join('\n') || '(none)';
+      const newDetails = cleanDetails.map((row) => `${row.label}: ${row.value}`).join('\n') || '(none)';
+      const destinationChanged =
+        previousGate.method !== gateMethod ||
+        (gateMethod === 'bank' && (previousGate.method !== 'bank' || oldDetails !== newDetails)) ||
+        (gateMethod === 'usdt' && (previousGate.network !== gateNetwork || previousGate.walletAddress !== gateWalletAddress.trim()));
+      if (destinationChanged) {
+        const oldValue = previousGate.method === 'usdt'
+          ? `USDT ${previousGate.network || '(network unset)'}\nWallet: ${previousGate.walletAddress || '(address unset)'}`
+          : `Bank details:\n${oldDetails}`;
+        const newValue = gateMethod === 'usdt'
+          ? `USDT ${gateNetwork}\nWallet: ${gateWalletAddress.trim()}`
+          : `Bank details:\n${newDetails}`;
+        if (!window.confirm(`Changing payment destination details can redirect investor payments. Confirm this change?\n\nOLD VALUES\n${oldValue}\n\nNEW VALUES\n${newValue}`)) return;
+      }
     }
     setSavingGate(true);
     try {
@@ -919,9 +968,11 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
           id: editingGateId,
           name: gateName,
           method: gateMethod,
-          details: gateDetails,
+          details: cleanDetails,
           instructions: gateInstructions,
           active: gateActive,
+          network: gateNetwork,
+          walletAddress: gateWalletAddress,
         },
         editingGateSource
       );
@@ -940,7 +991,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
     setBusyGateId(g.id);
     try {
       await savePaymentGateRecord(
-        { id: g.id, name: g.name, method: g.method, details: g.details, instructions: g.instructions, active: !g.active },
+        { id: g.id, name: g.name, method: g.method, details: g.details, instructions: g.instructions, active: !g.active, network: g.network, walletAddress: g.walletAddress },
         g.source
       );
       onSuccess(`${g.name} ${g.active ? 'deactivated' : 'activated'}.`);
@@ -2434,7 +2485,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
             <div className="p-4 bg-[#0B0F10] border-b border-[#1F2C33] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-[#F2F5F4]">Assign Payment Gates to Investors</h3>
-                <p className="text-[11px] text-[#8FA1A8]">Investors only see bank coordinates from their assigned active gate.</p>
+                <p className="text-[11px] text-[#8FA1A8]">Investors see the bank details or USDT wallet from their assigned active gate.</p>
               </div>
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
@@ -3084,60 +3135,52 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                 </div>
                 <div>
                   <label className="block text-[#B6C4C9] font-semibold mb-1">Method</label>
-                  <input
-                    type="text"
-                    required
+                  <select
                     value={gateMethod}
-                    onChange={(e) => setGateMethod(e.target.value)}
-                    placeholder="sepa / wire / crypto"
-                    className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                  />
+                    onChange={(e) => setGateMethod(e.target.value as 'bank' | 'usdt')}
+                    className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                  >
+                    <option value="bank">Bank transfer (SEPA)</option>
+                    <option value="usdt">USDT</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[#B6C4C9] font-semibold">Bank / Rail Coordinates</label>
-                  <button
-                    type="button"
-                    onClick={() => setGateDetails((p) => [...p, { label: '', value: '' }])}
-                    className="text-[#6FD8B0] font-semibold inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Row</span>
-                  </button>
-                </div>
-                {gateDetails.map((row, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={row.label}
-                      onChange={(e) =>
-                        setGateDetails((p) => p.map((r, i) => (i === idx ? { ...r, label: e.target.value } : r)))
-                      }
-                      placeholder="Label (e.g. IBAN)"
-                      className="w-2/5 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-                    />
-                    <input
-                      type="text"
-                      value={row.value}
-                      onChange={(e) =>
-                        setGateDetails((p) => p.map((r, i) => (i === idx ? { ...r, value: e.target.value } : r)))
-                      }
-                      placeholder="Value"
-                      className="flex-1 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setGateDetails((p) => p.filter((_, i) => i !== idx))}
-                      className="p-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-[#8FA1A8] hover:text-rose-400 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
+              {gateMethod === 'bank' ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[#B6C4C9] font-semibold">Bank transfer details</label>
+                    <button type="button" onClick={() => setGateDetails((rows) => [...rows, { label: '', value: '' }])} className="text-[#6FD8B0] font-semibold inline-flex items-center gap-1 cursor-pointer">
+                      <Plus className="w-3 h-3" /><span>Add Row</span>
                     </button>
                   </div>
-                ))}
-              </div>
-
+                  {gateDetails.map((row, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input type="text" required value={row.label} onChange={(e) => setGateDetails((rows) => rows.map((item, i) => i === idx ? { ...item, label: e.target.value } : item))} placeholder="Label (e.g. IBAN)" className="w-2/5 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]" />
+                      <input type="text" required value={row.value} onChange={(e) => setGateDetails((rows) => rows.map((item, i) => i === idx ? { ...item, value: e.target.value } : item))} placeholder="Value" className="flex-1 min-w-0 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]" />
+                      <button type="button" aria-label={`Remove bank detail row ${idx + 1}`} onClick={() => setGateDetails((rows) => rows.filter((_, i) => i !== idx))} className="p-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-[#8FA1A8] hover:text-rose-400 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3">
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">USDT network</label>
+                    <select required value={gateNetwork} onChange={(e) => setGateNetwork(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-[#F2F5F4]">
+                      <option value="TRC20">TRC20 (TRON)</option>
+                      <option value="ERC20">ERC20 (Ethereum)</option>
+                      <option value="BEP20">BEP20 (BNB Smart Chain)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Wallet address</label>
+                    <input required value={gateWalletAddress} onChange={(e) => setGateWalletAddress(e.target.value)} placeholder={gateNetwork === 'TRC20' ? 'T… (34 characters)' : '0x… (42 characters)'} className="w-full px-3 py-2 rounded-xl border border-[#1F2C33] bg-[#121A1F] font-mono text-[#F2F5F4]" />
+                    <p className="mt-1 text-[11px] text-[#8FA1A8]">{gateNetwork === 'TRC20' ? 'TRC20 address: starts with T and is 34 characters.' : 'ERC20 / BEP20 address: starts with 0x and is 42 characters.'}</p>
+                  </div>
+                  {gateQrDataUrl && <div className="rounded-xl border border-[#1F2C33] bg-white p-3 text-center"><img src={gateQrDataUrl} alt="QR code for USDT receiving wallet address" className="mx-auto h-44 w-44" /><p className="mt-2 break-all text-[11px] text-slate-700">{gateWalletAddress}</p></div>}
+                  <p role="alert" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] leading-relaxed text-amber-200">Only send USDT on the selected network. Funds sent on another network can be lost.</p>
+                </div>
+              )}
               <div>
                 <label className="block text-[#B6C4C9] font-semibold mb-1">Instructions</label>
                 <textarea
