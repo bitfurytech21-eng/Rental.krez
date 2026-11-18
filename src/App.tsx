@@ -53,6 +53,7 @@ import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 import { InitialPlatformLoader } from './components/visuals/InitialPlatformLoader';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 import { LegalReacceptanceGate } from './components/legal/LegalReacceptanceGate';
+import { SessionInactivityGuard } from './components/auth/SessionInactivityGuard';
 
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
@@ -680,6 +681,7 @@ function MainApp() {
       )}
 
       <LegalReacceptanceGate />
+      <SessionInactivityGuard />
       <InitialPlatformLoader />
 
       <ViewportDesktopMonitor />
