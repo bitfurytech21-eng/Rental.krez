@@ -19,7 +19,6 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { authApi } from '../../lib/api';
 import { ledger } from '../../lib/ledger';
 import authLuxuryKeyBg from '../../assets/images/auth_luxury_key_1794021673223.jpg';
 
