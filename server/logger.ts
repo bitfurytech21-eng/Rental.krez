@@ -73,11 +73,11 @@ const SENSITIVE_KEYS = new Set([
 /** Redact credential-like values embedded in human-readable log messages. */
 export function sanitizeLogMessage(message: string): string {
   return String(message || '')
-    .replace(/[\\r\\n]/g, ' ')
-    .replace(/\\bBearer\\s+[A-Za-z0-9._~+\\/-]+=*/gi, 'Bearer [REDACTED]')
-    .replace(/\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\b/g, '[REDACTED TOKEN]')
-    .replace(/(password|passphrase|passcode|otp|pin|(?:one[ _-]time|verification|security|email)[ _-]?code|access[ _-]?token|refresh[ _-]?token|authorization)\\s*[:=]?\\s*["']?[^,\\s;'"<>]+/gi, '$1 [REDACTED]')
-    .replace(/\\b\\d{6}\\b/g, '[REDACTED CODE]');
+    .replace(/[\r\n]/g, ' ')
+    .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, 'Bearer [REDACTED]')
+    .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, '[REDACTED TOKEN]')
+    .replace(/(password|passphrase|passcode|otp|pin|(?:one[ _-]time|verification|security|email)[ _-]?code|access[ _-]?token|refresh[ _-]?token|authorization)\s*[:=]?\s*["']?[^,\s;'"<>]+/gi, '$1 [REDACTED]')
+    .replace(/\b\d{6}\b/g, '[REDACTED CODE]');
 }
 
 /**
