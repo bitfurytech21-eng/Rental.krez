@@ -31,16 +31,7 @@ interface AuthContextType {
     newPassword: string;
     fullName?: string;
   }) => Promise<User>;
-  register: (
-    email: string,
-    pass: string,
-    fullName: string,
-    role?: UserRole,
-    accountType?: AccountType,
-    country?: string,
-    phoneNumber?: string,
-    countryCode?: string
-  ) => Promise<RegisterResult>;
+  register: (email: string, pass: string, fullName: string, acceptedTerms: boolean, acceptedRisk: boolean) => Promise<RegisterResult>;
   resendSignupConfirmation: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -652,13 +643,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     pass: string,
     fullName: string,
-    _role?: UserRole,
-    _accountType?: AccountType,
-    _country?: string,
-    _phoneNumber?: string,
-    _countryCode?: string
+    acceptedTerms: boolean,
+    acceptedRisk: boolean
   ): Promise<RegisterResult> => {
     const cleanEmail = email.trim().toLowerCase();
+    if (!acceptedTerms || !acceptedRisk) {
+      throw new Error('Both required acknowledgements must be accepted before creating an account.');
+    }
     if (!isConfigured) {
       throw new Error('Account registration requires the configured email-confirmation service. Please try again later.');
     }
