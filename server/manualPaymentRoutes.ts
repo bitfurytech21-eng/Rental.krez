@@ -506,10 +506,13 @@ manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'writ
       const created: PaymentGateRecord = {
         id: crypto.randomUUID(),
         ...payload,
+        method: String(payload.account_details[GATE_META_METHOD] || 'bank'),
+        detail_rows: Array.isArray(payload.account_details[GATE_META_ROWS]) ? payload.account_details[GATE_META_ROWS] : [],
+        active: payload.enabled,
         assigned_investors_count: 0,
         created_at: now,
         updated_at: now,
-      };
+      } as PaymentGateRecord;
       devPaymentGates.push(created);
       return res.status(201).json({ success: true, data: decorateGateRow(created, 0), requestId: req.id });
     } catch (error: any) {
@@ -543,8 +546,11 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
       const updated: PaymentGateRecord = {
         ...existing,
         ...payload,
+        method: String(payload.account_details[GATE_META_METHOD] || 'bank'),
+        detail_rows: Array.isArray(payload.account_details[GATE_META_ROWS]) ? payload.account_details[GATE_META_ROWS] : [],
+        active: payload.enabled,
         updated_at: new Date().toISOString(),
-      };
+      } as PaymentGateRecord;
       devPaymentGates[idx] = updated;
       let count = 0;
       for (const assigned of devAssignedGateByUserId.values()) {
