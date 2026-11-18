@@ -367,20 +367,60 @@ export async function getAssignedPaymentGate(gateId: string) {
   if (!gateId) return null;
   const { data, error } = await getSupabaseAdmin()
     .from('manual_payment_methods')
-    .select('id,name,method,account_details,detail_rows')
+    .select('id,name,method,instructions,account_details,detail_rows,enabled')
     .eq('id', gateId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error || !data || data.enabled === false) return null;
+
   const details = (data.account_details && typeof data.account_details === 'object') ? data.account_details : {};
+  const rawRows: Array<{ label: string; value: string }> =
+    Array.isArray(data.detail_rows) && data.detail_rows.length > 0
+      ? data.detail_rows.map((r: any) => ({ label: String(r?.label || '').trim(), value: String(r?.value || '').trim() })).filter((r: any) => r.label && r.value)
+      : Array.isArray(details.__bank_detail_rows) && details.__bank_detail_rows.length > 0
+      ? details.__bank_detail_rows.map((r: any) => ({ label: String(r?.label || '').trim(), value: String(r?.value || '').trim() })).filter((r: any) => r.label && r.value)
+      : Object.entries(details)
+          .filter(([k]) => !k.startsWith('__'))
+          .map(([label, value]) => ({ label: String(label).trim(), value: String(value ?? '').trim() }))
+          .filter((r) => r.label && r.value);
+
+  const findDetailValue = (...candidates: string[]): string => {
+    for (const c of candidates) {
+      const target = c.toLowerCase();
+      for (const [k, v] of Object.entries(details)) {
+        if (!k.startsWith('__') && k.toLowerCase() === target && String(v || '').trim()) {
+          return String(v).trim();
+        }
+      }
+      const rowMatch = rawRows.find((r) => r.label.toLowerCase() === target || r.label.toLowerCase().includes(target));
+      if (rowMatch?.value) return rowMatch.value;
+    }
+    return '';
+  };
+
+  const rawMethod = String(details.__gate_method || data.method || 'bank').toLowerCase();
+  const normalizedMethod: 'bank' | 'usdt' = rawMethod === 'usdt' ? 'usdt' : 'bank';
+  const beneficiary = findDetailValue('beneficiary', 'account holder', 'holder', 'recipient', 'account name');
+  const bankName = findDetailValue('bank', 'bank name', 'institution', 'bank institution') || String(data.name || '');
+  const iban = findDetailValue('iban', 'account number', 'iban / account');
+  const bic = findDetailValue('bic', 'swift', 'bic / swift', 'swift / bic');
+  const reference = findDetailValue('reference', 'payment reference', 'memo', 'remittance reference');
+  const network = String(details.__usdt_network || findDetailValue('network', 'chain') || '').toUpperCase();
+  const walletAddress = String(details.__usdt_wallet_address || findDetailValue('wallet address', 'address', 'receiving wallet') || '');
+
   return {
     gateId: String(data.id),
     gateName: String(data.name || ''),
-    method: String(data.method || 'sepa'),
-    bankName: String(details.Bank || details.bankName || details.bank || data.name || ''),
-    accountHolder: String(details.Beneficiary || details.beneficiary || details.accountHolder || ''),
-    iban: String(details.IBAN || details.iban || ''),
-    bic: String(details.BIC || details.bic || ''),
-    detailRows: Array.isArray(data.detail_rows) ? data.detail_rows : [],
+    method: normalizedMethod,
+    beneficiary,
+    accountHolder: beneficiary,
+    bankName,
+    iban,
+    bic,
+    reference: reference || undefined,
+    instructions: String(data.instructions || ''),
+    network: normalizedMethod === 'usdt' ? network : undefined,
+    walletAddress: normalizedMethod === 'usdt' ? walletAddress : undefined,
+    detailRows: rawRows,
   };
 }
 
@@ -1278,9 +1318,55 @@ export async function listComplianceDocuments(userId: string): Promise<Complianc
   return Array.isArray(docs) ? docs : [];
 }
 
+async function uploadDocumentBufferToBucket(
+  userId: string,
+  fileName: string,
+  bytes: Buffer,
+  mimeType: string,
+  bucketName = 'documents'
+): Promise<string | null> {
+  const admin = getSupabaseAdmin();
+  const safeName = (fileName || 'document.pdf').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'document.pdf';
+  const storagePath = `${userId}/${Date.now()}-${crypto.randomBytes(4).toString('hex')}-${safeName}`;
+  const attemptUpload = async () =>
+    admin.storage.from(bucketName).upload(storagePath, bytes, { contentType: mimeType, upsert: false });
+
+  let { error } = await attemptUpload();
+  if (error && /bucket.*not found|not found/i.test(String(error.message || ''))) {
+    await admin.storage.createBucket(bucketName, {
+      public: false,
+      fileSizeLimit: 15 * 1024 * 1024,
+      allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+    }).catch(() => {});
+    const retry = await attemptUpload();
+    error = retry.error;
+  }
+  return error ? null : storagePath;
+}
+
+function decodeBase64DocumentData(rawDataUrl: string): Buffer | null {
+  const clean = String(rawDataUrl || '').trim();
+  if (!clean) return null;
+  const stripped = clean.replace(/^data:[^;]+;base64,/i, '');
+  try {
+    const buf = Buffer.from(stripped, 'base64');
+    return buf.length > 0 ? buf : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function addComplianceDocument(userId: string, doc: ComplianceDocumentRecord): Promise<ComplianceDocumentRecord[]> {
   const admin = getSupabaseAdmin();
-  const { error: insertErr } = await admin.from('documents').insert({
+  let storagePath: string | null = null;
+  if (doc.fileDataUrl) {
+    const bytes = decodeBase64DocumentData(doc.fileDataUrl);
+    if (bytes && bytes.length <= 15 * 1024 * 1024) {
+      storagePath = await uploadDocumentBufferToBucket(userId, doc.fileName, bytes, doc.mimeType || 'application/pdf', 'documents');
+    }
+  }
+
+  const baseRow: Record<string, any> = {
     id: doc.id,
     user_id: userId,
     category: doc.category,
@@ -1292,7 +1378,17 @@ export async function addComplianceDocument(userId: string, doc: ComplianceDocum
     status: doc.status,
     file_data_url: doc.fileDataUrl || null,
     uploaded_at: doc.uploadedAt,
-  });
+  };
+  if (storagePath) {
+    baseRow.storage_path = storagePath;
+  }
+
+  let { error: insertErr } = await admin.from('documents').insert(baseRow);
+  if (insertErr && storagePath && /storage_path/i.test(String(insertErr.message || ''))) {
+    const { storage_path: _omit, ...withoutStorage } = baseRow;
+    const retry = await admin.from('documents').insert(withoutStorage);
+    insertErr = retry.error;
+  }
 
   await upsertComplianceStep(userId, doc.category, 'in_review');
 
@@ -1311,6 +1407,102 @@ export async function addComplianceDocument(userId: string, doc: ComplianceDocum
     .upsert({ user_id: userId, preferences: merged, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) throw error;
   return nextDocs;
+}
+
+export async function createAdminDocumentRecord(params: {
+  userId: string;
+  title: string;
+  category?: string;
+  documentType?: string;
+  fileName: string;
+  mimeType: string;
+  fileSize?: number;
+  fileDataUrl?: string;
+  storagePath?: string;
+}) {
+  const admin = getSupabaseAdmin();
+  const docId = `doc-${crypto.randomUUID()}`;
+  const nowIso = new Date().toISOString();
+  const allowedCategories = new Set(['kyc_identity', 'proof_of_address', 'accredited_proof', 'statement', 'tax', 'tax_document', 'general']);
+  const category = allowedCategories.has(String(params.category || '')) ? String(params.category) : 'statement';
+  const documentType = String(params.documentType || (category === 'tax_document' || category === 'tax' ? 'Tax Document' : category === 'general' ? 'Account Document' : 'Investor Statement')).trim();
+  const mimeType = String(params.mimeType || 'application/pdf').trim();
+  const fileName = String(params.fileName || 'document.pdf').trim();
+
+  let storagePath = params.storagePath ? String(params.storagePath).trim() : '';
+  let resolvedFileSize = Number(params.fileSize || 0);
+  if (!storagePath && params.fileDataUrl) {
+    const bytes = decodeBase64DocumentData(params.fileDataUrl);
+    if (!bytes) {
+      throw new Error('Uploaded file data could not be decoded.');
+    }
+    if (bytes.length > 15 * 1024 * 1024) {
+      throw new Error('Document size must be 15 MB or smaller.');
+    }
+    resolvedFileSize = bytes.length;
+    const uploaded = await uploadDocumentBufferToBucket(params.userId, fileName, bytes, mimeType, 'documents');
+    if (uploaded) {
+      storagePath = uploaded;
+    }
+  }
+  if (!Number.isFinite(resolvedFileSize) || resolvedFileSize <= 0) {
+    resolvedFileSize = 1024;
+  }
+
+  const inlinePreview = typeof params.fileDataUrl === 'string' && params.fileDataUrl.length <= 2_500_000
+    ? params.fileDataUrl
+    : null;
+
+  const fullRow: Record<string, any> = {
+    id: docId,
+    user_id: params.userId,
+    category,
+    document_type: documentType,
+    title: params.title.trim(),
+    file_name: fileName,
+    file_size: Math.round(resolvedFileSize),
+    mime_type: mimeType,
+    status: 'verified',
+    storage_path: storagePath || null,
+    file_data_url: inlinePreview,
+    uploaded_at: nowIso,
+    reviewed_at: nowIso,
+  };
+
+  let res = await admin.from('documents').insert(fullRow).select('*').single();
+  if (res.error) {
+    const msg = String(res.error.message || '');
+    if (/storage_path/i.test(msg)) {
+      const { storage_path: _s, ...withFilePath } = fullRow;
+      res = await admin.from('documents').insert({ ...withFilePath, file_path: storagePath || fileName }).select('*').single();
+    } else if (/file_path/i.test(msg)) {
+      const { storage_path: _s, ...minimal } = fullRow;
+      res = await admin.from('documents').insert(minimal).select('*').single();
+    }
+  }
+  if (res.error) {
+    if (storagePath) {
+      await admin.storage.from('documents').remove([storagePath]).catch(() => {});
+    }
+    throw res.error;
+  }
+  const row: any = res.data;
+  return {
+    id: String(row.id || docId),
+    userId: String(row.user_id || params.userId),
+    category: String(row.category || category),
+    documentType: String(row.document_type || documentType),
+    title: String(row.title || params.title),
+    fileName: String(row.file_name || fileName),
+    filePath: String(row.storage_path || row.file_path || row.file_name || ''),
+    storagePath: row.storage_path || row.file_path || undefined,
+    fileSize: Number(row.file_size || resolvedFileSize),
+    mimeType: String(row.mime_type || mimeType),
+    status: String(row.status || 'verified'),
+    uploadedAt: String(row.uploaded_at || row.created_at || nowIso),
+    createdAt: String(row.uploaded_at || row.created_at || nowIso),
+    fileDataUrl: row.file_data_url || undefined,
+  };
 }
 
 export async function listComplianceSteps(userId: string): Promise<ComplianceStepRecord[]> {
@@ -1381,31 +1573,47 @@ export async function upsertComplianceStep(
 }
 
 export async function listAdminComplianceDocuments(limit = 200): Promise<
-  Array<ComplianceDocumentRecord & { userEmail?: string; userName?: string }>
+  Array<ComplianceDocumentRecord & { userEmail?: string; userName?: string; filePath?: string; storagePath?: string; createdAt?: string }>
 > {
   const admin = getSupabaseAdmin();
+  const mapRow = (row: any) => ({
+    id: String(row.id),
+    userId: String(row.user_id),
+    category: row.category || 'general',
+    documentType: String(row.document_type || 'Investor Document'),
+    title: String(row.title || row.file_name || 'Document'),
+    fileName: String(row.file_name || 'document.pdf'),
+    filePath: String(row.storage_path || row.file_path || row.file_name || ''),
+    storagePath: row.storage_path || row.file_path || undefined,
+    fileSize: Number(row.file_size || 0),
+    mimeType: String(row.mime_type || 'application/pdf'),
+    status: row.status || 'pending',
+    uploadedAt: String(row.uploaded_at || row.created_at || new Date().toISOString()),
+    createdAt: String(row.uploaded_at || row.created_at || new Date().toISOString()),
+    fileDataUrl: row.file_data_url || undefined,
+    userEmail: row.user_profiles?.email || undefined,
+    userName: row.user_profiles?.full_name || undefined,
+  });
+
   const { data, error } = await admin
     .from('documents')
-    .select('id,user_id,category,document_type,title,file_name,file_size,mime_type,status,uploaded_at,file_data_url,user_profiles(email,full_name)')
+    .select('*,user_profiles(email,full_name)')
     .order('uploaded_at', { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 500));
 
   if (!error && Array.isArray(data)) {
-    return data.map((row: any) => ({
-      id: String(row.id),
-      userId: String(row.user_id),
-      category: row.category,
-      documentType: String(row.document_type || ''),
-      title: String(row.title || ''),
-      fileName: String(row.file_name || ''),
-      fileSize: Number(row.file_size || 0),
-      mimeType: String(row.mime_type || 'application/pdf'),
-      status: row.status || 'pending',
-      uploadedAt: String(row.uploaded_at || ''),
-      fileDataUrl: row.file_data_url || undefined,
-      userEmail: row.user_profiles?.email || undefined,
-      userName: row.user_profiles?.full_name || undefined,
-    }));
+    return data.map(mapRow);
+  }
+
+  const fallback = await admin
+    .from('documents')
+    .select('*')
+    .limit(Math.min(Math.max(limit, 1), 500));
+
+  if (!fallback.error && Array.isArray(fallback.data)) {
+    return fallback.data
+      .map(mapRow)
+      .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
   }
 
   return [];
@@ -1450,30 +1658,57 @@ export async function reviewComplianceDocument(
 
 export async function listUserStatementDocuments(userId: string) {
   const admin = getSupabaseAdmin();
-  const { data, error } = await admin
+  let { data, error } = await admin
     .from('documents')
     .select('*')
     .eq('user_id', userId)
     .order('uploaded_at', { ascending: false })
     .limit(100);
+  if (error) {
+    const retry = await admin.from('documents').select('*').eq('user_id', userId).limit(100);
+    data = retry.data;
+    error = retry.error;
+  }
   if (error || !Array.isArray(data)) return [];
-  return data.map((row: any) => ({
-    id: String(row.id),
-    userId: String(row.user_id),
-    category: row.category === 'tax_document' ? ('tax_document' as const) : ('statement' as const),
-    title: String(row.title || row.file_name || 'Document'),
-    taxYear: row.tax_year ? String(row.tax_year) : undefined,
-    periodLabel: row.period_label ? String(row.period_label) : undefined,
-    fileName: String(row.file_name || 'document.pdf'),
-    mimeType: String(row.mime_type || 'application/pdf'),
-    fileSize: Number(row.file_size || 0),
-    storagePath: row.storage_path || row.file_path || undefined,
-    fileDataUrl: row.file_data_url || undefined,
-    uploadedAt: String(row.uploaded_at || row.created_at || new Date().toISOString()),
-  }));
+  return data
+    .map((row: any) => ({
+      id: String(row.id),
+      userId: String(row.user_id),
+      category: row.category === 'tax_document' || row.category === 'tax' ? ('tax_document' as const) : ('statement' as const),
+      title: String(row.title || row.file_name || 'Document'),
+      taxYear: row.tax_year ? String(row.tax_year) : undefined,
+      periodLabel: row.period_label ? String(row.period_label) : undefined,
+      fileName: String(row.file_name || 'document.pdf'),
+      mimeType: String(row.mime_type || 'application/pdf'),
+      fileSize: Number(row.file_size || 0),
+      storagePath: row.storage_path || row.file_path || undefined,
+      fileDataUrl: row.file_data_url || undefined,
+      uploadedAt: String(row.uploaded_at || row.created_at || new Date().toISOString()),
+    }))
+    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
 }
 
-export async function getSignedDocumentUrl(userId: string, docId: string): Promise<{ url: string; fileName: string; expiresInSeconds: number } | null> {
+async function resolveStorageSignedUrl(storagePath: string): Promise<string | null> {
+  const admin = getSupabaseAdmin();
+  const cleanRaw = String(storagePath || '').replace(/^\/+/, '');
+  if (!cleanRaw) return null;
+  if (/^https?:\/\//i.test(cleanRaw) || cleanRaw.startsWith('data:')) return cleanRaw;
+
+  const buckets = ['documents', 'kyc', 'kyc-documents', 'kyc-submissions'];
+  for (const bucket of buckets) {
+    const candidates = cleanRaw.startsWith(`${bucket}/`) ? [cleanRaw, cleanRaw.slice(bucket.length + 1)] : [cleanRaw];
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      const { data: signed, error: signErr } = await admin.storage.from(bucket).createSignedUrl(candidate, 120);
+      if (!signErr && signed?.signedUrl) {
+        return signed.signedUrl;
+      }
+    }
+  }
+  return null;
+}
+
+export async function getSignedDocumentUrl(userId: string, docId: string): Promise<{ url: string; fileName: string; mimeType?: string; expiresInSeconds: number } | null> {
   const admin = getSupabaseAdmin();
   const { data, error } = await admin
     .from('documents')
@@ -1483,18 +1718,39 @@ export async function getSignedDocumentUrl(userId: string, docId: string): Promi
     .maybeSingle();
   if (error || !data) return null;
   const fileName = String(data.file_name || 'document.pdf');
+  const mimeType = String(data.mime_type || 'application/pdf');
   const storagePath = data.storage_path || data.file_path;
   if (storagePath && typeof storagePath === 'string') {
-    const cleanPath = storagePath.replace(/^documents\//, '');
-    const { data: signed, error: signErr } = await admin.storage
-      .from('documents')
-      .createSignedUrl(cleanPath, 60);
-    if (!signErr && signed?.signedUrl) {
-      return { url: signed.signedUrl, fileName, expiresInSeconds: 60 };
+    const signedUrl = await resolveStorageSignedUrl(storagePath);
+    if (signedUrl) {
+      return { url: signedUrl, fileName, mimeType, expiresInSeconds: 120 };
     }
   }
   if (data.file_data_url && typeof data.file_data_url === 'string') {
-    return { url: data.file_data_url, fileName, expiresInSeconds: 60 };
+    return { url: data.file_data_url, fileName, mimeType, expiresInSeconds: 120 };
+  }
+  return null;
+}
+
+export async function getAdminSignedDocumentUrl(docId: string): Promise<{ url: string; fileName: string; mimeType?: string; expiresInSeconds: number } | null> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('documents')
+    .select('*')
+    .eq('id', docId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const fileName = String(data.file_name || 'document.pdf');
+  const mimeType = String(data.mime_type || 'application/pdf');
+  const storagePath = data.storage_path || data.file_path;
+  if (storagePath && typeof storagePath === 'string') {
+    const signedUrl = await resolveStorageSignedUrl(storagePath);
+    if (signedUrl) {
+      return { url: signedUrl, fileName, mimeType, expiresInSeconds: 120 };
+    }
+  }
+  if (data.file_data_url && typeof data.file_data_url === 'string') {
+    return { url: data.file_data_url, fileName, mimeType, expiresInSeconds: 120 };
   }
   return null;
 }

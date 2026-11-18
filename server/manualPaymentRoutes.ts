@@ -135,22 +135,37 @@ devPaymentGates.push({
   updated_at: '2026-01-10T09:00:00.000Z',
 });
 
-const devAssignedGateByUserId = new Map<string, string | null>([
-  ['usr-inv-01', '11111111-1111-4111-8111-111111111101'],
+const devAssignedGatesByUserId = new Map<string, { bankGateId: string | null; usdtGateId: string | null }>([
+  ['usr-inv-01', { bankGateId: '11111111-1111-4111-8111-111111111101', usdtGateId: null }],
 ]);
 
-export function getDevAssignedGateId(userId: string): string | null {
-  return devAssignedGateByUserId.get(userId) ?? null;
+export function getDevAssignedGates(userId: string): { bankGateId: string | null; usdtGateId: string | null } {
+  return devAssignedGatesByUserId.get(userId) || { bankGateId: null, usdtGateId: null };
 }
 
-export function setDevAssignedGateId(userId: string, gateId: string | null): PaymentGateRecord | null {
+export function getDevAssignedGateId(userId: string, method: 'bank' | 'usdt' = 'bank'): string | null {
+  const entry = getDevAssignedGates(userId);
+  return method === 'usdt' ? entry.usdtGateId : entry.bankGateId;
+}
+
+export function setDevAssignedGateId(
+  userId: string,
+  gateId: string | null,
+  method?: 'bank' | 'usdt'
+): PaymentGateRecord | null {
+  const current = { ...getDevAssignedGates(userId) };
   if (!gateId) {
-    devAssignedGateByUserId.set(userId, null);
+    if (method === 'usdt') current.usdtGateId = null;
+    else current.bankGateId = null;
+    devAssignedGatesByUserId.set(userId, current);
     return null;
   }
   const gate = devPaymentGates.find((g) => g.id === gateId) || null;
   if (!gate) throw new Error('GATE_NOT_FOUND');
-  devAssignedGateByUserId.set(userId, gate.id);
+  const gateMethod: 'bank' | 'usdt' = method || (decorateGateRow(gate).method === 'usdt' ? 'usdt' : 'bank');
+  if (gateMethod === 'usdt') current.usdtGateId = gate.id;
+  else current.bankGateId = gate.id;
+  devAssignedGatesByUserId.set(userId, current);
   return gate;
 }
 
@@ -159,14 +174,47 @@ export function getDevGateById(gateId?: string | null): PaymentGateRecord | null
   return devPaymentGates.find((g) => g.id === gateId) || null;
 }
 
+export function toAssignedPaymentAccount(gate: PaymentGateRecord | null) {
+  if (!gate || gate.enabled === false) return null;
+  const decorated = decorateGateRow(gate, 0);
+  const rows: GateDetailRow[] = Array.isArray(decorated.detail_rows) ? decorated.detail_rows : [];
+  const findVal = (...candidates: string[]): string => {
+    for (const c of candidates) {
+      const target = c.toLowerCase();
+      for (const [k, v] of Object.entries(decorated.account_details || {})) {
+        if (k.toLowerCase() === target && String(v || '').trim()) return String(v).trim();
+      }
+      const match = rows.find((r) => r.label.toLowerCase() === target || r.label.toLowerCase().includes(target));
+      if (match?.value) return match.value;
+    }
+    return '';
+  };
+  const beneficiary = findVal('beneficiary', 'account holder', 'holder', 'recipient', 'account name');
+  return {
+    gateId: decorated.id,
+    gateName: decorated.name,
+    method: decorated.method as 'bank' | 'usdt',
+    beneficiary,
+    accountHolder: beneficiary,
+    bankName: findVal('bank', 'bank name', 'institution', 'bank institution') || decorated.name,
+    iban: findVal('iban', 'account number', 'iban / account'),
+    bic: findVal('bic', 'swift', 'bic / swift', 'swift / bic'),
+    reference: findVal('reference', 'payment reference', 'memo', 'remittance reference') || undefined,
+    instructions: decorated.instructions || '',
+    network: decorated.method === 'usdt' ? decorated.network : undefined,
+    walletAddress: decorated.method === 'usdt' ? decorated.wallet_address : undefined,
+    detailRows: rows,
+  };
+}
+
 export function listDevPaymentGatesWithCounts(): PaymentGateRecord[] {
   return devPaymentGates
     .slice()
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((gate) => {
       let count = 0;
-      for (const assigned of devAssignedGateByUserId.values()) {
-        if (assigned === gate.id) count += 1;
+      for (const assigned of devAssignedGatesByUserId.values()) {
+        if (assigned.bankGateId === gate.id || assigned.usdtGateId === gate.id) count += 1;
       }
       return { ...gate, assigned_investors_count: count };
     });
@@ -343,9 +391,9 @@ function decorateGateRow(row: any, assignedCount = 0) {
 
 manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) {
-    const assignedId = getDevAssignedGateId(req.user!.id);
+    const assigned = getDevAssignedGates(req.user!.id);
     const active = listDevPaymentGatesWithCounts()
-      .filter((gate) => gate.active && gate.id === assignedId)
+      .filter((gate) => gate.active && (gate.id === assigned.bankGateId || gate.id === assigned.usdtGateId))
       .map((gate) => decorateGateRow(gate, gate.assigned_investors_count || 0));
     return res.json({ success: true, data: active, requestId: req.id });
   }
@@ -442,7 +490,8 @@ manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, su
     const method = devPaymentGates.find((item) => item.id === String(body.methodId) && item.enabled);
     if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
     const devMethodType = ['sepa', 'wire', 'bank_wire'].includes(String(method.method).toLowerCase()) ? 'bank' : String(method.method).toLowerCase();
-    if (!['bank', 'usdt'].includes(devMethodType) || getDevAssignedGateId(userId) !== method.id) {
+    const expectedGateId = devMethodType === 'usdt' ? getDevAssignedGateId(userId, 'usdt') : getDevAssignedGateId(userId, 'bank');
+    if (!['bank', 'usdt'].includes(devMethodType) || expectedGateId !== method.id) {
       return res.status(403).json({ success: false, error: 'This payment method is not assigned to your account.', code: 'PAYMENT_METHOD_NOT_ASSIGNED', requestId: req.id });
     }
     if (amount < Number(method.minimum_amount) || (method.maximum_amount && amount > Number(method.maximum_amount))) {
@@ -603,7 +652,175 @@ manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'writ
       markSupabaseSchemaMissingInDev();
       return createInDev();
     }
-    return res.status(400).json({ success: false, error: error?.message === 'INVALID_MANUAL_PAYMENT_METHOD' || error?.message === 'INVALID_EXTRA_FIELDS' ? error.message : 'The payment method could not be created.', code: 'INVALID_MANUAL_METHOD', requestId: req.id });
+    const msgMap: Record<string, string> = {
+      INVALID_MANUAL_PAYMENT_METHOD: 'Enter a valid payment gate name, method, limits, and fee configuration.',
+      INVALID_EXTRA_FIELDS: 'Extra payment form fields are invalid.',
+      BANK_DETAILS_REQUIRED: 'Provide at least one complete bank detail row (e.g. Beneficiary and IBAN).',
+      INVALID_USDT_NETWORK_OR_ADDRESS: 'Select TRC20, ERC20, or BEP20 and enter a valid USDT wallet address.',
+    };
+    const friendly = msgMap[String(error?.message || '')] || 'The payment method could not be created.';
+    return res.status(400).json({ success: false, error: friendly, code: 'INVALID_MANUAL_METHOD', requestId: req.id });
+  }
+});
+
+manualPaymentRouter.post('/admin/issue-account', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
+  const userId = String(req.body?.userId || '').trim();
+  const gateIdInput = req.body?.gateId ? String(req.body.gateId).trim() : '';
+  if (!userId) {
+    return res.status(400).json({ success: false, error: 'Investor ID is required to issue payment account details.', code: 'USER_ID_REQUIRED', requestId: req.id });
+  }
+
+  let validatedPayload: ReturnType<typeof safeMethodInput>;
+  try {
+    validatedPayload = safeMethodInput({ ...req.body, active: req.body?.active ?? true }, req.user!.id);
+  } catch (err: any) {
+    const msgMap: Record<string, string> = {
+      INVALID_MANUAL_PAYMENT_METHOD: 'Enter a valid account label and payment rail configuration.',
+      BANK_DETAILS_REQUIRED: 'Enter bank account details (Beneficiary, Bank Name, IBAN, and optional BIC/Reference).',
+      INVALID_USDT_NETWORK_OR_ADDRESS: 'Select TRC20, ERC20, or BEP20 and enter a valid USDT wallet address.',
+    };
+    return res.status(400).json({
+      success: false,
+      error: msgMap[String(err?.message || '')] || 'Payment account details could not be validated.',
+      code: 'INVALID_PAYMENT_ACCOUNT_DETAILS',
+      requestId: req.id,
+    });
+  }
+
+  const normalizedMethod: 'bank' | 'usdt' = validatedPayload.account_details[GATE_META_METHOD] === 'usdt' ? 'usdt' : 'bank';
+
+  const issueInDev = () => {
+    const now = new Date().toISOString();
+    let gateRecord: PaymentGateRecord;
+    const existingIdx = gateIdInput ? devPaymentGates.findIndex((g) => g.id === gateIdInput) : -1;
+    if (existingIdx !== -1) {
+      gateRecord = {
+        ...devPaymentGates[existingIdx],
+        ...validatedPayload,
+        method: normalizedMethod,
+        detail_rows: Array.isArray(validatedPayload.account_details[GATE_META_ROWS]) ? validatedPayload.account_details[GATE_META_ROWS] : [],
+        active: validatedPayload.enabled,
+        updated_at: now,
+      } as PaymentGateRecord;
+      devPaymentGates[existingIdx] = gateRecord;
+    } else {
+      gateRecord = {
+        id: crypto.randomUUID(),
+        ...validatedPayload,
+        method: normalizedMethod,
+        detail_rows: Array.isArray(validatedPayload.account_details[GATE_META_ROWS]) ? validatedPayload.account_details[GATE_META_ROWS] : [],
+        active: validatedPayload.enabled,
+        sort_order: devPaymentGates.length + 1,
+        assigned_investors_count: 1,
+        created_at: now,
+        updated_at: now,
+      } as PaymentGateRecord;
+      devPaymentGates.push(gateRecord);
+    }
+    setDevAssignedGateId(userId, gateRecord.id, normalizedMethod);
+    const assigned = getDevAssignedGates(userId);
+    return res.status(existingIdx !== -1 ? 200 : 201).json({
+      success: true,
+      data: {
+        gate: decorateGateRow(gateRecord, 1),
+        assignedBankAccount: toAssignedPaymentAccount(getDevGateById(assigned.bankGateId)),
+        assignedUsdtAccount: toAssignedPaymentAccount(getDevGateById(assigned.usdtGateId)),
+      },
+      message: `Issued ${normalizedMethod === 'usdt' ? 'USDT' : 'bank'} payment account details to investor.`,
+      requestId: req.id,
+    });
+  };
+
+  if (!canUseLiveSupabaseData()) {
+    return issueInDev();
+  }
+
+  try {
+    const client = getSupabaseAdmin();
+    const { data: profile, error: profErr } = await client
+      .from('profiles')
+      .select('id,email,full_name,payment_gate_id,usdt_payment_gate_id')
+      .eq('id', userId)
+      .maybeSingle();
+    if (profErr) throw profErr;
+    if (!profile) {
+      return res.status(404).json({ success: false, error: 'Investor account not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    }
+
+    let gateRow: any = null;
+    if (gateIdInput) {
+      const { data: updated, error: updErr } = await client
+        .from('manual_payment_methods')
+        .update(validatedPayload)
+        .eq('id', gateIdInput)
+        .select('*')
+        .maybeSingle();
+      if (updErr) throw updErr;
+      gateRow = updated;
+    }
+
+    if (!gateRow) {
+      const { data: inserted, error: insErr } = await client
+        .from('manual_payment_methods')
+        .insert(validatedPayload)
+        .select('*')
+        .single();
+      if (insErr) throw insErr;
+      gateRow = inserted;
+    }
+
+    const { error: assignRpcErr } = await client.rpc('assign_gate', {
+      p_users: [userId],
+      p_gate: gateRow.id,
+    });
+    if (assignRpcErr) {
+      const columnPatch = normalizedMethod === 'usdt'
+        ? { usdt_payment_gate_id: gateRow.id }
+        : { payment_gate_id: gateRow.id };
+      const { error: directAssignErr } = await client
+        .from('profiles')
+        .update(columnPatch)
+        .eq('id', userId);
+      if (directAssignErr) throw directAssignErr;
+    }
+
+    if (req.body?.notifyInvestor !== false) {
+      const summaryLine = normalizedMethod === 'usdt'
+        ? `${validatedPayload.account_details[GATE_META_NETWORK]} wallet ${validatedPayload.account_details[GATE_META_WALLET]}`
+        : `${validatedPayload.name} bank funding coordinates`;
+      try {
+        await client.from('notifications').insert({
+          user_id: userId,
+          title: normalizedMethod === 'usdt' ? 'USDT deposit wallet issued' : 'Payment account details issued',
+          body: `Your dedicated treasury payment details are ready (${summaryLine}). Open Wallet or Deposit to view full instructions.`,
+          read: false,
+        });
+      } catch {}
+    }
+
+    const decorated = decorateGateRow(gateRow, 1);
+    const issuedAccount = toAssignedPaymentAccount(gateRow as PaymentGateRecord);
+    return res.status(gateIdInput ? 200 : 201).json({
+      success: true,
+      data: {
+        gate: decorated,
+        assignedBankAccount: normalizedMethod === 'bank' ? issuedAccount : null,
+        assignedUsdtAccount: normalizedMethod === 'usdt' ? issuedAccount : null,
+      },
+      message: `Issued ${normalizedMethod === 'usdt' ? 'USDT' : 'bank'} payment account details to investor.`,
+      requestId: req.id,
+    });
+  } catch (err: any) {
+    if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+      markSupabaseSchemaMissingInDev();
+      return issueInDev();
+    }
+    return res.status(503).json({
+      success: false,
+      error: 'Unable to issue payment account details right now.',
+      code: 'ISSUE_PAYMENT_ACCOUNT_FAILED',
+      requestId: req.id,
+    });
   }
 });
 
@@ -624,12 +841,16 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
       } as PaymentGateRecord;
       devPaymentGates[idx] = updated;
       let count = 0;
-      for (const assigned of devAssignedGateByUserId.values()) {
-        if (assigned === updated.id) count += 1;
+      for (const assigned of devAssignedGatesByUserId.values()) {
+        if (assigned.bankGateId === updated.id || assigned.usdtGateId === updated.id) count += 1;
       }
       return res.json({ success: true, data: decorateGateRow(updated, count), requestId: req.id });
-    } catch {
-      return res.status(400).json({ success: false, error: 'The payment method could not be updated.', code: 'MANUAL_METHOD_UPDATE_FAILED', requestId: req.id });
+    } catch (err: any) {
+      const msgMap: Record<string, string> = {
+        BANK_DETAILS_REQUIRED: 'Provide at least one complete bank detail row.',
+        INVALID_USDT_NETWORK_OR_ADDRESS: 'Select TRC20, ERC20, or BEP20 and enter a valid USDT wallet address.',
+      };
+      return res.status(400).json({ success: false, error: msgMap[String(err?.message || '')] || 'The payment method could not be updated.', code: 'MANUAL_METHOD_UPDATE_FAILED', requestId: req.id });
     }
   };
   if (!canUseLiveSupabaseData()) {
@@ -669,7 +890,11 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
       markSupabaseSchemaMissingInDev();
       return updateInDev();
     }
-    return res.status(400).json({ success: false, error: 'The payment method could not be updated.', code: 'MANUAL_METHOD_UPDATE_FAILED', requestId: req.id });
+    const msgMap: Record<string, string> = {
+      BANK_DETAILS_REQUIRED: 'Provide at least one complete bank detail row.',
+      INVALID_USDT_NETWORK_OR_ADDRESS: 'Select TRC20, ERC20, or BEP20 and enter a valid USDT wallet address.',
+    };
+    return res.status(400).json({ success: false, error: msgMap[String(error?.message || '')] || 'The payment method could not be updated.', code: 'MANUAL_METHOD_UPDATE_FAILED', requestId: req.id });
   }
 });
 
@@ -679,8 +904,8 @@ manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings',
     const idx = devPaymentGates.findIndex((g) => g.id === gateId);
     if (idx === -1) return res.status(404).json({ success: false, error: 'Payment gate not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
     let assignedCount = 0;
-    for (const assigned of devAssignedGateByUserId.values()) {
-      if (assigned === gateId) assignedCount += 1;
+    for (const assigned of devAssignedGatesByUserId.values()) {
+      if (assigned.bankGateId === gateId || assigned.usdtGateId === gateId) assignedCount += 1;
     }
     if (assignedCount > 0) {
       return res.status(409).json({

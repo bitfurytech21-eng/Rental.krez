@@ -19,8 +19,11 @@ import {
   registerManualPaymentDevHooks,
   hydrateManualPaymentDevState,
   exportManualPaymentDevDeposits,
+  getDevAssignedGates,
   getDevAssignedGateId,
+  setDevAssignedGateId,
   getDevGateById,
+  toAssignedPaymentAccount,
 } from './manualPaymentRoutes';
 import {
   handleTranslationRequest,
@@ -92,7 +95,7 @@ import {
   listComplianceDocuments, addComplianceDocument, listAdminComplianceDocuments, reviewComplianceDocument,
   listComplianceSteps, upsertComplianceStep, getWalletSummary, getAssignedPaymentGate, findTransactionByReferenceOrId,
   ComplianceStepKey, ComplianceStepRecord,
-  listUserStatementDocuments, getSignedDocumentUrl,
+  listUserStatementDocuments, getSignedDocumentUrl, createAdminDocumentRecord, getAdminSignedDocumentUrl,
   getPersistentAccountStatement, getPersistentPerformance,
   signInCustomer, registerCustomer, requestCustomerPasswordReset, updateCustomerPassword, signOutCustomer
 } from './supabaseDatabase';
@@ -3282,10 +3285,19 @@ const handleGateAssignment = async (userIds: string[], method: 'bank' | 'usdt', 
   }
   if (canUseLiveSupabaseData()) {
     try {
+      const admin = getSupabaseAdmin();
       const { data, error } = gateId
-        ? await getSupabaseAdmin().rpc('assign_gate', { p_users: userIds, p_gate: gateId })
-        : await getSupabaseAdmin().rpc('clear_gate', { p_users: userIds, p_method: method });
-      if (error) throw error;
+        ? await admin.rpc('assign_gate', { p_users: userIds, p_gate: gateId })
+        : await admin.rpc('clear_gate', { p_users: userIds, p_method: method });
+      if (error) {
+        const msg = String(error.message || '').toLowerCase();
+        const isMissingFn = String(error.code || '') === 'PGRST202' || String(error.code || '') === '42883' || msg.includes('could not find the function') || msg.includes('does not exist');
+        if (!isMissingFn) throw error;
+        const patch = method === 'usdt' ? { usdt_payment_gate_id: gateId } : { payment_gate_id: gateId };
+        const { error: directErr } = await admin.from('profiles').update(patch).in('id', userIds);
+        if (directErr) throw directErr;
+        return res.json({ success: true, data: { success: true, method, assigned_count: userIds.length }, message: gateId ? 'Payment gate assigned.' : 'Payment gate cleared.', requestId: req.id });
+      }
       return res.json({ success: true, data, message: gateId ? 'Payment gate assigned.' : 'Payment gate cleared.', requestId: req.id });
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
@@ -3303,6 +3315,8 @@ const handleGateAssignment = async (userIds: string[], method: 'bank' | 'usdt', 
   const customers = userIds.map((id) => devCustomersById.get(id));
   if (customers.some((customer) => !customer)) return res.status(404).json({ success: false, error: 'One or more investors were not found.', code: 'USER_NOT_FOUND', requestId: req.id });
   for (const customer of customers) {
+    if (!customer) continue;
+    setDevAssignedGateId(customer.id, gateId, method);
     if (method === 'bank') {
       (customer as any).assignedGateId = gateId;
       (customer as any).assignedGateName = gateId ? gateName : null;
@@ -3776,19 +3790,11 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
       return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
     }
     const devCustomer = devCustomersById.get(req.user!.id);
-    const devGateId = (devCustomer as any)?.assignedGateId || getDevAssignedGateId(req.user!.id);
-    const devGate = devGateId ? getDevGateById(devGateId) : null;
-    const assignedBankAccount = devGate
-      ? {
-          gateId: devGate.id,
-          gateName: devGate.name,
-          method: devGate.method,
-          bankName: devGate.account_details?.Bank || devGate.name,
-          accountHolder: devGate.account_details?.Beneficiary || '',
-          iban: devGate.account_details?.IBAN || '',
-          bic: devGate.account_details?.BIC || '',
-        }
-      : null;
+    const devGates = getDevAssignedGates(req.user!.id);
+    const devBankGateId = (devCustomer as any)?.assignedGateId ?? devGates.bankGateId;
+    const devUsdtGateId = (devCustomer as any)?.assignedUsdtGateId ?? devGates.usdtGateId;
+    const assignedBankAccount = devBankGateId ? toAssignedPaymentAccount(getDevGateById(devBankGateId)) : null;
+    const assignedUsdtAccount = devUsdtGateId ? toAssignedPaymentAccount(getDevGateById(devUsdtGateId)) : null;
     const baseData = devCustomer ? toPublicDevCustomer(devCustomer) : {
       id: req.user!.id,
       email: req.user!.email,
@@ -3808,6 +3814,7 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
         iban: (baseData as any).bankIban || '',
         bankHolder: (baseData as any).bankAccountHolder || baseData.fullName,
         assignedBankAccount,
+        assignedUsdtAccount,
       },
       requestId: req.id
     });
@@ -3816,7 +3823,11 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
     const profile = await getUserProfile(req.user!.id);
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     const assignedGateId = profile.payment_gate_id ?? profile.assigned_gate_id;
-    const assignedBankAccount = assignedGateId ? await getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : null;
+    const assignedUsdtGateId = profile.usdt_payment_gate_id;
+    const [assignedBankAccount, assignedUsdtAccount] = await Promise.all([
+      assignedGateId ? getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : Promise.resolve(null),
+      assignedUsdtGateId ? getAssignedPaymentGate(String(assignedUsdtGateId)).catch(() => null) : Promise.resolve(null),
+    ]);
     const resolvedIban = profile.iban ?? profile.bank_iban ?? '';
     const resolvedHolder = profile.bank_holder ?? profile.bank_account_holder ?? profile.full_name ?? '';
     return res.json({ success: true, data: {
@@ -3828,6 +3839,7 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
       iban: resolvedIban, bankIban: resolvedIban,
       bankHolder: resolvedHolder, bankAccountHolder: resolvedHolder,
       assignedBankAccount,
+      assignedUsdtAccount,
       cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
       dateOfBirth: profile.date_of_birth, preferences: profile.preferences
     }, requestId: req.id });
@@ -4093,7 +4105,11 @@ router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'
       ]);
       if (!wallet) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
       const gateId = profile?.payment_gate_id ?? profile?.assigned_gate_id;
-      const assignedBankAccount = gateId ? await getAssignedPaymentGate(String(gateId)).catch(() => null) : null;
+      const usdtGateId = profile?.usdt_payment_gate_id;
+      const [assignedBankAccount, assignedUsdtAccount] = await Promise.all([
+        gateId ? getAssignedPaymentGate(String(gateId)).catch(() => null) : Promise.resolve(null),
+        usdtGateId ? getAssignedPaymentGate(String(usdtGateId)).catch(() => null) : Promise.resolve(null),
+      ]);
       return res.json({
         success: true,
         data: {
@@ -4105,6 +4121,7 @@ router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'
           subBalances: { EUR: wallet.availableBalance },
           currency: wallet.currency,
           assignedBankAccount,
+          assignedUsdtAccount,
         },
         requestId: req.id
       });
@@ -4145,19 +4162,11 @@ router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'
   }
 
   const devCustomer = devCustomersById.get(userId);
-  const devGateId = (devCustomer as any)?.assignedGateId || getDevAssignedGateId(userId);
-  const devGate = devGateId ? getDevGateById(devGateId) : null;
-  const assignedBankAccount = devGate
-    ? {
-        gateId: devGate.id,
-        gateName: devGate.name,
-        method: devGate.method,
-        bankName: devGate.account_details?.Bank || devGate.name,
-        accountHolder: devGate.account_details?.Beneficiary || '',
-        iban: devGate.account_details?.IBAN || '',
-        bic: devGate.account_details?.BIC || '',
-      }
-    : null;
+  const devGates = getDevAssignedGates(userId);
+  const devGateId = (devCustomer as any)?.assignedGateId ?? devGates.bankGateId;
+  const devUsdtGateId = (devCustomer as any)?.assignedUsdtGateId ?? devGates.usdtGateId;
+  const assignedBankAccount = devGateId ? toAssignedPaymentAccount(getDevGateById(devGateId)) : null;
+  const assignedUsdtAccount = devUsdtGateId ? toAssignedPaymentAccount(getDevGateById(devUsdtGateId)) : null;
   const balanceCents = Math.round(calculatedBalance * 100);
 
   res.json({
@@ -4170,6 +4179,7 @@ router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'
       subBalances: getOrInitUserSubBalances(req.user!.id, calculatedBalance),
       currency: 'EUR',
       assignedBankAccount,
+      assignedUsdtAccount,
     },
     requestId: req.id
   });
@@ -4566,7 +4576,7 @@ router.post(['/compliance/documents', '/documents'], requireAuth, async (req: Au
   const fileName = String(req.body?.fileName || '').trim();
   const mimeType = String(req.body?.mimeType || 'application/pdf').trim();
   const fileSize = Number(req.body?.fileSize || 0);
-  const fileDataUrl = typeof req.body?.fileDataUrl === 'string' && req.body.fileDataUrl.length <= 2_500_000
+  const fileDataUrl = typeof req.body?.fileDataUrl === 'string' && req.body.fileDataUrl.length <= 20_500_000
     ? req.body.fileDataUrl
     : undefined;
 
@@ -4810,7 +4820,7 @@ router.get('/admin/providers/status', requireStaffSection('settings', 'read'), a
 });
 
 router.get('/admin/documents', requireStaffSection('documents', 'read'), async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
       const docs = await listAdminComplianceDocuments(250);
       return res.json({ success: true, data: docs, total: docs.length, requestId: req.id });
@@ -4827,6 +4837,8 @@ router.get('/admin/documents', requireStaffSection('documents', 'read'), async (
     for (const d of docs) {
       allDocs.push({
         ...d,
+        filePath: (d as any).filePath || d.fileName || d.id,
+        createdAt: (d as any).createdAt || d.uploadedAt,
         userEmail: cust?.email || 'investor@kretz.com',
         userName: cust?.fullName || 'Investor',
       });
@@ -4840,42 +4852,118 @@ router.post('/admin/documents/upload', requireStaffSection('documents', 'write')
   const userId = String(req.body?.userId || '').trim();
   const title = String(req.body?.title || '').trim();
   const fileName = String(req.body?.fileName || 'document.pdf').trim();
+  const mimeType = String(req.body?.mimeType || 'application/pdf').trim().toLowerCase();
   const fileDataUrl = String(req.body?.fileDataUrl || '');
+  const storagePath = req.body?.storagePath ? String(req.body.storagePath).trim() : undefined;
+  const category = String(req.body?.category || 'statement').trim();
+  const documentType = String(req.body?.documentType || '').trim();
   const fileSize = Number(req.body?.fileSize || fileDataUrl.length || 1024);
+
   if (!userId || !title) {
     return res.status(400).json({ success: false, error: 'Investor and document title are required.', code: 'INVALID_DOCUMENT_PAYLOAD', requestId: req.id });
   }
-  if (isSupabaseServerConfigured()) {
-    return res.status(400).json({ success: false, error: 'Use Supabase documents storage bucket when Supabase is active.', code: 'USE_SUPABASE_STORAGE', requestId: req.id });
+  const allowedMimes = new Set(['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+  if (!allowedMimes.has(mimeType) && !/\.(pdf|jpe?g|png|webp)$/i.test(fileName)) {
+    return res.status(400).json({ success: false, error: 'Unsupported document format. Upload a PDF, JPG, PNG, or WebP file.', code: 'INVALID_FILE_TYPE', requestId: req.id });
+  }
+  if (!Number.isFinite(fileSize) || fileSize <= 0 || fileSize > 15 * 1024 * 1024) {
+    return res.status(400).json({ success: false, error: 'Document size must be 15 MB or smaller.', code: 'INVALID_FILE_SIZE', requestId: req.id });
+  }
+  if (!fileDataUrl && !storagePath) {
+    return res.status(400).json({ success: false, error: 'Attach a valid document file before uploading.', code: 'FILE_REQUIRED', requestId: req.id });
+  }
+
+  if (canUseLiveSupabaseData()) {
+    try {
+      const created = await createAdminDocumentRecord({
+        userId,
+        title,
+        category,
+        documentType,
+        fileName,
+        mimeType,
+        fileSize,
+        fileDataUrl: fileDataUrl || undefined,
+        storagePath,
+      });
+      return res.status(201).json({ success: true, data: created, message: 'Investor document uploaded.', requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({
+          success: false,
+          error: err?.message || 'Unable to upload account document to private storage.',
+          code: 'ADMIN_DOCUMENT_UPLOAD_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
   }
   if (process.env.NODE_ENV === 'production') {
     return res.status(503).json({ success: false, error: 'Document storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
   const existing = devComplianceDocsByUser.get(userId) || [];
+  const nowIso = new Date().toISOString();
+  const docId = `doc-${crypto.randomBytes(5).toString('hex')}`;
   const doc = {
-    id: `doc-${crypto.randomBytes(5).toString('hex')}`,
+    id: docId,
     userId,
-    category: 'statement' as any,
-    documentType: 'Investor Document',
+    category: (['kyc_identity', 'proof_of_address', 'accredited_proof', 'statement', 'tax_document', 'general'].includes(category) ? category : 'statement') as any,
+    documentType: documentType || (category === 'tax_document' ? 'Tax Document' : category === 'general' ? 'Account Document' : 'Investor Document'),
     title,
     fileName,
+    filePath: storagePath || `${userId}/${docId}-${fileName}`,
     fileSize,
-    mimeType: 'application/pdf',
+    mimeType,
     status: 'verified' as const,
     fileDataUrl,
-    uploadedAt: new Date().toISOString(),
-    reviewedAt: new Date().toISOString(),
+    uploadedAt: nowIso,
+    createdAt: nowIso,
+    reviewedAt: nowIso,
   };
   devComplianceDocsByUser.set(userId, [doc, ...existing]);
   await persistDevState();
   return res.status(201).json({ success: true, data: doc, message: 'Investor document uploaded.', requestId: req.id });
 });
 
+router.get('/admin/documents/:docId/signed-url', requireStaffSection('documents', 'read'), async (req: AuthenticatedRequest, res: Response) => {
+  const { docId } = req.params;
+  if (canUseLiveSupabaseData()) {
+    try {
+      const signed = await getAdminSignedDocumentUrl(docId);
+      if (!signed) {
+        return res.status(404).json({ success: false, error: 'Document not found or preview unavailable.', code: 'DOCUMENT_NOT_FOUND', requestId: req.id });
+      }
+      return res.json({ success: true, data: signed, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Unable to generate signed document link.', code: 'SIGNED_URL_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Document storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  for (const docs of devComplianceDocsByUser.values()) {
+    const found = docs.find((d) => d.id === docId);
+    if (found) {
+      const url = found.fileDataUrl || `data:${found.mimeType || 'application/pdf'};base64,${Buffer.from(`L'Agence Real Estate Document: ${found.title}`).toString('base64')}`;
+      return res.json({ success: true, data: { url, fileName: found.fileName, mimeType: found.mimeType, expiresInSeconds: 120 }, requestId: req.id });
+    }
+  }
+  return res.status(404).json({ success: false, error: 'Document not found.', code: 'DOCUMENT_NOT_FOUND', requestId: req.id });
+});
+
 router.delete('/admin/documents/:docId', requireStaffSection('documents', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const { docId } = req.params;
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
-      const { error } = await getSupabaseAdmin().from('documents').delete().eq('id', docId);
+      const admin = getSupabaseAdmin();
+      const { data: row } = await admin.from('documents').select('*').eq('id', docId).maybeSingle();
+      const storagePath = (row as any)?.storage_path || (row as any)?.file_path;
+      if (storagePath && typeof storagePath === 'string' && storagePath.includes('/')) {
+        await admin.storage.from('documents').remove([storagePath]).catch(() => {});
+      }
+      const { error } = await admin.from('documents').delete().eq('id', docId);
       if (error) throw error;
       return res.json({ success: true, message: 'Document deleted.', requestId: req.id });
     } catch (err: any) {
@@ -6420,19 +6508,11 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
       return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
     }
     const devCustomer = devCustomersById.get(req.user!.id);
-    const devGateId = (devCustomer as any)?.assignedGateId || getDevAssignedGateId(req.user!.id);
-    const devGate = devGateId ? getDevGateById(devGateId) : null;
-    const assignedBankAccount = devGate
-      ? {
-          gateId: devGate.id,
-          gateName: devGate.name,
-          method: devGate.method,
-          bankName: devGate.account_details?.Bank || devGate.name,
-          accountHolder: devGate.account_details?.Beneficiary || '',
-          iban: devGate.account_details?.IBAN || '',
-          bic: devGate.account_details?.BIC || '',
-        }
-      : null;
+    const devGates = getDevAssignedGates(req.user!.id);
+    const devGateId = (devCustomer as any)?.assignedGateId ?? devGates.bankGateId;
+    const devUsdtGateId = (devCustomer as any)?.assignedUsdtGateId ?? devGates.usdtGateId;
+    const assignedBankAccount = devGateId ? toAssignedPaymentAccount(getDevGateById(devGateId)) : null;
+    const assignedUsdtAccount = devUsdtGateId ? toAssignedPaymentAccount(getDevGateById(devUsdtGateId)) : null;
     const publicDev = devCustomer ? toPublicDevCustomer(devCustomer) : null;
     return res.json({
       success: true,
@@ -6441,12 +6521,14 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
         iban: publicDev.bankIban || '',
         bankHolder: publicDev.bankAccountHolder || publicDev.fullName,
         assignedBankAccount,
+        assignedUsdtAccount,
       } : {
         ...req.user,
         kycStatus: 'pending',
         balance: Number(req.user!.balance || 0),
         status: req.user!.status || 'active',
         assignedBankAccount,
+        assignedUsdtAccount,
       },
       requestId: req.id
     });
@@ -6455,7 +6537,11 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
     const profile = await getUserProfile(req.user!.id);
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     const assignedGateId = profile.payment_gate_id ?? profile.assigned_gate_id;
-    const assignedBankAccount = assignedGateId ? await getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : null;
+    const assignedUsdtGateId = profile.usdt_payment_gate_id;
+    const [assignedBankAccount, assignedUsdtAccount] = await Promise.all([
+      assignedGateId ? getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : Promise.resolve(null),
+      assignedUsdtGateId ? getAssignedPaymentGate(String(assignedUsdtGateId)).catch(() => null) : Promise.resolve(null),
+    ]);
     const resolvedIban = profile.iban ?? profile.bank_iban ?? '';
     const resolvedHolder = profile.bank_holder ?? profile.bank_account_holder ?? profile.full_name ?? '';
     return res.json({ success: true, data: {
@@ -6468,6 +6554,7 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
       iban: resolvedIban, bankIban: resolvedIban,
       bankHolder: resolvedHolder, bankAccountHolder: resolvedHolder,
       assignedBankAccount,
+      assignedUsdtAccount,
       status: profile.account_status || 'active'
     }, requestId: req.id });
   } catch {

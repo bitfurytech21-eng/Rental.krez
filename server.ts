@@ -69,8 +69,8 @@ async function runServer() {
   const PORT = portArg || (process.env.PORT ? parseInt(process.env.PORT, 10) : 3000);
 
   // Body Parsers (preserve rawBody for webhook HMAC signature verification)
-  app.use(express.json({ limit: '8mb', verify: (req, _res, buffer) => { (req as any).rawBody = buffer.toString('utf8'); } }));
-  app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+  app.use(express.json({ limit: '25mb', verify: (req, _res, buffer) => { (req as any).rawBody = buffer.toString('utf8'); } }));
+  app.use(express.urlencoded({ extended: true, limit: '4mb' }));
 
   // CORS: never wildcard with credentials. Production only allows same-origin requests and
   // origins listed in ALLOWED_ORIGINS (comma-separated). Non-production reflects any origin
