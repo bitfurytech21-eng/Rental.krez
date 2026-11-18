@@ -405,6 +405,10 @@ manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, su
   if (!isSupabaseServerConfigured()) {
     const method = devPaymentGates.find((item) => item.id === String(body.methodId) && item.enabled);
     if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
+    const devMethodType = ['sepa', 'wire', 'bank_wire'].includes(String(method.method).toLowerCase()) ? 'bank' : String(method.method).toLowerCase();
+    if (!['bank', 'usdt'].includes(devMethodType) || getDevAssignedGateId(userId) !== method.id) {
+      return res.status(403).json({ success: false, error: 'This payment method is not assigned to your account.', code: 'PAYMENT_METHOD_NOT_ASSIGNED', requestId: req.id });
+    }
     if (amount < Number(method.minimum_amount) || (method.maximum_amount && amount > Number(method.maximum_amount))) {
       return res.status(400).json({ success: false, error: 'The amount is outside this payment method’s allowed limits.', code: 'AMOUNT_OUT_OF_RANGE', requestId: req.id });
     }
@@ -449,6 +453,14 @@ manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, su
       .select('*').eq('id', String(body.methodId)).eq('enabled', true).maybeSingle();
     if (methodError) throw methodError;
     if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
+    const { data: assignment, error: assignmentError } = await client.from('profiles')
+      .select('payment_gate_id,usdt_payment_gate_id').eq('id', userId).maybeSingle();
+    if (assignmentError) throw assignmentError;
+    const methodType = decorateGateRow(method).method;
+    const assignedGateId = methodType === 'usdt' ? assignment?.usdt_payment_gate_id : methodType === 'bank' ? assignment?.payment_gate_id : null;
+    if (!assignedGateId || String(assignedGateId) !== String(method.id)) {
+      return res.status(403).json({ success: false, error: 'This payment method is not assigned to your account.', code: 'PAYMENT_METHOD_NOT_ASSIGNED', requestId: req.id });
+    }
     if (amount < Number(method.minimum_amount) || (method.maximum_amount && amount > Number(method.maximum_amount))) {
       return res.status(400).json({ success: false, error: 'The amount is outside this payment method’s allowed limits.', code: 'AMOUNT_OUT_OF_RANGE', requestId: req.id });
     }
