@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import React, { useEffect, useState } from 'react';
 import { Save, ShieldCheck, LockKeyhole } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
@@ -156,8 +157,8 @@ export const ProfilePage: React.FC = () => {
       setBankMaskedEmail('');
       toast.success('Profile and banking details saved.');
     } catch (err: any) {
-      setBankCodeError(err?.message || 'Unable to save profile updates.');
-      toast.error(err?.message || 'Unable to save profile updates.');
+      setBankCodeError(safeErrorMessage(err, 'Unable to save profile updates.'));
+      toast.error(safeErrorMessage(err, 'Unable to save profile updates.'));
     } finally {
       setSaving(false);
     }
@@ -367,8 +368,8 @@ export const ProfilePage: React.FC = () => {
                         setBankCodeError(null);
                         toast.info('A new bank-change security code has been requested.');
                       } catch (err: any) {
-                        setBankCodeError(err?.message || 'Unable to resend the security code.');
-                        toast.error(err?.message || 'Unable to resend the security code.');
+                        setBankCodeError(safeErrorMessage(err, 'Unable to resend the security code.'));
+                        toast.error(safeErrorMessage(err, 'Unable to resend the security code.'));
                       } finally {
                         setSaving(false);
                       }
@@ -416,7 +417,7 @@ export const ProfilePage: React.FC = () => {
           setConfirmNewPassword('');
           toast.success('Password changed successfully.');
         } catch (err: any) {
-          toast.error(err?.message || 'Unable to change password.');
+          toast.error(safeErrorMessage(err, 'Unable to change password.'));
         } finally {
           setChangingPassword(false);
         }
