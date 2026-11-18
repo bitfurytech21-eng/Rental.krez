@@ -3668,7 +3668,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                     required
                     value={gateMethod}
                     onChange={(e) => setGateMethod(e.target.value)}
-                    placeholder="sepa / wire / crypto"
+                    aria-label="Payment method"
                     className="w-full min-h-[44px] px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
                   />
                 </div>
@@ -3716,13 +3716,6 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
-                  </div>
-                  {gateDetails.map((row, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input type="text" required value={row.label} onChange={(e) => setGateDetails((rows) => rows.map((item, i) => i === idx ? { ...item, label: e.target.value } : item))} placeholder="Label (e.g. IBAN)" className="w-2/5 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]" />
-                      <input type="text" required value={row.value} onChange={(e) => setGateDetails((rows) => rows.map((item, i) => i === idx ? { ...item, value: e.target.value } : item))} placeholder="Value" className="flex-1 min-w-0 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]" />
-                      <button type="button" aria-label={`Remove bank detail row ${idx + 1}`} onClick={() => setGateDetails((rows) => rows.filter((_, i) => i !== idx))} className="p-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-[#8FA1A8] hover:text-rose-400 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
-                    </div>
                   ))}
                 </div>
               ) : (
