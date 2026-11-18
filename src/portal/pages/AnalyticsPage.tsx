@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { BarChart3, PieChart, RefreshCw } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
@@ -47,7 +48,7 @@ export const AnalyticsPage: React.FC = () => {
           toast.success('Analytics refreshed.');
         }
       } catch (err: any) {
-        setError(err?.message || 'Unable to load portfolio analytics.');
+        setError(safeErrorMessage(err, 'Unable to load portfolio analytics.'));
       } finally {
         setLoading(false);
       }
