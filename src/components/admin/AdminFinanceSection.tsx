@@ -2417,7 +2417,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                       <h3 className="text-sm font-bold text-[#F2F5F4]">{g.name}</h3>
                     </div>
                     <div className="text-[11px] text-[#8FA1A8] mt-0.5 tabular-nums">
-                      Method: <span className="font-mono text-[#B6C4C9]">{g.method}</span> · Assigned to{' '}
+                      Method: <span className="font-mono text-[#B6C4C9]">{g.method === 'usdt' ? 'USDT' : 'Bank transfer (SEPA)'}</span>{g.method === 'usdt' && g.network ? <> · Network: <span className="font-mono text-[#B6C4C9]">{g.network}</span></> : null} · Assigned to{' '}
                       <strong className="text-[#F2F5F4]">{g.assignedCount}</strong> investor(s)
                     </div>
                   </div>
@@ -2430,7 +2430,8 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                   </span>
                 </div>
 
-                {g.details.length > 0 && (
+                {g.method === 'usdt' && g.walletAddress ? <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 space-y-2 text-xs"><div className="text-[#8FA1A8]">Receiving wallet</div><div className="font-mono text-[#F2F5F4] break-all">{g.walletAddress}</div></div> : null}
+                {g.method === 'bank' && g.details.length > 0 && (
                   <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 space-y-1.5 text-xs">
                     {g.details.map((row, idx) => (
                       <div key={`${row.label}-${idx}`} className="flex items-center justify-between gap-2">
