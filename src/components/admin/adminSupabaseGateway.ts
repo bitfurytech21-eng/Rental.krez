@@ -352,20 +352,18 @@ export async function fetchWalletBalancesMap(): Promise<Map<string, number>> {
   return map;
 }
 
-export async function assignPaymentGateToInvestor(userId: string, gateId: string | null, gateName?: string): Promise<void> {
+export async function assignPaymentGateToInvestor(userIds: string[], method: 'bank' | 'usdt', gateId: string | null): Promise<void> {
+  if (!userIds.length) throw new Error('Select at least one investor.');
+  const params = gateId
+    ? { p_users: userIds, p_gate: gateId }
+    : { p_users: userIds, p_method: method };
   if (await hasLiveSupabaseSession()) {
-    const attempts: Array<Record<string, any>> = [
-      { p_user: userId, p_gate: gateId },
-      { p_user_id: userId, p_gate_id: gateId },
-    ];
-    for (const args of attempts) {
-      const { error } = await supabase.rpc('assign_gate', args);
-      if (!error) return;
-    }
+    const { error } = await supabase.rpc(gateId ? 'assign_gate' : 'clear_gate', params);
+    if (!error) return;
   }
-  await apiFetchJson(`/admin/users/${encodeURIComponent(userId)}/assign-gate`, {
-    method: 'PATCH',
-    body: JSON.stringify({ gateId, gateName }),
+  await apiFetchJson('/admin/users/assign-gate', {
+    method: 'POST',
+    body: JSON.stringify({ userIds, method, gateId }),
   });
 }
 
@@ -1238,9 +1236,11 @@ export async function saveSettingsRow(key: 'limits' | 'email_templates', value: 
 export async function fetchPaymentGatesWithCounts(users: any[]): Promise<PaymentGateRecord[]> {
   const assignedCounts = new Map<string, number>();
   for (const user of users) {
-    if (user.assignedGateId) {
-      const id = String(user.assignedGateId);
-      assignedCounts.set(id, (assignedCounts.get(id) || 0) + 1);
+    for (const assignedId of [user.assignedGateId, user.assignedUsdtGateId]) {
+      if (assignedId) {
+        const id = String(assignedId);
+        assignedCounts.set(id, (assignedCounts.get(id) || 0) + 1);
+      }
     }
   }
   try {
