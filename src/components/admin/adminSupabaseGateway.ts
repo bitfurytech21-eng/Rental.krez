@@ -448,8 +448,44 @@ export async function fetchWalletBalancesMap(): Promise<Map<string, number>> {
   return map;
 }
 
-export async function assignPaymentGateToInvestor(userId: string, gateId: string | null, _gateName?: string): Promise<void> {
-  await requireRpcSuccess('assign_gate', { p_users: [userId], p_gate: gateId });
+export async function assignPaymentGateToInvestor(
+  userId: string,
+  gateId: string | null,
+  gateName?: string
+): Promise<void>;
+export async function assignPaymentGateToInvestor(
+  userIds: string[],
+  method: 'bank' | 'usdt',
+  gateId: string | null
+): Promise<void>;
+export async function assignPaymentGateToInvestor(
+  userOrUsers: string | string[],
+  gateOrMethod: string | null,
+  gateIdOrName?: string | null
+): Promise<void> {
+  if (Array.isArray(userOrUsers)) {
+    const userIds = userOrUsers;
+    const method = gateOrMethod;
+    if (method !== 'bank' && method !== 'usdt') {
+      throw new Error('Choose Bank or USDT before assigning a payment gate.');
+    }
+    const gateId = gateIdOrName || null;
+    if (gateId) {
+      await requireRpcSuccess('assign_gate', { p_users: userIds, p_gate: gateId });
+    } else {
+      await requireRpcSuccess('clear_gate', { p_users: userIds, p_method: method });
+    }
+    return;
+  }
+
+  // Backwards-compatible single-investor bank assignment used by the legacy
+  // user-management screen.
+  const gateId = gateOrMethod || null;
+  if (gateId) {
+    await requireRpcSuccess('assign_gate', { p_users: [userOrUsers], p_gate: gateId });
+  } else {
+    await requireRpcSuccess('clear_gate', { p_users: [userOrUsers], p_method: 'bank' });
+  }
 }
 
 export async function setInvestorFrozenState(userId: string, frozen: boolean, _reason?: string): Promise<void> {
