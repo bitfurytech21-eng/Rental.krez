@@ -14,7 +14,7 @@ export async function requireLatestLegalConsent(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (req.user?.id?.startsWith('usr-dev-')) {
+  if (process.env.NODE_ENV !== 'production' && req.user?.id?.startsWith('usr-dev-')) {
     next();
     return;
   }
