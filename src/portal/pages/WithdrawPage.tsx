@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import React, { useState } from 'react';
 import {
   Landmark,
@@ -155,7 +156,7 @@ export const WithdrawPage: React.FC = () => {
         toast.info(`6-digit security code sent to ${reqRes.maskedEmail || 'your email'}.`);
       }
     } catch (err: any) {
-      setSubmitError(err?.message || 'Unable to send security verification code.');
+      setSubmitError(safeErrorMessage(err, 'Unable to send security verification code.'));
     } finally {
       setRequestingCode(false);
     }
@@ -213,7 +214,7 @@ export const WithdrawPage: React.FC = () => {
       toast.success('Withdrawal request submitted.');
       await refreshAll();
     } catch (err: any) {
-      const msg = err?.message || 'Unable to submit withdrawal request.';
+      const msg = safeErrorMessage(err, 'Unable to submit withdrawal request.');
       setSubmitError(msg);
       toast.error(msg);
     } finally {
