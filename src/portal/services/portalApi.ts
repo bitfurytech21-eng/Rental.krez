@@ -156,8 +156,14 @@ export const portalApi = {
     };
   },
 
-  async updateProfile(updates: Partial<PortalProfile>): Promise<PortalProfile> {
-    const res = await api.patch<any>('/users/me', updates);
+  async updateProfile(updates: Partial<PortalProfile>, bankChangeGrantId?: string): Promise<PortalProfile> {
+    const headers: Record<string, string> = {};
+    if (bankChangeGrantId) headers['X-Action-Verification'] = bankChangeGrantId;
+    const res = await apiRequest<any>('/users/me', {
+      method: 'PATCH',
+      body: updates,
+      headers,
+    });
     const d = unwrap<any>(res) || {};
     return {
       id: String(d.id || ''),
@@ -238,7 +244,7 @@ export const portalApi = {
     return unwrap<PortalTransaction>(res);
   },
 
-  async requestActionVerification(actionScope: 'investor.withdrawal.create' | 'investor.investment.create'): Promise<{
+  async requestActionVerification(actionScope: 'investor.withdrawal.create' | 'investor.investment.create' | 'investor.profile.bank.update'): Promise<{
     otpRequired: boolean;
     grantId?: string;
     maskedEmail?: string;
@@ -255,7 +261,7 @@ export const portalApi = {
   },
 
   async verifyActionCode(
-    actionScope: 'investor.withdrawal.create' | 'investor.investment.create',
+    actionScope: 'investor.withdrawal.create' | 'investor.investment.create' | 'investor.profile.bank.update',
     code: string
   ): Promise<string> {
     const res = await apiRequest<any>('/security/action-code/verify', {
