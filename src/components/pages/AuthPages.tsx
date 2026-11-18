@@ -169,7 +169,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
     setLoading(true);
     try {
-      const result = await register(email, password, cleanName);
+      const result = await register(email, password, cleanName, acceptedTerms, acceptedRisk);
 
       if (referralCode) {
         try {
