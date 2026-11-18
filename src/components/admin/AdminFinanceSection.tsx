@@ -148,10 +148,10 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
   const investorsOnly = useMemo(
-    () => users.filter((u) => !u.isAdmin && !u.staffRole),
+    () => users.filter((u) => u.role === 'investor' && !u.isAdmin && !u.staffRole),
     [users]
   );
-  const selectableUsers = investorsOnly.length > 0 ? investorsOnly : users;
+  const selectableUsers = investorsOnly;
 
   // Cross-tab Ledger jump state (from Overview cards or reversal links)
   const [ledgerKindFilter, setLedgerKindFilter] = useState<string>('all');
