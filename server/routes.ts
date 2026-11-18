@@ -2507,7 +2507,8 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
         isAdmin: Boolean(u.is_admin),
         staffRole: u.staff_role ?? null,
         frozen: Boolean(u.frozen ?? u.account_status === 'suspended'),
-        assignedGateId: u.assigned_gate_id ?? null,
+        assignedGateId: u.payment_gate_id ?? null,
+        assignedUsdtGateId: u.usdt_payment_gate_id ?? null,
         accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0),
         kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), bankIban: u.bank_iban || u.iban || undefined, bankAccountHolder: u.bank_account_holder || u.bank_holder || u.full_name, cryptoDepositAddress: u.crypto_deposit_address || undefined, status: (u.frozen || u.account_status === 'suspended') ? 'suspended' : 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
       }));
@@ -2945,32 +2946,58 @@ const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) 
 router.patch('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 router.post('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 
-router.patch('/admin/users/:id/assign-gate', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
-  const gateId = req.body?.gateId ? String(req.body.gateId).trim() : null;
-  const gateName = req.body?.gateName ? String(req.body.gateName).trim() : null;
+const handleGateAssignment = async (userIds: string[], method: 'bank' | 'usdt', gateId: string | null, gateName: string | null, req: AuthenticatedRequest, res: Response) => {
+  if (!userIds.length || userIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id)) || !['bank', 'usdt'].includes(method)) {
+    return res.status(400).json({ success: false, error: 'Select valid investors and a gate type.', code: 'INVALID_GATE_ASSIGNMENT', requestId: req.id });
+  }
   if (canUseLiveSupabaseData()) {
     try {
-      const { data, error } = await getSupabaseAdmin().rpc('assign_gate', { p_user: id, p_gate: gateId });
+      const { data, error } = gateId
+        ? await getSupabaseAdmin().rpc('assign_gate', { p_users: userIds, p_gate: gateId })
+        : await getSupabaseAdmin().rpc('clear_gate', { p_users: userIds, p_method: method });
       if (error) throw error;
-      return res.json({ success: true, data, message: 'Payment gate updated.', requestId: req.id });
+      return res.json({ success: true, data, message: gateId ? 'Payment gate assigned.' : 'Payment gate cleared.', requestId: req.id });
     } catch (err: any) {
       if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
         markSupabaseSchemaMissingInDev();
       } else {
-        return res.status(503).json({ success: false, error: err?.message || 'Unable to assign payment gate.', code: 'ASSIGN_GATE_FAILED', requestId: req.id });
+        const message = String(err?.message || '');
+        const status = message.includes('ADMIN_REQUIRED') ? 403 : message.includes('NOT_FOUND') ? 404 : 503;
+        return res.status(status).json({ success: false, error: status === 503 ? 'Unable to update investor payment gate.' : message, code: 'ASSIGN_GATE_FAILED', requestId: req.id });
       }
     }
   }
   if (process.env.NODE_ENV === 'production') {
     return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
-  const cust = devCustomersById.get(id);
-  if (!cust) return res.status(404).json({ success: false, error: 'Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-  (cust as any).assignedGateId = gateId;
-  (cust as any).assignedGateName = gateName;
+  const customers = userIds.map((id) => devCustomersById.get(id));
+  if (customers.some((customer) => !customer)) return res.status(404).json({ success: false, error: 'One or more investors were not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  for (const customer of customers) {
+    if (method === 'bank') {
+      (customer as any).assignedGateId = gateId;
+      (customer as any).assignedGateName = gateId ? gateName : null;
+    } else {
+      (customer as any).assignedUsdtGateId = gateId;
+      (customer as any).assignedUsdtGateName = gateId ? gateName : null;
+    }
+  }
   await persistDevState();
-  return res.json({ success: true, data: toPublicDevCustomer(cust), message: gateId ? 'Payment gate assigned.' : 'Assigned payment gate cleared.', requestId: req.id });
+  return res.json({ success: true, data: { success: true, method, assigned_count: userIds.length }, requestId: req.id });
+};
+
+router.post('/admin/users/assign-gate', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const userIds = Array.isArray(req.body?.userIds) ? req.body.userIds.map((id: unknown) => String(id)) : [];
+  const method = String(req.body?.method || '').toLowerCase() as 'bank' | 'usdt';
+  const gateId = req.body?.gateId ? String(req.body.gateId).trim() : null;
+  const gateName = req.body?.gateName ? String(req.body.gateName).trim() : null;
+  return handleGateAssignment(userIds, method, gateId, gateName, req, res);
+});
+
+router.patch('/admin/users/:id/assign-gate', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const method = String(req.body?.method || 'bank').toLowerCase() as 'bank' | 'usdt';
+  const gateId = req.body?.gateId ? String(req.body.gateId).trim() : null;
+  const gateName = req.body?.gateName ? String(req.body.gateName).trim() : null;
+  return handleGateAssignment([req.params.id], method, gateId, gateName, req, res);
 });
 
 router.post('/admin/staff-role', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
