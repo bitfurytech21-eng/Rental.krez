@@ -117,6 +117,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setOfferRegister(false);
     setOfferLogin(false);
     setShowPassword(false);
+    setResetSent(false);
     setEmailCode('');
     setRequiresEmailCode(false);
     setMode(newMode);
@@ -780,6 +781,16 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
           {/* 4. RESET PASSWORD */}
           {mode === 'reset-password' && (
+            passwordResetSuccess ? (
+              <div role="status" aria-live="polite" className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+                <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Your password has been updated</h3>
+                <p className="text-xs leading-relaxed text-[#C7D4E7]">You can now sign in with your new password.</p>
+                <button type="button" onClick={() => switchMode('login')} className="text-xs font-bold text-[#C5A880] hover:underline">
+                  Back to Sign In
+                </button>
+              </div>
+            ) : (
             <form onSubmit={handleUpdatePassword} noValidate className="space-y-4">
               <div className="form-field space-y-1">
                 <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 12 Characters)</label>
@@ -824,6 +835,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 {loading ? 'Updating Password...' : 'Update Password'}
               </button>
             </form>
+            )
           )}
         </div>
       </div>
