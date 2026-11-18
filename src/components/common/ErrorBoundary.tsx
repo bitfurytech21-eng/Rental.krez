@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw, Download, Copy, Check, ChevronDown, ChevronUp, ShieldAlert, Trash2 } from 'lucide-react';
 import { logFrontendError, downloadFrontendErrorsFile, FrontendErrorEntry } from '../../lib/errorLogger';
+import { captureFrontendError } from '../../lib/monitoring';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    captureFrontendError('react-boundary');
     console.error('[ErrorBoundary] Caught frontend rendering error:', error, errorInfo);
     
     // Automatically log error to persistent localStorage buffer
