@@ -100,7 +100,7 @@ export function sanitizeLogData(data: any): any {
   const cleaned: Record<string, any> = {};
   for (const [key, value] of Object.entries(data)) {
     const lowerKey = key.toLowerCase().replace(/[^a-z]/g, '');
-    if (SENSITIVE_KEYS.has(lowerKey)) {
+    if (SENSITIVE_KEYS.has(lowerKey) || /(password|passphrase|passcode|pin|otp|code|token|secret|authorization|cookie|session|jwt|signature)/.test(lowerKey)) {
       cleaned[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null) {
       cleaned[key] = sanitizeLogData(value);
