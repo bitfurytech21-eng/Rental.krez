@@ -33,7 +33,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     captureFrontendError('react-boundary');
-    console.error('[ErrorBoundary] Caught frontend rendering error:', error, errorInfo);
+    console.error('[ErrorBoundary] A frontend rendering error occurred.');
     
     // Automatically log error to persistent localStorage buffer
     const entry = logFrontendError(error, errorInfo);
@@ -44,11 +44,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     const { error, errorInfo } = this.state;
     const diagnostics = {
       timestamp: new Date().toISOString(),
-      url: typeof window !== 'undefined' ? window.location.href : '',
-      errorName: error?.name,
-      errorMessage: error?.message,
-      stack: error?.stack,
-      componentStack: errorInfo?.componentStack,
+      error: 'A frontend error occurred.',
     };
 
     navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2)).then(() => {
@@ -102,7 +98,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 Error Message
               </span>
               <p className="text-xs sm:text-sm font-semibold text-rose-950 font-mono break-words leading-relaxed">
-                {error?.message || 'An unexpected rendering condition occurred in the client application.'}
+                {'An unexpected rendering condition occurred in the client application.'}
               </p>
               {lastLoggedEntry && (
                 <div className="text-[10px] text-slate-400 font-mono pt-1">
@@ -180,14 +176,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 <div>
                   <div className="text-slate-400 font-bold mb-1">Stack Trace:</div>
                   <pre className="text-rose-300 whitespace-pre-wrap break-all leading-normal">
-                    {error?.stack || 'No stack trace captured.'}
+                    {'Stack details are not retained because they may contain sensitive values.'}
                   </pre>
                 </div>
                 {errorInfo?.componentStack && (
                   <div className="pt-2 border-t border-slate-800">
                     <div className="text-slate-400 font-bold mb-1">Component Hierarchy:</div>
                     <pre className="text-slate-300 whitespace-pre-wrap break-all leading-normal">
-                      {errorInfo.componentStack}
+                      {'Component details are not retained because they may contain sensitive values.'}
                     </pre>
                   </div>
                 )}
