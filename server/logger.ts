@@ -76,7 +76,7 @@ export function sanitizeLogMessage(message: string): string {
     .replace(/[\r\n]/g, ' ')
     .replace(/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi, 'Bearer [REDACTED]')
     .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, '[REDACTED TOKEN]')
-    .replace(/(password|passphrase|passcode|otp|pin|(?:one[ _-]time|verification|security|email)[ _-]?code|access[ _-]?token|refresh[ _-]?token|authorization)\s*[:=]?\s*["']?[^,\s;'"<>]+/gi, '$1 [REDACTED]')
+    .replace(/(password|passphrase|passcode|otp|pin|code|(?:one[ _-]time|verification|security|email)[ _-]?code|(?:access|refresh|session)[ _-]?token|token|authorization)\s*[:=]?\s*["']?[^,\s;'"<>]+/gi, '$1 [REDACTED]')
     .replace(/\b\d{6}\b/g, '[REDACTED CODE]');
 }
 
@@ -88,7 +88,7 @@ export function sanitizeLogData(data: any): any {
   if (typeof data !== 'object') {
     if (typeof data === 'string') {
       // Prevent log injection by removing CRLF characters
-      return data.replace(/[\r\n]/g, ' ');
+      return sanitizeLogMessage(data);
     }
     return data;
   }
@@ -105,7 +105,7 @@ export function sanitizeLogData(data: any): any {
     } else if (typeof value === 'object' && value !== null) {
       cleaned[key] = sanitizeLogData(value);
     } else if (typeof value === 'string') {
-      cleaned[key] = value.replace(/[\r\n]/g, ' ');
+      cleaned[key] = sanitizeLogMessage(value);
     } else {
       cleaned[key] = value;
     }
