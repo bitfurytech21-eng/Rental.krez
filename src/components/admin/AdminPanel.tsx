@@ -984,6 +984,7 @@ export const AdminPanel: React.FC = () => {
               {/* 4. DEPOSITS */}
               {activeSection === 'deposits' && canAccessSection(effectiveRole, 'deposits') && (
                 <AdminDepositsSection
+                  loading={loading || refreshing}
                   users={users}
                   transactions={transactions}
                   manualDeposits={manualDeposits}
@@ -997,6 +998,7 @@ export const AdminPanel: React.FC = () => {
               {/* 5. WITHDRAWALS */}
               {activeSection === 'withdrawals' && canAccessSection(effectiveRole, 'withdrawals') && (
                 <AdminWithdrawalsSection
+                  loading={loading || refreshing}
                   users={users}
                   transactions={transactions}
                   onRefresh={() => loadData(false)}
