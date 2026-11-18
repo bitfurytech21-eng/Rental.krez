@@ -1,123 +1,186 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getApiUrl, getAuthToken } from '../../lib/api';
+import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient';
 
-type ManualMethod = {
-  id: string; name: string; logo_url?: string | null; instructions: string;
-  account_details: Record<string, string>; minimum_amount: number; maximum_amount: number | null;
-  fee_type: 'none' | 'fixed' | 'percent'; fee_value: number;
-  extra_fields: Array<{key:string;label:string;required?:boolean}>;
+type DepositMethod = {
+  id: string;
+  method: 'bank' | 'usdt';
+  minimum_amount: number | string;
+  maximum_amount: number | string | null;
 };
 interface Props {
-  isOpen: boolean; onClose: () => void; onSuccess: () => void;
-  onNavigateTransactions?: () => void; onNavigateCompliance?: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  onNavigateTransactions?: () => void;
+  onNavigateCompliance?: () => void;
   isVerified?: boolean;
 }
 type Step = 1 | 2 | 3 | 4;
 
+const parseEurCents = (value: string | number | null | undefined): bigint | null => {
+  const raw = String(value ?? '').trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) return null;
+  const [whole, fraction = ''] = raw.split('.');
+  try { return BigInt(whole) * 100n + BigInt((fraction + '00').slice(0, 2)); }
+  catch { return null; }
+};
+const centsToDecimal = (cents: bigint): string => {
+  const whole = cents / 100n;
+  const fraction = String(cents % 100n).padStart(2, '0');
+  return `${whole}.${fraction}`;
+};
+const money = (value: string | number | bigint): string => {
+  const numeric = typeof value === 'bigint' ? Number(value) / 100 : Number(value);
+  return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(numeric);
+};
+const methodLabel = (method: DepositMethod['method']) =>
+  method === 'usdt' ? 'USDT (crypto)' : 'Bank transfer (SEPA)';
+
 export const ManualDepositModal: React.FC<Props> = ({
   isOpen, onClose, onSuccess, onNavigateTransactions, onNavigateCompliance, isVerified = true
 }) => {
-  const [methods, setMethods] = useState<ManualMethod[]>([]);
-  const [methodId, setMethodId] = useState('');
+  const [methods, setMethods] = useState<DepositMethod[]>([]);
+  const [method, setMethod] = useState<DepositMethod['method'] | ''>('');
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<Step>(1);
-  const [transactionId, setTransactionId] = useState('');
-  const [senderName, setSenderName] = useState('');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0,10));
-  const [extraValues, setExtraValues] = useState<Record<string,string>>({});
-  const [proof, setProof] = useState<File | null>(null);
-  const [proofData, setProofData] = useState('');
   const [busy, setBusy] = useState(false);
   const [loadingMethods, setLoadingMethods] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState<any>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const lockRef = useRef(false);
   const token = getAuthToken();
-  const headers: HeadersInit = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
-  const selected = methods.find(m => m.id === methodId);
-  const numericAmount = Number(amount);
-  const fee = selected ? selected.fee_type === 'fixed' ? Number(selected.fee_value) : selected.fee_type === 'percent' ? numericAmount * Number(selected.fee_value) / 100 : 0 : 0;
-  const money = (value: number) => new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(value);
+
+  const selected = methods.find(item => item.method === method);
+  const amountCents = parseEurCents(amount);
 
   useEffect(() => {
     if (!isOpen) return;
-    setStep(1); setError(''); setSubmitted(null); setAmount(''); setProof(null); setProofData('');
-    setTransactionId(''); setSenderName(''); setExtraValues({});
+    setStep(1);
+    setError('');
+    setSubmitted(null);
+    setAmount('');
+    setMethod('');
     setLoadingMethods(true);
-    fetch(getApiUrl('/manual-payments/methods'), { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    const authToken = getAuthToken();
+    fetch(getApiUrl('/manual-payments/methods'), {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+    })
       .then(async response => {
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Unable to load payment methods.');
-        const available = payload.data || [];
+        if (!response.ok) throw new Error(payload.error || 'Unable to load your assigned payment methods.');
+        const available = (Array.isArray(payload.data) ? payload.data : [])
+          .filter((item: any) => item?.method === 'bank' || item?.method === 'usdt')
+          .map((item: any) => ({
+            id: String(item.id),
+            method: item.method as DepositMethod['method'],
+            minimum_amount: item.minimum_amount,
+            maximum_amount: item.maximum_amount ?? null
+          }));
         setMethods(available);
-        if (available.length) setMethodId(available[0].id);
+        if (available.length === 1) setMethod(available[0].method);
       })
-      .catch(e => setError(e.message || 'Unable to load payment methods.'))
+      .catch(e => setError(e?.message || 'Unable to load your assigned payment methods.'))
       .finally(() => setLoadingMethods(false));
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const chooseFile = (file?: File) => {
-    setError('');
-    if (!file) { setProof(null); setProofData(''); return; }
-    const allowed = ['image/jpeg','image/png','image/webp','application/pdf'];
-    if (!allowed.includes(file.type)) { setError('Upload a JPG, PNG, WEBP, or PDF file.'); return; }
-    if (file.size > 5 * 1024 * 1024) { setError('Proof files must be 5 MB or smaller.'); return; }
-    const reader = new FileReader();
-    reader.onload = () => { setProof(file); setProofData(String(reader.result || '')); };
-    reader.onerror = () => setError('The proof file could not be read.');
-    reader.readAsDataURL(file);
-  };
-
   const continueToMethod = () => {
     setError('');
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return setError('Enter a valid deposit amount.');
-    if (!isVerified) return setError('Complete identity verification before making a deposit.');
+    if (amountCents === null || amountCents <= 0n) {
+      setError('Enter a valid EUR amount with up to two decimal places.');
+      return;
+    }
+    if (!isVerified) {
+      setError('Complete identity verification before making a deposit.');
+      return;
+    }
     setStep(2);
   };
+
   const continueToReview = () => {
     setError('');
-    if (!selected) return setError('No payment method is available. Please try again later.');
-    if (numericAmount < Number(selected.minimum_amount) || (selected.maximum_amount && numericAmount > Number(selected.maximum_amount))) {
-      return setError(`Amount must be between ${money(Number(selected.minimum_amount))} and ${selected.maximum_amount ? money(Number(selected.maximum_amount)) : 'the allowed maximum'}.`);
+    if (!selected) {
+      setError('Select one of your available payment methods.');
+      return;
+    }
+    const minimumCents = parseEurCents(selected.minimum_amount);
+    const maximumCents = selected.maximum_amount == null ? null : parseEurCents(selected.maximum_amount);
+    if (minimumCents === null || amountCents === null || amountCents < minimumCents ||
+        (maximumCents !== null && amountCents > maximumCents)) {
+      setError(`Amount must be between ${money(minimumCents ?? 0n)} and ${maximumCents === null ? 'the allowed maximum' : money(maximumCents)}.`);
+      return;
     }
     setStep(3);
   };
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault(); setError('');
-    if (!selected) return setError('Select an available payment method.');
-    if (!proof || !proofData) return setError('Upload proof of payment before submitting.');
-    if (!transactionId.trim() || !senderName.trim()) return setError('Enter the sender name and payment transaction ID.');
+
+  const confirmDeposit = async () => {
+    if (lockRef.current || busy) return;
+    setError('');
+    if (!isVerified) {
+      setError('Complete identity verification before making a deposit.');
+      return;
+    }
+    if (!selected || amountCents === null || amountCents <= 0n) {
+      setError('Review a valid amount and an assigned payment method before confirming.');
+      return;
+    }
+    if (!isSupabaseConfigured()) {
+      setError('Secure deposit requests are temporarily unavailable. Please try again later.');
+      return;
+    }
+    lockRef.current = true;
     setBusy(true);
     try {
-      const response = await fetch(getApiUrl('/manual-payments/deposits'), {
-        method: 'POST', headers,
-        body: JSON.stringify({
-          methodId, amount: numericAmount, transactionId: transactionId.trim(),
-          senderName: senderName.trim(), paymentDate, proofBase64: proofData,
-          proofMimeType: proof.type, extraValues
-        })
+      const { data, error: rpcError } = await supabase.rpc('request_deposit', {
+        p_amount: centsToDecimal(amountCents),
+        p_method: selected.method
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Your deposit could not be submitted.');
-      setSubmitted(payload.data); setStep(4); onSuccess();
-    } catch (e: any) { setError(e.message || 'Your deposit could not be submitted.'); }
-    finally { setBusy(false); }
+      if (rpcError) throw rpcError;
+      setSubmitted(data);
+      setStep(4);
+      onSuccess();
+    } catch (e: any) {
+      const code = String(e?.message || e?.code || '');
+      if (code.includes('PAYMENT_METHOD_NOT_ASSIGNED') || code.includes('PAYMENT_METHOD_UNAVAILABLE')) {
+        setError('Your selected payment method is no longer available. Refresh and try again.');
+      } else if (code.includes('AMOUNT_OUT_OF_RANGE')) {
+        setError('The amount is outside this payment method’s allowed limits.');
+      } else if (code.includes('LEGAL') || code.includes('consent')) {
+        setError('Please review and accept the latest legal terms before requesting a deposit.');
+      } else {
+        setError('Your deposit request could not be submitted. Please retry.');
+      }
+    } finally {
+      lockRef.current = false;
+      setBusy(false);
+    }
   };
 
-  const close = () => { setStep(1); setSubmitted(null); setError(''); onClose(); };
-  const copy = (value: string) => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(value); };
+  const close = () => {
+    setStep(1);
+    setSubmitted(null);
+    setError('');
+    setMethods([]);
+    setMethod('');
+    setAmount('');
+    onClose();
+  };
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
     <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-[22px] border border-[#1F2C33] bg-[#0B0F10] p-5 text-[#F2F5F4] shadow-2xl sm:p-6">
       <header className="mb-5 flex items-start justify-between gap-3">
-        <div><p className="text-[10px] font-bold tracking-[.16em] text-[#8FA1A8]">INVESTOR PORTAL · WALLET</p><h2 className="mt-1 text-xl font-bold">Deposit funds</h2><p className="mt-1 text-xs text-[#8FA1A8]">Your wallet is credited after finance verifies your payment.</p></div>
+        <div>
+          <p className="text-[10px] font-bold tracking-[.16em] text-[#8FA1A8]">INVESTOR PORTAL · WALLET</p>
+          <h2 className="mt-1 text-xl font-bold">Deposit funds</h2>
+          <p className="mt-1 text-xs text-[#8FA1A8]">Your wallet is credited after your payment is confirmed.</p>
+        </div>
         <button type="button" onClick={close} aria-label="Close deposit" className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#1F2C33] text-xl text-[#8FA1A8] hover:text-white">×</button>
       </header>
 
       <div className="mb-5 flex gap-1.5" aria-label={`Step ${step} of 4`}>
-        {[1,2,3,4].map(n=><span key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? 'bg-[#6FD8B0]' : 'bg-[#1F2C33]'}`} />)}
+        {[1,2,3,4].map(n => <span key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? 'bg-[#6FD8B0]' : 'bg-[#1F2C33]'}`} />)}
       </div>
       {error && <p role="alert" className="mb-4 rounded-xl border border-rose-400/30 bg-rose-400/10 p-3 text-[13px] text-rose-300">{error}</p>}
 
@@ -128,62 +191,61 @@ export const ManualDepositModal: React.FC<Props> = ({
       </div>}
 
       {step === 1 && <section className="space-y-4">
-        <div><h3 className="text-2xl font-bold">How much?</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Funds are added to your wallet after payment verification.</p></div>
+        <div><h3 className="text-2xl font-bold">How much?</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Enter the EUR amount you want to add to your wallet.</p></div>
         <label className="flex h-20 items-center rounded-2xl border border-[#1F2C33] bg-[#121A1F] px-5 focus-within:border-[#6FD8B0]">
-          <span className="text-3xl font-bold text-[#8FA1A8]">€</span><input aria-label="Deposit amount in euros" inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" className="h-full min-w-0 flex-1 bg-transparent pl-3 text-4xl font-bold outline-none placeholder:text-[#8FA1A8]/40" />
+          <span className="text-3xl font-bold text-[#8FA1A8]">€</span>
+          <input aria-label="Deposit amount in euros" inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="h-full min-w-0 flex-1 bg-transparent pl-3 text-4xl font-bold outline-none placeholder:text-[#8FA1A8]/40" />
         </label>
-        <div className="grid grid-cols-4 gap-2">{[100,500,1000,5000].map(v=><button key={v} type="button" onClick={()=>setAmount(String(v))} className="h-10 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-xs font-semibold hover:border-[#6FD8B0]">{money(v).replace('.00','')}</button>)}</div>
-        <p className="text-xs text-[#8FA1A8]">Minimum and maximum limits depend on the payment method selected next.</p>
+        <div className="grid grid-cols-4 gap-2">{[100,500,1000,5000].map(value => <button key={value} type="button" onClick={() => setAmount(String(value))} className="h-10 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-xs font-semibold hover:border-[#6FD8B0]">{money(value)}</button>)}</div>
+        <p className="text-xs text-[#8FA1A8]">The minimum and maximum depend on your assigned payment method.</p>
         <button type="button" disabled={!isVerified || !amount || loadingMethods} onClick={continueToMethod} className="h-12 w-full rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:cursor-not-allowed disabled:opacity-40">{loadingMethods ? 'Loading payment methods…' : 'Continue'}</button>
       </section>}
 
       {step === 2 && <section className="space-y-4">
-        <div><h3 className="text-2xl font-bold">Payment method</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Choose from the payment methods currently enabled by the platform.</p></div>
-        {methods.length === 0 ? <div className="rounded-2xl border border-dashed border-[#1F2C33] p-6 text-center text-sm text-[#8FA1A8]">No deposit methods are currently available. Please try again later.</div> :
-          <fieldset className="space-y-3"><legend className="sr-only">Choose payment method</legend>{methods.map(m=><label key={m.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-[#121A1F] p-4 ${methodId===m.id?'border-[#6FD8B0] bg-[#0F1A18]':'border-[#1F2C33]'}`}>
-            <input type="radio" name="deposit-method" value={m.id} checked={methodId===m.id} onChange={()=>setMethodId(m.id)} className="size-5 accent-[#6FD8B0]" />
-            <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{m.name}</span><span className="mt-0.5 block text-xs text-[#8FA1A8]">{money(Number(m.minimum_amount))} minimum · {m.maximum_amount ? money(Number(m.maximum_amount))+' maximum' : 'No maximum listed'}</span></span>
-            <span className="text-xs text-[#8FA1A8]">{m.fee_type==='none'?'No fee':m.fee_type==='fixed'?money(Number(m.fee_value)):`${m.fee_value}% fee`}</span>
-          </label>)}</fieldset>}
-        <div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>setStep(1)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold">Back</button><button type="button" disabled={!selected} onClick={continueToReview} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">Review deposit</button></div>
+        <div><h3 className="text-2xl font-bold">Payment method</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Choose an assigned payment method.</p></div>
+        {methods.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[#1F2C33] p-6 text-center text-sm text-[#8FA1A8]">Your payment details are being set up. We’ll notify you when they’re ready.</div>
+        ) : (
+          <fieldset className="space-y-3">
+            <legend className="sr-only">Choose payment method</legend>
+            {methods.map(item => <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-[#121A1F] p-4 ${method === item.method ? 'border-[#6FD8B0] bg-[#0F1A18]' : 'border-[#1F2C33]'}`}>
+              <input type="radio" name="deposit-method" value={item.method} checked={method === item.method} onChange={() => setMethod(item.method)} className="size-5 accent-[#6FD8B0]" />
+              <span className="min-w-0 flex-1 text-sm font-semibold">{methodLabel(item.method)}</span>
+            </label>)}
+          </fieldset>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setStep(1)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold">Back</button>
+          <button type="button" disabled={methods.length === 0 || !selected} onClick={continueToReview} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">Review deposit</button>
+        </div>
       </section>}
 
-      {step === 3 && selected && <form onSubmit={submit} className="space-y-4">
-        <div><h3 className="text-2xl font-bold">Review deposit</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Follow the payment instructions and submit your proof for review.</p></div>
+      {step === 3 && selected && amountCents !== null && <section className="space-y-4">
+        <div><h3 className="text-2xl font-bold">Review deposit</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Check the amount and payment method before confirming.</p></div>
         <dl className="divide-y divide-[#1F2C33] rounded-2xl border border-[#1F2C33] bg-[#121A1F] text-sm">
-          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Amount</dt><dd className="font-semibold">{money(numericAmount)}</dd></div>
-          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Method</dt><dd className="text-right font-semibold">{selected.name}</dd></div>
-          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Limits</dt><dd className="font-mono text-xs text-[#8FA1A8]">{money(Number(selected.minimum_amount))} – {selected.maximum_amount ? money(Number(selected.maximum_amount)) : 'No cap'}</dd></div>
-          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Fee</dt><dd className="font-semibold">{money(fee)}</dd></div>
-          <div className="flex justify-between gap-3 p-3.5"><dt className="font-semibold">Total to pay</dt><dd className="font-bold text-[#6FD8B0]">{money(numericAmount+fee)}</dd></div>
+          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Amount</dt><dd className="font-semibold">{money(amountCents)}</dd></div>
+          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Method</dt><dd className="text-right font-semibold">{methodLabel(selected.method)}</dd></div>
         </dl>
-        <div className="space-y-3 rounded-2xl border border-[#1F2C33] bg-[#121A1F] p-4">
-          <h4 className="text-sm font-semibold">Transfer &amp; Wallet Instructions</h4>
-          {Object.entries(selected.account_details || {}).map(([key,value])=><div key={key} className="flex items-center justify-between gap-3 text-xs"><span className="text-[#8FA1A8]">{key}</span><span className="flex items-center gap-2 text-right font-semibold break-all font-mono">{String(value)}<button type="button" onClick={()=>copy(String(value))} className="shrink-0 text-[#6FD8B0] cursor-pointer hover:underline">Copy</button></span></div>)}
-          <p className="whitespace-pre-wrap text-xs leading-relaxed text-[#8FA1A8]">{selected.instructions}</p>
+        {selected.method === 'usdt' && <p className="text-xs leading-relaxed text-[#8FA1A8]">You’ll send USDT and we’ll credit your wallet in EUR at the rate when your payment is confirmed. The final amount may differ from this estimate.</p>}
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" disabled={busy} onClick={() => setStep(2)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold disabled:opacity-40">Back</button>
+          <button type="button" disabled={busy || !isVerified} onClick={confirmDeposit} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">{busy ? 'Submitting…' : 'Confirm deposit'}</button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-xs text-[#8FA1A8]">Sender name<input required value={senderName} onChange={e=>setSenderName(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm text-[#F2F5F4]" /></label>
-          <label className="block text-xs text-[#8FA1A8]">Payment date<input required type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)} className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm text-[#F2F5F4]" /></label>
-        </div>
-        <label className="block text-xs text-[#8FA1A8]">Bank reference / on-chain transaction hash<input required minLength={4} maxLength={120} value={transactionId} onChange={e=>setTransactionId(e.target.value)} placeholder="e.g. SEPA-2026... or 5xK...txHash" className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm font-mono text-[#F2F5F4]" /></label>
-        {selected.extra_fields?.map(field=><label key={field.key} className="block text-xs text-[#8FA1A8]">{field.label}<input required={Boolean(field.required)} value={extraValues[field.key]||''} onChange={e=>setExtraValues(prev=>({...prev,[field.key]:e.target.value}))} className="mt-1 h-11 w-full rounded-lg border border-[#1F2C33] bg-[#0B0F10] px-3 text-sm text-[#F2F5F4]" /></label>)}
-        <label className="block text-xs text-[#8FA1A8]">Proof of payment (JPG, PNG, WEBP or PDF · max 5 MB)<input ref={fileRef} required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>chooseFile(e.target.files?.[0])} className="mt-1 w-full rounded-xl border border-dashed border-[#2F4650] p-3 text-xs text-[#F2F5F4]" /></label>
-        {proof && <p className="text-xs text-[#6FD8B0]">{proof.name} · {(proof.size/1024).toFixed(0)} KB</p>}
-        <div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>setStep(2)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold cursor-pointer">Back</button><button type="submit" disabled={busy || !proof || !isVerified} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40 cursor-pointer">{busy?'Submitting…':'Confirm deposit'}</button></div>
-        <p className="text-center text-[11px] leading-relaxed text-[#8FA1A8]">Your wallet is not credited at submission. Funds are added only after finance or blockchain settlement is verified.</p>
-      </form>}
+      </section>}
 
       {step === 4 && submitted && <section className="space-y-4 text-center">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#6FD8B0]/15 text-[#6FD8B0] text-2xl">✓</div>
-        <div><h3 className="text-2xl font-bold">Deposit submitted</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Your payment proof has been sent for finance verification.</p></div>
+        <div><h3 className="text-2xl font-bold">Deposit request submitted</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Your request is pending payment confirmation. Your wallet will update after approval.</p></div>
         <div className="space-y-2 rounded-2xl border border-[#1F2C33] bg-[#121A1F] p-4 text-left text-sm">
           <div className="flex justify-between gap-3"><span className="text-[#8FA1A8]">Reference</span><b className="break-all">{submitted.reference}</b></div>
-          <div className="flex justify-between"><span className="text-[#8FA1A8]">Amount</span><b>{money(Number(submitted.amount))}</b></div>
-          <div className="flex justify-between"><span className="text-[#8FA1A8]">Status</span><b className="text-amber-300">Pending verification</b></div>
+          <div className="flex justify-between"><span className="text-[#8FA1A8]">Amount</span><b>{money(submitted.amount)}</b></div>
+          <div className="flex justify-between"><span className="text-[#8FA1A8]">Method</span><b>{submitted.payment_method}</b></div>
+          <div className="flex justify-between"><span className="text-[#8FA1A8]">Status</span><b className="text-amber-300">Pending</b></div>
         </div>
-        <p className="text-xs text-[#8FA1A8]">Your wallet balance will update only after the deposit is approved.</p>
-        <div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>{close();onNavigateTransactions?.();}} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold">View ledger</button><button type="button" onClick={close} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A]">Done</button></div>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => { close(); onNavigateTransactions?.(); }} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold">View ledger</button>
+          <button type="button" onClick={close} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A]">Done</button>
+        </div>
       </section>}
     </div>
   </div>;
