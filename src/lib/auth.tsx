@@ -349,7 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearTimeout(failsafeTimer);
 
         if (error) {
-          console.error('Error fetching Supabase session:', error.message);
+          console.error('Unable to fetch the Supabase session.');
         }
         // Never overwrite an active cryptographically signed Administrator session with an investor Supabase session
         const currentAdminTok = localStorage.getItem('kretz_auth_token');
@@ -393,7 +393,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isResolved) return;
         isResolved = true;
         clearTimeout(failsafeTimer);
-        console.error('Supabase getSession exception:', err);
+        console.error('Supabase session retrieval failed.');
       })
       .finally(() => {
         if (!isResolved) {
@@ -540,10 +540,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             refresh_token: serverRefreshToken,
           });
           if (sessionError) {
-            console.warn('[auth] API login succeeded, but Supabase session persistence needs a retry:', sessionError.message);
+            console.warn('[auth] API login succeeded; session persistence needs a retry.');
           }
         } catch (sessionError: any) {
-          console.warn('[auth] API login succeeded, but Supabase session persistence failed:', sessionError?.message || sessionError);
+          console.warn('[auth] API login succeeded; session persistence failed.');
         }
       }
 
@@ -751,7 +751,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         await supabase.auth.signOut();
       } catch (err) {
-        console.warn('Supabase signOut error:', err);
+        console.warn('Supabase sign-out did not complete cleanly.');
       }
     }
     setUser(null);
