@@ -118,6 +118,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setOfferLogin(false);
     setShowPassword(false);
     setResetSent(false);
+    setPasswordResetSuccess(false);
     setEmailCode('');
     setRequiresEmailCode(false);
     setMode(newMode);
