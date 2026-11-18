@@ -3662,18 +3662,21 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                 </div>
                 <div>
                   <label htmlFor="fin-gate-method" className="block text-[#B6C4C9] font-semibold mb-1">Method</label>
-                  <input
+                  <select
                     id="fin-gate-method"
-                    type="text"
                     required
                     value={gateMethod}
-                    onChange={(e) => setGateMethod(e.target.value)}
+                    onChange={(e) => setGateMethod(e.target.value as 'bank' | 'usdt')}
                     aria-label="Payment method"
                     className="w-full min-h-[44px] px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                  />
+                  >
+                    <option value="bank">Bank</option>
+                    <option value="usdt">USDT</option>
+                  </select>
                 </div>
               </div>
 
+              {gateMethod === 'bank' ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[#B6C4C9] font-semibold">Bank / Rail Coordinates</span>
