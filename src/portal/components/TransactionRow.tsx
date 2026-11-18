@@ -61,7 +61,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
 
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <div
-          className={`text-sm font-bold portal-tabular ${
+          className={`max-w-[58%] whitespace-normal break-words text-right text-sm font-bold portal-tabular ${
             isOutflow ? 'text-[#F2F5F4]' : 'text-[#6FD8B0]'
           }`}
         >
