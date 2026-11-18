@@ -342,7 +342,7 @@ export const ProfilePage: React.FC = () => {
                 </label>
                 <input
                   id="bank-change-code"
-                  type="text"
+                  type="password"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   maxLength={6}
