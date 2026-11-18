@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
-import { getPasswordChecklist, isValidEmail, isValidPassword } from '../../lib/validation';
+import { getPasswordChecklist, isValidEmail } from '../../lib/validation';
 
 export type KrezAuthMode = 'login' | 'register' | 'forgot';
 
