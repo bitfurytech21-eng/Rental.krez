@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { getApiUrl, getAuthToken, withActionEmailVerification } from '../../lib/api';
-import { eurToCents, formatCentsEur } from './adminSupabaseGateway';
+import { getApiUrl, getAuthToken } from '../../lib/api';
+import {
+  approveDepositSubmission,
+  centsToEur,
+  eurToCents,
+  formatCentsEur,
+  rejectDepositSubmission,
+} from './adminSupabaseGateway';
+import { AdminActionDialog } from './AdminActionDialog';
 
 type Method = {
   id: string; name: string; instructions: string; account_details: Record<string, string>;
@@ -27,7 +34,7 @@ export const AdminManualPaymentManager: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [notConfigured, setNotConfigured] = useState(false);
   const [approveTarget, setApproveTarget] = useState<any | null>(null);
-  const [rejectingDepositId, setRejectingDepositId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<any | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [proofUrls, setProofUrls] = useState<Record<string, string>>({});
   const reviewLockRef = useRef(false);
@@ -95,34 +102,20 @@ export const AdminManualPaymentManager: React.FC = () => {
     finally { reviewLockRef.current = false; setBusy(false); }
   };
 
-  const review = async (deposit: any, decision: 'approve' | 'reject', providedReason?: string) => {
-    if (reviewLockRef.current) return;
-    const reason = decision === 'reject' ? (providedReason ?? rejectReason).trim() : '';
-    if (decision === 'reject' && !reason) {
-      setErrorMsg('Please enter a reason before rejecting this deposit.');
-      return;
+  const runDepositReview = async (deposit: any, decision: 'approve' | 'reject', providedReason?: string): Promise<string> => {
+    const amtCents = eurToCents(deposit.amount);
+    if (decision === 'approve') {
+      await approveDepositSubmission(deposit.id, amtCents > 0 ? centsToEur(amtCents) : undefined, true);
+    } else {
+      const clean = (providedReason ?? rejectReason).trim();
+      if (!clean) throw new Error('A rejection reason is required.');
+      await rejectDepositSubmission(deposit.id, clean, true);
     }
-    reviewLockRef.current = true;
-    setBusy(true); setMessage(''); setErrorMsg('');
-    try {
-      await withActionEmailVerification(decision === 'approve' ? 'admin.deposit.approve' : 'admin.deposit.reject', async grantId => {
-        const response = await fetch(getApiUrl(`/manual-payments/admin/deposits/${deposit.id}/review`), {
-          method: 'POST', headers: { ...headers(), 'X-Action-Verification': grantId },
-          body: JSON.stringify({ decision, reason })
-        });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || payload.message || 'Deposit review failed.');
-        return payload;
-      });
-      setApproveTarget(null);
-      setRejectingDepositId(null);
-      setRejectReason('');
-      await load();
-      const investorLabel = deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id;
-      const amtStr = formatCentsEur(eurToCents(deposit.amount));
-      setMessage(decision === 'approve' ? `Approved ${amtStr} deposit for ${investorLabel}.` : `Rejected ${amtStr} deposit for ${investorLabel}.`);
-    } catch (e: any) { setErrorMsg(e.message || 'Deposit review failed.'); }
-    finally { reviewLockRef.current = false; setBusy(false); }
+    const investorLabel = deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id;
+    const amtStr = formatCentsEur(amtCents);
+    return decision === 'approve'
+      ? `Approved ${amtStr} deposit for ${investorLabel} via approve_deposit.`
+      : `Rejected ${amtStr} deposit for ${investorLabel} via reject_deposit.`;
   };
 
   const openProof = async (deposit: any) => {
@@ -191,76 +184,73 @@ export const AdminManualPaymentManager: React.FC = () => {
             )}
             {deposit.status === 'pending' && <>
               <button type="button" disabled={busy} onClick={() => setApproveTarget(deposit)} className="rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer">Approve &amp; credit</button>
-              <button type="button" disabled={busy} onClick={() => { setRejectingDepositId(deposit.id); setRejectReason(''); }} className="rounded-lg bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer">Reject</button>
+              <button type="button" disabled={busy} onClick={() => { setRejectTarget(deposit); setRejectReason(''); }} className="rounded-lg bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer">Reject</button>
             </>}
           </div>
-          {approveTarget?.id === deposit.id && (
-            <div className="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 space-y-2 text-xs text-emerald-950">
-              <div className="font-bold">Confirm Deposit Approval</div>
-              <div>Action: <strong>Approve Deposit &amp; Credit Wallet</strong></div>
-              <div>Investor: <strong>{deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id}</strong></div>
-              <div>Amount: <strong>{formatCentsEur(eurToCents(deposit.amount))}</strong></div>
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void review(deposit, 'approve')}
-                  className="rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer"
-                >
-                  {busy ? 'Processing...' : 'Confirm & Credit'}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setApproveTarget(null)}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-          {rejectingDepositId === deposit.id && (
-            <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200 space-y-2 text-xs text-rose-950">
-              <div className="font-bold">Confirm Deposit Rejection</div>
-              <div>Action: <strong>Reject Deposit</strong></div>
-              <div>Investor: <strong>{deposit.profiles?.full_name || deposit.profiles?.email || deposit.user_id}</strong></div>
-              <div>Amount: <strong>{formatCentsEur(eurToCents(deposit.amount))}</strong></div>
-              <label className="block text-xs font-semibold text-rose-900">
-                Reason for rejecting this deposit:
-                <input
-                  type="text"
-                  value={rejectReason}
-                  onChange={e => setRejectReason(e.target.value)}
-                  placeholder="Enter rejection reason..."
-                  className="mt-1 w-full rounded-lg border border-rose-300 bg-white px-2.5 py-1.5 text-xs text-[#18211f]"
-                />
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={busy || !rejectReason.trim()}
-                  onClick={() => void review(deposit, 'reject', rejectReason)}
-                  className="rounded-lg bg-rose-700 text-white px-3 py-1.5 text-xs font-bold disabled:opacity-50 cursor-pointer"
-                >
-                  {busy ? 'Processing...' : 'Confirm rejection'}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => { setRejectingDepositId(null); setRejectReason(''); }}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
           {deposit.rejection_reason && <p className="text-xs text-rose-700 mt-2">Reason: {deposit.rejection_reason}</p>}
         </article>)}
         {!deposits.length && <p className="text-sm text-gray-500">No deposits in this queue.</p>}
       </div>
     </div>
+
+    <AdminActionDialog
+      open={Boolean(approveTarget)}
+      actionName="Approve deposit"
+      confirmLabel="Approve deposit"
+      investorName={approveTarget?.profiles?.full_name || 'Investor'}
+      investorEmail={approveTarget?.profiles?.email || approveTarget?.user_id || ''}
+      amountCents={approveTarget ? eurToCents(approveTarget.amount) : 0}
+      reference={approveTarget?.reference || approveTarget?.id || ''}
+      onConfirm={async () => {
+        if (!approveTarget) return;
+        return runDepositReview(approveTarget, 'approve');
+      }}
+      onRefresh={async () => {
+        await load().catch(() => {});
+      }}
+      onSuccess={(msg) => setMessage(msg)}
+      onClose={() => setApproveTarget(null)}
+    />
+
+    <AdminActionDialog
+      open={Boolean(rejectTarget)}
+      actionName="Reject deposit"
+      confirmLabel="Reject deposit"
+      tone="danger"
+      investorName={rejectTarget?.profiles?.full_name || 'Investor'}
+      investorEmail={rejectTarget?.profiles?.email || rejectTarget?.user_id || ''}
+      amountCents={rejectTarget ? eurToCents(rejectTarget.amount) : 0}
+      reference={rejectTarget?.reference || rejectTarget?.id || ''}
+      validate={() => (!rejectReason.trim() ? 'A rejection reason is required.' : null)}
+      onConfirm={async () => {
+        if (!rejectTarget) return;
+        const msg = await runDepositReview(rejectTarget, 'reject', rejectReason);
+        setRejectReason('');
+        return msg;
+      }}
+      onRefresh={async () => {
+        await load().catch(() => {});
+      }}
+      onSuccess={(msg) => setMessage(msg)}
+      onClose={() => {
+        setRejectTarget(null);
+        setRejectReason('');
+      }}
+    >
+      <div>
+        <label className="block text-xs font-semibold text-[#B6C4C9] mb-1">
+          Rejection Reason *
+        </label>
+        <textarea
+          rows={3}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Enter rejection reason..."
+          className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+        />
+      </div>
+    </AdminActionDialog>
+
     {message && <p role="status" className="text-sm font-semibold text-emerald-700">{message}</p>}
     {errorMsg && <p role="alert" className="text-sm font-semibold text-rose-700">{errorMsg}</p>}
   </section>;

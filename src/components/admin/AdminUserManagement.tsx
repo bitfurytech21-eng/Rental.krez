@@ -13,6 +13,7 @@ import {
   sendAdminNotificationRecord,
   setInvestorFrozenState,
 } from './adminSupabaseGateway';
+import { AdminActionDialog, useDialogFocus } from './AdminActionDialog';
 import {
   Users,
   Search,
@@ -76,7 +77,6 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   // Freeze / Unfreeze confirmation dialog
   const [freezeModalOpen, setFreezeModalOpen] = useState(false);
   const [freezeReason, setFreezeReason] = useState('Compliance review hold');
-  const [submittingFreeze, setSubmittingFreeze] = useState(false);
 
   // Send message modal
   const [messageModalOpen, setMessageModalOpen] = useState(false);
@@ -86,6 +86,12 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
   // Document viewer
   const [previewUrl, setPreviewUrl] = useState<{ title: string; url: string | null } | null>(null);
+  const messageModalRef = useDialogFocus<HTMLFormElement>(
+    messageModalOpen,
+    () => setMessageModalOpen(false),
+    sendingMsg
+  );
+  const docModalRef = useDialogFocus<HTMLDivElement>(Boolean(previewUrl), () => setPreviewUrl(null));
 
   const selectedUser = useMemo(
     () => users.find((u) => u.id === selectedUserId) || null,
@@ -126,7 +132,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === 'balance_desc') return (b.walletBalance || 0) - (a.walletBalance || 0);
+        if (sortBy === 'balance_desc') return eurToCents(b.walletBalance || 0) - eurToCents(a.walletBalance || 0);
         if (sortBy === 'name_asc') return a.fullName.localeCompare(b.fullName);
         return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       });
@@ -170,28 +176,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     }
   };
 
-  const handleConfirmFreezeToggle = async () => {
-    if (!selectedUser || readOnly) return;
-    const isCurrentlyFrozen = Boolean(selectedUser.frozen || selectedUser.status === 'suspended');
-    const nextFrozen = !isCurrentlyFrozen;
-    if (selectedUser.email.toLowerCase() === currentAdminEmail.toLowerCase() && nextFrozen) {
-      onQuickError('You cannot freeze your own active staff account.');
-      return;
-    }
-    setSubmittingFreeze(true);
-    try {
-      await setInvestorFrozenState(selectedUser.id, nextFrozen, freezeReason);
-      onQuickSuccess(
-        `${selectedUser.fullName} has been ${nextFrozen ? 'FROZEN' : 'UNFROZEN'}.`
-      );
-      setFreezeModalOpen(false);
-      await onRefreshAll();
-    } catch (err: any) {
-      onQuickError(err?.message || 'Failed to update frozen state.');
-    } finally {
-      setSubmittingFreeze(false);
-    }
-  };
+  // Freeze/Unfreeze handled via shared AdminActionDialog below
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,12 +206,16 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   };
 
   const handleOpenDocument = async (doc: InvestorDocumentRow) => {
-    const url = await createPrivateBucketSignedUrl(
-      doc.filePath,
-      ['documents', 'kyc', 'kyc-submissions'],
-      doc.inlineUrl
-    );
-    setPreviewUrl({ title: doc.title, url });
+    try {
+      const url = await createPrivateBucketSignedUrl(
+        doc.filePath,
+        ['documents', 'kyc', 'kyc-submissions'],
+        doc.inlineUrl
+      );
+      setPreviewUrl({ title: doc.title, url });
+    } catch (err: any) {
+      onQuickError(err?.message || 'Unable to generate signed URL for document.');
+    }
   };
 
   // ============================================================================
@@ -245,14 +234,14 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 setSelectedUserId(null);
                 setRevealIban(false);
               }}
-              className="px-3 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-[#6FD8B0]" />
               <span>All Investors</span>
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-[#F2F5F4]">{selectedUser.fullName || 'Investor'}</h2>
+                <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] focus:outline-none">{selectedUser.fullName || 'Investor'}</h2>
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
                   isFrozen
                     ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
@@ -269,7 +258,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <button
               type="button"
               onClick={() => setMessageModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
             >
               <Send className="w-3.5 h-3.5 text-[#6FD8B0]" />
               <span>Send Message</span>
@@ -279,7 +268,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigateToManualCredit(selectedUser.id)}
-                className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
               >
                 <Wallet className="w-3.5 h-3.5 text-[#6FD8B0]" />
                 <span>Credit Wallet</span>
@@ -289,18 +278,29 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             {!readOnly && (
               <button
                 type="button"
+                role="switch"
+                aria-checked={isFrozen}
+                aria-label={isFrozen ? 'Unfreeze investor account' : 'Freeze investor account'}
                 onClick={() => {
                   setFreezeReason(isFrozen ? 'Compliance clearance granted' : 'Temporary compliance freeze');
                   setFreezeModalOpen(true);
                 }}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
+                className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer border transition-colors ${
                   isFrozen
-                    ? 'bg-[#6FD8B0] text-[#0B0F10] hover:bg-[#5ec8a0]'
-                    : 'bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25'
+                    ? 'bg-rose-500/15 border-rose-500/40 text-rose-200 hover:bg-rose-500/25'
+                    : 'bg-[#121A1F] border-[#1F2C33] text-[#F2F5F4] hover:border-[#6FD8B0]'
                 }`}
               >
-                {isFrozen ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                <span>{isFrozen ? 'Unfreeze Account' : 'Freeze Account'}</span>
+                {isFrozen ? <Unlock className="w-3.5 h-3.5 text-[#6FD8B0]" /> : <Lock className="w-3.5 h-3.5 text-rose-300" />}
+                <span>{isFrozen ? 'Frozen — Unfreeze' : 'Freeze Investor'}</span>
+                <span
+                  aria-hidden="true"
+                  className={`w-7 h-4 rounded-full p-0.5 flex items-center transition-colors ${
+                    isFrozen ? 'bg-rose-500 justify-end' : 'bg-[#1F2C33] justify-start'
+                  }`}
+                >
+                  <span className="w-3 h-3 rounded-full bg-white" />
+                </span>
               </button>
             )}
           </div>
@@ -367,9 +367,10 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   <button
                     type="button"
                     onClick={() => setRevealIban((v) => !v)}
-                    className="px-2 py-1 rounded-lg bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-[11px] font-semibold text-[#6FD8B0] inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                    aria-label={revealIban ? 'Hide registered IBAN' : 'Reveal registered IBAN'}
+                    className="min-h-[44px] px-3 py-2 rounded-lg bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#6FD8B0] inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
                   >
-                    {revealIban ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                    {revealIban ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     <span>{revealIban ? 'Hide' : 'Reveal'}</span>
                   </button>
                 )}
@@ -394,12 +395,13 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               Select the deposit gate displayed to this investor on treasury funding workflows.
             </p>
             <div>
-              <label className="block text-[#B6C4C9] font-semibold mb-1.5">Active Payment Gate</label>
+              <label htmlFor="investor-assigned-gate" className="block text-[#B6C4C9] font-semibold mb-1.5">Active Payment Gate</label>
               <select
+                id="investor-assigned-gate"
                 disabled={readOnly || savingGate}
                 value={selectedUser.assignedGateId || ''}
                 onChange={(e) => handleAssignGate(e.target.value)}
-                className="w-full px-3 py-2.5 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4] disabled:opacity-60"
+                className="min-h-[44px] w-full px-3 py-2.5 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4] disabled:opacity-60"
               >
                 <option value="">Default / Unassigned</option>
                 {paymentGates.map((g) => (
@@ -421,7 +423,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <button
               type="button"
               onClick={() => setDetailTab('transactions')}
-              className={`px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border-b-2 ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border-b-2 ${
                 detailTab === 'transactions'
                   ? 'border-[#6FD8B0] text-[#6FD8B0] bg-[#0B0F10]'
                   : 'border-transparent text-[#8FA1A8] hover:text-[#F2F5F4]'
@@ -433,7 +435,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <button
               type="button"
               onClick={() => setDetailTab('holdings')}
-              className={`px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border-b-2 ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border-b-2 ${
                 detailTab === 'holdings'
                   ? 'border-[#6FD8B0] text-[#6FD8B0] bg-[#0B0F10]'
                   : 'border-transparent text-[#8FA1A8] hover:text-[#F2F5F4]'
@@ -445,7 +447,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <button
               type="button"
               onClick={() => setDetailTab('documents')}
-              className={`px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border-b-2 ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border-b-2 ${
                 detailTab === 'documents'
                   ? 'border-[#6FD8B0] text-[#6FD8B0] bg-[#0B0F10]'
                   : 'border-transparent text-[#8FA1A8] hover:text-[#F2F5F4]'
@@ -551,7 +553,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                         <button
                           type="button"
                           onClick={() => handleOpenDocument(doc)}
-                          className="px-2.5 py-1 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-[11px] font-semibold cursor-pointer"
+                          className="min-h-[44px] px-3 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-xs font-semibold cursor-pointer"
                         >
                           View PDF
                         </button>
@@ -571,80 +573,82 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           </div>
         </div>
 
-        {/* Freeze / Unfreeze Confirmation Modal */}
-        {freezeModalOpen && !readOnly && (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
-                <h3 className="text-sm font-bold text-[#F2F5F4]">
-                  {isFrozen ? 'Confirm Unfreeze Account' : 'Confirm Freeze Account'}
-                </h3>
-                <button type="button" onClick={() => setFreezeModalOpen(false)} className="text-[#8FA1A8] cursor-pointer">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <p className="text-xs text-[#B6C4C9]">
-                {isFrozen
-                  ? `Restore normal login, investment, and withdrawal access for ${selectedUser.fullName}?`
-                  : `Freezing ${selectedUser.fullName} immediately blocks withdrawals and capital deployment.`}
-              </p>
-              <div>
-                <label className="block text-[11px] font-semibold text-[#8FA1A8] mb-1">Audit Note</label>
-                <input
-                  type="text"
-                  value={freezeReason}
-                  onChange={(e) => setFreezeReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setFreezeModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={submittingFreeze}
-                  onClick={handleConfirmFreezeToggle}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50 ${
-                    isFrozen ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-rose-600 text-white'
-                  }`}
-                >
-                  {submittingFreeze ? 'Updating...' : isFrozen ? 'Unfreeze Account' : 'Freeze Account'}
-                </button>
-              </div>
+        {/* Freeze / Unfreeze Confirmation Dialog */}
+        {!readOnly && (
+          <AdminActionDialog
+            open={freezeModalOpen}
+            actionName={isFrozen ? 'Unfreeze investor' : 'Freeze investor'}
+            confirmLabel={isFrozen ? 'Unfreeze investor' : 'Freeze investor'}
+            tone={isFrozen ? 'primary' : 'danger'}
+            description={
+              isFrozen
+                ? `Restore normal login, investment, and withdrawal access for ${selectedUser.fullName || selectedUser.email}.`
+                : `Freezing ${selectedUser.fullName || selectedUser.email} immediately blocks withdrawals and capital deployment.`
+            }
+            investorName={selectedUser.fullName || 'Investor'}
+            investorEmail={selectedUser.email}
+            amountCents={eurToCents(selectedUser.walletBalance || 0)}
+            reference={selectedUser.id}
+            extraDetails={[
+              { label: 'Target State', value: isFrozen ? 'Active (Unfrozen)' : 'Frozen', tone: isFrozen ? 'accent' : 'danger' },
+            ]}
+            validate={() => {
+              const nextFrozen = !isFrozen;
+              if (selectedUser.email.toLowerCase() === currentAdminEmail.toLowerCase() && nextFrozen) {
+                return 'You cannot freeze your own active staff account.';
+              }
+              return null;
+            }}
+            onConfirm={async () => {
+              const nextFrozen = !isFrozen;
+              await setInvestorFrozenState(selectedUser.id, nextFrozen, freezeReason.trim());
+              return `${selectedUser.fullName || selectedUser.email} has been ${nextFrozen ? 'frozen' : 'unfrozen'} via set_frozen.`;
+            }}
+            onRefresh={onRefreshAll}
+            onRefreshError={onQuickError}
+            onSuccess={onQuickSuccess}
+            onClose={() => setFreezeModalOpen(false)}
+          >
+            <div>
+              <label htmlFor="investor-freeze-note" className="block text-[11px] font-semibold text-[#8FA1A8] mb-1">Audit Note</label>
+              <input
+                id="investor-freeze-note"
+                type="text"
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+              />
             </div>
-          </div>
+          </AdminActionDialog>
         )}
 
         {/* Send Message Modal */}
         {messageModalOpen && (
           <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-            <form onSubmit={handleSendMessage} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
+            <form ref={messageModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Send Message to ${selectedUser.fullName}`} onSubmit={handleSendMessage} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4 focus:outline-none">
               <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
                 <h3 className="text-sm font-bold text-[#F2F5F4]">Send Message to {selectedUser.fullName}</h3>
-                <button type="button" onClick={() => setMessageModalOpen(false)} className="text-[#8FA1A8] cursor-pointer">
+                <button type="button" onClick={() => setMessageModalOpen(false)} aria-label="Close send message dialog" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <div className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-[#B6C4C9] font-semibold mb-1">Notification Title</label>
+                  <label htmlFor="investor-msg-title" className="block text-[#B6C4C9] font-semibold mb-1">Notification Title</label>
                   <input
+                    id="investor-msg-title"
                     type="text"
                     required
                     value={msgTitle}
                     onChange={(e) => setMsgTitle(e.target.value)}
                     placeholder="Account update or action required"
-                    className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#B6C4C9] font-semibold mb-1">Message</label>
+                  <label htmlFor="investor-msg-body" className="block text-[#B6C4C9] font-semibold mb-1">Message</label>
                   <textarea
+                    id="investor-msg-body"
                     rows={4}
                     required
                     value={msgBody}
@@ -658,14 +662,14 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 <button
                   type="button"
                   onClick={() => setMessageModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={sendingMsg}
-                  className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
                   {sendingMsg ? 'Sending...' : 'Send Message'}
                 </button>
@@ -677,10 +681,10 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         {/* Document Preview Modal */}
         {previewUrl && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-5 space-y-4">
+            <div ref={docModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={previewUrl.title} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-5 space-y-4 focus:outline-none">
               <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
                 <h3 className="text-sm font-bold text-[#F2F5F4]">{previewUrl.title}</h3>
-                <button type="button" onClick={() => setPreviewUrl(null)} className="text-[#8FA1A8] cursor-pointer">
+                <button type="button" onClick={() => setPreviewUrl(null)} aria-label="Close document preview" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -712,7 +716,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-[#F2F5F4]">Investors</h2>
+              <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] focus:outline-none">Investors</h2>
               {readOnly && <span className="text-[11px] font-semibold text-amber-400">· Read-Only</span>}
             </div>
             <p className="text-xs text-[#8FA1A8]">
@@ -725,7 +729,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           <button
             type="button"
             onClick={handlePrintUserDirectory}
-            className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5 text-[#6FD8B0]" />
             <span>Export Directory</span>
@@ -733,7 +737,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           <button
             type="button"
             onClick={onRefreshAll}
-            className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5 text-[#6FD8B0]" />
             <span>Refresh</span>
@@ -746,18 +750,22 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-4 h-4 text-[#8FA1A8] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
+            id="investors-directory-search"
             type="text"
+            aria-label="Search investors by name, email, country, or ID"
             placeholder="Search by name, email, country, or ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs text-[#F2F5F4] placeholder-[#52646C] focus:outline-none focus:border-[#6FD8B0]"
+            className="min-h-[44px] w-full pl-9 pr-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs text-[#F2F5F4] placeholder-[#52646C] focus:outline-none focus:border-[#6FD8B0]"
           />
         </div>
 
         <select
+          id="investors-kyc-filter"
+          aria-label="Filter investors by KYC status"
           value={kycFilter}
           onChange={(e) => setKycFilter(e.target.value)}
-          className="rounded-xl bg-[#0B0F10] border border-[#1F2C33] px-3 py-2 text-xs font-semibold text-[#F2F5F4]"
+          className="min-h-[44px] rounded-xl bg-[#0B0F10] border border-[#1F2C33] px-3 py-2 text-xs font-semibold text-[#F2F5F4]"
         >
           <option value="all">All KYC</option>
           <option value="verified">Verified</option>
@@ -766,9 +774,11 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </select>
 
         <select
+          id="investors-frozen-filter"
+          aria-label="Filter investors by frozen state"
           value={frozenFilter}
           onChange={(e) => setFrozenFilter(e.target.value as any)}
-          className="rounded-xl bg-[#0B0F10] border border-[#1F2C33] px-3 py-2 text-xs font-semibold text-[#F2F5F4]"
+          className="min-h-[44px] rounded-xl bg-[#0B0F10] border border-[#1F2C33] px-3 py-2 text-xs font-semibold text-[#F2F5F4]"
         >
           <option value="all">All States</option>
           <option value="active">Active Only</option>
@@ -776,9 +786,11 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </select>
 
         <select
+          id="investors-sort-select"
+          aria-label="Sort investors"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as any)}
-          className="rounded-xl bg-[#0B0F10] border border-[#1F2C33] px-3 py-2 text-xs font-semibold text-[#F2F5F4]"
+          className="min-h-[44px] rounded-xl bg-[#0B0F10] border border-[#1F2C33] px-3 py-2 text-xs font-semibold text-[#F2F5F4]"
         >
           <option value="balance_desc">Wallet Balance (High–Low)</option>
           <option value="date_desc">Newest Registered</option>
@@ -847,7 +859,7 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                           e.stopPropagation();
                           setSelectedUserId(u.id);
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-[11px] font-semibold cursor-pointer"
+                        className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-xs font-semibold cursor-pointer"
                       >
                         Investor Page
                       </button>

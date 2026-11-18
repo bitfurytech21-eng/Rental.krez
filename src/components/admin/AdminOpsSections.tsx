@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Building2,
   XCircle,
@@ -25,14 +25,16 @@ import { Property, PropertyStatus, PropertyType } from '../../types/property';
 import { User as PlatformUser } from '../../types/user';
 import { ledger } from '../../lib/ledger';
 import { adminApi } from '../../lib/api';
-import { formatCurrency, formatDate } from '../../lib/utils';
+import { formatDate } from '../../lib/utils';
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
 import {
   AuditLogRow,
+  InvestmentRequestRow,
   InvestorDocumentRow,
   KycSubmissionRow,
   PastDistributionRow,
   allocateProportionalCents,
+  approveInvestmentRequestRpc,
   assignStaffRoleRpc,
   centsToEur,
   createPrivateBucketSignedUrl,
@@ -40,7 +42,9 @@ import {
   eurToCents,
   executePayDistribution,
   formatCentsEur,
+  parseStrictEurToCents,
   recordInvestmentRpc,
+  rejectInvestmentRequestRpc,
   reviewKycSubmission,
   sendAdminNotificationRecord,
   uploadPdfToDocumentsBucket,
@@ -48,6 +52,7 @@ import {
   upsertSupabaseProperty,
 } from './adminSupabaseGateway';
 import { getStaffRoleLabel } from './adminRbac';
+import { AdminActionDialog, useDialogFocus } from './AdminActionDialog';
 
 export interface AdminNotificationRecord {
   id: string;
@@ -93,6 +98,7 @@ export const AdminPropertiesSection: React.FC<{
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const propertyModalRef = useDialogFocus<HTMLFormElement>(formOpen, () => setFormOpen(false), saving);
 
   // Full schema fields matching Supabase `properties`
   const [name, setName] = useState('');
@@ -185,8 +191,8 @@ export const AdminPropertiesSection: React.FC<{
     }
     setSaving(true);
     try {
-      const sharePriceCents = Math.round(Number(sharePriceEur) * 100);
-      const fundingTargetCents = Math.round(Number(fundingTargetEur) * 100);
+      const sharePriceCents = eurToCents(sharePriceEur);
+      const fundingTargetCents = eurToCents(fundingTargetEur);
       const savedRow = await upsertSupabaseProperty(
         {
           name: name.trim(),
@@ -324,7 +330,7 @@ export const AdminPropertiesSection: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">Properties</h2>
+          <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">Properties</h2>
           <p className="text-xs text-[#8FA1A8] mt-1">
             Manage properties (share prices stored in integer cents, funding target, yield, IRR, photos, and draft/open/closed status).
           </p>
@@ -332,7 +338,7 @@ export const AdminPropertiesSection: React.FC<{
         <button
           type="button"
           onClick={openAddForm}
-          className="px-4 py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-2 cursor-pointer"
+          className="min-h-[44px] px-4 py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-2 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add Property</span>
@@ -344,11 +350,13 @@ export const AdminPropertiesSection: React.FC<{
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
           <input
+            id="prop-search"
             type="text"
+            aria-label="Search property name or city"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search property name or city..."
-            className="w-full pl-9 pr-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4] placeholder-[#526066]"
+            className="min-h-[44px] w-full pl-9 pr-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4] placeholder-[#526066]"
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -357,7 +365,7 @@ export const AdminPropertiesSection: React.FC<{
               key={f}
               type="button"
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize cursor-pointer ${
+              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold capitalize cursor-pointer ${
                 filter === f
                   ? 'bg-[#6FD8B0] text-[#0B0F10]'
                   : 'bg-[#0B0F10] border border-[#1F2C33] text-[#B6C4C9]'
@@ -405,11 +413,11 @@ export const AdminPropertiesSection: React.FC<{
                     </td>
                     <td className="py-3.5 px-4 text-[#B6C4C9]">{p.type}</td>
                     <td className="py-3.5 px-4 text-right font-mono text-[#F2F5F4] tabular-nums">
-                      <div>{formatCurrency(p.tokenPrice)}</div>
-                      <div className="text-[10px] text-[#8FA1A8]">{Math.round(p.tokenPrice * 100)}¢</div>
+                      <div>{formatCentsEur(eurToCents(p.tokenPrice))}</div>
+                      <div className="text-[10px] text-[#8FA1A8]">{eurToCents(p.tokenPrice)}¢</div>
                     </td>
                     <td className="py-3.5 px-4 text-right font-semibold text-[#F2F5F4] tabular-nums">
-                      {formatCurrency(p.targetAmount)}
+                      {formatCentsEur(eurToCents(p.targetAmount))}
                     </td>
                     <td className="py-3.5 px-4 tabular-nums">
                       <span className="text-[#6FD8B0] font-bold">{p.estimatedAnnualYield}%</span>
@@ -434,9 +442,9 @@ export const AdminPropertiesSection: React.FC<{
                       <button
                         type="button"
                         onClick={() => openEditForm(p)}
-                        className="px-3 py-1.5 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#F2F5F4] text-[11px] font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                        className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#F2F5F4] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                       >
-                        <Edit3 className="w-3 h-3 text-[#6FD8B0]" />
+                        <Edit3 className="w-3.5 h-3.5 text-[#6FD8B0]" />
                         <span>Edit</span>
                       </button>
                     </td>
@@ -459,48 +467,56 @@ export const AdminPropertiesSection: React.FC<{
       {formOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <form
+            ref={propertyModalRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingId ? 'Edit Property' : 'Add Property'}
             onSubmit={handleSaveProperty}
-            className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-6 space-y-4 my-6"
+            className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-6 space-y-4 my-6 focus:outline-none"
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#1F2C33]">
               <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-[#6FD8B0]" />
                 <span>{editingId ? 'Edit Property' : 'Add Property'}</span>
               </h3>
-              <button type="button" onClick={() => setFormOpen(false)} className="text-[#8FA1A8] cursor-pointer">
+              <button type="button" onClick={() => setFormOpen(false)} aria-label="Close property dialog" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Property Name *</label>
+                <label htmlFor="prop-name-input" className="block text-[#B6C4C9] font-semibold mb-1">Property Name *</label>
                 <input
+                  id="prop-name-input"
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Villa Cap d'Antibes"
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                 />
               </div>
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">City *</label>
+                <label htmlFor="prop-city-input" className="block text-[#B6C4C9] font-semibold mb-1">City *</label>
                 <input
+                  id="prop-city-input"
                   type="text"
                   required
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Paris"
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                 />
               </div>
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Type</label>
+                <label htmlFor="prop-type-select" className="block text-[#B6C4C9] font-semibold mb-1">Type</label>
                 <select
+                  id="prop-type-select"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                 >
                   <option value="Residential">Residential</option>
                   <option value="Commercial">Commercial</option>
@@ -509,11 +525,12 @@ export const AdminPropertiesSection: React.FC<{
                 </select>
               </div>
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Status</label>
+                <label htmlFor="prop-status-select" className="block text-[#B6C4C9] font-semibold mb-1">Status</label>
                 <select
+                  id="prop-status-select"
                   value={status}
                   onChange={(e) => setStatus(e.target.value as 'draft' | 'open' | 'closed')}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                 >
                   <option value="draft">draft</option>
                   <option value="open">open</option>
@@ -522,79 +539,86 @@ export const AdminPropertiesSection: React.FC<{
               </div>
 
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">
-                  Share Price (EUR — stored as {Math.round(sharePriceEur * 100).toLocaleString()} cents)
+                <label htmlFor="prop-share-price" className="block text-[#B6C4C9] font-semibold mb-1">
+                  Share Price (EUR — stored as {eurToCents(sharePriceEur).toLocaleString()} cents)
                 </label>
                 <input
+                  id="prop-share-price"
                   type="number"
                   step="0.01"
                   min={1}
                   required
                   value={sharePriceEur}
                   onChange={(e) => setSharePriceEur(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
                 />
               </div>
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">
-                  Funding Target (EUR — stored as {Math.round(fundingTargetEur * 100).toLocaleString()} cents)
+                <label htmlFor="prop-funding-target" className="block text-[#B6C4C9] font-semibold mb-1">
+                  Funding Target (EUR — stored as {eurToCents(fundingTargetEur).toLocaleString()} cents)
                 </label>
                 <input
+                  id="prop-funding-target"
                   type="number"
                   step="1"
                   min={1000}
                   required
                   value={fundingTargetEur}
                   onChange={(e) => setFundingTargetEur(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
                 />
               </div>
 
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Target Yield (%)</label>
+                <label htmlFor="prop-target-yield" className="block text-[#B6C4C9] font-semibold mb-1">Target Yield (%)</label>
                 <input
+                  id="prop-target-yield"
                   type="number"
                   step="0.1"
                   value={targetYield}
                   onChange={(e) => setTargetYield(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
                 />
               </div>
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Target IRR (%)</label>
+                <label htmlFor="prop-target-irr" className="block text-[#B6C4C9] font-semibold mb-1">Target IRR (%)</label>
                 <input
+                  id="prop-target-irr"
                   type="number"
                   step="0.1"
                   value={targetIrr}
                   onChange={(e) => setTargetIrr(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
                 />
               </div>
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Term</label>
+                <label htmlFor="prop-term-input" className="block text-[#B6C4C9] font-semibold mb-1">Term</label>
                 <input
+                  id="prop-term-input"
                   type="text"
                   value={term}
                   onChange={(e) => setTerm(e.target.value)}
                   placeholder="36 months"
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                 />
               </div>
               <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Funded % (0–100)</label>
+                <label htmlFor="prop-funded-pct" className="block text-[#B6C4C9] font-semibold mb-1">Funded % (0–100)</label>
                 <input
+                  id="prop-funded-pct"
                   type="number"
                   min={0}
                   max={100}
                   value={fundedPct}
                   onChange={(e) => setFundedPct(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Description</label>
+                <label htmlFor="prop-description-input" className="block text-[#B6C4C9] font-semibold mb-1">Description</label>
                 <textarea
+                  id="prop-description-input"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -605,12 +629,13 @@ export const AdminPropertiesSection: React.FC<{
 
               {/* Photos upload + URL */}
               <div className="sm:col-span-2 space-y-2">
-                <label className="block text-[#B6C4C9] font-semibold">Photos Upload</label>
+                <span className="block text-[#B6C4C9] font-semibold">Photos Upload</span>
                 <div className="flex flex-wrap items-center gap-2">
-                  <label className="px-3 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#6FD8B0] inline-flex items-center gap-1.5 cursor-pointer">
+                  <label htmlFor="prop-photo-upload" className="min-h-[44px] px-3 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#6FD8B0] inline-flex items-center gap-1.5 cursor-pointer">
                     <Upload className="w-3.5 h-3.5" />
                     <span>{uploadingPhoto ? 'Uploading...' : 'Upload Photo(s)'}</span>
                     <input
+                      id="prop-photo-upload"
                       type="file"
                       accept="image/*"
                       multiple
@@ -621,11 +646,13 @@ export const AdminPropertiesSection: React.FC<{
                   </label>
                   <div className="flex-1 flex gap-1.5 min-w-[200px]">
                     <input
+                      id="prop-photo-url"
                       type="url"
+                      aria-label="Paste property photo URL"
                       value={photoUrlInput}
                       onChange={(e) => setPhotoUrlInput(e.target.value)}
                       placeholder="Or paste photo URL..."
-                      className="flex-1 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+                      className="min-h-[44px] flex-1 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
                     />
                     <button
                       type="button"
@@ -635,7 +662,7 @@ export const AdminPropertiesSection: React.FC<{
                           setPhotoUrlInput('');
                         }
                       }}
-                      className="px-3 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-[#F2F5F4] font-semibold cursor-pointer"
+                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-[#F2F5F4] font-semibold cursor-pointer"
                     >
                       Add
                     </button>
@@ -649,10 +676,11 @@ export const AdminPropertiesSection: React.FC<{
                         <button
                           type="button"
                           onClick={() => setPhotos((prev) => prev.filter((_, i) => i !== idx))}
-                          className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/80 text-rose-300 cursor-pointer"
+                          className="absolute top-0 right-0 min-h-[28px] min-w-[28px] flex items-center justify-center rounded-bl bg-black/80 text-rose-300 cursor-pointer"
                           title="Remove photo"
+                          aria-label={`Remove photo ${idx + 1}`}
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
@@ -665,14 +693,14 @@ export const AdminPropertiesSection: React.FC<{
               <button
                 type="button"
                 onClick={() => setFormOpen(false)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
               >
                 {saving ? 'Saving...' : editingId ? 'Save Property' : 'Create Property'}
               </button>
@@ -685,16 +713,377 @@ export const AdminPropertiesSection: React.FC<{
 };
 
 // ============================================================================
-// 7. INVESTMENTS: per-property holders + Record Investment form
+// 7. INVESTMENT REQUESTS QUEUE (approve_investment_request / reject_investment_request)
 // ============================================================================
-export const AdminInvestmentsSection: React.FC<{
-  investments: any[];
+export const InvestmentRequestsQueuePanel: React.FC<{
+  loading?: boolean;
+  requests: InvestmentRequestRow[];
   users: PlatformUser[];
   properties: Property[];
   onRefresh: () => Promise<void> | void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
-}> = ({ investments, users, properties, onRefresh, onSuccess, onError }) => {
+}> = ({ loading = false, requests, users, properties, onRefresh, onSuccess, onError }) => {
+  const [queueTab, setQueueTab] = useState<'pending' | 'handled'>('pending');
+  const [handledFilter, setHandledFilter] = useState<'all' | 'completed' | 'failed'>('all');
+  const [search, setSearch] = useState('');
+  const [approveTarget, setApproveTarget] = useState<InvestmentRequestRow | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<InvestmentRequestRow | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+  const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
+
+  const resolveProcessorLabel = (raw?: string): string => {
+    if (!raw) return 'System';
+    const match = userById.get(raw);
+    return match?.email || match?.fullName || raw;
+  };
+
+  const pendingCount = useMemo(() => requests.filter((r) => r.status === 'pending').length, [requests]);
+  const handledCount = useMemo(() => requests.filter((r) => r.status !== 'pending').length, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return requests
+      .filter((r) => {
+        if (queueTab === 'pending') return r.status === 'pending';
+        if (r.status === 'pending') return false;
+        if (handledFilter === 'completed') return r.status === 'approved';
+        if (handledFilter === 'failed') return r.status === 'rejected';
+        return true;
+      })
+      .filter((r) => {
+        if (!q) return true;
+        const inv = userById.get(r.userId);
+        const prop = propById.get(r.propertyId);
+        return `${inv?.fullName || ''} ${inv?.email || ''} ${r.userId} ${r.id} ${prop?.title || r.propertyId}`
+          .toLowerCase()
+          .includes(q);
+      })
+      .sort((a, b) => {
+        if (queueTab === 'pending') {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+        const aTime = new Date(a.processedAt || a.createdAt).getTime();
+        const bTime = new Date(b.processedAt || b.createdAt).getTime();
+        return bTime - aTime;
+      });
+  }, [requests, queueTab, handledFilter, search, userById, propById]);
+
+  const getDisplayAmountCents = (req: InvestmentRequestRow): number => {
+    if (req.amountCents > 0) return req.amountCents;
+    const prop = propById.get(req.propertyId);
+    return Math.max(0, Math.round(req.shares) * eurToCents(prop?.tokenPrice || 0));
+  };
+
+  return (
+    <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl overflow-hidden">
+      <div className="px-5 py-3.5 bg-[#0B0F10] border-b border-[#1F2C33] flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#F2F5F4]">Investment Requests Queue</h3>
+              <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold tabular-nums">
+                {pendingCount} pending
+              </span>
+            </div>
+            <p className="text-[11px] text-[#8FA1A8] mt-0.5">
+              Confirmed individually (oldest pending first) via <span className="font-mono text-[#6FD8B0]">approve_investment_request</span> / <span className="font-mono text-[#6FD8B0]">reject_investment_request</span>.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setQueueTab('pending')}
+                className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer tabular-nums ${
+                  queueTab === 'pending' ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
+                }`}
+              >
+                Pending ({pendingCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setQueueTab('handled')}
+                className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer tabular-nums ${
+                  queueTab === 'handled' ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
+                }`}
+              >
+                Handled ({handledCount})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
+            <input
+              id="inv-req-search"
+              type="text"
+              aria-label="Search investment requests by investor name, email, or reference"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search investor name, email, or reference..."
+              className="min-h-[44px] w-full pl-8 pr-3 py-2 bg-[#121A1F] border border-[#1F2C33] rounded-lg text-xs text-[#F2F5F4]"
+            />
+          </div>
+
+          {queueTab === 'handled' && (
+            <div className="flex items-center gap-1.5">
+              {([
+                { id: 'all', label: 'All' },
+                { id: 'completed', label: 'Completed' },
+                { id: 'failed', label: 'Failed' },
+              ] as const).map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setHandledFilter(sub.id)}
+                  className={`min-h-[44px] px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
+                    handledFilter === sub.id
+                      ? 'bg-[#6FD8B0]/20 text-[#6FD8B0] border border-[#6FD8B0]/40'
+                      : 'bg-[#121A1F] border border-[#1F2C33] text-[#8FA1A8]'
+                  }`}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="p-4 space-y-2" role="status" aria-label="Loading investment requests queue">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="grid grid-cols-8 gap-3 py-2 border-b border-[#1F2C33] last:border-b-0">
+              {Array.from({ length: 8 }, (_, cell) => (
+                <div key={cell} className="h-4 rounded bg-[#1F2C33] animate-pulse" />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-[#1F2C33] text-[11px] font-semibold text-[#8FA1A8] uppercase tracking-wider">
+                <th className="py-2.5 px-4">Investor</th>
+                <th className="py-2.5 px-4">Property</th>
+                <th className="py-2.5 px-4 text-right">Shares</th>
+                <th className="py-2.5 px-4 text-right">Total Cost</th>
+                <th className="py-2.5 px-4 text-right">Available Balance</th>
+                <th className="py-2.5 px-4">Requested</th>
+                <th className="py-2.5 px-4">Status</th>
+                <th className="py-2.5 px-4 text-right">
+                  {queueTab === 'handled' ? 'Processed By & When' : 'Action'}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1F2C33]">
+              {filteredRequests.map((req) => {
+                const inv = userById.get(req.userId);
+                const prop = propById.get(req.propertyId);
+                const amountCents = getDisplayAmountCents(req);
+                const availCents = eurToCents(inv?.walletBalance ?? 0);
+                const insufficient = req.status === 'pending' && availCents < amountCents;
+                return (
+                  <tr key={req.id} className="hover:bg-[#162026]">
+                    <td className="py-3 px-4">
+                      <div className="font-semibold text-[#F2F5F4]">{inv?.fullName || 'Investor'}</div>
+                      <div className="text-[11px] text-[#8FA1A8]">{inv?.email || req.userId}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-[#F2F5F4] font-medium">{prop?.title || req.propertyId}</div>
+                      <div className="text-[10px] font-mono text-[#8FA1A8]">{req.id}</div>
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-[#F2F5F4] tabular-nums">{req.shares.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(amountCents)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">
+                      <div className={`font-semibold ${insufficient ? 'text-rose-400' : 'text-[#F2F5F4]'}`}>
+                        {formatCentsEur(availCents)}
+                      </div>
+                      {insufficient && (
+                        <div className="text-[10px] text-rose-400">Insufficient balance</div>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-[#B6C4C9] whitespace-nowrap">{formatDate(req.createdAt)}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`uppercase font-semibold text-[11px] ${
+                          req.status === 'approved'
+                            ? 'text-[#6FD8B0]'
+                            : req.status === 'rejected'
+                            ? 'text-rose-400'
+                            : 'text-amber-400'
+                        }`}
+                      >
+                        {req.status}
+                      </span>
+                      {req.reason && <div className="text-[11px] text-rose-300 mt-0.5">{req.reason}</div>}
+                    </td>
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      {queueTab === 'pending' && req.status === 'pending' ? (
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setApproveTarget(req)}
+                            className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectTarget(req);
+                              setRejectReason('');
+                            }}
+                            className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-xs font-semibold cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-right">
+                          <div className="text-[11px] font-medium text-[#F2F5F4]">
+                            {resolveProcessorLabel(req.processedBy)}
+                          </div>
+                          <div className="text-[10px] text-[#8FA1A8]">
+                            {req.processedAt || req.reviewedAt
+                              ? formatDate(req.processedAt || req.reviewedAt!)
+                              : '—'}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredRequests.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="py-10 text-center text-xs text-[#8FA1A8]">
+                    {queueTab === 'pending' && !search.trim()
+                      ? 'Nothing waiting'
+                      : `No matching investment requests found.`}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Approve Investment Request Dialog */}
+      {(() => {
+        const inv = approveTarget ? userById.get(approveTarget.userId) : undefined;
+        const prop = approveTarget ? propById.get(approveTarget.propertyId) : undefined;
+        const amountCents = approveTarget ? getDisplayAmountCents(approveTarget) : 0;
+        const availCents = eurToCents(inv?.walletBalance ?? 0);
+        return (
+          <AdminActionDialog
+            open={Boolean(approveTarget)}
+            actionName="Approve investment request"
+            confirmLabel="Approve investment request"
+            investorName={inv?.fullName || 'Investor'}
+            investorEmail={inv?.email || approveTarget?.userId || ''}
+            amountCents={amountCents}
+            reference={approveTarget?.id || ''}
+            extraDetails={[
+              { label: 'Property', value: prop?.title || approveTarget?.propertyId || '—' },
+              { label: 'Shares', value: approveTarget ? approveTarget.shares.toLocaleString() : '0', tone: 'mono' },
+              { label: 'Total Cost', value: formatCentsEur(amountCents), tone: 'accent' },
+              {
+                label: 'Available Balance',
+                value: formatCentsEur(availCents),
+                tone: availCents < amountCents ? 'danger' : 'default',
+              },
+            ]}
+            onConfirm={async () => {
+              if (!approveTarget) return;
+              await approveInvestmentRequestRpc(approveTarget.id);
+              return `Investment request ${approveTarget.id} approved via approve_investment_request.`;
+            }}
+            onRefresh={onRefresh}
+            onRefreshError={onError}
+            onSuccess={onSuccess}
+            onClose={() => setApproveTarget(null)}
+          />
+        );
+      })()}
+
+      {/* Reject Investment Request Dialog */}
+      {(() => {
+        const inv = rejectTarget ? userById.get(rejectTarget.userId) : undefined;
+        const prop = rejectTarget ? propById.get(rejectTarget.propertyId) : undefined;
+        const amountCents = rejectTarget ? getDisplayAmountCents(rejectTarget) : 0;
+        const availCents = eurToCents(inv?.walletBalance ?? 0);
+        return (
+          <AdminActionDialog
+            open={Boolean(rejectTarget)}
+            actionName="Reject investment request"
+            confirmLabel="Reject investment request"
+            tone="danger"
+            investorName={inv?.fullName || 'Investor'}
+            investorEmail={inv?.email || rejectTarget?.userId || ''}
+            amountCents={amountCents}
+            reference={rejectTarget?.id || ''}
+            extraDetails={[
+              { label: 'Property', value: prop?.title || rejectTarget?.propertyId || '—' },
+              { label: 'Shares', value: rejectTarget ? rejectTarget.shares.toLocaleString() : '0', tone: 'mono' },
+              { label: 'Total Cost', value: formatCentsEur(amountCents) },
+              { label: 'Available Balance', value: formatCentsEur(availCents) },
+            ]}
+            validate={() => (!rejectReason.trim() ? 'A rejection reason is required.' : null)}
+            onConfirm={async () => {
+              if (!rejectTarget) return;
+              await rejectInvestmentRequestRpc(rejectTarget.id, rejectReason.trim());
+              setRejectReason('');
+              return `Investment request ${rejectTarget.id} rejected via reject_investment_request.`;
+            }}
+            onRefresh={onRefresh}
+            onRefreshError={onError}
+            onSuccess={onSuccess}
+            onClose={() => {
+              setRejectTarget(null);
+              setRejectReason('');
+            }}
+          >
+            <div>
+              <label htmlFor="inv-req-reject-reason" className="block text-xs font-semibold text-[#B6C4C9] mb-1">
+                Rejection Reason *
+              </label>
+              <textarea
+                id="inv-req-reject-reason"
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. Allocation cap reached or compliance check pending..."
+                className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+              />
+            </div>
+          </AdminActionDialog>
+        );
+      })()}
+    </div>
+  );
+};
+
+// ============================================================================
+// 7B. INVESTMENTS: per-property holders + Record Investment form
+// ============================================================================
+export const AdminInvestmentsSection: React.FC<{
+  loading?: boolean;
+  investments: any[];
+  investmentRequests?: InvestmentRequestRow[];
+  users: PlatformUser[];
+  properties: Property[];
+  onRefresh: () => Promise<void> | void;
+  onSuccess: (msg: string) => void;
+  onError: (msg: string) => void;
+}> = ({ loading = false, investments, investmentRequests = [], users, properties, onRefresh, onSuccess, onError }) => {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [recordOpen, setRecordOpen] = useState(false);
@@ -704,8 +1093,13 @@ export const AdminInvestmentsSection: React.FC<{
   const [formUserId, setFormUserId] = useState<string>(() => users[0]?.id || '');
   const [formPropId, setFormPropId] = useState<string>(() => properties[0]?.id || '');
   const [formShares, setFormShares] = useState<number>(10);
-  const [submitting, setSubmitting] = useState(false);
-  const submitLockRef = useRef<boolean>(false);
+  const recordModalRef = useDialogFocus<HTMLFormElement>(
+    recordOpen && !confirmStep,
+    () => {
+      setRecordOpen(false);
+      setConfirmStep(false);
+    }
+  );
 
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
@@ -784,45 +1178,22 @@ export const AdminInvestmentsSection: React.FC<{
     Math.max(0, Math.floor(Number(formShares) || 0)) * eurToCents(selectedFormProp?.tokenPrice || 0);
   const calculatedCost = centsToEur(calculatedCostCents);
 
-  const handleRecordInvestment = async (e: React.FormEvent) => {
+  const handleOpenRecordConfirm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitLockRef.current || submitting) return;
     const uid = formUserId || users[0]?.id;
     const pid = formPropId || properties[0]?.id;
     if (!uid || !pid || formShares <= 0 || calculatedCostCents <= 0) {
       onError('Select an investor, a property, and enter a positive number of shares.');
       return;
     }
-    if (!confirmStep) {
-      setConfirmStep(true);
-      return;
-    }
-    submitLockRef.current = true;
-    setSubmitting(true);
-    try {
-      await recordInvestmentRpc({
-        userId: uid,
-        propertyId: pid,
-        shares: Math.floor(formShares),
-        sharePriceEur: centsToEur(eurToCents(selectedFormProp?.tokenPrice || 500)),
-      });
-      setRecordOpen(false);
-      setConfirmStep(false);
-      await onRefresh();
-      onSuccess(`Recorded ${Math.floor(formShares)} shares (${formatCentsEur(calculatedCostCents)}) via record_investment.`);
-    } catch (err: any) {
-      onError(err?.message || 'Unable to record investment.');
-    } finally {
-      setSubmitting(false);
-      submitLockRef.current = false;
-    }
+    setConfirmStep(true);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">Investments &amp; Holders per Property</h2>
+          <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">Investments &amp; Holders per Property</h2>
           <p className="text-xs text-[#8FA1A8] mt-1">
             View shareholdings grouped by property with shares and cost basis, or record a new allocation.
           </p>
@@ -835,11 +1206,11 @@ export const AdminInvestmentsSection: React.FC<{
                 `lagence-investments-${new Date().toISOString().slice(0, 10)}.csv`,
                 ['Property', 'Holder', 'Email', 'Shares', 'Cost (EUR)'],
                 groupedByProperty.flatMap((g) =>
-                  Array.from(g.holders.values()).map((h) => [g.propertyTitle, h.name, h.email, h.shares, h.cost])
+                  Array.from(g.holders.values()).map((h) => [g.propertyTitle, h.name, h.email, h.shares, centsToEur(h.costCents).toFixed(2)])
                 )
               )
             }
-            className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-[#6FD8B0]" />
             <span>Export CSV</span>
@@ -852,7 +1223,7 @@ export const AdminInvestmentsSection: React.FC<{
               setConfirmStep(false);
               setRecordOpen(true);
             }}
-            className="px-4 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Record Investment</span>
@@ -865,17 +1236,21 @@ export const AdminInvestmentsSection: React.FC<{
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
           <input
+            id="inv-holders-search"
             type="text"
+            aria-label="Search holder name, email, or property"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search holder name, email, or property..."
-            className="w-full pl-9 pr-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+            className="min-h-[44px] w-full pl-9 pr-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
           />
         </div>
         <select
+          id="inv-holders-property-filter"
+          aria-label="Filter holdings by property"
           value={selectedPropertyId}
           onChange={(e) => setSelectedPropertyId(e.target.value)}
-          className="px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+          className="min-h-[44px] px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
         >
           <option value="all">All Properties ({properties.length})</option>
           {properties.map((p) => (
@@ -883,6 +1258,17 @@ export const AdminInvestmentsSection: React.FC<{
           ))}
         </select>
       </div>
+
+      {/* Investment Requests Queue (approve_investment_request / reject_investment_request) */}
+      <InvestmentRequestsQueuePanel
+        loading={loading}
+        requests={investmentRequests}
+        users={users}
+        properties={properties}
+        onRefresh={onRefresh}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
 
       {/* Property-Grouped Holder Cards */}
       <div className="space-y-4">
@@ -898,7 +1284,7 @@ export const AdminInvestmentsSection: React.FC<{
                 </div>
                 <div className="flex items-center gap-4 text-xs tabular-nums">
                   <span className="text-[#B6C4C9]">Total Shares: <strong className="text-[#F2F5F4]">{group.totalShares.toLocaleString()}</strong></span>
-                  <span className="text-[#B6C4C9]">Total Cost: <strong className="text-[#6FD8B0]">{formatCurrency(group.totalCost)}</strong></span>
+                  <span className="text-[#B6C4C9]">Total Cost: <strong className="text-[#6FD8B0]">{formatCentsEur(group.totalCostCents)}</strong></span>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -921,7 +1307,7 @@ export const AdminInvestmentsSection: React.FC<{
                           <td className="py-3 px-4 text-[#8FA1A8]">{h.email}</td>
                           <td className="py-3 px-4 text-right font-mono text-[#F2F5F4] tabular-nums">{h.shares.toLocaleString()}</td>
                           <td className="py-3 px-4 text-right font-mono text-[#B6C4C9] tabular-nums">{pct}%</td>
-                          <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCurrency(h.cost)}</td>
+                          <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(h.costCents)}</td>
                         </tr>
                       );
                     })}
@@ -939,124 +1325,143 @@ export const AdminInvestmentsSection: React.FC<{
         )}
       </div>
 
-      {/* Record Investment Modal */}
+      {/* Record Investment Modal Step 1 (Form) + Step 2 (AdminActionDialog) */}
       {recordOpen && (() => {
+        const uid = formUserId || users[0]?.id || '';
+        const pid = formPropId || properties[0]?.id || '';
         const curCents = eurToCents(selectedFormInvestor?.walletBalance ?? 0);
         const projCents = curCents - calculatedCostCents;
         return (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-            <form onSubmit={handleRecordInvestment} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
-                <h3 className="text-sm font-bold text-[#F2F5F4]">
-                  {confirmStep ? 'Confirm Investment Allocation' : 'Record Investment'}
-                </h3>
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={() => {
-                    setRecordOpen(false);
-                    setConfirmStep(false);
-                  }}
-                  className="text-[#8FA1A8] cursor-pointer disabled:opacity-50"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {!confirmStep ? (
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <label className="block text-[#B6C4C9] font-semibold mb-1">Investor</label>
-                    <select
-                      required
-                      value={formUserId}
-                      onChange={(e) => setFormUserId(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+          <>
+            {!confirmStep && (
+              <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+                <form ref={recordModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Record Investment" onSubmit={handleOpenRecordConfirm} noValidate className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4 focus:outline-none">
+                  <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
+                    <h3 className="text-sm font-bold text-[#F2F5F4]">Record Investment</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecordOpen(false);
+                        setConfirmStep(false);
+                      }}
+                      aria-label="Close record investment dialog"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer"
                     >
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.fullName || u.email} ({u.email}) — {formatCurrency(u.walletBalance)}
-                        </option>
-                      ))}
-                    </select>
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-[#B6C4C9] font-semibold mb-1">Property</label>
-                    <select
-                      required
-                      value={formPropId}
-                      onChange={(e) => setFormPropId(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-                    >
-                      {properties.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title} ({formatCurrency(p.tokenPrice)} / share)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[#B6C4C9] font-semibold mb-1">Number of Shares</label>
-                    <input
-                      type="number"
-                      min={1}
-                      required
-                      value={formShares}
-                      onChange={(e) => setFormShares(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                    />
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] flex items-center justify-between">
-                    <span className="text-[#8FA1A8]">Total Cost</span>
-                    <span className="text-base font-bold text-[#6FD8B0] tabular-nums">
-                      {formatCentsEur(calculatedCostCents)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3.5 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
-                  <div>Action: <strong className="text-[#6FD8B0]">Record Investment (record_investment)</strong></div>
-                  <div>Investor: <strong className="text-[#F2F5F4]">{selectedFormInvestor?.fullName || selectedFormInvestor?.email || formUserId}</strong></div>
-                  <div>Property: <strong className="text-[#F2F5F4]">{selectedFormProp?.title || formPropId}</strong> ({Math.floor(formShares)} shares)</div>
-                  <div>Amount: <strong className="text-rose-300">−{formatCentsEur(calculatedCostCents)}</strong></div>
-                  <div>Current Balance: <strong>{formatCentsEur(curCents)}</strong></div>
-                  <div>Projected Balance: <strong className="text-[#6FD8B0]">{formatCentsEur(projCents)}</strong></div>
-                </div>
-              )}
 
-              <div className="flex justify-end gap-2 pt-2">
-                {confirmStep ? (
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => setConfirmStep(false)}
-                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
-                  >
-                    Back
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => {
-                      setRecordOpen(false);
-                      setConfirmStep(false);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={submitting || calculatedCostCents <= 0}
-                  className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
-                >
-                  {submitting ? 'Recording...' : confirmStep ? 'Confirm & Record' : 'Review Investment'}
-                </button>
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label htmlFor="rec-inv-user" className="block text-[#B6C4C9] font-semibold mb-1">Investor</label>
+                      <select
+                        id="rec-inv-user"
+                        value={formUserId}
+                        onChange={(e) => setFormUserId(e.target.value)}
+                        className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                      >
+                        {users.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.fullName || u.email} ({u.email}) — {formatCentsEur(eurToCents(u.walletBalance))}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="rec-inv-prop" className="block text-[#B6C4C9] font-semibold mb-1">Property</label>
+                      <select
+                        id="rec-inv-prop"
+                        value={formPropId}
+                        onChange={(e) => setFormPropId(e.target.value)}
+                        className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                      >
+                        {properties.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.title} ({formatCentsEur(eurToCents(p.tokenPrice))} / share)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="rec-inv-shares" className="block text-[#B6C4C9] font-semibold mb-1">Number of Shares</label>
+                      <input
+                        id="rec-inv-shares"
+                        type="number"
+                        min={1}
+                        value={formShares}
+                        onChange={(e) => setFormShares(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                        className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                      />
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] flex items-center justify-between">
+                      <span className="text-[#8FA1A8]">Total Cost</span>
+                      <span className="text-base font-bold text-[#6FD8B0] tabular-nums">
+                        {formatCentsEur(calculatedCostCents)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecordOpen(false);
+                        setConfirmStep(false);
+                      }}
+                      className="min-h-[44px] px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={calculatedCostCents <= 0}
+                      className="min-h-[44px] px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      Review Investment
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
+            )}
+
+            <AdminActionDialog
+              open={confirmStep}
+              actionName="Record investment"
+              confirmLabel="Record investment"
+              investorName={selectedFormInvestor?.fullName || 'Investor'}
+              investorEmail={selectedFormInvestor?.email || uid}
+              amountCents={calculatedCostCents}
+              reference={selectedFormProp?.id || pid}
+              extraDetails={[
+                { label: 'Property', value: selectedFormProp?.title || pid },
+                { label: 'Shares', value: Math.floor(formShares).toLocaleString(), tone: 'mono' },
+                { label: 'Current Balance', value: formatCentsEur(curCents) },
+                { label: 'Projected Balance', value: formatCentsEur(projCents), tone: 'accent' },
+              ]}
+              validate={() => {
+                if (!uid || !pid || formShares <= 0 || calculatedCostCents <= 0) {
+                  return 'Select an investor, a property, and enter a positive number of shares.';
+                }
+                return null;
+              }}
+              onConfirm={async () => {
+                await recordInvestmentRpc({
+                  userId: uid,
+                  propertyId: pid,
+                  shares: Math.floor(formShares),
+                  sharePriceEur: centsToEur(eurToCents(selectedFormProp?.tokenPrice || 500)),
+                });
+                return `Recorded ${Math.floor(formShares)} shares (${formatCentsEur(calculatedCostCents)}) via record_investment.`;
+              }}
+              onRefresh={onRefresh}
+              onRefreshError={onError}
+              onSuccess={onSuccess}
+              onClose={() => {
+                setConfirmStep(false);
+                setRecordOpen(false);
+              }}
+            />
+          </>
         );
       })()}
     </div>
@@ -1080,8 +1485,6 @@ export const AdminDistributionsSection: React.FC<{
   const [totalAmountEur, setTotalAmountEur] = useState<number>(2500);
   const [note, setNote] = useState<string>('');
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [paying, setPaying] = useState(false);
-  const payLockRef = useRef<boolean>(false);
   const [lastPaidSummary, setLastPaidSummary] = useState<{ paidCount: number; totalAmountEur: number; propertyTitle: string } | null>(null);
 
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
@@ -1153,51 +1556,18 @@ export const AdminDistributionsSection: React.FC<{
 
   const handleOpenConfirmDistribution = (e: React.FormEvent) => {
     e.preventDefault();
-    const totalCents = eurToCents(totalAmountEur);
-    if (!activePropId || totalCents <= 0 || holderSharesPreview.rows.length === 0) {
+    const totalCents = parseStrictEurToCents(totalAmountEur);
+    if (!activePropId || totalCents === null || totalCents <= 0 || holderSharesPreview.rows.length === 0) {
       onError('Select a property with active holders and enter a positive distribution amount.');
       return;
     }
     setConfirmModalOpen(true);
   };
 
-  const handleConfirmPayDistribution = async () => {
-    if (payLockRef.current || paying) return;
-    const totalCents = eurToCents(totalAmountEur);
-    if (!activePropId || totalCents <= 0) {
-      onError('Select a property and enter a positive distribution amount.');
-      return;
-    }
-    payLockRef.current = true;
-    setPaying(true);
-    try {
-      const result = await executePayDistribution({
-        propertyId: activePropId,
-        totalAmountEur: centsToEur(totalCents),
-        note: note.trim() || undefined,
-      });
-      const paidDisplay = result.paidCount > 0 ? result.paidCount : holderSharesPreview.rows.length;
-      setConfirmModalOpen(false);
-      setLastPaidSummary({
-        paidCount: paidDisplay,
-        totalAmountEur: centsToEur(totalCents),
-        propertyTitle: activeProp?.title || activePropId,
-      });
-      setNote('');
-      await onRefresh();
-      onSuccess(`Paid ${formatCentsEur(totalCents)} across ${paidDisplay} investor${paidDisplay === 1 ? '' : 's'} via pay_distribution.`);
-    } catch (err: any) {
-      onError(err?.message || 'Unable to execute pay_distribution.');
-    } finally {
-      setPaying(false);
-      payLockRef.current = false;
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">Rental &amp; Yield Distributions</h2>
+        <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">Rental &amp; Yield Distributions</h2>
         <p className="text-xs text-[#8FA1A8] mt-1">
           Preview each holder&apos;s proportional share before executing <span className="font-mono text-[#6FD8B0]">pay_distribution</span>.
         </p>
@@ -1208,10 +1578,10 @@ export const AdminDistributionsSection: React.FC<{
           <div className="flex items-center gap-2.5 text-[#F2F5F4]">
             <CheckCircle2 className="w-4 h-4 text-[#6FD8B0] shrink-0" />
             <span>
-              Distribution confirmed for <strong>{lastPaidSummary.propertyTitle}</strong>: <strong>{lastPaidSummary.paidCount}</strong> investors paid ({formatCurrency(lastPaidSummary.totalAmountEur)}).
+              Distribution confirmed for <strong>{lastPaidSummary.propertyTitle}</strong>: <strong>{lastPaidSummary.paidCount}</strong> investors paid ({formatCentsEur(eurToCents(lastPaidSummary.totalAmountEur))}).
             </span>
           </div>
-          <button type="button" onClick={() => setLastPaidSummary(null)} className="text-[#8FA1A8] cursor-pointer">
+          <button type="button" onClick={() => setLastPaidSummary(null)} aria-label="Dismiss distribution summary" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1226,11 +1596,12 @@ export const AdminDistributionsSection: React.FC<{
 
           <div className="space-y-3 text-xs">
             <div>
-              <label className="block text-[#B6C4C9] font-semibold mb-1">Property</label>
+              <label htmlFor="dist-prop-select" className="block text-[#B6C4C9] font-semibold mb-1">Property</label>
               <select
+                id="dist-prop-select"
                 value={activePropId}
                 onChange={(e) => setSelectedPropId(e.target.value)}
-                className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
               >
                 {properties.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1240,35 +1611,37 @@ export const AdminDistributionsSection: React.FC<{
               </select>
             </div>
             <div>
-              <label className="block text-[#B6C4C9] font-semibold mb-1">Total Distribution Amount (EUR)</label>
+              <label htmlFor="dist-amount-eur" className="block text-[#B6C4C9] font-semibold mb-1">Total Distribution Amount (EUR)</label>
               <input
+                id="dist-amount-eur"
                 type="number"
                 min={1}
                 step="0.01"
                 required
                 value={totalAmountEur}
                 onChange={(e) => setTotalAmountEur(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
               />
             </div>
             <div>
-              <label className="block text-[#B6C4C9] font-semibold mb-1">Distribution Note</label>
+              <label htmlFor="dist-note-input" className="block text-[#B6C4C9] font-semibold mb-1">Distribution Note</label>
               <input
+                id="dist-note-input"
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Q4 Rental Dividend Payout"
-                className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={paying || holderSharesPreview.rows.length === 0 || holderSharesPreview.totalCents <= 0}
-            className="w-full py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+            disabled={holderSharesPreview.rows.length === 0 || holderSharesPreview.totalCents <= 0}
+            className="min-h-[44px] w-full py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
           >
-            {paying ? 'Executing Payout...' : `Review & Pay ${holderSharesPreview.rows.length} Holder(s)`}
+            {`Review & Pay ${holderSharesPreview.rows.length} Holder(s)`}
           </button>
         </form>
 
@@ -1299,7 +1672,7 @@ export const AdminDistributionsSection: React.FC<{
                     </td>
                     <td className="py-3 px-4 text-right font-mono text-[#F2F5F4] tabular-nums">{r.shares.toLocaleString()}</td>
                     <td className="py-3 px-4 text-right font-mono text-[#B6C4C9] tabular-nums">{r.pct.toFixed(2)}%</td>
-                    <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCurrency(r.payoutEur)}</td>
+                    <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(r.payoutCents)}</td>
                   </tr>
                 ))}
                 {holderSharesPreview.rows.length === 0 && (
@@ -1337,7 +1710,7 @@ export const AdminDistributionsSection: React.FC<{
                   <td className="py-3 px-4 text-[#B6C4C9] whitespace-nowrap">{formatDate(d.createdAt)}</td>
                   <td className="py-3 px-4 font-semibold text-[#F2F5F4]">{d.propertyTitle}</td>
                   <td className="py-3 px-4 text-[#8FA1A8]">{d.note}</td>
-                  <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCurrency(d.totalEur)}</td>
+                  <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(eurToCents(d.totalEur))}</td>
                 </tr>
               ))}
               {pastRows.length === 0 && (
@@ -1352,78 +1725,79 @@ export const AdminDistributionsSection: React.FC<{
         </div>
       </div>
 
-      {/* Confirm Distribution Payout Modal */}
-      {confirmModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-xl w-full p-6 space-y-4 my-8">
-            <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
-              <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#6FD8B0]" />
-                <span>Confirm Per-Investor Distribution Payout</span>
-              </h3>
-              <button
-                type="button"
-                disabled={paying}
-                onClick={() => setConfirmModalOpen(false)}
-                className="text-[#8FA1A8] cursor-pointer disabled:opacity-50"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 text-xs text-[#B6C4C9] space-y-1 tabular-nums">
-              <div>Action: <strong className="text-[#6FD8B0]">Pay Distribution (pay_distribution)</strong></div>
-              <div>Investors: <strong className="text-[#F2F5F4]">{holderSharesPreview.rows.length} holder(s) of {activeProp?.title || activePropId}</strong></div>
-              <div>Total Amount: <strong className="text-[#6FD8B0]">{formatCentsEur(holderSharesPreview.totalCents)}</strong></div>
-            </div>
-
-            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl overflow-hidden max-h-64 overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-[#1F2C33] text-[11px] text-[#8FA1A8] uppercase">
-                    <th className="py-2 px-3">Investor</th>
-                    <th className="py-2 px-3 text-right">Shares</th>
-                    <th className="py-2 px-3 text-right">Share %</th>
-                    <th className="py-2 px-3 text-right">Payout</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1F2C33]">
-                  {holderSharesPreview.rows.map((r) => (
-                    <tr key={r.userId}>
-                      <td className="py-2 px-3">
-                        <div className="font-semibold text-[#F2F5F4]">{r.name}</div>
-                        <div className="text-[11px] text-[#8FA1A8]">{r.email}</div>
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono tabular-nums">{r.shares.toLocaleString()}</td>
-                      <td className="py-2 px-3 text-right font-mono text-[#B6C4C9] tabular-nums">{r.pct.toFixed(2)}%</td>
-                      <td className="py-2 px-3 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(r.payoutCents)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#1F2C33]">
-              <button
-                type="button"
-                disabled={paying}
-                onClick={() => setConfirmModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={paying}
-                onClick={handleConfirmPayDistribution}
-                className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
-              >
-                {paying ? 'Executing Payout...' : `Pay ${holderSharesPreview.rows.length} Investor(s)`}
-              </button>
-            </div>
-          </div>
+      {/* Confirm Distribution Payout Dialog */}
+      <AdminActionDialog
+        open={confirmModalOpen}
+        actionName="Pay distribution"
+        confirmLabel="Pay distribution"
+        investorName={`${holderSharesPreview.rows.length} holder(s)`}
+        investorEmail={activeProp?.title || activePropId}
+        amountCents={holderSharesPreview.totalCents}
+        reference={activePropId}
+        extraDetails={[
+          { label: 'Total Shares', value: holderSharesPreview.totalShares.toLocaleString(), tone: 'mono' },
+          { label: 'Note', value: note.trim() || 'Distribution payout' },
+        ]}
+        validate={() => {
+          const totalCents = parseStrictEurToCents(totalAmountEur);
+          if (!activePropId || totalCents === null || totalCents <= 0) {
+            return 'Select a property and enter a positive distribution amount.';
+          }
+          if (holderSharesPreview.rows.length === 0) {
+            return 'No active holders found for this property.';
+          }
+          return null;
+        }}
+        onConfirm={async () => {
+          const totalCents = parseStrictEurToCents(totalAmountEur);
+          if (!activePropId || totalCents === null || totalCents <= 0) {
+            throw new Error('Select a property and enter a positive distribution amount.');
+          }
+          const result = await executePayDistribution({
+            propertyId: activePropId,
+            totalAmountEur: centsToEur(totalCents),
+            note: note.trim() || undefined,
+          });
+          const paidDisplay = result.paidCount > 0 ? result.paidCount : holderSharesPreview.rows.length;
+          setLastPaidSummary({
+            paidCount: paidDisplay,
+            totalAmountEur: centsToEur(totalCents),
+            propertyTitle: activeProp?.title || activePropId,
+          });
+          setNote('');
+          return `Paid ${formatCentsEur(totalCents)} across ${paidDisplay} investor${paidDisplay === 1 ? '' : 's'} via pay_distribution.`;
+        }}
+        onRefresh={onRefresh}
+        onRefreshError={onError}
+        onSuccess={onSuccess}
+        onClose={() => setConfirmModalOpen(false)}
+      >
+        <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-[#1F2C33] text-[11px] text-[#8FA1A8] uppercase">
+                <th className="py-2 px-3">Investor</th>
+                <th className="py-2 px-3 text-right">Shares</th>
+                <th className="py-2 px-3 text-right">Share %</th>
+                <th className="py-2 px-3 text-right">Payout</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1F2C33]">
+              {holderSharesPreview.rows.map((r) => (
+                <tr key={r.userId}>
+                  <td className="py-2 px-3">
+                    <div className="font-semibold text-[#F2F5F4]">{r.name}</div>
+                    <div className="text-[11px] text-[#8FA1A8]">{r.email}</div>
+                  </td>
+                  <td className="py-2 px-3 text-right font-mono tabular-nums">{r.shares.toLocaleString()}</td>
+                  <td className="py-2 px-3 text-right font-mono text-[#B6C4C9] tabular-nums">{r.pct.toFixed(2)}%</td>
+                  <td className="py-2 px-3 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(r.payoutCents)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </AdminActionDialog>
     </div>
   );
 };
@@ -1432,219 +1806,440 @@ export const AdminDistributionsSection: React.FC<{
 // 3. KYC SECTION: kyc_submissions grouped by investor + signed URL + review_kyc
 // ============================================================================
 export const AdminKycSection: React.FC<{
+  loading?: boolean;
   users: PlatformUser[];
   submissions: KycSubmissionRow[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
-}> = ({ users, submissions, onRefresh, onSuccess, onError }) => {
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
-  const [busySubId, setBusySubId] = useState<string | null>(null);
-  const [previewDoc, setPreviewDoc] = useState<{ title: string; url: string | null } | null>(null);
+}> = ({ loading = false, users, submissions, onRefresh, onSuccess, onError }) => {
+  const [queueTab, setQueueTab] = useState<'pending' | 'handled'>('pending');
+  const [handledFilter, setHandledFilter] = useState<'all' | 'completed' | 'failed'>('all');
+  const [search, setSearch] = useState('');
+  const [previewDoc, setPreviewDoc] = useState<{ title: string; url: string | null; loading?: boolean } | null>(null);
+  const kycPreviewModalRef = useDialogFocus<HTMLDivElement>(Boolean(previewDoc), () => setPreviewDoc(null));
+  const [approveTarget, setApproveTarget] = useState<KycSubmissionRow | null>(null);
   const [rejectTarget, setRejectTarget] = useState<KycSubmissionRow | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [lastReviewed, setLastReviewed] = useState<{
+    userId: string;
+    investorName: string;
+    investorEmail: string;
+    action: 'approved' | 'rejected';
+    rpcStatus?: string;
+  } | null>(null);
 
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
+  const resolveProcessorLabel = (raw?: string): string => {
+    if (!raw) return 'System';
+    const match = userById.get(raw);
+    return match?.email || match?.fullName || raw;
+  };
+
+  const pendingCount = useMemo(() => submissions.filter((s) => s.status === 'pending').length, [submissions]);
+  const handledCount = useMemo(() => submissions.filter((s) => s.status !== 'pending').length, [submissions]);
+
   const groupedByInvestor = useMemo(() => {
-    const groups = new Map<string, { investorId: string; investor?: PlatformUser; items: KycSubmissionRow[] }>();
-    for (const sub of submissions) {
-      if (statusFilter !== 'all' && sub.status !== statusFilter) continue;
+    const q = search.trim().toLowerCase();
+    const groups = new Map<string, { investorId: string; investor?: PlatformUser; items: KycSubmissionRow[]; sortTs: number }>();
+
+    const filtered = submissions.filter((sub) => {
+      if (queueTab === 'pending') return sub.status === 'pending';
+      if (sub.status === 'pending') return false;
+      if (handledFilter === 'completed') return sub.status === 'approved';
+      if (handledFilter === 'failed') return sub.status === 'rejected';
+      return true;
+    }).filter((sub) => {
+      if (!q) return true;
+      const inv = userById.get(sub.userId);
+      return `${inv?.fullName || ''} ${inv?.email || ''} ${sub.userId} ${sub.id} ${sub.docType} ${sub.filePath}`
+        .toLowerCase()
+        .includes(q);
+    });
+
+    filtered.sort((a, b) => {
+      if (queueTab === 'pending') {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      return new Date(b.processedAt || b.createdAt).getTime() - new Date(a.processedAt || a.createdAt).getTime();
+    });
+
+    for (const sub of filtered) {
+      const ts = new Date(queueTab === 'pending' ? sub.createdAt : sub.processedAt || sub.createdAt).getTime();
       if (!groups.has(sub.userId)) {
-        groups.set(sub.userId, { investorId: sub.userId, investor: userById.get(sub.userId), items: [] });
+        groups.set(sub.userId, { investorId: sub.userId, investor: userById.get(sub.userId), items: [], sortTs: ts });
       }
       groups.get(sub.userId)!.items.push(sub);
     }
-    return Array.from(groups.values());
-  }, [submissions, statusFilter, userById]);
+
+    return Array.from(groups.values()).sort((a, b) =>
+      queueTab === 'pending' ? a.sortTs - b.sortTs : b.sortTs - a.sortTs
+    );
+  }, [submissions, queueTab, handledFilter, search, userById]);
 
   const handleOpenSignedDoc = async (sub: KycSubmissionRow) => {
-    const url = await createPrivateBucketSignedUrl(
-      sub.filePath,
-      ['kyc', 'kyc-submissions', 'documents', 'manual-payment-proofs'],
-      sub.inlineUrl
-    );
-    setPreviewDoc({ title: `${sub.docType} (${userById.get(sub.userId)?.fullName || sub.userId})`, url });
-  };
-
-  const handleApprove = async (sub: KycSubmissionRow) => {
-    if (busySubId) return;
-    setBusySubId(sub.id);
+    const docTitle = `${sub.docType} (${userById.get(sub.userId)?.fullName || sub.userId})`;
+    setPreviewDoc({ title: docTitle, url: null, loading: true });
     try {
-      await reviewKycSubmission(sub.id, true, undefined, sub.userId);
-      onSuccess('KYC submission approved via review_kyc.');
-      onRefresh();
+      const url = await createPrivateBucketSignedUrl(
+        sub.filePath,
+        ['kyc', 'kyc-submissions', 'documents', 'manual-payment-proofs'],
+        sub.inlineUrl
+      );
+      setPreviewDoc({ title: docTitle, url, loading: false });
     } catch (err: any) {
-      onError(err?.message || 'Unable to approve KYC submission.');
-    } finally {
-      setBusySubId(null);
+      setPreviewDoc(null);
+      onError(err?.message || 'Unable to load signed KYC document URL.');
     }
   };
 
-  const handleConfirmReject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rejectTarget) return;
-    if (!rejectReason.trim()) {
-      onError('A rejection reason is required.');
-      return;
-    }
-    setBusySubId(rejectTarget.id);
-    try {
-      await reviewKycSubmission(rejectTarget.id, false, rejectReason.trim(), rejectTarget.userId);
-      setRejectTarget(null);
-      setRejectReason('');
-      onSuccess('KYC submission rejected via review_kyc.');
-      onRefresh();
-    } catch (err: any) {
-      onError(err?.message || 'Unable to reject KYC submission.');
-    } finally {
-      setBusySubId(null);
-    }
-  };
+  const lastReviewedDetails = useMemo(() => {
+    if (!lastReviewed) return null;
+    const inv = userById.get(lastReviewed.userId);
+    const invSubs = submissions.filter((s) => s.userId === lastReviewed.userId);
+    const approvedCount = invSubs.filter((s) => s.status === 'approved').length;
+    const pendingSubsCount = invSubs.filter((s) => s.status === 'pending').length;
+    const rejectedCount = invSubs.filter((s) => s.status === 'rejected').length;
+    const overallStatus =
+      lastReviewed.rpcStatus ||
+      inv?.kycStatus ||
+      (rejectedCount > 0 && lastReviewed.action === 'rejected'
+        ? 'rejected'
+        : approvedCount > 0 && pendingSubsCount === 0 && rejectedCount === 0
+        ? 'verified'
+        : 'pending');
+    return {
+      ...lastReviewed,
+      overallStatus,
+      approvedCount,
+      pendingCount: pendingSubsCount,
+      rejectedCount,
+    };
+  }, [lastReviewed, userById, submissions]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">KYC Verification Queue</h2>
-          <p className="text-xs text-[#8FA1A8] mt-1">
-            Review <span className="font-mono text-[#6FD8B0]">kyc_submissions</span> grouped by investor using short-lived signed URLs.
-          </p>
-        </div>
-        <div className="flex gap-1.5">
-          {(['pending', 'approved', 'rejected', 'all'] as const).map((s) => (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">KYC Verification Queue</h2>
+            <p className="text-xs text-[#8FA1A8] mt-1">
+              Open submissions via short-lived signed URLs from the private <span className="font-mono text-[#6FD8B0]">kyc</span> bucket (oldest pending first) and review via <span className="font-mono text-[#6FD8B0]">review_kyc</span>.
+            </p>
+          </div>
+          <div className="flex gap-1.5">
             <button
-              key={s}
               type="button"
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize cursor-pointer ${
-                statusFilter === s ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
+              onClick={() => setQueueTab('pending')}
+              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer tabular-nums ${
+                queueTab === 'pending' ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
               }`}
             >
-              {s}
+              Pending ({pendingCount})
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setQueueTab('handled')}
+              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer tabular-nums ${
+                queueTab === 'handled' ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
+              }`}
+            >
+              Handled ({handledCount})
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
+            <input
+              id="kyc-queue-search"
+              type="text"
+              aria-label="Search KYC submissions by investor name, email, or reference"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search investor name, email, or reference..."
+              className="min-h-[44px] w-full pl-8 pr-3 py-2 bg-[#121A1F] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+            />
+          </div>
+
+          {queueTab === 'handled' && (
+            <div className="flex items-center gap-1.5">
+              {([
+                { id: 'all', label: 'All' },
+                { id: 'completed', label: 'Completed' },
+                { id: 'failed', label: 'Failed' },
+              ] as const).map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setHandledFilter(sub.id)}
+                  className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
+                    handledFilter === sub.id
+                      ? 'bg-[#6FD8B0]/20 text-[#6FD8B0] border border-[#6FD8B0]/40'
+                      : 'bg-[#121A1F] border border-[#1F2C33] text-[#8FA1A8]'
+                  }`}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="space-y-4">
-        {groupedByInvestor.map((grp) => (
-          <div key={grp.investorId} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl overflow-hidden">
-            <div className="px-5 py-3.5 bg-[#0B0F10] border-b border-[#1F2C33] flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="font-bold text-sm text-[#F2F5F4]">
-                  {grp.investor?.fullName || 'Investor Account'}
-                </div>
-                <div className="text-[11px] text-[#8FA1A8]">
-                  {grp.investor?.email || grp.investorId} · {grp.items.length} submission{grp.items.length === 1 ? '' : 's'}
-                </div>
+      {lastReviewedDetails && (
+        <div className="p-4 rounded-2xl bg-[#121A1F] border border-[#1F2C33] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-[#6FD8B0] shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold text-[#F2F5F4]">
+                Investor overall KYC status for {lastReviewedDetails.investorName} ({lastReviewedDetails.investorEmail}):{' '}
+                <span
+                  className={`uppercase font-bold ${
+                    lastReviewedDetails.overallStatus === 'verified' || lastReviewedDetails.overallStatus === 'approved'
+                      ? 'text-[#6FD8B0]'
+                      : lastReviewedDetails.overallStatus === 'rejected'
+                      ? 'text-rose-400'
+                      : 'text-amber-300'
+                  }`}
+                >
+                  {lastReviewedDetails.overallStatus}
+                </span>
               </div>
-              <span className="text-[11px] uppercase font-bold text-[#6FD8B0]">
-                Profile KYC: {grp.investor?.kycStatus || 'pending'}
-              </span>
-            </div>
-
-            <div className="divide-y divide-[#1F2C33]">
-              {grp.items.map((sub) => (
-                <div key={sub.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-[#162026]">
-                  <div className="space-y-1">
-                    <div className="font-semibold text-[#F2F5F4]">{sub.docType}</div>
-                    <div className="text-[11px] text-[#8FA1A8] font-mono">
-                      {sub.filePath} · Submitted {formatDate(sub.createdAt)}
-                    </div>
-                    {sub.reason && (
-                      <div className="text-[11px] text-rose-300">Reason: {sub.reason}</div>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenSignedDoc(sub)}
-                      className="px-3 py-1.5 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-[11px] font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Eye className="w-3 h-3" />
-                      <span>Open Document</span>
-                    </button>
-
-                    {sub.status === 'pending' ? (
-                      <>
-                        <button
-                          type="button"
-                          disabled={busySubId === sub.id}
-                          onClick={() => handleApprove(sub)}
-                          className="px-3 py-1.5 rounded-lg bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-[11px] font-bold cursor-pointer disabled:opacity-50"
-                        >
-                          {busySubId === sub.id ? 'Saving...' : 'Approve'}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busySubId === sub.id}
-                          onClick={() => {
-                            setRejectTarget(sub);
-                            setRejectReason('');
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-[#0B0F10] border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    ) : (
-                      <span className={`uppercase font-bold text-[11px] ${sub.status === 'approved' ? 'text-[#6FD8B0]' : 'text-rose-400'}`}>
-                        {sub.status}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+              <div className="text-[11px] text-[#8FA1A8] mt-0.5 tabular-nums">
+                Submissions: {lastReviewedDetails.approvedCount} approved · {lastReviewedDetails.pendingCount} pending · {lastReviewedDetails.rejectedCount} rejected
+              </div>
             </div>
           </div>
-        ))}
-
-        {groupedByInvestor.length === 0 && (
-          <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-10 text-center text-xs text-[#8FA1A8]">
-            No KYC submissions in &ldquo;{statusFilter}&rdquo; status.
-          </div>
-        )}
-      </div>
-
-      {/* Reject Reason Modal */}
-      {rejectTarget && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleConfirmReject} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-sm font-bold text-[#F2F5F4]">Reject KYC Submission</h3>
-            <p className="text-xs text-[#8FA1A8]">Provide a required reason explaining why this document was rejected.</p>
-            <textarea
-              rows={3}
-              required
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g. Document expired or corners cropped..."
-              className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
-            />
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setRejectTarget(null)} className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer">
-                Cancel
-              </button>
-              <button type="submit" disabled={Boolean(busySubId)} className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold cursor-pointer disabled:opacity-50">
-                Confirm Rejection
-              </button>
-            </div>
-          </form>
+          <button
+            type="button"
+            onClick={() => setLastReviewed(null)}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] self-end sm:self-center cursor-pointer"
+            aria-label="Dismiss investor KYC status banner"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* Document Viewer Modal */}
+      {loading ? (
+        <div className="space-y-3" role="status" aria-label="Loading KYC verification queue">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-4 space-y-3">
+              <div className="h-4 w-48 rounded bg-[#1F2C33] animate-pulse" />
+              <div className="h-3 w-full rounded bg-[#1F2C33] animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {groupedByInvestor.map((grp) => (
+            <div key={grp.investorId} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl overflow-hidden">
+              <div className="px-5 py-3.5 bg-[#0B0F10] border-b border-[#1F2C33] flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="font-bold text-sm text-[#F2F5F4]">
+                    {grp.investor?.fullName || 'Investor Account'}
+                  </div>
+                  <div className="text-[11px] text-[#8FA1A8]">
+                    {grp.investor?.email || grp.investorId} · {grp.items.length} submission{grp.items.length === 1 ? '' : 's'}
+                  </div>
+                </div>
+                <span className={`text-[11px] uppercase font-bold ${
+                  grp.investor?.kycStatus === 'verified'
+                    ? 'text-[#6FD8B0]'
+                    : grp.investor?.kycStatus === 'rejected'
+                    ? 'text-rose-400'
+                    : 'text-amber-300'
+                }`}>
+                  Overall KYC Status: {grp.investor?.kycStatus || 'pending'}
+                </span>
+              </div>
+
+              <div className="divide-y divide-[#1F2C33]">
+                {grp.items.map((sub) => (
+                  <div key={sub.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-[#162026]">
+                    <div className="space-y-1">
+                      <div className="font-semibold text-[#F2F5F4]">{sub.docType}</div>
+                      <div className="text-[11px] text-[#8FA1A8] font-mono">
+                        Ref: {sub.id} · {sub.filePath} · Submitted {formatDate(sub.createdAt)}
+                      </div>
+                      {sub.status !== 'pending' && (
+                        <div className="text-[11px] text-[#B6C4C9]">
+                          Processed by <span className="font-semibold text-[#F2F5F4]">{resolveProcessorLabel(sub.processedBy)}</span>
+                          {sub.processedAt || sub.reviewedAt ? ` · ${formatDate(sub.processedAt || sub.reviewedAt!)}` : ''}
+                        </div>
+                      )}
+                      {sub.reason && (
+                        <div className="text-[11px] text-rose-300">Reason shown to investor: {sub.reason}</div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenSignedDoc(sub)}
+                        className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Open Document</span>
+                      </button>
+
+                      {sub.status === 'pending' ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setApproveTarget(sub)}
+                            className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectTarget(sub);
+                              setRejectReason('');
+                            }}
+                            className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-xs font-semibold cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span className={`uppercase font-bold text-[11px] ${sub.status === 'approved' ? 'text-[#6FD8B0]' : 'text-rose-400'}`}>
+                          {sub.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {groupedByInvestor.length === 0 && (
+            <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-10 text-center text-xs text-[#8FA1A8]">
+              {queueTab === 'pending' && !search.trim()
+                ? 'Nothing waiting'
+                : 'No matching KYC submissions found.'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Approve KYC Dialog */}
+      {(() => {
+        const inv = approveTarget ? userById.get(approveTarget.userId) : undefined;
+        return (
+          <AdminActionDialog
+            open={Boolean(approveTarget)}
+            actionName="Approve KYC"
+            confirmLabel="Approve KYC"
+            investorName={inv?.fullName || 'Investor Account'}
+            investorEmail={inv?.email || approveTarget?.userId || ''}
+            amountDisplay="N/A (Identity verification)"
+            reference={approveTarget?.id || ''}
+            extraDetails={[
+              { label: 'Document Type', value: approveTarget?.docType || 'Identity Document' },
+              { label: 'File Path', value: approveTarget?.filePath || '—', tone: 'mono' },
+              { label: 'Current Overall KYC', value: String(inv?.kycStatus || 'pending').toUpperCase() },
+            ]}
+            onConfirm={async () => {
+              if (!approveTarget) return;
+              const rpcStatus = await reviewKycSubmission(approveTarget.id, true, undefined, approveTarget.userId);
+              setLastReviewed({
+                userId: approveTarget.userId,
+                investorName: inv?.fullName || 'Investor Account',
+                investorEmail: inv?.email || approveTarget.userId,
+                action: 'approved',
+                rpcStatus,
+              });
+              return `KYC submission approved for ${inv?.email || approveTarget.userId} (overall status: ${(rpcStatus || inv?.kycStatus || 'updated').toUpperCase()}).`;
+            }}
+            onRefresh={onRefresh}
+            onRefreshError={onError}
+            onSuccess={onSuccess}
+            onClose={() => setApproveTarget(null)}
+          />
+        );
+      })()}
+
+      {/* Reject KYC Dialog */}
+      {(() => {
+        const inv = rejectTarget ? userById.get(rejectTarget.userId) : undefined;
+        return (
+          <AdminActionDialog
+            open={Boolean(rejectTarget)}
+            actionName="Reject KYC"
+            confirmLabel="Reject KYC"
+            tone="danger"
+            investorName={inv?.fullName || 'Investor Account'}
+            investorEmail={inv?.email || rejectTarget?.userId || ''}
+            amountDisplay="N/A (Identity verification)"
+            reference={rejectTarget?.id || ''}
+            extraDetails={[
+              { label: 'Document Type', value: rejectTarget?.docType || 'Identity Document' },
+              { label: 'Current Overall KYC', value: String(inv?.kycStatus || 'pending').toUpperCase() },
+            ]}
+            validate={() => (!rejectReason.trim() ? 'A rejection reason is required.' : null)}
+            onConfirm={async () => {
+              if (!rejectTarget) return;
+              const rpcStatus = await reviewKycSubmission(rejectTarget.id, false, rejectReason.trim(), rejectTarget.userId);
+              setLastReviewed({
+                userId: rejectTarget.userId,
+                investorName: inv?.fullName || 'Investor Account',
+                investorEmail: inv?.email || rejectTarget.userId,
+                action: 'rejected',
+                rpcStatus,
+              });
+              setRejectReason('');
+              return `KYC submission rejected for ${inv?.email || rejectTarget.userId} (overall status: ${(rpcStatus || 'rejected').toUpperCase()}).`;
+            }}
+            onRefresh={onRefresh}
+            onRefreshError={onError}
+            onSuccess={onSuccess}
+            onClose={() => {
+              setRejectTarget(null);
+              setRejectReason('');
+            }}
+          >
+            <div>
+              <label htmlFor="kyc-reject-reason" className="block text-xs font-semibold text-[#B6C4C9] mb-1">
+                Rejection Reason (shown to the investor) *
+              </label>
+              <textarea
+                id="kyc-reject-reason"
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. Document expired or corners cropped..."
+                className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+              />
+              <p className="text-[11px] text-[#8FA1A8] mt-1">
+                This reason will be displayed to the investor so they can upload a corrected document.
+              </p>
+            </div>
+          </AdminActionDialog>
+        );
+      })()}
+
+      {/* In-Page Signed Document Viewer Modal */}
       {previewDoc && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-5 space-y-4">
+          <div ref={kycPreviewModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={previewDoc.title} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-5 space-y-4 focus:outline-none">
             <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
-              <h3 className="text-sm font-bold text-[#F2F5F4]">{previewDoc.title}</h3>
-              <button type="button" onClick={() => setPreviewDoc(null)} className="text-[#8FA1A8] cursor-pointer">
+              <div>
+                <h3 className="text-sm font-bold text-[#F2F5F4]">{previewDoc.title}</h3>
+                <p className="text-[11px] text-[#8FA1A8]">Private &ldquo;kyc&rdquo; bucket · short-lived signed URL (120s)</p>
+              </div>
+              <button type="button" onClick={() => setPreviewDoc(null)} aria-label="Close KYC document viewer" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 max-h-[65vh] overflow-auto flex justify-center">
-              {previewDoc.url ? (
+              {previewDoc.loading ? (
+                <p className="text-xs text-[#8FA1A8] py-8">Generating short-lived signed URL...</p>
+              ) : previewDoc.url ? (
                 previewDoc.url.toLowerCase().includes('.pdf') || previewDoc.url.includes('application/pdf') ? (
                   <iframe src={previewDoc.url} title={previewDoc.title} className="w-full h-[55vh] rounded-lg" />
                 ) : (
@@ -1680,6 +2275,7 @@ export const AdminDocumentsSection: React.FC<{
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<{ title: string; url: string | null } | null>(null);
+  const docPreviewModalRef = useDialogFocus<HTMLDivElement>(Boolean(previewDoc), () => setPreviewDoc(null));
 
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
 
@@ -1706,8 +2302,12 @@ export const AdminDocumentsSection: React.FC<{
   };
 
   const handleOpen = async (doc: InvestorDocumentRow) => {
-    const url = await createPrivateBucketSignedUrl(doc.filePath, ['documents'], doc.inlineUrl);
-    setPreviewDoc({ title: doc.title, url });
+    try {
+      const url = await createPrivateBucketSignedUrl(doc.filePath, ['documents'], doc.inlineUrl);
+      setPreviewDoc({ title: doc.title, url });
+    } catch (err: any) {
+      onError(err?.message || 'Unable to load signed document URL.');
+    }
   };
 
   const handleDelete = async (doc: InvestorDocumentRow) => {
@@ -1728,7 +2328,7 @@ export const AdminDocumentsSection: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight flex items-center gap-2">
+          <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight flex items-center gap-2 focus:outline-none">
             <span>Documents</span>
             {readOnly && <span className="text-[11px] font-semibold text-amber-400">· Read-Only</span>}
           </h2>
@@ -1740,7 +2340,7 @@ export const AdminDocumentsSection: React.FC<{
           <button
             type="button"
             onClick={() => setSubTab('vault')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
+            className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
               subTab === 'vault' ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
             }`}
           >
@@ -1749,7 +2349,7 @@ export const AdminDocumentsSection: React.FC<{
           <button
             type="button"
             onClick={() => setSubTab('spv')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer ${
+            className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer ${
               subTab === 'spv' ? 'bg-[#6FD8B0] text-[#0B0F10]' : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
             }`}
           >
@@ -1770,11 +2370,12 @@ export const AdminDocumentsSection: React.FC<{
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <label className="block text-[#B6C4C9] font-semibold mb-1">Investor</label>
+                  <label htmlFor="doc-upload-investor" className="block text-[#B6C4C9] font-semibold mb-1">Investor</label>
                   <select
+                    id="doc-upload-investor"
                     value={targetUserId || users[0]?.id || ''}
                     onChange={(e) => setTargetUserId(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                   >
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
@@ -1784,24 +2385,26 @@ export const AdminDocumentsSection: React.FC<{
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[#B6C4C9] font-semibold mb-1">Document Title</label>
+                  <label htmlFor="doc-upload-title" className="block text-[#B6C4C9] font-semibold mb-1">Document Title</label>
                   <input
+                    id="doc-upload-title"
                     type="text"
                     required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g. 2026 Tax & Subscription Certificate"
-                    className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#B6C4C9] font-semibold mb-1">PDF File</label>
+                  <label htmlFor="doc-upload-file" className="block text-[#B6C4C9] font-semibold mb-1">PDF File</label>
                   <input
+                    id="doc-upload-file"
                     type="file"
                     accept="application/pdf,.pdf"
                     required
                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="w-full px-3 py-1.5 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4] file:mr-3 file:px-2.5 file:py-1 file:rounded-lg file:border-0 file:bg-[#6FD8B0] file:text-[#0B0F10] file:font-bold file:cursor-pointer"
+                    className="min-h-[44px] w-full px-3 py-1.5 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4] file:mr-3 file:px-2.5 file:py-1.5 file:rounded-lg file:border-0 file:bg-[#6FD8B0] file:text-[#0B0F10] file:font-bold file:cursor-pointer"
                   />
                 </div>
               </div>
@@ -1809,7 +2412,7 @@ export const AdminDocumentsSection: React.FC<{
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="px-4 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
                   {uploading ? 'Uploading PDF...' : 'Upload to Private Bucket'}
                 </button>
@@ -1843,9 +2446,9 @@ export const AdminDocumentsSection: React.FC<{
                             <button
                               type="button"
                               onClick={() => handleOpen(doc)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-[11px] font-semibold cursor-pointer inline-flex items-center gap-1"
+                              className="min-h-[44px] px-3 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
                             >
-                              <Eye className="w-3 h-3" />
+                              <Eye className="w-3.5 h-3.5" />
                               <span>Open</span>
                             </button>
                             {!readOnly && (
@@ -1853,9 +2456,9 @@ export const AdminDocumentsSection: React.FC<{
                                 type="button"
                                 disabled={deletingId === doc.id}
                                 onClick={() => handleDelete(doc)}
-                                className="px-2.5 py-1.5 rounded-lg bg-[#0B0F10] border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-[11px] font-semibold cursor-pointer inline-flex items-center gap-1 disabled:opacity-50"
+                                className="min-h-[44px] px-3 py-2 rounded-lg bg-[#0B0F10] border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-3.5 h-3.5" />
                                 <span>Delete</span>
                               </button>
                             )}
@@ -1880,10 +2483,10 @@ export const AdminDocumentsSection: React.FC<{
 
       {previewDoc && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-5 space-y-4">
+          <div ref={docPreviewModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={previewDoc.title} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-2xl w-full p-5 space-y-4 focus:outline-none">
             <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
               <h3 className="text-sm font-bold text-[#F2F5F4]">{previewDoc.title}</h3>
-              <button type="button" onClick={() => setPreviewDoc(null)} className="text-[#8FA1A8] cursor-pointer">
+              <button type="button" onClick={() => setPreviewDoc(null)} aria-label="Close document preview" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1950,7 +2553,7 @@ export const AdminNotificationsSection: React.FC<{
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">Notifications</h2>
+        <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">Notifications</h2>
         <p className="text-xs text-[#8FA1A8] mt-1">
           Send a notification to one investor or to everyone (<span className="font-mono text-[#6FD8B0]">user_id = null</span>) and view sent history.
         </p>
@@ -1965,11 +2568,12 @@ export const AdminNotificationsSection: React.FC<{
 
           <div className="space-y-3 text-xs">
             <div>
-              <label className="block text-[#B6C4C9] font-semibold mb-1">Recipient</label>
+              <label htmlFor="notif-recipient-select" className="block text-[#B6C4C9] font-semibold mb-1">Recipient</label>
               <select
+                id="notif-recipient-select"
                 value={targetUserId}
                 onChange={(e) => setTargetUserId(e.target.value)}
-                className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
               >
                 <option value="all">Everyone (user_id: null)</option>
                 {users.map((u) => (
@@ -1980,19 +2584,21 @@ export const AdminNotificationsSection: React.FC<{
               </select>
             </div>
             <div>
-              <label className="block text-[#B6C4C9] font-semibold mb-1">Title</label>
+              <label htmlFor="notif-title-input" className="block text-[#B6C4C9] font-semibold mb-1">Title</label>
               <input
+                id="notif-title-input"
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Quarterly distribution scheduled"
-                className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
               />
             </div>
             <div>
-              <label className="block text-[#B6C4C9] font-semibold mb-1">Message</label>
+              <label htmlFor="notif-message-input" className="block text-[#B6C4C9] font-semibold mb-1">Message</label>
               <textarea
+                id="notif-message-input"
                 rows={4}
                 required
                 value={message}
@@ -2006,7 +2612,7 @@ export const AdminNotificationsSection: React.FC<{
           <button
             type="submit"
             disabled={sending}
-            className="w-full py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            className="min-h-[44px] w-full py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <Send className="w-3.5 h-3.5" />
             <span>{sending ? 'Sending...' : 'Send Notification'}</span>
@@ -2094,7 +2700,7 @@ export const AdminReportsSection: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">Reports</h2>
+          <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">Reports</h2>
           <p className="text-xs text-[#8FA1A8] mt-1">
             AUM at cost, funding per property, monthly deposits &amp; withdrawals, and total distributions paid.
           </p>
@@ -2120,7 +2726,7 @@ export const AdminReportsSection: React.FC<{
                 })
               )
             }
-            className="px-3.5 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export Property CSV</span>
@@ -2140,7 +2746,7 @@ export const AdminReportsSection: React.FC<{
                 ])
               )
             }
-            className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+            className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-[#6FD8B0]" />
             <span>Export Monthly CSV</span>
@@ -2294,7 +2900,7 @@ export const AdminStaffRolesSection: React.FC<{
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight">Staff &amp; Roles</h2>
+        <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">Staff &amp; Roles</h2>
         <p className="text-xs text-[#8FA1A8] mt-1">
           Super Admin control over staff access via <span className="font-mono text-[#6FD8B0]">set_staff_role</span>.
         </p>
@@ -2308,11 +2914,12 @@ export const AdminStaffRolesSection: React.FC<{
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
           <div>
-            <label className="block text-[#B6C4C9] font-semibold mb-1">User Account</label>
+            <label htmlFor="staff-user-select" className="block text-[#B6C4C9] font-semibold mb-1">User Account</label>
             <select
+              id="staff-user-select"
               value={selectedUserId || users[0]?.id || ''}
               onChange={(e) => setSelectedUserId(e.target.value)}
-              className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+              className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
             >
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -2322,11 +2929,12 @@ export const AdminStaffRolesSection: React.FC<{
             </select>
           </div>
           <div>
-            <label className="block text-[#B6C4C9] font-semibold mb-1">Staff Role</label>
+            <label htmlFor="staff-role-select" className="block text-[#B6C4C9] font-semibold mb-1">Staff Role</label>
             <select
+              id="staff-role-select"
               value={roleValue}
               onChange={(e) => setRoleValue(e.target.value)}
-              className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+              className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
             >
               <option value="finance">Finance</option>
               <option value="compliance">Compliance</option>
@@ -2339,7 +2947,7 @@ export const AdminStaffRolesSection: React.FC<{
             <button
               type="submit"
               disabled={Boolean(busyId)}
-              className="w-full py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] font-bold cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] w-full py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] font-bold cursor-pointer disabled:opacity-50"
             >
               {busyId ? 'Saving...' : 'Assign Role'}
             </button>
@@ -2378,7 +2986,7 @@ export const AdminStaffRolesSection: React.FC<{
                       type="button"
                       disabled={busyId === u.id}
                       onClick={() => handleRemove(u)}
-                      className="px-3 py-1 rounded-lg bg-[#0B0F10] border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-[11px] font-semibold cursor-pointer disabled:opacity-50"
+                      className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-xs font-semibold cursor-pointer disabled:opacity-50"
                     >
                       Remove Role
                     </button>
@@ -2434,7 +3042,7 @@ export const AdminAuditLogSection: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-[#F2F5F4] tracking-tight flex items-center gap-2">
+          <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight flex items-center gap-2 focus:outline-none">
             <ClipboardList className="w-5 h-5 text-[#6FD8B0]" />
             <span>Audit Log</span>
             <span className="text-[11px] font-semibold text-[#8FA1A8]">· Read-Only</span>
@@ -2446,7 +3054,7 @@ export const AdminAuditLogSection: React.FC<{
         <button
           type="button"
           onClick={onRefresh}
-          className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
+          className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5 text-[#6FD8B0]" />
           <span>Refresh</span>
@@ -2456,21 +3064,23 @@ export const AdminAuditLogSection: React.FC<{
       {/* Filters: Actor, Entity, Date */}
       <div className="bg-[#121A1F] p-4 rounded-2xl border border-[#1F2C33] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="block text-[11px] text-[#8FA1A8] mb-1">Actor (email or ID)</label>
+          <label htmlFor="audit-actor-filter" className="block text-[11px] text-[#8FA1A8] mb-1">Actor (email or ID)</label>
           <input
+            id="audit-actor-filter"
             type="text"
             value={actorFilter}
             onChange={(e) => setActorFilter(e.target.value)}
             placeholder="Filter by actor..."
-            className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+            className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
           />
         </div>
         <div>
-          <label className="block text-[11px] text-[#8FA1A8] mb-1">Entity</label>
+          <label htmlFor="audit-entity-filter" className="block text-[11px] text-[#8FA1A8] mb-1">Entity</label>
           <select
+            id="audit-entity-filter"
             value={entityFilter}
             onChange={(e) => setEntityFilter(e.target.value)}
-            className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+            className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
           >
             <option value="all">All Entities</option>
             {entities.map((ent) => (
@@ -2479,21 +3089,23 @@ export const AdminAuditLogSection: React.FC<{
           </select>
         </div>
         <div>
-          <label className="block text-[11px] text-[#8FA1A8] mb-1">Date From</label>
+          <label htmlFor="audit-date-from" className="block text-[11px] text-[#8FA1A8] mb-1">Date From</label>
           <input
+            id="audit-date-from"
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+            className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
           />
         </div>
         <div>
-          <label className="block text-[11px] text-[#8FA1A8] mb-1">Date To</label>
+          <label htmlFor="audit-date-to" className="block text-[11px] text-[#8FA1A8] mb-1">Date To</label>
           <input
+            id="audit-date-to"
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+            className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
           />
         </div>
       </div>
