@@ -405,7 +405,7 @@ export const WithdrawPage: React.FC = () => {
               </div>
               <input
                 id="withdraw-otp"
-                type="text"
+                type="password"
                 inputMode="numeric"
                 maxLength={6}
                 value={otpCode}
