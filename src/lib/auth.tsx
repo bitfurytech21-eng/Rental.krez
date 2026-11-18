@@ -31,7 +31,16 @@ interface AuthContextType {
     newPassword: string;
     fullName?: string;
   }) => Promise<User>;
-  register: (email: string, pass: string, fullName: string) => Promise<RegisterResult>;
+  register: (
+    email: string,
+    pass: string,
+    fullName: string,
+    role?: UserRole,
+    accountType?: AccountType,
+    country?: string,
+    phoneNumber?: string,
+    countryCode?: string
+  ) => Promise<RegisterResult>;
   resendSignupConfirmation: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -642,7 +651,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (
     email: string,
     pass: string,
-    fullName: string
+    fullName: string,
+    _role?: UserRole,
+    _accountType?: AccountType,
+    _country?: string,
+    _phoneNumber?: string,
+    _countryCode?: string
   ): Promise<RegisterResult> => {
     const cleanEmail = email.trim().toLowerCase();
     if (!isConfigured) {
