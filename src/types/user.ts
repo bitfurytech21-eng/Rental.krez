@@ -161,6 +161,8 @@ export interface User {
   frozen?: boolean;
   assignedGateId?: string | null;
   assignedGateName?: string | null;
+  assignedUsdtGateId?: string | null;
+  assignedUsdtGateName?: string | null;
   suspendedReason?: string;
 }
 
