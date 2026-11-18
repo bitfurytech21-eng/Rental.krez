@@ -174,7 +174,7 @@ export const ManualDepositModal: React.FC<Props> = ({
     } catch (e: any) {
       const code = String(e?.message || e?.code || '');
       if (code.includes('PAYMENT_METHOD_NOT_ASSIGNED') || code.includes('PAYMENT_METHOD_UNAVAILABLE')) {
-        setError('Your selected payment method is no longer available. Refresh and try again.');
+        setError('This payment option is not set up for your account yet. Please refresh or contact support.');
       } else if (code.includes('AMOUNT_OUT_OF_RANGE')) {
         setError('The amount is outside this payment method’s allowed limits.');
       } else if (code.includes('LEGAL') || code.includes('consent')) {
