@@ -572,6 +572,22 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
     if (readError) throw readError;
     if (!existing) return res.status(404).json({ success: false, error: 'Payment method not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
     const payload = safeMethodInput(req.body, req.user!.id, existing);
+    const oldMethod = String(existing.account_details?.[GATE_META_METHOD] || 'bank').toLowerCase();
+    const nextMethod = String(payload.account_details[GATE_META_METHOD] || 'bank').toLowerCase();
+    if (oldMethod !== nextMethod) {
+      const [{ count: bankAssignments }, { count: usdtAssignments }] = await Promise.all([
+        client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', existing.id),
+        client.from('profiles').select('id', { count: 'exact', head: true }).eq('usdt_payment_gate_id', existing.id),
+      ]);
+      if ((bankAssignments || 0) + (usdtAssignments || 0) > 0) {
+        return res.status(409).json({
+          success: false,
+          error: 'A payment gate assigned to investors cannot change type. Clear its investor assignments first.',
+          code: 'GATE_METHOD_IN_USE',
+          requestId: req.id,
+        });
+      }
+    }
     const { data, error } = await client.from('manual_payment_methods').update(payload).eq('id', existing.id).select('*').single();
     if (error) throw error;
     const [{ count: bankCount }, { count: usdtCount }] = await Promise.all([
