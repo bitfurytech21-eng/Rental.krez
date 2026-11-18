@@ -1847,6 +1847,9 @@ export const AdminSettingsSection: React.FC<{
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [savingLimits, setSavingLimits] = useState(false);
   const [savingTemplates, setSavingTemplates] = useState(false);
+  const [savingUsdtRate, setSavingUsdtRate] = useState(false);
+  const [usdtEurPerUsdt, setUsdtEurPerUsdt] = useState('');
+  const [savedUsdtEurPerUsdt, setSavedUsdtEurPerUsdt] = useState<string | null>(null);
   const [limits, setLimits] = useState<Record<string, any>>({
     min_deposit_eur: 100,
     max_deposit_eur: 500000,
@@ -1866,6 +1869,9 @@ export const AdminSettingsSection: React.FC<{
       .then((res) => {
         if (!active) return;
         if (res.limits) setLimits(res.limits);
+        const savedRate = res.usdt?.eur_per_usdt == null ? '' : String(res.usdt.eur_per_usdt);
+        setUsdtEurPerUsdt(savedRate);
+        setSavedUsdtEurPerUsdt(savedRate || null);
         setTemplatesJson(JSON.stringify(res.email_templates || {}, null, 2));
       })
       .catch((err: any) => {
@@ -2086,6 +2092,73 @@ export const AdminSettingsSection: React.FC<{
                   <span>Require verified KYC for withdrawals</span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1F2C33] pb-3">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-[#6FD8B0]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#F2F5F4]">USDT</h3>
+                  <p className="text-[11px] text-[#8FA1A8]">settings.usdt.eur_per_usdt</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={savingUsdtRate || loadingSettings}
+                onClick={async () => {
+                  if (savingUsdtRate) return;
+                  const trimmed = usdtEurPerUsdt.trim();
+                  let nextRate: string | null = null;
+                  if (trimmed) {
+                    if (!/^\d+(?:\.\d+)?$/.test(trimmed) || BigInt(trimmed.replace('.', '')) <= 0n) {
+                      onError('Enter a positive decimal EUR per USDT rate, or leave it empty.');
+                      return;
+                    }
+                    nextRate = trimmed;
+                  }
+                  const oldLabel = savedUsdtEurPerUsdt ?? 'empty';
+                  const newLabel = nextRate ?? 'empty';
+                  if (!window.confirm(`Confirm USDT rate change?\n\nOld: ${oldLabel} EUR per USDT\nNew: ${newLabel} EUR per USDT\n\nThis rate is used by an administrator when approving USDT deposits.`)) return;
+                  setSavingUsdtRate(true);
+                  try {
+                    await saveSettingsRow('usdt', { eur_per_usdt: nextRate });
+                    setSavedUsdtEurPerUsdt(nextRate);
+                    setUsdtEurPerUsdt(nextRate ?? '');
+                    onSuccess('Saved the USDT EUR conversion rate.');
+                  } catch (err: any) {
+                    onError(err?.message || 'Unable to save the USDT rate.');
+                  } finally {
+                    setSavingUsdtRate(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+              >
+                {savingUsdtRate ? 'Saving...' : 'Save USDT Rate'}
+              </button>
+            </div>
+            <div className="max-w-md space-y-2">
+              <label htmlFor="usdt-eur-per-usdt" className="block text-xs text-[#B6C4C9] font-semibold">
+                EUR per 1 USDT
+              </label>
+              <input
+                id="usdt-eur-per-usdt"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                value={usdtEurPerUsdt}
+                onChange={(e) => setUsdtEurPerUsdt(e.target.value)}
+                placeholder="Leave empty until configured"
+                disabled={savingUsdtRate || loadingSettings}
+                className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-sm text-[#F2F5F4] disabled:opacity-50"
+              />
+              <p className="text-[11px] leading-relaxed text-amber-300">
+                Warning: This rate is applied by you when approving a USDT deposit. Update it regularly before approvals. It is not an automatic live rate.
+              </p>
+              <p className="text-[11px] text-[#8FA1A8]">
+                Leave empty to indicate that no approval rate is currently configured. Decimal text is stored exactly; EUR balances remain integer cents.
+              </p>
             </div>
           </div>
 

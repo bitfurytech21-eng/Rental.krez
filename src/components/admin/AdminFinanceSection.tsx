@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import QRCode from 'qrcode';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -150,13 +151,13 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
 
   // Shared lookup maps
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+  const gateById = useMemo(() => new Map(paymentGates.map((gate) => [gate.id, gate.name])), [paymentGates]);
   const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
-  const gateById = useMemo(() => new Map(paymentGates.map((g) => [g.id, g.name])), [paymentGates]);
   const investorsOnly = useMemo(
-    () => users.filter((u) => !u.isAdmin && !u.staffRole),
+    () => users.filter((u) => u.role === 'investor' && !u.isAdmin && !u.staffRole),
     [users]
   );
-  const selectableUsers = investorsOnly.length > 0 ? investorsOnly : users;
+  const selectableUsers = investorsOnly;
 
   // Cross-tab Ledger jump state (from Overview cards or reversal links)
   const [ledgerKindFilter, setLedgerKindFilter] = useState<string>('all');
@@ -723,27 +724,29 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
   const [editingGateId, setEditingGateId] = useState<string | undefined>(undefined);
   const [editingGateSource, setEditingGateSource] = useState<'payment_gates' | 'manual_payment_methods'>('manual_payment_methods');
   const [gateName, setGateName] = useState('');
-  const [gateMethod, setGateMethod] = useState('sepa');
-  const [gateDetails, setGateDetails] = useState<GateDetailRow[]>([
-    { label: 'Beneficiary', value: "L'Agence Treasury SPV" },
-    { label: 'IBAN / Address', value: '' },
-  ]);
+  const [gateMethod, setGateMethod] = useState<'bank' | 'usdt'>('bank');
+  const [gateDetails, setGateDetails] = useState<GateDetailRow[]>([]);
+  const [gateNetwork, setGateNetwork] = useState('TRC20');
+  const [gateWalletAddress, setGateWalletAddress] = useState('');
+  const [gateQrDataUrl, setGateQrDataUrl] = useState('');
   const [gateInstructions, setGateInstructions] = useState('');
   const [gateActive, setGateActive] = useState(true);
   const [savingGate, setSavingGate] = useState(false);
   const [busyGateId, setBusyGateId] = useState<string | null>(null);
   const [assignSearch, setAssignSearch] = useState('');
   const [assignBusyUid, setAssignBusyUid] = useState<string | null>(null);
+  const [selectedAssignUserIds, setSelectedAssignUserIds] = useState<string[]>([]);
+  const [bulkBankGateId, setBulkBankGateId] = useState('');
+  const [bulkUsdtGateId, setBulkUsdtGateId] = useState('');
 
   const openAddGate = () => {
     setEditingGateId(undefined);
     setEditingGateSource(paymentGates[0]?.source || 'manual_payment_methods');
     setGateName('');
-    setGateMethod('sepa');
-    setGateDetails([
-      { label: 'Beneficiary', value: "L'Agence Treasury SPV" },
-      { label: 'IBAN / Address', value: '' },
-    ]);
+    setGateMethod('bank');
+    setGateDetails([{ label: '', value: '' }]);
+    setGateNetwork('TRC20');
+    setGateWalletAddress('');
     setGateInstructions('');
     setGateActive(true);
     setGateModalOpen(true);
@@ -753,18 +756,67 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
     setEditingGateId(g.id);
     setEditingGateSource(g.source);
     setGateName(g.name);
-    setGateMethod(g.method);
-    setGateDetails(g.details.length > 0 ? g.details : [{ label: 'Beneficiary', value: '' }]);
+    setGateMethod(g.method === 'usdt' ? 'usdt' : 'bank');
+    setGateDetails(g.details.length > 0 ? g.details : [{ label: '', value: '' }]);
+    setGateNetwork(g.network || 'TRC20');
+    setGateWalletAddress(g.walletAddress || '');
     setGateInstructions(g.instructions);
     setGateActive(g.active);
     setGateModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!gateModalOpen || gateMethod !== 'usdt' || !gateWalletAddress.trim()) {
+      setGateQrDataUrl('');
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(gateWalletAddress.trim(), { width: 220, margin: 1 })
+      .then((url: string) => { if (!cancelled) setGateQrDataUrl(url); })
+      .catch(() => { if (!cancelled) setGateQrDataUrl(''); });
+    return () => { cancelled = true; };
+  }, [gateModalOpen, gateMethod, gateWalletAddress]);
 
   const handleSaveGate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!gateName.trim()) {
       onError('Payment gate name is required.');
       return;
+    }
+    const cleanDetails = gateDetails.filter((row) => row.label.trim() || row.value.trim());
+    if (gateMethod === 'bank' && (!cleanDetails.length || cleanDetails.some((row) => !row.label.trim() || !row.value.trim()))) {
+      onError('Every bank detail row needs both a label and a value.');
+      return;
+    }
+    if (gateMethod === 'usdt') {
+      const address = gateWalletAddress.trim();
+      const valid = gateNetwork === 'TRC20'
+        ? (address.startsWith('T') && address.length === 34 && [...address].every((char) => char.trim().length > 0))
+        : ['ERC20', 'BEP20'].includes(gateNetwork) && /^0x[a-fA-F0-9]{40}$/.test(address);
+      if (!valid) {
+        onError(gateNetwork === 'TRC20'
+          ? 'TRC20 wallet addresses must start with T and contain 34 characters.'
+          : 'ERC20 and BEP20 wallet addresses must start with 0x and contain 42 characters.');
+        return;
+      }
+    }
+    const previousGate = editingGateId ? paymentGates.find((gate) => gate.id === editingGateId) : undefined;
+    if (previousGate) {
+      const oldDetails = previousGate.details.map((row) => `${row.label}: ${row.value}`).join('\n') || '(none)';
+      const newDetails = cleanDetails.map((row) => `${row.label}: ${row.value}`).join('\n') || '(none)';
+      const destinationChanged =
+        previousGate.method !== gateMethod ||
+        (gateMethod === 'bank' && (previousGate.method !== 'bank' || oldDetails !== newDetails)) ||
+        (gateMethod === 'usdt' && (previousGate.network !== gateNetwork || previousGate.walletAddress !== gateWalletAddress.trim()));
+      if (destinationChanged) {
+        const oldValue = previousGate.method === 'usdt'
+          ? `USDT ${previousGate.network || '(network unset)'}\nWallet: ${previousGate.walletAddress || '(address unset)'}`
+          : `Bank details:\n${oldDetails}`;
+        const newValue = gateMethod === 'usdt'
+          ? `USDT ${gateNetwork}\nWallet: ${gateWalletAddress.trim()}`
+          : `Bank details:\n${newDetails}`;
+        if (!window.confirm(`Changing payment destination details can redirect investor payments. Confirm this change?\n\nOLD VALUES\n${oldValue}\n\nNEW VALUES\n${newValue}`)) return;
+      }
     }
     setSavingGate(true);
     try {
@@ -773,9 +825,11 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
           id: editingGateId,
           name: gateName,
           method: gateMethod,
-          details: gateDetails,
+          details: cleanDetails,
           instructions: gateInstructions,
           active: gateActive,
+          network: gateNetwork,
+          walletAddress: gateWalletAddress,
         },
         editingGateSource
       );
@@ -794,7 +848,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
     setBusyGateId(g.id);
     try {
       await savePaymentGateRecord(
-        { id: g.id, name: g.name, method: g.method, details: g.details, instructions: g.instructions, active: !g.active },
+        { id: g.id, name: g.name, method: g.method, details: g.details, instructions: g.instructions, active: !g.active, network: g.network, walletAddress: g.walletAddress },
         g.source
       );
       onSuccess(`${g.name} ${g.active ? 'deactivated' : 'activated'}.`);
@@ -824,15 +878,36 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
     }
   };
 
-  const handleAssignGateToInvestor = async (uid: string, nextGateId: string) => {
+  const handleAssignGateToInvestor = async (uid: string, method: 'bank' | 'usdt', nextGateId: string) => {
     setAssignBusyUid(uid);
     try {
       const gateObj = paymentGates.find((g) => g.id === nextGateId) || null;
-      await assignPaymentGateToInvestor(uid, nextGateId || null, gateObj?.name);
-      onSuccess(nextGateId ? `Assigned "${gateObj?.name || 'gate'}" to investor.` : 'Cleared investor payment gate.');
-      onRefresh();
+      await assignPaymentGateToInvestor([uid], method, nextGateId || null);
+      onSuccess(nextGateId ? `Assigned "${gateObj?.name || 'gate'}" as the ${method.toUpperCase()} gate.` : `Cleared investor ${method.toUpperCase()} gate.`);
+      await onRefresh();
     } catch (err: any) {
       onError(err?.message || 'Unable to assign payment gate.');
+    } finally {
+      setAssignBusyUid(null);
+    }
+  };
+
+  const handleBulkAssignGate = async (method: 'bank' | 'usdt') => {
+    const gateId = method === 'bank' ? bulkBankGateId : bulkUsdtGateId;
+    if (!selectedAssignUserIds.length) {
+      onError('Select at least one investor first.');
+      return;
+    }
+    setAssignBusyUid('bulk');
+    try {
+      await assignPaymentGateToInvestor(selectedAssignUserIds, method, gateId || null);
+      onSuccess(gateId
+        ? `Assigned the selected ${method.toUpperCase()} gate to ${selectedAssignUserIds.length} investor(s).`
+        : `Cleared the selected investors' ${method.toUpperCase()} gate.`);
+      setSelectedAssignUserIds([]);
+      await onRefresh();
+    } catch (err: any) {
+      onError(err?.message || 'Unable to update selected investors.');
     } finally {
       setAssignBusyUid(null);
     }
@@ -2570,7 +2645,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                       <h3 className="text-sm font-bold text-[#F2F5F4]">{g.name}</h3>
                     </div>
                     <div className="text-[11px] text-[#8FA1A8] mt-0.5 tabular-nums">
-                      Method: <span className="font-mono text-[#B6C4C9]">{g.method}</span> · Assigned to{' '}
+                      Method: <span className="font-mono text-[#B6C4C9]">{g.method === 'usdt' ? 'USDT' : 'Bank transfer (SEPA)'}</span>{g.method === 'usdt' && g.network ? <> · Network: <span className="font-mono text-[#B6C4C9]">{g.network}</span></> : null} · Assigned to{' '}
                       <strong className="text-[#F2F5F4]">{g.assignedCount}</strong> investor(s)
                     </div>
                   </div>
@@ -2583,7 +2658,8 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                   </span>
                 </div>
 
-                {g.details.length > 0 && (
+                {g.method === 'usdt' && g.walletAddress ? <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 space-y-2 text-xs"><div className="text-[#8FA1A8]">Receiving wallet</div><div className="font-mono text-[#F2F5F4] break-all">{g.walletAddress}</div></div> : null}
+                {g.method === 'bank' && g.details.length > 0 && (
                   <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 space-y-1.5 text-xs">
                     {g.details.map((row, idx) => (
                       <div key={`${row.label}-${idx}`} className="flex items-center justify-between gap-2">
@@ -2638,7 +2714,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
             <div className="p-4 bg-[#0B0F10] border-b border-[#1F2C33] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-[#F2F5F4]">Assign Payment Gates to Investors</h3>
-                <p className="text-[11px] text-[#8FA1A8]">Investors only see bank coordinates from their assigned active gate.</p>
+                <p className="text-[11px] text-[#8FA1A8]">Each investor can have one active Bank gate and one active USDT gate. Assignments are independent.</p>
               </div>
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
@@ -2652,42 +2728,92 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                 />
               </div>
             </div>
+            <div className="p-4 border-b border-[#1F2C33] grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
+                <select
+                  value={bulkBankGateId}
+                  onChange={(e) => setBulkBankGateId(e.target.value)}
+                  className="min-w-0 flex-1 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+                >
+                  <option value="">Clear Bank gate for selected</option>
+                  {paymentGates.filter((g) => g.active && g.method === 'bank').map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+                <button type="button" disabled={!selectedAssignUserIds.length || assignBusyUid !== null} onClick={() => handleBulkAssignGate('bank')} className="px-3 py-2 rounded-xl bg-[#1B765D] text-white text-xs disabled:opacity-50">Apply to {selectedAssignUserIds.length}</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={bulkUsdtGateId}
+                  onChange={(e) => setBulkUsdtGateId(e.target.value)}
+                  className="min-w-0 flex-1 px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+                >
+                  <option value="">Clear USDT gate for selected</option>
+                  {paymentGates.filter((g) => g.active && g.method === 'usdt').map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+                <button type="button" disabled={!selectedAssignUserIds.length || assignBusyUid !== null} onClick={() => handleBulkAssignGate('usdt')} className="px-3 py-2 rounded-xl bg-[#1B765D] text-white text-xs disabled:opacity-50">Apply to {selectedAssignUserIds.length}</button>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-[#1F2C33] text-[11px] text-[#8FA1A8] uppercase">
+                    <th className="py-3 px-4">
+                      <input
+                        type="checkbox"
+                        aria-label="Select visible investors"
+                        checked={filteredAssignInvestors.slice(0, 50).length > 0 && filteredAssignInvestors.slice(0, 50).every((u) => selectedAssignUserIds.includes(u.id))}
+                        onChange={(e) => setSelectedAssignUserIds(e.target.checked
+                          ? Array.from(new Set([...selectedAssignUserIds, ...filteredAssignInvestors.slice(0, 50).map((u) => u.id)]))
+                          : selectedAssignUserIds.filter((id) => !filteredAssignInvestors.slice(0, 50).some((u) => u.id === id)))}
+                      />
+                    </th>
                     <th className="py-3 px-4">Investor</th>
-                    <th className="py-3 px-4">Current Assigned Gate</th>
-                    <th className="py-3 px-4 text-right">Assign Gate</th>
+                    <th className="py-3 px-4">Bank gate</th>
+                    <th className="py-3 px-4">USDT gate</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1F2C33]">
                   {filteredAssignInvestors.slice(0, 50).map((inv) => {
-                    const currentGateName =
-                      (inv.assignedGateId && gateById.get(inv.assignedGateId)) ||
-                      inv.assignedGateName ||
-                      'Unassigned';
+                    const assignedBank = inv.assignedGateId || '';
+                    const assignedUsdt = inv.assignedUsdtGateId || '';
                     return (
                       <tr key={inv.id} className="hover:bg-[#162026]">
                         <td className="py-3 px-4">
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${inv.fullName || inv.email}`}
+                            checked={selectedAssignUserIds.includes(inv.id)}
+                            onChange={(e) => setSelectedAssignUserIds(e.target.checked
+                              ? [...selectedAssignUserIds, inv.id]
+                              : selectedAssignUserIds.filter((id) => id !== inv.id))}
+                          />
+                        </td>
+                        <td className="py-3 px-4">
                           <div className="font-semibold text-[#F2F5F4]">{inv.fullName || inv.email}</div>
                           <div className="text-[11px] text-[#8FA1A8]">{inv.email}</div>
+                          {!assignedBank && !assignedUsdt && <div className="mt-1 text-[11px] text-amber-300">No payment option assigned</div>}
                         </td>
-                        <td className="py-3 px-4 text-[#B6C4C9]">{currentGateName}</td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4">
                           <select
                             disabled={assignBusyUid === inv.id}
                             value={inv.assignedGateId || ''}
-                            onChange={(e) => handleAssignGateToInvestor(inv.id, e.target.value)}
+                            onChange={(e) => handleAssignGateToInvestor(inv.id, 'bank', e.target.value)}
                             aria-label={`Assign payment gate for ${inv.fullName || inv.email}`}
                             className="min-h-[44px] px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
                           >
-                            <option value="">Unassigned (Default)</option>
-                            {paymentGates.map((g) => (
-                              <option key={g.id} value={g.id}>
-                                {g.name} {!g.active ? '(Inactive)' : ''}
-                              </option>
-                            ))}
+                            <option value="">No Bank gate</option>
+                            {paymentGates.filter((g) => g.active && g.method === 'bank').map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                          </select>
+                        </td>
+                        <td className="py-3 px-4">
+                          <select
+                            aria-label={`USDT gate for ${inv.email}`}
+                            disabled={assignBusyUid !== null}
+                            value={assignedUsdt}
+                            onChange={(e) => handleAssignGateToInvestor(inv.id, 'usdt', e.target.value)}
+                            className="max-w-[220px] px-3 py-1.5 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+                          >
+                            <option value="">No USDT gate</option>
+                            {paymentGates.filter((g) => g.active && g.method === 'usdt').map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                           </select>
                         </td>
                       </tr>
@@ -3538,18 +3664,21 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                 </div>
                 <div>
                   <label htmlFor="fin-gate-method" className="block text-[#B6C4C9] font-semibold mb-1">Method</label>
-                  <input
+                  <select
                     id="fin-gate-method"
-                    type="text"
                     required
                     value={gateMethod}
-                    onChange={(e) => setGateMethod(e.target.value)}
-                    placeholder="sepa / wire / crypto"
+                    onChange={(e) => setGateMethod(e.target.value as 'bank' | 'usdt')}
+                    aria-label="Payment method"
                     className="w-full min-h-[44px] px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                  />
+                  >
+                    <option value="bank">Bank</option>
+                    <option value="usdt">USDT</option>
+                  </select>
                 </div>
               </div>
 
+              {gateMethod === 'bank' ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[#B6C4C9] font-semibold">Bank / Rail Coordinates</span>
@@ -3594,8 +3723,26 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                     </button>
                   </div>
                 ))}
-              </div>
-
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3">
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">USDT network</label>
+                    <select required value={gateNetwork} onChange={(e) => setGateNetwork(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-[#F2F5F4]">
+                      <option value="TRC20">TRC20 (TRON)</option>
+                      <option value="ERC20">ERC20 (Ethereum)</option>
+                      <option value="BEP20">BEP20 (BNB Smart Chain)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Wallet address</label>
+                    <input required value={gateWalletAddress} onChange={(e) => setGateWalletAddress(e.target.value)} placeholder={gateNetwork === 'TRC20' ? 'T… (34 characters)' : '0x… (42 characters)'} className="w-full px-3 py-2 rounded-xl border border-[#1F2C33] bg-[#121A1F] font-mono text-[#F2F5F4]" />
+                    <p className="mt-1 text-[11px] text-[#8FA1A8]">{gateNetwork === 'TRC20' ? 'TRC20 address: starts with T and is 34 characters.' : 'ERC20 / BEP20 address: starts with 0x and is 42 characters.'}</p>
+                  </div>
+                  {gateQrDataUrl && <div className="rounded-xl border border-[#1F2C33] bg-white p-3 text-center"><img src={gateQrDataUrl} alt="QR code for USDT receiving wallet address" className="mx-auto h-44 w-44" /><p className="mt-2 break-all text-[11px] text-slate-700">{gateWalletAddress}</p></div>}
+                  <p role="alert" className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] leading-relaxed text-amber-200">Only send USDT on the selected network. Funds sent on another network can be lost.</p>
+                </div>
+              )}
               <div>
                 <label htmlFor="fin-gate-instructions" className="block text-[#B6C4C9] font-semibold mb-1">Instructions</label>
                 <textarea

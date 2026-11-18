@@ -227,36 +227,33 @@ function matchesFileSignature(bytes: Buffer, mimeType: string): boolean {
   return false;
 }
 
+const GATE_META_METHOD = '__gate_method';
+const GATE_META_NETWORK = '__usdt_network';
+const GATE_META_WALLET = '__usdt_wallet_address';
+const GATE_META_ROWS = '__bank_detail_rows';
+const RESERVED_GATE_KEYS = new Set([GATE_META_METHOD, GATE_META_NETWORK, GATE_META_WALLET, GATE_META_ROWS]);
+
 function normalizeDetailRows(body: any, existing?: any): { detail_rows: GateDetailRow[]; account_details: Record<string, string> } {
-  if (Array.isArray(body?.detailRows ?? body?.detail_rows)) {
-    const raw = (body.detailRows ?? body.detail_rows) as any[];
-    const cleaned: GateDetailRow[] = raw
-      .map((item) => ({
-        label: String(item?.label || '').trim().slice(0, 80),
-        value: String(item?.value || '').trim().slice(0, 500),
-      }))
-      .filter((item) => item.label.length > 0 && item.value.length > 0);
-    const map: Record<string, string> = {};
-    for (const row of cleaned) {
-      map[row.label] = row.value;
-    }
-    return { detail_rows: cleaned, account_details: map };
-  }
-  const existingRows = Array.isArray(existing?.detail_rows) && existing.detail_rows.length > 0
-    ? existing.detail_rows
-    : Object.entries((body?.accountDetails && typeof body.accountDetails === 'object' ? body.accountDetails : existing?.account_details) || {})
-        .map(([label, value]) => ({ label, value: String(value ?? '') }))
-        .filter((r) => r.label.trim().length > 0 && r.value.trim().length > 0);
-  const map: Record<string, string> = {};
-  for (const row of existingRows) {
-    map[row.label] = row.value;
-  }
-  return { detail_rows: existingRows, account_details: map };
+  const source = body?.detailRows ?? body?.detail_rows;
+  const stored = existing?.account_details && typeof existing.account_details === 'object' ? existing.account_details : {};
+  const raw = Array.isArray(source) ? source : Array.isArray(stored[GATE_META_ROWS]) ? stored[GATE_META_ROWS] :
+    Object.entries(body?.accountDetails && typeof body.accountDetails === 'object' ? body.accountDetails : stored)
+      .filter(([label]) => !RESERVED_GATE_KEYS.has(label))
+      .map(([label, value]) => ({ label, value: String(value ?? '') }));
+  const detail_rows = raw.map((item: any) => ({
+    label: String(item?.label || '').trim().slice(0, 80),
+    value: String(item?.value || '').trim().slice(0, 500),
+  })).filter((item: GateDetailRow) => item.label && item.value);
+  const account_details: Record<string, string> = {};
+  for (const row of detail_rows) account_details[row.label] = row.value;
+  return { detail_rows, account_details };
 }
 
 function safeMethodInput(body: any, actorId: string, existing?: any) {
   const name = String(body?.name ?? existing?.name ?? '').trim();
-  const method = String(body?.method ?? existing?.method ?? 'sepa').trim().toLowerCase() || 'sepa';
+  const previousDetails = existing?.account_details && typeof existing.account_details === 'object' ? existing.account_details : {};
+  const requestedMethod = String(body?.method ?? previousDetails[GATE_META_METHOD] ?? 'bank').trim().toLowerCase();
+  const method = ['sepa', 'wire', 'bank_wire'].includes(requestedMethod) ? 'bank' : requestedMethod;
   const instructions = String(body?.instructions ?? existing?.instructions ?? '').trim();
   const minimum = Number(body?.minimumAmount ?? existing?.minimum_amount ?? 100);
   const maximumRaw = body?.maximumAmount ?? existing?.maximum_amount ?? null;
@@ -264,6 +261,7 @@ function safeMethodInput(body: any, actorId: string, existing?: any) {
   const feeType = (String(body?.feeType ?? existing?.fee_type ?? 'none')) as 'none' | 'fixed' | 'percent';
   const feeValue = Number(body?.feeValue ?? existing?.fee_value ?? 0);
   if (name.length < 2 || name.length > 100 || instructions.length > 10000 ||
+      !['bank', 'usdt'].includes(method) ||
       !Number.isFinite(minimum) || minimum <= 0 ||
       (maximum !== null && (!Number.isFinite(maximum) || maximum < minimum)) ||
       !['none', 'fixed', 'percent'].includes(feeType) ||
@@ -271,50 +269,71 @@ function safeMethodInput(body: any, actorId: string, existing?: any) {
       feeValue > (feeType === 'percent' ? 100 : 1000000)) {
     throw new Error('INVALID_MANUAL_PAYMENT_METHOD');
   }
-  const extraFields = Array.isArray(body?.extraFields) ? body.extraFields : (existing?.extra_fields || []);
-  if (extraFields.length > 10 || extraFields.some((field: any) =>
-    !field || typeof field.label !== 'string' || field.label.trim().length < 2 ||
-    field.label.length > 80 || typeof field.key !== 'string' ||
-    !/^[a-z][a-z0-9_]{1,39}$/.test(field.key)
-  )) throw new Error('INVALID_EXTRA_FIELDS');
-
-  const activeFlag =
-    typeof body?.active === 'boolean'
-      ? body.active
-      : typeof body?.enabled === 'boolean'
-        ? body.enabled
-        : (existing?.active ?? existing?.enabled ?? true);
-
-  const { detail_rows, account_details } = normalizeDetailRows(body, existing);
-
+  const activeFlag = typeof body?.active === 'boolean' ? body.active :
+    typeof body?.enabled === 'boolean' ? body.enabled : (existing?.enabled ?? true);
+  const rawRows = body?.detailRows ?? body?.detail_rows;
+  if (method === 'bank' && Array.isArray(rawRows) && rawRows.some((row: any) => !String(row?.label || '').trim() || !String(row?.value || '').trim())) {
+    throw new Error('BANK_DETAILS_REQUIRED');
+  }
+  const { detail_rows } = normalizeDetailRows(body, existing);
+  const network = String(body?.network ?? previousDetails[GATE_META_NETWORK] ?? '').trim().toUpperCase();
+  const walletAddress = String(body?.walletAddress ?? body?.wallet_address ?? previousDetails[GATE_META_WALLET] ?? '').trim();
+  if (method === 'bank' && (!detail_rows.length || detail_rows.some(row => !row.label || !row.value))) {
+    throw new Error('BANK_DETAILS_REQUIRED');
+  }
+  if (method === 'usdt') {
+    const validNetwork = ['TRC20', 'ERC20', 'BEP20'].includes(network);
+    const validAddress = network === 'TRC20'
+      ? (walletAddress.startsWith('T') && walletAddress.length === 34 && [...walletAddress].every((char) => char.trim().length > 0))
+      : ['ERC20', 'BEP20'].includes(network) ? /^0x[a-fA-F0-9]{40}$/.test(walletAddress) : false;
+    if (!validNetwork || !validAddress) throw new Error('INVALID_USDT_NETWORK_OR_ADDRESS');
+  }
+  const account_details: Record<string, any> = { ...previousDetails, [GATE_META_METHOD]: method };
+  for (const key of Object.keys(account_details)) {
+    if (!RESERVED_GATE_KEYS.has(key)) delete account_details[key];
+  }
+  if (method === 'bank') {
+    for (const row of detail_rows) account_details[row.label] = row.value;
+    account_details[GATE_META_ROWS] = detail_rows;
+    delete account_details[GATE_META_NETWORK];
+    delete account_details[GATE_META_WALLET];
+  } else {
+    account_details[GATE_META_NETWORK] = network;
+    account_details[GATE_META_WALLET] = walletAddress;
+    delete account_details[GATE_META_ROWS];
+  }
   return {
     name,
-    method,
     logo_url: typeof (body?.logoUrl ?? existing?.logo_url) === 'string' ? String(body?.logoUrl ?? existing?.logo_url).slice(0, 1000) : null,
     instructions,
     account_details,
-    detail_rows,
     minimum_amount: minimum,
     maximum_amount: maximum,
     fee_type: feeType,
     fee_value: feeValue,
-    extra_fields: extraFields,
+    extra_fields: Array.isArray(body?.extraFields) ? body.extraFields : (existing?.extra_fields || []),
     enabled: activeFlag,
-    active: activeFlag,
     sort_order: Number.isInteger(body?.sortOrder) ? body.sortOrder : (existing?.sort_order || 0),
     updated_by: actorId
   };
 }
 
 function decorateGateRow(row: any, assignedCount = 0) {
+  const stored = row.account_details && typeof row.account_details === 'object' ? row.account_details : {};
   const { detail_rows, account_details } = normalizeDetailRows({}, row);
-  const active = row.active ?? row.enabled ?? true;
+  const methodValue = String(row.method || stored[GATE_META_METHOD] || 'bank').toLowerCase();
+  const method = ['sepa', 'wire', 'bank_wire'].includes(methodValue) ? 'bank' : methodValue;
+  const active = row.enabled !== false;
   return {
     ...row,
-    method: row.method || 'sepa',
+    method,
+    network: String(stored[GATE_META_NETWORK] || ''),
+    wallet_address: String(stored[GATE_META_WALLET] || ''),
     detail_rows,
     detailRows: detail_rows,
-    account_details,
+    account_details: method === 'usdt'
+      ? { Network: String(stored[GATE_META_NETWORK] || ''), 'Wallet address': String(stored[GATE_META_WALLET] || '') }
+      : account_details,
     active,
     enabled: active,
     assigned_investors_count: assignedCount,
@@ -322,19 +341,76 @@ function decorateGateRow(row: any, assignedCount = 0) {
   };
 }
 
-manualPaymentRouter.get('/methods', async (req: AuthenticatedRequest, res: Response) => {
+manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) {
-    const active = listDevPaymentGatesWithCounts().filter((g) => g.active).map((g) => decorateGateRow(g, g.assigned_investors_count || 0));
+    const assignedId = getDevAssignedGateId(req.user!.id);
+    const active = listDevPaymentGatesWithCounts()
+      .filter((gate) => gate.active && gate.id === assignedId)
+      .map((gate) => decorateGateRow(gate, gate.assigned_investors_count || 0));
     return res.json({ success: true, data: active, requestId: req.id });
   }
   try {
-    const { data, error } = await getSupabaseAdmin().from('manual_payment_methods')
-      .select('id,name,method,logo_url,instructions,account_details,detail_rows,minimum_amount,maximum_amount,fee_type,fee_value,extra_fields,active,enabled')
-      .eq('enabled', true).order('sort_order').order('created_at');
+    const client = getSupabaseAdmin();
+    const { data: profile, error: profileError } = await client.from('profiles')
+      .select('payment_gate_id,usdt_payment_gate_id')
+      .eq('id', req.user!.id)
+      .maybeSingle();
+    if (profileError) throw profileError;
+    const assigned = [
+      { id: profile?.payment_gate_id, method: 'bank' },
+      { id: profile?.usdt_payment_gate_id, method: 'usdt' },
+    ].filter((item) => Boolean(item.id));
+    if (!assigned.length) return res.json({ success: true, data: [], requestId: req.id });
+
+    const { data, error } = await client.from('manual_payment_methods')
+      .select('*')
+      .in('id', assigned.map((item) => item.id))
+      .eq('enabled', true)
+      .order('sort_order').order('created_at');
     if (error) throw error;
-    return res.json({ success: true, data: (data || []).map((r) => decorateGateRow(r)), requestId: req.id });
+
+    const expectedById = new Map(assigned.map((item) => [String(item.id), item.method]));
+    const available = (data || []).map((row) => decorateGateRow(row))
+      .filter((row) => row.method === expectedById.get(String(row.id)));
+    return res.json({ success: true, data: available, requestId: req.id });
   } catch {
-    return res.status(503).json({ success: false, error: 'Manual payment methods are temporarily unavailable.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
+    return res.status(503).json({ success: false, error: 'This payment option is not set up for your account yet. Please contact support if you need help.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
+  }
+});
+
+manualPaymentRouter.post('/deposits/:id/proof', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const depositId = String(req.params.id || '');
+  const storagePath = String(req.body?.path || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(depositId) ||
+      !storagePath.startsWith(`${userId}/${depositId}/`) || storagePath.length > 500) {
+    return res.status(400).json({ success: false, error: 'Invalid proof upload reference.', code: 'INVALID_PROOF_REFERENCE', requestId: req.id });
+  }
+  if (!isSupabaseServerConfigured()) {
+    return res.status(503).json({ success: false, error: 'Private proof storage is unavailable in sandbox mode.', code: 'PROOF_STORAGE_UNAVAILABLE', requestId: req.id });
+  }
+  const client = getSupabaseAdmin();
+  try {
+    const { data: proof, error: proofError } = await client.storage.from('proofs').download(storagePath);
+    if (proofError || !proof) {
+      return res.status(400).json({ success: false, error: 'The uploaded proof could not be found in private storage.', code: 'PROOF_NOT_FOUND', requestId: req.id });
+    }
+    const { data: row, error: updateError } = await client.from('manual_deposit_submissions')
+      .update({ proof_storage_path: storagePath })
+      .eq('id', depositId)
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
+    if (updateError) throw updateError;
+    if (!row) {
+      await client.storage.from('proofs').remove([storagePath]);
+      return res.status(409).json({ success: false, error: 'This deposit is no longer pending or does not belong to your account.', code: 'DEPOSIT_NOT_PENDING_OR_NOT_OWNED', requestId: req.id });
+    }
+    return res.json({ success: true, data: { id: row.id }, message: 'Payment proof attached securely.', requestId: req.id });
+  } catch {
+    await client.storage.from('proofs').remove([storagePath]).catch(() => undefined);
+    return res.status(503).json({ success: false, error: 'The payment proof could not be attached. Please retry.', code: 'PROOF_ATTACH_FAILED', requestId: req.id });
   }
 });
 
@@ -365,6 +441,10 @@ manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, su
   if (!isSupabaseServerConfigured()) {
     const method = devPaymentGates.find((item) => item.id === String(body.methodId) && item.enabled);
     if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
+    const devMethodType = ['sepa', 'wire', 'bank_wire'].includes(String(method.method).toLowerCase()) ? 'bank' : String(method.method).toLowerCase();
+    if (!['bank', 'usdt'].includes(devMethodType) || getDevAssignedGateId(userId) !== method.id) {
+      return res.status(403).json({ success: false, error: 'This payment method is not assigned to your account.', code: 'PAYMENT_METHOD_NOT_ASSIGNED', requestId: req.id });
+    }
     if (amount < Number(method.minimum_amount) || (method.maximum_amount && amount > Number(method.maximum_amount))) {
       return res.status(400).json({ success: false, error: 'The amount is outside this payment method’s allowed limits.', code: 'AMOUNT_OUT_OF_RANGE', requestId: req.id });
     }
@@ -409,6 +489,14 @@ manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, su
       .select('*').eq('id', String(body.methodId)).eq('enabled', true).maybeSingle();
     if (methodError) throw methodError;
     if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
+    const { data: assignment, error: assignmentError } = await client.from('profiles')
+      .select('payment_gate_id,usdt_payment_gate_id').eq('id', userId).maybeSingle();
+    if (assignmentError) throw assignmentError;
+    const methodType = decorateGateRow(method).method;
+    const assignedGateId = methodType === 'usdt' ? assignment?.usdt_payment_gate_id : methodType === 'bank' ? assignment?.payment_gate_id : null;
+    if (!assignedGateId || String(assignedGateId) !== String(method.id)) {
+      return res.status(403).json({ success: false, error: 'This payment method is not assigned to your account.', code: 'PAYMENT_METHOD_NOT_ASSIGNED', requestId: req.id });
+    }
     if (amount < Number(method.minimum_amount) || (method.maximum_amount && amount > Number(method.maximum_amount))) {
       return res.status(400).json({ success: false, error: 'The amount is outside this payment method’s allowed limits.', code: 'AMOUNT_OUT_OF_RANGE', requestId: req.id });
     }
@@ -457,13 +545,15 @@ manualPaymentRouter.get('/admin/methods', requireStaffSection('settings', 'read'
     const client = getSupabaseAdmin();
     const [{ data, error }, { data: assignedRows }] = await Promise.all([
       client.from('manual_payment_methods').select('*').order('sort_order').order('created_at'),
-      client.from('user_profiles').select('assigned_gate_id').not('assigned_gate_id', 'is', null),
+      client.from('profiles').select('payment_gate_id,usdt_payment_gate_id'),
     ]);
     if (error) throw error;
     const countMap = new Map<string, number>();
     for (const row of assignedRows || []) {
-      const gid = String((row as any).assigned_gate_id || '');
-      if (gid) countMap.set(gid, (countMap.get(gid) || 0) + 1);
+      for (const assignedId of [(row as any).payment_gate_id, (row as any).usdt_payment_gate_id]) {
+        const gid = String(assignedId || '');
+        if (gid) countMap.set(gid, (countMap.get(gid) || 0) + 1);
+      }
     }
     return res.json({
       success: true,
@@ -487,10 +577,13 @@ manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'writ
       const created: PaymentGateRecord = {
         id: crypto.randomUUID(),
         ...payload,
+        method: String(payload.account_details[GATE_META_METHOD] || 'bank'),
+        detail_rows: Array.isArray(payload.account_details[GATE_META_ROWS]) ? payload.account_details[GATE_META_ROWS] : [],
+        active: payload.enabled,
         assigned_investors_count: 0,
         created_at: now,
         updated_at: now,
-      };
+      } as PaymentGateRecord;
       devPaymentGates.push(created);
       return res.status(201).json({ success: true, data: decorateGateRow(created, 0), requestId: req.id });
     } catch (error: any) {
@@ -524,8 +617,11 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
       const updated: PaymentGateRecord = {
         ...existing,
         ...payload,
+        method: String(payload.account_details[GATE_META_METHOD] || 'bank'),
+        detail_rows: Array.isArray(payload.account_details[GATE_META_ROWS]) ? payload.account_details[GATE_META_ROWS] : [],
+        active: payload.enabled,
         updated_at: new Date().toISOString(),
-      };
+      } as PaymentGateRecord;
       devPaymentGates[idx] = updated;
       let count = 0;
       for (const assigned of devAssignedGateByUserId.values()) {
@@ -545,10 +641,29 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
     if (readError) throw readError;
     if (!existing) return res.status(404).json({ success: false, error: 'Payment method not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
     const payload = safeMethodInput(req.body, req.user!.id, existing);
+    const oldMethod = String(existing.account_details?.[GATE_META_METHOD] || 'bank').toLowerCase();
+    const nextMethod = String(payload.account_details[GATE_META_METHOD] || 'bank').toLowerCase();
+    if (oldMethod !== nextMethod) {
+      const [{ count: bankAssignments }, { count: usdtAssignments }] = await Promise.all([
+        client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', existing.id),
+        client.from('profiles').select('id', { count: 'exact', head: true }).eq('usdt_payment_gate_id', existing.id),
+      ]);
+      if ((bankAssignments || 0) + (usdtAssignments || 0) > 0) {
+        return res.status(409).json({
+          success: false,
+          error: 'A payment gate assigned to investors cannot change type. Clear its investor assignments first.',
+          code: 'GATE_METHOD_IN_USE',
+          requestId: req.id,
+        });
+      }
+    }
     const { data, error } = await client.from('manual_payment_methods').update(payload).eq('id', existing.id).select('*').single();
     if (error) throw error;
-    const { count } = await client.from('user_profiles').select('id', { count: 'exact', head: true }).eq('assigned_gate_id', existing.id);
-    return res.json({ success: true, data: decorateGateRow(data, count || 0), requestId: req.id });
+    const [{ count: bankCount }, { count: usdtCount }] = await Promise.all([
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', existing.id),
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('usdt_payment_gate_id', existing.id),
+    ]);
+    return res.json({ success: true, data: decorateGateRow(data, (bankCount || 0) + (usdtCount || 0)), requestId: req.id });
   } catch (error: any) {
     if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
       markSupabaseSchemaMissingInDev();
@@ -583,12 +698,14 @@ manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings',
   }
   try {
     const client = getSupabaseAdmin();
-    const { count, error: countErr } = await client
-      .from('user_profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('assigned_gate_id', gateId);
-    if (countErr) throw countErr;
-    if ((count || 0) > 0) {
+    const [{ count: bankCount, error: bankCountErr }, { count: usdtCount, error: usdtCountErr }] = await Promise.all([
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('payment_gate_id', gateId),
+      client.from('profiles').select('id', { count: 'exact', head: true }).eq('usdt_payment_gate_id', gateId),
+    ]);
+    if (bankCountErr) throw bankCountErr;
+    if (usdtCountErr) throw usdtCountErr;
+    const count = (bankCount || 0) + (usdtCount || 0);
+    if (count > 0) {
       return res.status(409).json({
         success: false,
         error: `This payment gate is currently assigned to ${count} investor(s). Deactivate it instead of deleting.`,
@@ -641,9 +758,12 @@ manualPaymentRouter.get('/admin/deposits/:id/proof', requireStaffSection('deposi
       .select('proof_storage_path').eq('id', req.params.id).maybeSingle();
     if (error) throw error;
     if (!row?.proof_storage_path) return res.status(404).json({ success: false, error: 'Proof file not found.', code: 'PROOF_NOT_FOUND', requestId: req.id });
-    const { data, error: signedError } = await getSupabaseAdmin().storage.from('manual-payment-proofs').createSignedUrl(row.proof_storage_path, 60);
-    if (signedError) throw signedError;
-    return res.json({ success: true, data: { url: data.signedUrl, expiresInSeconds: 60 }, requestId: req.id });
+    const storage = getSupabaseAdmin().storage;
+    let signed = await storage.from('proofs').createSignedUrl(row.proof_storage_path, 60);
+    // Keep older submissions readable from the legacy private bucket.
+    if (signed.error) signed = await storage.from('manual-payment-proofs').createSignedUrl(row.proof_storage_path, 60);
+    if (signed.error || !signed.data?.signedUrl) throw signed.error || new Error('PROOF_SIGNING_FAILED');
+    return res.json({ success: true, data: { url: signed.data.signedUrl, expiresInSeconds: 60 }, requestId: req.id });
   } catch { return res.status(503).json({ success: false, error: 'Proof file could not be opened.', code: 'PROOF_ACCESS_FAILED', requestId: req.id }); }
 });
 

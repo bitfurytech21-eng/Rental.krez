@@ -61,7 +61,7 @@ export const LedgerPage: React.FC = () => {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter by description or reference..."
             aria-label="Search ledger transactions"
-            className="portal-input !pl-10"
+            className="portal-input !pl-10 min-h-[44px]"
           />
         </div>
       </div>

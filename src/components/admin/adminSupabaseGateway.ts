@@ -448,8 +448,44 @@ export async function fetchWalletBalancesMap(): Promise<Map<string, number>> {
   return map;
 }
 
-export async function assignPaymentGateToInvestor(userId: string, gateId: string | null, _gateName?: string): Promise<void> {
-  await requireRpcSuccess('assign_gate', { p_users: [userId], p_gate: gateId });
+export async function assignPaymentGateToInvestor(
+  userId: string,
+  gateId: string | null,
+  gateName?: string
+): Promise<void>;
+export async function assignPaymentGateToInvestor(
+  userIds: string[],
+  method: 'bank' | 'usdt',
+  gateId: string | null
+): Promise<void>;
+export async function assignPaymentGateToInvestor(
+  userOrUsers: string | string[],
+  gateOrMethod: string | null,
+  gateIdOrName?: string | null
+): Promise<void> {
+  if (Array.isArray(userOrUsers)) {
+    const userIds = userOrUsers;
+    const method = gateOrMethod;
+    if (method !== 'bank' && method !== 'usdt') {
+      throw new Error('Choose Bank or USDT before assigning a payment gate.');
+    }
+    const gateId = gateIdOrName || null;
+    if (gateId) {
+      await requireRpcSuccess('assign_gate', { p_users: userIds, p_gate: gateId });
+    } else {
+      await requireRpcSuccess('clear_gate', { p_users: userIds, p_method: method });
+    }
+    return;
+  }
+
+  // Backwards-compatible single-investor bank assignment used by the legacy
+  // user-management screen.
+  const gateId = gateOrMethod || null;
+  if (gateId) {
+    await requireRpcSuccess('assign_gate', { p_users: [userOrUsers], p_gate: gateId });
+  } else {
+    await requireRpcSuccess('clear_gate', { p_users: [userOrUsers], p_method: 'bank' });
+  }
 }
 
 export async function setInvestorFrozenState(userId: string, frozen: boolean, _reason?: string): Promise<void> {
@@ -1111,11 +1147,13 @@ export interface PaymentGateRecord {
   details: GateDetailRow[];
   instructions: string;
   active: boolean;
+  network: string;
+  walletAddress: string;
   assignedCount: number;
   source: 'payment_gates' | 'manual_payment_methods';
 }
 
-export async function fetchSettingsRows(): Promise<{ limits: any; email_templates: any }> {
+export async function fetchSettingsRows(): Promise<{ limits: any; email_templates: any; usdt: { eur_per_usdt: string | null } }> {
   const defaultLimits = {
     min_deposit_eur: 100,
     max_deposit_eur: 500000,
@@ -1146,13 +1184,15 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
       const { data, error } = await supabase
         .from('settings')
         .select('key, value')
-        .in('key', ['limits', 'email_templates']);
+        .in('key', ['limits', 'email_templates', 'usdt']);
       if (!error && Array.isArray(data)) {
         const limitsRow = (data as any[]).find((r) => r.key === 'limits');
         const templatesRow = (data as any[]).find((r) => r.key === 'email_templates');
+        const usdtRow = (data as any[]).find((r) => r.key === 'usdt');
         return {
           limits: { ...defaultLimits, ...(limitsRow?.value || {}) },
           email_templates: templatesRow?.value ?? defaultTemplates,
+          usdt: { eur_per_usdt: usdtRow?.value?.eur_per_usdt == null ? null : String(usdtRow.value.eur_per_usdt) },
         };
       }
     } catch {
@@ -1171,18 +1211,22 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
         ...(cfg.limits || {}),
       },
       email_templates: cfg.email_templates || defaultTemplates,
+      usdt: { eur_per_usdt: null },
     };
   } catch {
-    return { limits: defaultLimits, email_templates: defaultTemplates };
+    return { limits: defaultLimits, email_templates: defaultTemplates, usdt: { eur_per_usdt: null } };
   }
 }
 
-export async function saveSettingsRow(key: 'limits' | 'email_templates', value: any): Promise<void> {
+export async function saveSettingsRow(key: 'limits' | 'email_templates' | 'usdt', value: any): Promise<void> {
   if (await hasLiveSupabaseSession()) {
     const { error } = await supabase
       .from('settings')
       .upsert({ key, value }, { onConflict: 'key' });
     if (!error) return;
+  }
+  if (key === 'usdt') {
+    throw new Error('USDT rate settings require an authenticated live Supabase session.');
   }
   await apiFetchJson('/admin/settings', {
     method: 'PUT',
@@ -1196,56 +1240,33 @@ export async function saveSettingsRow(key: 'limits' | 'email_templates', value: 
 
 export async function fetchPaymentGatesWithCounts(users: any[]): Promise<PaymentGateRecord[]> {
   const assignedCounts = new Map<string, number>();
-  for (const u of users) {
-    if (u.assignedGateId) {
-      assignedCounts.set(String(u.assignedGateId), (assignedCounts.get(String(u.assignedGateId)) || 0) + 1);
-    }
-  }
-
-  if (await hasLiveSupabaseSession()) {
-    try {
-      const { data: pgData, error: pgErr } = await supabase.from('payment_gates').select('*').order('name');
-      if (!pgErr && Array.isArray(pgData)) {
-        return (pgData as any[]).map((g) => {
-          const detailsArr: GateDetailRow[] = Array.isArray(g.details)
-            ? g.details.map((d: any) => ({ label: String(d.label || ''), value: String(d.value || '') }))
-            : g.details && typeof g.details === 'object'
-            ? Object.entries(g.details).map(([label, value]) => ({ label, value: String(value ?? '') }))
-            : [];
-          return {
-            id: String(g.id),
-            name: String(g.name || 'Payment Gate'),
-            method: String(g.method || 'bank_wire'),
-            details: detailsArr,
-            instructions: String(g.instructions || ''),
-            active: g.active !== false,
-            assignedCount: assignedCounts.get(String(g.id)) || Number(g.assigned_count || 0),
-            source: 'payment_gates',
-          };
-        });
+  for (const user of users) {
+    for (const assignedId of [user.assignedGateId, user.assignedUsdtGateId]) {
+      if (assignedId) {
+        const id = String(assignedId);
+        assignedCounts.set(id, (assignedCounts.get(id) || 0) + 1);
       }
-    } catch {
-      // Try manual-payments admin methods next
     }
   }
-
   try {
     const json = await apiFetchJson('/manual-payments/admin/methods');
     const list = Array.isArray(json?.data) ? json.data : [];
-    return list.map((m: any) => {
-      const detailSource = m.detail_rows || m.detailRows || m.account_details || m.accountDetails || {};
-      const detailsArr: GateDetailRow[] = Array.isArray(detailSource)
-        ? detailSource.map((d: any) => ({ label: String(d.label || ''), value: String(d.value || '') }))
+    return list.map((row: any) => {
+      const detailSource = Array.isArray(row.detail_rows) ? row.detail_rows : row.account_details || {};
+      const details: GateDetailRow[] = Array.isArray(detailSource)
+        ? detailSource.map((item: any) => ({ label: String(item.label || ''), value: String(item.value || '') }))
         : Object.entries(detailSource).map(([label, value]) => ({ label, value: String(value ?? '') }));
       return {
-        id: String(m.id),
-        name: String(m.name || 'Payment Gate'),
-        method: String(m.method || m.fee_type || 'sepa'),
-        details: detailsArr,
-        instructions: String(m.instructions || ''),
-        active: m.enabled !== false && m.active !== false,
-        assignedCount: assignedCounts.get(String(m.id)) || Number(m.assigned_investors_count || 0),
-        source: 'manual_payment_methods',
+        id: String(row.id),
+        name: String(row.name || 'Payment Gate'),
+        method: String(row.method || 'bank').toLowerCase() === 'usdt' ? 'usdt' : 'bank',
+        details,
+        instructions: String(row.instructions || ''),
+        active: row.enabled !== false,
+        network: String(row.network || ''),
+        walletAddress: String(row.wallet_address || ''),
+        assignedCount: Math.max(assignedCounts.get(String(row.id)) || 0, Number(row.assigned_investors_count || 0)),
+        source: 'manual_payment_methods' as const,
       };
     });
   } catch {
@@ -1254,36 +1275,19 @@ export async function fetchPaymentGatesWithCounts(users: any[]): Promise<Payment
 }
 
 export async function savePaymentGateRecord(
-  gate: { id?: string; name: string; method: string; details: GateDetailRow[]; instructions: string; active: boolean },
-  source: 'payment_gates' | 'manual_payment_methods' = 'manual_payment_methods'
+  gate: { id?: string; name: string; method: string; details: GateDetailRow[]; instructions: string; active: boolean; network?: string; walletAddress?: string },
+  _source: 'payment_gates' | 'manual_payment_methods' = 'manual_payment_methods'
 ): Promise<void> {
-  const cleanDetails = gate.details.filter((d) => d.label.trim() || d.value.trim());
-  if (source === 'payment_gates' && (await hasLiveSupabaseSession())) {
-    const row = {
-      name: gate.name.trim(),
-      method: gate.method.trim(),
-      details: cleanDetails,
-      instructions: gate.instructions.trim(),
-      active: gate.active,
-    };
-    const res = gate.id
-      ? await supabase.from('payment_gates').update(row).eq('id', gate.id)
-      : await supabase.from('payment_gates').insert(row);
-    if (!res.error) return;
-  }
-
-  const accountDetailsMap: Record<string, string> = {};
-  for (const row of cleanDetails) {
-    if (row.label.trim()) accountDetailsMap[row.label.trim()] = row.value.trim();
-  }
+  const method = gate.method === 'usdt' ? 'usdt' : 'bank';
+  const cleanDetails = gate.details.filter((row) => row.label.trim() && row.value.trim());
   const payload = {
     name: gate.name.trim(),
-    method: gate.method.trim() || 'sepa',
-    instructions: gate.instructions.trim() || 'Reference your investor code in the wire memo.',
-    detailRows: cleanDetails,
-    accountDetails: accountDetailsMap,
+    method,
+    instructions: gate.instructions.trim(),
+    detailRows: method === 'bank' ? cleanDetails : [],
+    network: method === 'usdt' ? String(gate.network || '').toUpperCase() : '',
+    walletAddress: method === 'usdt' ? String(gate.walletAddress || '').trim() : '',
     enabled: gate.active,
-    active: gate.active,
     minimumAmount: 100,
     feeType: 'none',
     feeValue: 0,
@@ -1291,20 +1295,13 @@ export async function savePaymentGateRecord(
   };
   await apiFetchJson(
     gate.id ? `/manual-payments/admin/methods/${encodeURIComponent(gate.id)}` : '/manual-payments/admin/methods',
-    {
-      method: gate.id ? 'PATCH' : 'POST',
-      body: JSON.stringify(payload),
-    }
+    { method: gate.id ? 'PATCH' : 'POST', body: JSON.stringify(payload) }
   );
 }
 
 export async function deletePaymentGateRecord(gate: PaymentGateRecord): Promise<void> {
   if (gate.assignedCount > 0) {
     throw new Error('This payment gate is currently assigned to investors and cannot be deleted. Deactivate it instead.');
-  }
-  if (gate.source === 'payment_gates' && (await hasLiveSupabaseSession())) {
-    const { error } = await supabase.from('payment_gates').delete().eq('id', gate.id);
-    if (!error) return;
   }
   await apiFetchJson(`/manual-payments/admin/methods/${encodeURIComponent(gate.id)}`, { method: 'DELETE' });
 }

@@ -106,6 +106,7 @@ export const portalApi = {
       tokensPurchased: t.tokensPurchased,
       destination: t.destination,
       txHash: t.txHash,
+      metadata: t.metadata && typeof t.metadata === 'object' ? t.metadata : {},
     }));
   },
 
