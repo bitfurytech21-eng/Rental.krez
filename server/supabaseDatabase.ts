@@ -257,11 +257,14 @@ export async function databaseHealth() {
 }
 
 export async function listUserTransactions(userId: string, limit = 100) {
+  // The live investor ledger is stored in ledger_transactions. Keep the
+  // user_id predicate on this server-side query so investors only see their
+  // own ledger entries; no profile join is needed for the investor view.
   const { data, error } = await getSupabaseAdmin()
-    .from('payment_transactions')
-    .select('*, user_profiles(email,full_name)')
+    .from('ledger_transactions')
+    .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+    .order('inserted_at', { ascending: false })
     .limit(Math.min(Math.max(limit, 1), 250));
   if (error) throw error;
   return data || [];
