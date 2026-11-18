@@ -109,6 +109,7 @@ export interface PortalTransaction {
   tokensPurchased?: number;
   destination?: string;
   txHash?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PortalNotification {
