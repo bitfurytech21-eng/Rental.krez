@@ -47,7 +47,7 @@ export const ErrorBanner: React.FC<{
         <button
           type="button"
           onClick={onRetry}
-          className="portal-btn-secondary"
+          className="portal-btn-secondary min-h-[44px]"
         >
           <RefreshCw className="w-4 h-4" />
           <span>Retry</span>
