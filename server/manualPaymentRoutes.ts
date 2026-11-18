@@ -374,7 +374,7 @@ manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedReques
       .filter((row) => row.method === expectedById.get(String(row.id)));
     return res.json({ success: true, data: available, requestId: req.id });
   } catch {
-    return res.status(503).json({ success: false, error: 'Your assigned payment methods are temporarily unavailable.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
+    return res.status(503).json({ success: false, error: 'This payment option is not set up for your account yet. Please contact support if you need help.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
   }
 });
 
