@@ -85,12 +85,33 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [acceptedRisk, setAcceptedRisk] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
+  const [failedLoginAttempts, setFailedLoginAttempts] = useState(() => {
+    try { return Number(sessionStorage.getItem('auth_login_failed_attempts') || 0); } catch { return 0; }
+  });
+  const [loginCooldown, setLoginCooldown] = useState(() => {
+    try {
+      const until = Number(sessionStorage.getItem('auth_login_lock_until') || 0);
+      return Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    } catch { return 0; }
+  });
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = window.setTimeout(() => setResendCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => window.clearTimeout(timer);
   }, [resendCooldown]);
+
+  useEffect(() => {
+    if (loginCooldown <= 0) return;
+    const timer = window.setTimeout(() => setLoginCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [loginCooldown]);
+
+  useEffect(() => {
+    if (loginCooldown === 0) {
+      try { sessionStorage.removeItem('auth_login_lock_until'); } catch {}
+    }
+  }, [loginCooldown]);
 
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
@@ -109,6 +130,10 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setError(null);
     setOfferRegister(false);
     setOfferLogin(false);
+    if (loginCooldown > 0) {
+      setError(`Please wait ${loginCooldown} seconds before trying again.`);
+      return;
+    }
     if (!isValidEmail(email)) {
       setError('Please provide a valid email address.');
       return;
@@ -120,6 +145,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setLoading(true);
     try {
       await login(email, password, emailCode || undefined);
+      setFailedLoginAttempts(0);
+      setLoginCooldown(0);
+      try { sessionStorage.removeItem('auth_login_failed_attempts'); sessionStorage.removeItem('auth_login_lock_until'); } catch {}
       onSuccess();
     } catch (err: any) {
       if (err?.code === 'EMAIL_CODE_REQUIRED') {
@@ -128,11 +156,31 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         return;
       }
       const msg = String(err?.message || '');
-      if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
-        setError('Authentication service is currently unavailable. Please check your credentials and try again.');
+      if (err?.code === 'INVALID_EMAIL_CODE') {
+        setError(msg || 'The security code is invalid or expired. Request a new code and try again.');
+      } else if (
+        err?.code === 'INVALID_CREDENTIALS' ||
+        /invalid login credentials|invalid email address or password|email or password|email not confirmed/i.test(msg)
+      ) {
+        const nextAttempts = failedLoginAttempts + 1;
+        setFailedLoginAttempts(nextAttempts);
+        try { sessionStorage.setItem('auth_login_failed_attempts', String(nextAttempts)); } catch {}
+        if (nextAttempts >= 5) {
+          const lockUntil = Date.now() + 30_000;
+          setLoginCooldown(30);
+          setFailedLoginAttempts(0);
+          try {
+            sessionStorage.setItem('auth_login_failed_attempts', '0');
+            sessionStorage.setItem('auth_login_lock_until', String(lockUntil));
+          } catch {}
+          setError('Email or password is incorrect. Please wait 30 seconds before trying again.');
+        } else {
+          setError('Email or password is incorrect');
+        }
+      } else if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
+        setError('Authentication service is currently unavailable. Please try again shortly.');
       } else {
-        setOfferRegister(err?.code === 'ACCOUNT_NOT_FOUND_DEV');
-        setError(msg || 'Login failed. Please verify your credentials.');
+        setError(msg || 'Authentication service is currently unavailable. Please try again shortly.');
       }
     } finally {
       setLoading(false);
@@ -228,14 +276,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
     setLoading(true);
     try {
-      try {
-        await authApi.sendPasswordReset(email);
-      } catch {}
       await sendPasswordReset(email);
-      setResetSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to dispatch password recovery link.');
+    } catch {
+      // Keep the response identical whether the address exists or delivery cannot be confirmed.
     } finally {
+      setResetSent(true);
       setLoading(false);
     }
   };
@@ -243,9 +288,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (password.length < 12) {
+      setError('New password must be at least 12 characters long.');
+      return;
+    }
     const passCheck = isValidPassword(password);
     if (!passCheck.valid) {
-      setError(passCheck.reason || 'New password must be at least 8 characters long.');
+      setError(passCheck.reason || 'Choose a stronger password.');
       return;
     }
     if (password !== confirmPassword) {
@@ -485,7 +534,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || loginCooldown > 0}
                 className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? (
@@ -493,6 +542,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     <span className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
                     <span>Signing in...</span>
                   </>
+                ) : loginCooldown > 0 ? (
+                  `Try again in ${loginCooldown}s`
                 ) : preservedProperty ? (
                   `Sign In & Continue to ${preservedProperty.title.split(' ')[0]}`
                 ) : (
@@ -681,6 +732,18 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
           {/* 3. FORGOT PASSWORD */}
           {mode === 'forgot-password' && (
+            resetSent ? (
+              <div role="status" aria-live="polite" className="space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+                <Mail className="mx-auto h-8 w-8 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Check your email</h3>
+                <p className="text-xs leading-relaxed text-[#C7D4E7]">
+                  If that email exists, we’ve sent a link. Follow the instructions in your inbox to set a new password.
+                </p>
+                <button type="button" onClick={() => switchMode('login')} className="text-xs font-bold text-[#C5A880] hover:underline">
+                  Back to Sign In
+                </button>
+              </div>
+            ) : (
             <form onSubmit={handleResetRequest} noValidate className="space-y-4">
               <div className="form-field space-y-1">
                 <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Registered Email Address</label>
@@ -713,13 +776,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 </button>
               </div>
             </form>
+            )
           )}
 
           {/* 4. RESET PASSWORD */}
           {mode === 'reset-password' && (
             <form onSubmit={handleUpdatePassword} noValidate className="space-y-4">
               <div className="form-field space-y-1">
-                <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 8 Characters)</label>
+                <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 12 Characters)</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -755,7 +819,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || password.length < 12 || password !== confirmPassword}
                 className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? 'Updating Password...' : 'Update Password'}
