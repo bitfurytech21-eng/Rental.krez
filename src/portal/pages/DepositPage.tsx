@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import React, { useState } from 'react';
 import {
   Building2,
@@ -117,7 +118,7 @@ export const DepositPage: React.FC = () => {
       toast.success('Deposit instructions issued.');
       await refreshAll();
     } catch (err: any) {
-      const msg = err?.message || 'Unable to record deposit request.';
+      const msg = safeErrorMessage(err, 'Unable to record deposit request.');
       setSubmitError(msg);
       toast.error(msg);
     } finally {
