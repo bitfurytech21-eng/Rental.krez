@@ -694,6 +694,8 @@ function toPublicDevCustomer(record: DevCustomerRecord) {
     staffRole: (record as any).staffRole ?? (record.role && record.role !== 'investor' ? record.role : null),
     assignedGateId: (record as any).assignedGateId ?? null,
     assignedGateName: (record as any).assignedGateName ?? null,
+    assignedUsdtGateId: (record as any).assignedUsdtGateId ?? null,
+    assignedUsdtGateName: (record as any).assignedUsdtGateName ?? null,
     suspendedReason: record.suspendedReason,
     address: record.address,
     city: record.city,
