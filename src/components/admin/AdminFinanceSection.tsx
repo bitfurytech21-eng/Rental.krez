@@ -3716,7 +3716,8 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
-                  ))}
+                  </div>
+                ))}
                 </div>
               ) : (
                 <div className="space-y-3 rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3">
