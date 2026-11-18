@@ -33,7 +33,7 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
   const usdtAmount = rawUsdtAmount == null || rawUsdtAmount === '' ? null : Number(rawUsdtAmount);
   const isCompletedUsdtDeposit = isUsdtDeposit && transaction.status.toLowerCase() === 'completed';
   const amountDisplay = isCompletedUsdtDeposit && usdtAmount !== null && Number.isFinite(usdtAmount) && usdtAmount > 0
-    ? `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(usdtAmount)} USDT credited as ${formatEuro(Math.abs(transaction.amount), true)}`
+    ? `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(usdtAmount)} USDT credited as ${formatEuro(Math.abs(transaction.amount))}`
     : formatEuro(signedAmount, true);
 
   const title =
