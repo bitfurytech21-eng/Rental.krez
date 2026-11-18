@@ -266,6 +266,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   };
 
   const passChecks = getPasswordChecklist(password);
+  const passwordStrength = [passChecks.minLength, passChecks.hasUpper, passChecks.hasLower, passChecks.hasDigit].filter(Boolean).length;
+  const passwordStrengthLabel = password.length === 0 ? 'Not entered' : passwordStrength <= 1 ? 'Weak' : passwordStrength <= 3 ? 'Fair' : 'Strong';
 
   return (
     <div className="py-10 sm:py-12 px-4 sm:px-6 bg-[#070A11] min-h-[calc(100vh-160px)] flex items-center justify-center text-white relative overflow-hidden">
@@ -541,72 +543,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   </div>
 
                   <div className="form-field space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-[#C5A880]" />
-                        <span>Country of Residence</span>
-                      </label>
-                      <span className="text-[10px] font-bold text-[#C5A880] bg-[#0B1B30] px-2 py-0.5 rounded-full border border-[#1D3860]">
-                        SPV Compliance
-                      </span>
-                    </div>
-                    <select
-                      value={selectedCountryCode}
-                      onChange={(e) => {
-                        const newCode = e.target.value;
-                        setSelectedCountryCode(newCode);
-                        setPhoneCountryCode(newCode);
-                      }}
-                      className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-semibold text-white focus:outline-none focus:border-[#C5A880]"
-                    >
-                      {COUNTRIES.map((country) => (
-                        <option key={country.code} value={country.code} className="bg-[#102442] text-white">
-                          {country.flag} {country.name} ({country.dialCode})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Country Code & Phone Number Digits */}
-                  <div className="form-field space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-[#C5A880]" />
-                        <span>Phone Number</span>
-                      </label>
-                      <span className="text-[10px] text-[#8EA7C7]">Country Code & Digits</span>
-                    </div>
-
-                    <div className="grid grid-cols-12 gap-2">
-                      <div className="col-span-5 sm:col-span-4">
-                        <select
-                          value={phoneCountryCode}
-                          onChange={(e) => setPhoneCountryCode(e.target.value)}
-                          className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-2.5 py-3 font-semibold text-white focus:outline-none focus:border-[#C5A880] truncate"
-                          title="Select Country Dialing Code"
-                        >
-                          {COUNTRIES.map((c) => (
-                            <option key={`dial-${c.code}`} value={c.code} className="bg-[#102442] text-white">
-                              {c.flag} {c.dialCode} ({c.code})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="col-span-7 sm:col-span-8">
-                        <input
-                          type="tel"
-                          required
-                          placeholder={getCountryByCode(phoneCountryCode).placeholder || 'Phone digits'}
-                          value={phoneDigits}
-                          onChange={(e) => setPhoneDigits(e.target.value.replace(/[^\d\s-]/g, ''))}
-                          className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="form-field space-y-1">
                     <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Minimum 12 Characters)</label>
                     <div className="relative">
                       <input
@@ -643,6 +579,20 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                           <span>{item.label}</span>
                         </div>
                       ))}
+                    </div>
+                    <div className="pt-2" aria-label={`Password strength: ${passwordStrengthLabel}`}>
+                      <div className="mb-1.5 flex items-center justify-between text-[10px] text-[#8EA7C7]">
+                        <span>Password strength</span>
+                        <span className={passwordStrength >= 4 ? 'text-emerald-400 font-bold' : passwordStrength >= 2 ? 'text-amber-300 font-bold' : 'text-[#8EA7C7]'}>
+                          {passwordStrengthLabel}
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[#1D3860]">
+                        <div
+                          className={`h-full rounded-full transition-all ${passwordStrength >= 4 ? 'bg-emerald-400' : passwordStrength >= 2 ? 'bg-amber-300' : 'bg-red-400'}`}
+                          style={{ width: `${passwordStrength * 25}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
 
