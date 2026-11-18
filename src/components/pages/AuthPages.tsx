@@ -472,7 +472,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <label htmlFor="login-email" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email Address</label>
                 <input
                   id="login-email"
-                  id="forgot-email"
                   type="email"
                   required
                   autoComplete="email"
@@ -497,8 +496,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <div className="relative">
                   <input
                     id="login-password"
-                  id="register-password"
-                  id="reset-password"
                   type={showPassword ? 'text' : 'password'}
                     required
                     autoComplete="current-password"
@@ -607,6 +604,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     <label htmlFor="register-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Minimum 12 Characters)</label>
                     <div className="relative">
                       <input
+                        id="register-password"
                         type={showPassword ? 'text' : 'password'}
                         required
                         minLength={12}
@@ -758,6 +756,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               <div className="form-field space-y-1">
                 <label htmlFor="forgot-email" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Registered Email Address</label>
                 <input
+                  id="forgot-email"
                   type="email"
                   required
                   autoComplete="email"
@@ -806,6 +805,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <label htmlFor="reset-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">New Password (Min 12 Characters)</label>
                 <div className="relative">
                   <input
+                    id="reset-password"
                     type={showPassword ? 'text' : 'password'}
                     required
                     autoComplete="new-password"
