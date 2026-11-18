@@ -112,19 +112,6 @@ export const KrezAuthModal: React.FC = () => {
       setError('Please enter your password.');
       return;
     }
-    if (mode === 'register') {
-      const cleanName = fullName.trim();
-      if (cleanName.length < 2) {
-        setError('Please enter your full name.');
-        return;
-      }
-      const passCheck = isValidPassword(password);
-      if (!passCheck.valid) {
-        setError(passCheck.reason || 'Password must be at least 8 characters with uppercase, lowercase, and a number.');
-        return;
-      }
-    }
-
     setBusy(true);
     try {
       if (mode === 'login') {
@@ -134,9 +121,6 @@ export const KrezAuthModal: React.FC = () => {
         if (redirectTo) {
           navigateTo(redirectTo);
         }
-      } else if (mode === 'register') {
-        setIsOpen(false);
-        navigateTo('/register');
       } else {
         await sendPasswordReset(cleanEmail);
         setNotice('If an account exists for that email, password reset instructions have been sent.');
