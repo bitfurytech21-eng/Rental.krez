@@ -860,11 +860,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Password changes are unavailable until secure authentication is configured.');
     }
 
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-      current_password: currentPassword,
+    const currentEmail = user?.email?.trim().toLowerCase();
+    if (!currentEmail) throw new Error('Your signed-in account could not be verified. Please sign in again.');
+
+    // Supabase Auth re-authenticates the account by checking the current credentials.
+    const { error: reauthenticationError } = await supabase.auth.signInWithPassword({
+      email: currentEmail,
+      password: currentPassword,
     });
-    if (error) throw new Error(error.message);
+    if (reauthenticationError) {
+      throw new Error('Your current password is incorrect.');
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateError) throw new Error(updateError.message);
   };
 
   // MFA Challenge & Verification Step
