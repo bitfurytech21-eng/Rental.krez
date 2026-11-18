@@ -19,6 +19,7 @@ import {
   DailyPaymentRunRequest,
   DailyPaymentRunResult
 } from '../types/distribution';
+import { getValidActionGrant, markActionVerified } from './actionVerificationSession';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -126,12 +127,21 @@ export const getApiUrl = (endpoint: string): string => {
 
 export async function withActionEmailVerification<T>(actionScope: string, action: (grantId: string) => Promise<T>): Promise<T> {
   if (typeof window === 'undefined') throw new Error('Email verification requires a browser session.');
+  const cachedGrant = getValidActionGrant(actionScope);
+  if (cachedGrant) {
+    return action(cachedGrant);
+  }
   const issued: any = await apiRequest('/security/action-code/request', { method: 'POST', body: { actionScope } });
-  const code = window.prompt(`A security code was sent to ${issued?.maskedEmail || 'your registered email'}. Enter the six-digit code to continue:`);
-  if (!code) throw new ApiError('Verification cancelled. No action was taken.', 400, 'ACTION_VERIFICATION_CANCELLED');
-  const verified: any = await apiRequest('/security/action-code/verify', { method: 'POST', body: { actionScope, code: code.trim() } });
-  if (!verified?.grantId) throw new ApiError('The security code could not be verified.', 401, 'INVALID_ACTION_EMAIL_CODE');
-  return action(String(verified.grantId));
+  if (issued?.grantId && issued?.otpRequired === false) {
+    markActionVerified(actionScope, String(issued.grantId));
+    return action(String(issued.grantId));
+  }
+  throw new ApiError(
+    'Email security code verification is required to complete this action.',
+    403,
+    'ACTION_EMAIL_VERIFICATION_REQUIRED',
+    { actionScope, maskedEmail: issued?.maskedEmail }
+  );
 }
 
 /**
@@ -322,6 +332,19 @@ export const authApi = {
   login: (email: string, pass: string, emailCode?: string) =>
     api.post<{ user?: any; token?: string; refreshToken?: string; requiresEmailCode?: boolean; maskedEmail?: string; data?: { user?: any; token?: string; refreshToken?: string } }>('/auth/login', { email, pass, emailCode }, { skipAuth: true }),
 
+  requestLoginCode: (email: string) =>
+    api.post<{ success: boolean; maskedEmail?: string; expiresInSeconds?: number; cooldownSeconds?: number; message?: string }>('/auth/login-code/request', { email }, { skipAuth: true }),
+
+  verifyLoginCode: (email: string, code: string) =>
+    api.post<{ success: boolean; user?: any; token?: string; refreshToken?: string; data?: { user?: any; token?: string; refreshToken?: string } }>('/auth/login-code/verify', { email, code: code.trim() }, { skipAuth: true }),
+
+  changePassword: (currentPassword: string, newPassword: string, grantId?: string) =>
+    apiRequest<{ success: boolean; message?: string }>('/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+      headers: grantId ? { 'X-Action-Verification': grantId } : undefined,
+    }),
+
   register: (payload: {
     email: string;
     password?: string;
@@ -456,11 +479,25 @@ export const blogApi = {
  * User Profile, Dashboard & Portfolio Endpoints
  */
 export const securityApi = {
+  getActionCodeStatus: () =>
+    api.get<{ success: boolean; verified: boolean; remainingSeconds: number; expiresAt: string | null }>('/security/action-code/status'),
+
   requestActionCode: (actionScope: string) =>
-    api.post<{ success: boolean; maskedEmail?: string; expiresInSeconds?: number }>('/security/action-code/request', { actionScope }),
+    api.post<{ success: boolean; otpRequired?: boolean; alreadyVerified?: boolean; grantId?: string; maskedEmail?: string; expiresInSeconds?: number }>('/security/action-code/request', { actionScope }),
 
   verifyActionCode: (actionScope: string, code: string) =>
-    api.post<{ success: boolean; grantId: string }>('/security/action-code/verify', { actionScope, code: code.trim() }),
+    api.post<{ success: boolean; grantId: string; expiresInSeconds?: number }>('/security/action-code/verify', { actionScope, code: code.trim() }),
+};
+
+export const monitoringApi = {
+  logClientError: (payload: {
+    message: string;
+    category?: 'auth' | 'security' | 'api' | 'payments';
+    eventType?: string;
+    errorCode?: string;
+    scope?: string;
+  }) =>
+    api.post<{ success: boolean }>('/monitoring/client-error', payload).catch(() => ({ success: false })),
 };
 
 export const userApi = {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PortalTransaction } from '../types';
 import { formatEuro, formatShortDate } from '../utils/format';
-import { StatusBadge } from './StatusBadge';
+import { normalizeStatus, StatusBadge } from './StatusBadge';
 
 interface TransactionRowProps {
   transaction: PortalTransaction;
@@ -42,6 +42,12 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
     transaction.description ||
     transaction.type;
 
+  const isFailed = normalizeStatus(transaction.status) === 'failed';
+  const failureReason =
+    transaction.note ||
+    (typeof metadata.reason === 'string' ? metadata.reason : undefined) ||
+    (typeof metadata.rejectionReason === 'string' ? metadata.rejectionReason : undefined);
+
   return (
     <div className="p-4 flex items-center justify-between gap-4 hover:bg-[#172228]/70 transition-colors">
       <div className="min-w-0">
@@ -57,6 +63,11 @@ export const TransactionRow: React.FC<TransactionRowProps> = ({ transaction }) =
             </>
           )}
         </div>
+        {isFailed && failureReason && (
+          <p className="mt-1.5 text-xs text-[#FB7185]">
+            Reason: {failureReason}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col items-end gap-1.5 shrink-0">

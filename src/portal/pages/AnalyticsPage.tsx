@@ -14,7 +14,7 @@ const DONUT_PALETTE = ['#6FD8B0', '#FCD34D', '#60A5FA', '#A78BFA', '#FB7185', '#
 
 export const AnalyticsPage: React.FC = () => {
   const toast = useToast();
-  const { portfolio, summary, sampleDataEnabled, sampleDataset, navigatePortal } = usePortal();
+  const { portfolio, summary, balance, transactions, sampleDataEnabled, sampleDataset, navigatePortal } = usePortal();
   const [performance, setPerformance] = useState<PortalPerformanceData | null>(null);
   const [distributions, setDistributions] = useState<{
     totalPaymentsReceivedEUR?: number;
@@ -71,36 +71,93 @@ export const AnalyticsPage: React.FC = () => {
       : distributions;
 
   const holdings = portfolio?.holdings || [];
-  const totalHoldingsValue =
-    portfolio?.totalHoldingsValue ||
-    holdings.reduce((acc, h) => acc + Number(h.currentValue || 0), 0);
+  const totalHoldingsValue = holdings.reduce(
+    (acc, h) => acc + (h.currentValueCents != null ? h.currentValueCents / 100 : Number(h.currentValue || 0)),
+    0
+  );
+  const cashBalance = Math.max(0, Number(balance || 0));
+  const totalAllocationValue = totalHoldingsValue + cashBalance;
 
   const allocationSegments = useMemo(() => {
-    if (holdings.length === 0 || totalHoldingsValue <= 0) return [];
+    if (totalAllocationValue <= 0) return [];
     const radius = 72;
     const circumference = 2 * Math.PI * radius;
     let cumulativeOffset = 0;
 
-    return holdings.map((h, idx) => {
-      const value = Number(h.currentValue || 0);
-      const ratio = value / totalHoldingsValue;
-      const dashLength = ratio * circumference;
-      const offset = -cumulativeOffset;
-      cumulativeOffset += dashLength;
-      return {
+    const items: Array<{ id: string; propertyId: string | null; title: string; value: number; color?: string }> =
+      holdings.map((h, idx) => ({
         id: h.id,
         propertyId: h.propertyId,
         title: h.propertyTitle,
-        value,
-        pct: ratio * 100,
+        value: h.currentValueCents != null ? h.currentValueCents / 100 : Number(h.currentValue || 0),
         color: DONUT_PALETTE[idx % DONUT_PALETTE.length],
-        dashArray: `${dashLength} ${circumference}`,
-        dashOffset: offset,
-      };
-    });
-  }, [holdings, totalHoldingsValue]);
+      }));
 
-  const history = effectivePerformance?.historicalPerformance || [];
+    if (cashBalance > 0) {
+      items.push({
+        id: 'wallet-cash',
+        propertyId: null,
+        title: 'Cash Balance (EUR)',
+        value: cashBalance,
+        color: '#38BDF8',
+      });
+    }
+
+    return items
+      .filter((item) => item.value > 0)
+      .map((item, idx) => {
+        const ratio = item.value / totalAllocationValue;
+        const dashLength = ratio * circumference;
+        const offset = -cumulativeOffset;
+        cumulativeOffset += dashLength;
+        return {
+          ...item,
+          pct: ratio * 100,
+          color: item.color || DONUT_PALETTE[idx % DONUT_PALETTE.length],
+          dashArray: `${dashLength} ${circumference}`,
+          dashOffset: offset,
+        };
+      });
+  }, [holdings, cashBalance, totalAllocationValue]);
+
+  const history = useMemo(() => {
+    const serverHistory = effectivePerformance?.historicalPerformance || [];
+    if (serverHistory.length > 0) return serverHistory;
+
+    const completed = transactions
+      .filter((t) => String(t.status || '').toLowerCase() === 'completed')
+      .sort((a, b) => (Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0));
+    if (completed.length === 0) return [];
+
+    let runningCash = 0;
+    let runningInvested = 0;
+    const byMonth = new Map<string, { month: string; yield: number; totalValue: number }>();
+
+    for (const tx of completed) {
+      const type = String(tx.type || '').toLowerCase();
+      const amount = Number(tx.amount || 0);
+      if (type === 'deposit') runningCash += amount;
+      else if (type === 'withdrawal') runningCash = Math.max(0, runningCash - amount);
+      else if (type === 'investment' || type === 'purchase') {
+        runningCash = Math.max(0, runningCash - amount);
+        runningInvested += amount;
+      } else if (type === 'dividend' || type === 'distribution' || type === 'payout') {
+        runningCash += amount;
+      }
+      const dt = new Date(tx.createdAt || Date.now());
+      const monthLabel = dt.toLocaleDateString('en-US', { month: 'short' });
+      const prev = byMonth.get(monthLabel);
+      const yieldAdd =
+        type === 'dividend' || type === 'distribution' || type === 'payout' ? amount : 0;
+      byMonth.set(monthLabel, {
+        month: monthLabel,
+        yield: Number(((prev?.yield || 0) + yieldAdd).toFixed(2)),
+        totalValue: Number((runningCash + runningInvested).toFixed(2)),
+      });
+    }
+
+    return Array.from(byMonth.values());
+  }, [effectivePerformance?.historicalPerformance, transactions]);
 
   const lineGeometry = useMemo(() => {
     if (history.length === 0) return null;
@@ -229,15 +286,15 @@ export const AnalyticsPage: React.FC = () => {
             {/* Allocation Donut Chart */}
             <section className="lg:col-span-5 portal-card space-y-5">
               <div>
-                <h3 className="text-base font-semibold text-[#F2F5F4]">Allocation by property</h3>
-                <p className="text-xs text-[#8FA1A8]">Share weight across active holdings</p>
+                <h3 className="text-base font-semibold text-[#F2F5F4]">Allocation breakdown</h3>
+                <p className="text-xs text-[#8FA1A8]">Property holdings plus available cash</p>
               </div>
 
               {allocationSegments.length === 0 ? (
                 <EmptyState
                   icon={<PieChart className="w-5 h-5" />}
                   title="No allocation data"
-                  description="Subscribe to properties to visualize your portfolio diversification."
+                  description="Deposit cash or subscribe to properties to visualize your portfolio allocation."
                   actionLabel="Explore properties"
                   onAction={() => navigatePortal('explore')}
                 />
@@ -274,9 +331,9 @@ export const AnalyticsPage: React.FC = () => {
                         ))}
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-                        <span className="text-xs text-[#8FA1A8]">Invested</span>
+                        <span className="text-xs text-[#8FA1A8]">Total</span>
                         <span className="text-base font-bold text-[#F2F5F4] portal-tabular mt-0.5">
-                          {formatEuro(totalHoldingsValue)}
+                          {formatEuro(totalAllocationValue)}
                         </span>
                       </div>
                     </div>
@@ -288,7 +345,9 @@ export const AnalyticsPage: React.FC = () => {
                         key={seg.id}
                         type="button"
                         onClick={() =>
-                          navigatePortal('property-detail', { propertySlug: seg.propertyId })
+                          seg.propertyId
+                            ? navigatePortal('property-detail', { propertySlug: seg.propertyId })
+                            : navigatePortal('wallet')
                         }
                         className="w-full min-h-[48px] py-2.5 flex items-center justify-between gap-3 text-left hover:text-[#6FD8B0] transition-colors"
                       >

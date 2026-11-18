@@ -10,7 +10,7 @@
  */
 
 import { Router, Response, NextFunction } from 'express';
-import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
+import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret, requireStaffSection } from './middleware';
 import { logger } from './logger';
 import { requireLatestLegalConsent } from './legalConsent';
 import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
@@ -19,6 +19,8 @@ import {
   registerManualPaymentDevHooks,
   hydrateManualPaymentDevState,
   exportManualPaymentDevDeposits,
+  getDevAssignedGateId,
+  getDevGateById,
 } from './manualPaymentRoutes';
 import {
   handleTranslationRequest,
@@ -88,8 +90,9 @@ import {
   listAdminNotifications, sendAdminNotifications,
   listUserFavorites, saveUserFavorite, removeUserFavorite, getUserPreferences, saveUserPreferences,
   listComplianceDocuments, addComplianceDocument, listAdminComplianceDocuments, reviewComplianceDocument,
-  listComplianceSteps, upsertComplianceStep, getWalletSummary, findTransactionByReferenceOrId,
+  listComplianceSteps, upsertComplianceStep, getWalletSummary, getAssignedPaymentGate, findTransactionByReferenceOrId,
   ComplianceStepKey, ComplianceStepRecord,
+  listUserStatementDocuments, getSignedDocumentUrl,
   getPersistentAccountStatement, getPersistentPerformance,
   signInCustomer, registerCustomer, requestCustomerPasswordReset, updateCustomerPassword, signOutCustomer
 } from './supabaseDatabase';
@@ -112,8 +115,8 @@ router.use(async (_req, _res, next) => {
 router.use('/manual-payments', manualPaymentRouter);
 const DASHBOARD_ACTION_SCOPES = new Set([
   'investor.withdrawal.create',
-  'investor.investment.create',
   'investor.profile.bank.update',
+  'investor.password.change',
   'admin.deposit.approve',
   'admin.deposit.reject',
   'admin.withdrawal.approve',
@@ -122,6 +125,28 @@ const DASHBOARD_ACTION_SCOPES = new Set([
   'admin.user.kyc',
   'admin.user.status'
 ]);
+
+const ACTION_VERIFICATION_SESSION_TTL_MS = 10 * 60 * 1000;
+const verifiedActionSessions = new Map<string, number>();
+
+function markActionSessionVerified(userId: string) {
+  verifiedActionSessions.set(userId, Date.now() + ACTION_VERIFICATION_SESSION_TTL_MS);
+}
+
+function getActionSessionRemainingSeconds(userId: string): number {
+  const expiresAt = verifiedActionSessions.get(userId);
+  if (!expiresAt) return 0;
+  const remainingMs = expiresAt - Date.now();
+  if (remainingMs <= 0) {
+    verifiedActionSessions.delete(userId);
+    return 0;
+  }
+  return Math.ceil(remainingMs / 1000);
+}
+
+function clearActionSessionVerified(userId?: string) {
+  if (userId) verifiedActionSessions.delete(userId);
+}
 
 const devActionGrants = new Map<string, { userId: string; scope: string; expiresAt: number }>();
 const devComplianceDocsByUser = new Map<string, Array<{
@@ -157,7 +182,23 @@ function namesMatchOwner(legalName: unknown, holderName: unknown): boolean {
 
 function isValidIbanServer(iban: string): boolean {
   const clean = iban.replace(/\s+/g, '').toUpperCase();
-  return clean.length >= 15 && clean.length <= 34 && /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(clean);
+  if (clean.length < 15 || clean.length > 34 || !/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(clean)) {
+    return false;
+  }
+  const rearranged = clean.slice(4) + clean.slice(0, 4);
+  let remainder = 0;
+  for (let i = 0; i < rearranged.length; i += 1) {
+    const ch = rearranged.charCodeAt(i);
+    if (ch >= 48 && ch <= 57) {
+      remainder = (remainder * 10 + (ch - 48)) % 97;
+    } else if (ch >= 65 && ch <= 90) {
+      const val = ch - 55;
+      remainder = (remainder * 100 + val) % 97;
+    } else {
+      return false;
+    }
+  }
+  return remainder === 1;
 }
 
 function buildDevComplianceSteps(userId: string, kycStatus?: string): ComplianceStepRecord[] {
@@ -198,10 +239,14 @@ function buildDevComplianceSteps(userId: string, kycStatus?: string): Compliance
 const requireActionEmailVerification = (actionScope: string) =>
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user?.id || !req.user.email) return res.status(401).json({ success: false, error: 'Authentication required.', code: 'AUTH_REQUIRED', requestId: req.id });
+    if (getActionSessionRemainingSeconds(req.user.id) > 0) {
+      return next();
+    }
     const grantId = String(req.headers['x-action-verification'] || '');
     const devGrant = grantId ? devActionGrants.get(grantId) : undefined;
     if (process.env.NODE_ENV !== 'production' && devGrant && devGrant.userId === req.user.id && devGrant.scope === actionScope && devGrant.expiresAt > Date.now()) {
       devActionGrants.delete(grantId);
+      markActionSessionVerified(req.user.id);
       return next();
     }
     if (process.env.NODE_ENV !== 'production' && (!isEmailOtpEnforced() || !shouldUseSupabaseForCustomer(req))) {
@@ -213,8 +258,19 @@ const requireActionEmailVerification = (actionScope: string) =>
     try {
       const consumed = await consumeDashboardActionGrant(grantId, req.user.id, actionScope);
       if (!consumed) return res.status(428).json({ success: false, error: 'The verification has expired or does not match this action. Request a new code.', code: 'ACTION_EMAIL_VERIFICATION_REQUIRED', actionScope, requestId: req.id });
+      markActionSessionVerified(req.user.id);
       return next();
-    } catch {
+    } catch (error: any) {
+      logger.log({
+        level: 'error',
+        category: 'security',
+        requestId: req.id || 'req-action-otp-consume',
+        userId: req.user?.id,
+        eventType: 'ACTION_OTP_CONSUME_FAILED',
+        outcome: 'failure',
+        message: String(error?.message || 'Action OTP grant verification failed'),
+        metadata: { actionScope }
+      });
       return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
     }
   };
@@ -241,9 +297,9 @@ const requireBankChangeEmailVerification = async (
     if (!existing) return next();
 
     const currentIban = String(existing.bank_iban ?? existing.bankIban ?? existing.iban ?? '')
-      .replace(/\\s+/g, '').toUpperCase();
+      .replace(/\s+/g, '').toUpperCase();
     const nextIban = typeof input.bankIban === 'string'
-      ? input.bankIban.replace(/\\s+/g, '').toUpperCase()
+      ? input.bankIban.replace(/\s+/g, '').toUpperCase()
       : currentIban;
     const currentHolder = String(existing.bank_account_holder ?? existing.bankAccountHolder ?? existing.bank_holder ?? existing.full_name ?? existing.fullName ?? '')
       .trim().toLowerCase();
@@ -408,18 +464,47 @@ router.get('/team', (req: AuthenticatedRequest, res: Response) => {
 });
 
 
+router.get('/security/action-code/status', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const remainingSeconds = getActionSessionRemainingSeconds(req.user!.id);
+  const verified = remainingSeconds > 0;
+  return res.json({
+    success: true,
+    verified,
+    remainingSeconds,
+    expiresAt: verified ? new Date(Date.now() + remainingSeconds * 1000).toISOString() : null,
+    requestId: req.id
+  });
+});
+
 router.post('/security/action-code/request', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const actionScope = String(req.body?.actionScope || '');
   if (!DASHBOARD_ACTION_SCOPES.has(actionScope)) return res.status(400).json({ success: false, error: 'Unsupported protected action.', code: 'INVALID_ACTION_SCOPE', requestId: req.id });
+  const remainingSeconds = getActionSessionRemainingSeconds(req.user!.id);
+  if (remainingSeconds > 0) {
+    const grantId = crypto.randomUUID();
+    devActionGrants.set(grantId, { userId: req.user!.id, scope: actionScope, expiresAt: Date.now() + remainingSeconds * 1000 });
+    return res.json({
+      success: true,
+      otpRequired: false,
+      alreadyVerified: true,
+      grantId,
+      maskedEmail: maskLoginEmail(req.user!.email),
+      expiresInSeconds: remainingSeconds,
+      actionScope,
+      message: 'Recent security verification is active for this session.',
+      requestId: req.id
+    });
+  }
   if (process.env.NODE_ENV !== 'production' && (!isEmailOtpEnforced() || !shouldUseSupabaseForCustomer(req))) {
     const grantId = crypto.randomUUID();
-    devActionGrants.set(grantId, { userId: req.user!.id, scope: actionScope, expiresAt: Date.now() + 120_000 });
+    devActionGrants.set(grantId, { userId: req.user!.id, scope: actionScope, expiresAt: Date.now() + ACTION_VERIFICATION_SESSION_TTL_MS });
+    markActionSessionVerified(req.user!.id);
     return res.json({
       success: true,
       otpRequired: false,
       grantId,
       maskedEmail: maskLoginEmail(req.user!.email),
-      expiresInSeconds: 120,
+      expiresInSeconds: 600,
       actionScope,
       message: 'Security confirmation prepared.',
       requestId: req.id
@@ -427,22 +512,54 @@ router.post('/security/action-code/request', requireAuth, async (req: Authentica
   }
   try {
     const issued = await issueDashboardActionOtp(req.user!.email, req.user!.id, actionScope);
-    if (!issued.ok) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached.', code: issued.reason, retryAfter: issued.retryAfter, requestId: req.id });
+    if (!issued.ok) {
+      logger.log({
+        level: 'warn',
+        category: 'security',
+        requestId: req.id || 'req-action-otp-rate',
+        userId: req.user?.id,
+        eventType: 'ACTION_OTP_RATE_LIMITED',
+        outcome: 'failure',
+        message: 'Security code request rate limited.',
+        metadata: { actionScope, reason: issued.reason, retryAfter: issued.retryAfter }
+      });
+      return res.status(429).json({ success: false, error: 'Too many attempts. Please wait a few minutes and try again.', code: issued.reason, retryAfter: issued.retryAfter, requestId: req.id });
+    }
     const delivery = await sendEmail({
       templateId: 'email_verification',
       recipient: req.user!.email,
-      data: { user_name: req.user!.fullName || req.user!.email.split('@')[0], verification_code: issued.code, expires_in_minutes: 5, action_url: 'https://kretzdespain.com/dashboard' },
+      data: { user_name: req.user!.fullName || 'Investor', verification_code: issued.code, expires_in_minutes: 5, action_url: 'https://kretzdespain.com/dashboard' },
       commandName: 'send_verification_email',
       idempotencyKey: `dashboard-action-otp-${issued.challengeId}`,
       bypassAutomationCheck: true
     });
     if (!delivery.success) {
       await cancelEmailOtp(issued.challengeId);
-      return res.status(503).json({ success: false, error: 'Unable to deliver the security code. Please try again later.', code: 'ACTION_EMAIL_DELIVERY_FAILED', requestId: req.id });
+      logger.log({
+        level: 'error',
+        category: 'security',
+        requestId: req.id || 'req-action-otp-delivery',
+        userId: req.user?.id,
+        eventType: 'ACTION_OTP_DELIVERY_FAILED',
+        outcome: 'failure',
+        message: String(delivery.error || 'Failed to deliver action security code'),
+        metadata: { actionScope }
+      });
+      return res.status(503).json({ success: false, error: 'We couldn’t send your code. Please try again, or contact support.', code: 'ACTION_EMAIL_DELIVERY_FAILED', requestId: req.id });
     }
-    return res.json({ success: true, maskedEmail: maskLoginEmail(req.user!.email), expiresInSeconds: 300, actionScope, message: 'A security code has been sent to your registered email address.', requestId: req.id });
-  } catch {
-    return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
+    return res.json({ success: true, otpRequired: true, maskedEmail: maskLoginEmail(req.user!.email), expiresInSeconds: 300, actionScope, message: 'A security code has been sent to your registered email address.', requestId: req.id });
+  } catch (error: any) {
+    logger.log({
+      level: 'error',
+      category: 'security',
+      requestId: req.id || 'req-action-otp-error',
+      userId: req.user?.id,
+      eventType: 'ACTION_OTP_REQUEST_ERROR',
+      outcome: 'failure',
+      message: String(error?.message || 'Security code service failure'),
+      metadata: { actionScope }
+    });
+    return res.status(503).json({ success: false, error: 'We couldn’t send your code. Please try again, or contact support.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
   }
 });
 
@@ -452,11 +569,57 @@ router.post('/security/action-code/verify', requireAuth, async (req: Authenticat
   if (!DASHBOARD_ACTION_SCOPES.has(actionScope)) return res.status(400).json({ success: false, error: 'Unsupported protected action.', code: 'INVALID_ACTION_SCOPE', requestId: req.id });
   try {
     const verified = await verifyDashboardActionOtp(req.user!.email, req.user!.id, actionScope, code);
-    if (!verified.valid || !verified.grantId) return res.status(401).json({ success: false, error: 'The code is invalid or expired. Request a new code and try again.', code: 'INVALID_ACTION_EMAIL_CODE', requestId: req.id });
-    return res.json({ success: true, grantId: verified.grantId, expiresInSeconds: 120, actionScope, requestId: req.id });
-  } catch {
+    if (!verified.valid || !verified.grantId) {
+      logger.log({
+        level: 'warn',
+        category: 'security',
+        requestId: req.id || 'req-action-otp-invalid',
+        userId: req.user?.id,
+        eventType: 'ACTION_OTP_VERIFY_FAILED',
+        outcome: 'failure',
+        message: 'Security code verification failed.',
+        metadata: { actionScope, reason: verified.reason || 'INVALID' }
+      });
+      return res.status(401).json({ success: false, error: 'The code is invalid or expired. Request a new code and try again.', code: 'INVALID_ACTION_EMAIL_CODE', requestId: req.id });
+    }
+    markActionSessionVerified(req.user!.id);
+    return res.json({ success: true, grantId: verified.grantId, expiresInSeconds: 600, actionScope, requestId: req.id });
+  } catch (error: any) {
+    logger.log({
+      level: 'error',
+      category: 'security',
+      requestId: req.id || 'req-action-otp-verify-err',
+      userId: req.user?.id,
+      eventType: 'ACTION_OTP_VERIFY_ERROR',
+      outcome: 'failure',
+      message: String(error?.message || 'Security code verification service unavailable'),
+      metadata: { actionScope }
+    });
     return res.status(503).json({ success: false, error: 'Email action verification is temporarily unavailable.', code: 'ACTION_EMAIL_VERIFICATION_UNAVAILABLE', requestId: req.id });
   }
+});
+
+router.post('/monitoring/client-error', (req: AuthenticatedRequest, res: Response) => {
+  const safeMessage = String(req.body?.message || 'Client security code delivery error')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[redacted-email]')
+    .replace(/\b\d{6}\b/g, '[redacted-code]')
+    .slice(0, 300);
+  const category = String(req.body?.category || 'security').slice(0, 40) as any;
+  const eventType = String(req.body?.eventType || 'CLIENT_EMAIL_CODE_FAILURE').slice(0, 80);
+  const errorCode = String(req.body?.errorCode || 'CLIENT_ERROR').slice(0, 80);
+  const scope = req.body?.scope ? String(req.body.scope).slice(0, 80) : undefined;
+  logger.log({
+    level: 'error',
+    category: ['auth', 'security', 'api', 'payments'].includes(category) ? category : 'security',
+    requestId: req.id || 'req-client-mon',
+    userId: req.user?.id,
+    eventType,
+    outcome: 'failure',
+    errorCode,
+    message: safeMessage,
+    metadata: { scope }
+  });
+  return res.json({ success: true, requestId: req.id });
 });
 
 const contactLimiter = rateLimiter({
@@ -727,8 +890,10 @@ let mockListings = [
     slug: 'villa-mirador-marbella',
     title: 'Villa El Mirador',
     location: 'La Zagaleta, Benahavís, Spain',
+    city: 'Benahavís',
+    country: 'Spain',
     type: 'Luxury Villa',
-    status: 'funding',
+    status: 'open',
     fundedAmount: 1840000,
     targetAmount: 2450000,
     tokenPrice: 364,
@@ -756,8 +921,10 @@ let mockListings = [
     slug: 'palacio-pedralbes-barcelona',
     title: 'Palacio de Pedralbes',
     location: 'Pedralbes, Barcelona, Spain',
+    city: 'Barcelona',
+    country: 'Spain',
     type: 'Modernist Mansion',
-    status: 'funding',
+    status: 'open',
     fundedAmount: 980000,
     targetAmount: 1650000,
     tokenPrice: 364,
@@ -785,8 +952,10 @@ let mockListings = [
     slug: 'finca-son-vida-mallorca',
     title: 'Son Vida Private Estate',
     location: 'Son Vida, Palma de Mallorca, Spain',
+    city: 'Palma de Mallorca',
+    country: 'Spain',
     type: 'Island Finca',
-    status: 'funding',
+    status: 'open',
     fundedAmount: 2600000,
     targetAmount: 3100000,
     tokenPrice: 364,
@@ -1080,7 +1249,6 @@ const authLimiter = rateLimiter({
 router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
   const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || req.body?.pass || '');
-  const emailCode = String(req.body?.emailCode || '').trim();
   if (!normalizedEmail || !password) return res.status(400).json({ success: false, error: 'Please provide both email address and password.', code: 'MISSING_FIELDS', requestId: req.id });
 
   if (!isSupabaseAuthConfigured()) {
@@ -1094,7 +1262,7 @@ router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: R
     if (lockStatus.isLocked) {
       return res.status(429).json({
         success: false,
-        error: `Too many failed sign-in attempts. Please wait ${lockStatus.remainingSeconds} seconds.`,
+        error: 'Too many attempts. Please wait a few minutes and try again.',
         code: 'RATE_LIMIT_EXCEEDED',
         remainingSeconds: lockStatus.remainingSeconds,
         requestId: req.id
@@ -1103,19 +1271,10 @@ router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: R
 
     await ensureDevStateHydrated();
     const devUser = devCustomersByEmail.get(normalizedEmail);
-    if (!devUser) {
-      logger.log({ level: 'info', category: 'auth', requestId: req.id || 'req-dev-login-missing', eventType: 'DEV_LOGIN_NO_ACCOUNT', outcome: 'failure', message: `No development account registered for ${normalizedEmail}` });
-      return res.status(401).json({
-        success: false,
-        error: `No development account was found for ${normalizedEmail}. Click "Create account" to register it.`,
-        code: 'ACCOUNT_NOT_FOUND_DEV',
-        requestId: req.id
-      });
-    }
-    if (!verifyPassword(password, devUser.passwordHash)) {
+    if (!devUser || !verifyPassword(password, devUser.passwordHash)) {
       recordFailedLogin(lockKey);
-      logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-dev-login-failed', eventType: 'DEV_LOGIN_FAILED', outcome: 'failure', message: `Invalid credentials for ${normalizedEmail}` });
-      return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
+      logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-dev-login-failed', eventType: 'DEV_LOGIN_FAILED', outcome: 'failure', message: 'Invalid login credentials' });
+      return res.status(401).json({ success: false, error: 'Email or password is incorrect.', code: 'INVALID_CREDENTIALS', requestId: req.id });
     }
 
     if (devUser.status === 'suspended') {
@@ -1164,24 +1323,7 @@ router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: R
   }
 
   try {
-    if (!isEmailOtpEnforced()) {
-      const result = await signInCustomer(normalizedEmail, password);
-      return res.json({
-        success: true,
-        data: { user: result.user, token: result.session.access_token, refreshToken: result.session.refresh_token, expiresAt: new Date(result.session.expires_at ? result.session.expires_at * 1000 : Date.now() + result.session.expires_in * 1000).toISOString() },
-        user: result.user, token: result.session.access_token, refreshToken: result.session.refresh_token,
-        message: 'Authentication successful.', requestId: req.id
-      });
-    }
-    if (!emailCode) {
-      // Validate the password first; never send a code to an arbitrary address.
-      await signInCustomer(normalizedEmail, password);
-      const challenge = await sendLoginEmailCode(normalizedEmail, 'investor_login');
-      if (!challenge.success) return res.status(429).json({ success: false, error: 'A security code was recently sent or the request limit was reached. Please wait before requesting another.', code: challenge.reason, retryAfter: challenge.retryAfter, requestId: req.id });
-      return res.json({ success: true, requiresEmailCode: true, maskedEmail: challenge.maskedEmail, expiresInSeconds: 300, message: 'A six-digit security code has been sent to your email address.', requestId: req.id });
-    }
-    const codeResult = await verifyEmailOtp(normalizedEmail, 'investor_login', emailCode);
-    if (!codeResult.valid) return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
+    // Normal investor login is email + password only (no email OTP required per login).
     const result = await signInCustomer(normalizedEmail, password);
     return res.json({
       success: true,
@@ -1195,9 +1337,144 @@ router.post('/auth/login', authLimiter, async (req: AuthenticatedRequest, res: R
     if (message === 'ADMIN_LOGIN_REQUIRED') return res.status(403).json({ success: false, error: 'Administrator accounts must sign in through the Administrator Gateway.', code: 'ADMIN_LOGIN_REQUIRED', requestId: req.id });
     if (/email not confirmed/i.test(message)) return res.status(403).json({ success: false, error: 'Email not confirmed yet. Please verify your email before signing in.', code: 'EMAIL_NOT_CONFIRMED', requestId: req.id });
     if (message === 'SUPABASE_PROFILE_NOT_PROVISIONED') return res.status(403).json({ success: false, error: 'Your account profile is not yet available. Please contact support.', code: 'PROFILE_NOT_PROVISIONED', requestId: req.id });
-    if (message === 'EMAIL_PROVIDER_NOT_CONFIGURED' || message === 'EMAIL_PROVIDER_DELIVERY_FAILED' || message === 'EMAIL_OTP_STORAGE_UNAVAILABLE' || message === 'EMAIL_OTP_SIGNING_SECRET_NOT_CONFIGURED') return res.status(503).json({ success: false, error: message === 'EMAIL_PROVIDER_NOT_CONFIGURED' ? 'Email delivery is not configured for production. Please contact support.' : 'We could not deliver your security code. Please try again later.', code: message === 'EMAIL_PROVIDER_NOT_CONFIGURED' ? 'EMAIL_PROVIDER_NOT_CONFIGURED' : 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
     logger.log({ level: 'warn', category: 'auth', requestId: req.id || 'req-login-failed', eventType: 'SUPABASE_LOGIN_FAILED', outcome: 'failure', message: 'Supabase customer sign-in failed.' });
-    return res.status(401).json({ success: false, error: 'Invalid email address or password.', code: 'INVALID_CREDENTIALS', requestId: req.id });
+    return res.status(401).json({ success: false, error: 'Email or password is incorrect.', code: 'INVALID_CREDENTIALS', requestId: req.id });
+  }
+});
+
+/**
+ * Optional passwordless email security-code sign-in
+ */
+router.post('/auth/login-code/request', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
+  if (!normalizedEmail || !validateEmail(normalizedEmail)) {
+    return res.status(400).json({ success: false, error: 'Please provide a valid email address.', code: 'INVALID_EMAIL', requestId: req.id });
+  }
+  if (!isSupabaseAuthConfigured()) {
+    logger.log({
+      level: 'error',
+      category: 'security',
+      requestId: req.id || 'req-login-code-unconfigured',
+      eventType: 'LOGIN_EMAIL_CODE_UNAVAILABLE',
+      outcome: 'failure',
+      message: 'Email code login requested while Supabase Auth/email provider is not configured.'
+    });
+    return res.status(503).json({ success: false, error: 'We couldn’t send your code. Please try again, or contact support.', code: 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
+  }
+  try {
+    const challenge = await sendLoginEmailCode(normalizedEmail, 'investor_login');
+    if (!challenge.success) {
+      logger.log({
+        level: 'warn',
+        category: 'security',
+        requestId: req.id || 'req-login-code-rate',
+        eventType: 'LOGIN_EMAIL_CODE_RATE_LIMITED',
+        outcome: 'failure',
+        message: 'Login email code rate limit triggered.',
+        metadata: { reason: challenge.reason, retryAfter: challenge.retryAfter }
+      });
+      return res.status(429).json({
+        success: false,
+        error: 'Too many attempts. Please wait a few minutes and try again.',
+        code: challenge.reason || 'RATE_LIMITED',
+        retryAfter: challenge.retryAfter || 60,
+        requestId: req.id
+      });
+    }
+    return res.json({
+      success: true,
+      maskedEmail: challenge.maskedEmail,
+      expiresInSeconds: 300,
+      cooldownSeconds: 60,
+      message: 'A six-digit security code has been sent to your email address.',
+      requestId: req.id
+    });
+  } catch (error: any) {
+    logger.log({
+      level: 'error',
+      category: 'security',
+      requestId: req.id || 'req-login-code-err',
+      eventType: 'LOGIN_EMAIL_CODE_SEND_FAILED',
+      outcome: 'failure',
+      message: String(error?.message || 'Failed to dispatch login email code')
+    });
+    return res.status(503).json({
+      success: false,
+      error: 'We couldn’t send your code. Please try again, or contact support.',
+      code: 'EMAIL_CODE_SERVICE_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+});
+
+router.post('/auth/login-code/verify', authLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  const normalizedEmail = String(req.body?.email || '').trim().toLowerCase();
+  const code = String(req.body?.code || '').trim();
+  if (!normalizedEmail || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid 6-digit security code.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
+  }
+  if (!isSupabaseAuthConfigured()) {
+    return res.status(503).json({ success: false, error: 'We couldn’t send your code. Please try again, or contact support.', code: 'EMAIL_CODE_SERVICE_UNAVAILABLE', requestId: req.id });
+  }
+  try {
+    const codeResult = await verifyEmailOtp(normalizedEmail, 'investor_login', code);
+    if (!codeResult.valid) {
+      return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
+    }
+    const { data: linkData, error: linkErr } = await getSupabaseAdmin().auth.admin.generateLink({
+      type: 'magiclink',
+      email: normalizedEmail,
+    });
+    if (linkErr || !linkData?.properties?.email_otp) {
+      throw linkErr || new Error('LOGIN_SESSION_GENERATION_FAILED');
+    }
+    const { data: otpSessionData, error: otpErr } = await getSupabaseAdmin().auth.verifyOtp({
+      email: normalizedEmail,
+      token: linkData.properties.email_otp,
+      type: 'email',
+    });
+    if (otpErr || !otpSessionData?.session || !otpSessionData?.user) {
+      throw otpErr || new Error('LOGIN_SESSION_EXCHANGE_FAILED');
+    }
+    const profile = await getUserProfile(otpSessionData.user.id);
+    if (profile?.account_status === 'suspended') {
+      return res.status(403).json({ success: false, error: 'Your account has been suspended by compliance. Please contact support.', code: 'ACCOUNT_SUSPENDED', requestId: req.id });
+    }
+    markActionSessionVerified(otpSessionData.user.id);
+    const userPayload = {
+      id: otpSessionData.user.id,
+      email: profile?.email || otpSessionData.user.email || normalizedEmail,
+      fullName: profile?.full_name || 'Investor',
+      role: 'investor',
+      accountType: profile?.account_type || 'individual_investor',
+      kycStatus: profile?.kyc_status || 'pending',
+      balance: Number(profile?.wallet_balance || 0),
+      status: 'active',
+    };
+    return res.json({
+      success: true,
+      data: {
+        user: userPayload,
+        token: otpSessionData.session.access_token,
+        refreshToken: otpSessionData.session.refresh_token,
+        expiresAt: new Date(otpSessionData.session.expires_at ? otpSessionData.session.expires_at * 1000 : Date.now() + otpSessionData.session.expires_in * 1000).toISOString(),
+      },
+      user: userPayload,
+      token: otpSessionData.session.access_token,
+      refreshToken: otpSessionData.session.refresh_token,
+      message: 'Authentication successful.',
+      requestId: req.id,
+    });
+  } catch (error: any) {
+    logger.log({
+      level: 'error',
+      category: 'security',
+      requestId: req.id || 'req-login-code-verify-err',
+      eventType: 'LOGIN_EMAIL_CODE_VERIFY_FAILED',
+      outcome: 'failure',
+      message: String(error?.message || 'Login email code verification failed')
+    });
+    return res.status(401).json({ success: false, error: 'The security code is invalid or expired. Request a new code and try again.', code: 'INVALID_EMAIL_CODE', requestId: req.id });
   }
 });
 
@@ -1560,7 +1837,7 @@ router.post(['/admin/logout', '/auth/admin/logout', '/auth/admin-logout'], async
  * GET /api/v1/admin/security/credentials
  * Returns the active administrator login email, display name, and credential mode (never exposes hashes or passwords).
  */
-router.get('/admin/security/credentials', requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/security/credentials', requireAuth, requireStaffSection('staff-roles', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
   const envState = process.env.NODE_ENV === 'production' ? { mode: config.isCustomConfigured ? 'custom_bcrypt' as const : 'bcrypt_hash' as const } : validateAdminEnvironment();
 
@@ -1585,7 +1862,7 @@ router.put(
   '/admin/security/credentials',
   securityLimiter,
   requireAuth,
-  requireAdmin,
+  requireStaffSection('staff-roles', 'write'),
   async (req: AuthenticatedRequest, res: Response) => {
     const { currentPassword, newEmail, newPassword, fullName } = req.body || {};
     const config = process.env.NODE_ENV === 'production' ? await getPersistentAdminConfig() : getAdminConfig();
@@ -1718,7 +1995,7 @@ router.post(
   '/admin/security/credentials/reset',
   securityLimiter,
   requireAuth,
-  requireAdmin,
+  requireStaffSection('staff-roles', 'write'),
   async (req: AuthenticatedRequest, res: Response) => {
     const { currentPassword } = req.body || {};
     if (!currentPassword || typeof currentPassword !== 'string') {
@@ -1932,8 +2209,15 @@ router.post('/auth/logout', async (req: AuthenticatedRequest, res: Response) => 
     const sessionMatch = req.headers.cookie.match(/(?:^|;\s*)kretz_session=([^;]+)/);
     if (sessionMatch) token = decodeURIComponent(sessionMatch[1]);
   }
+  if (req.user?.id) {
+    clearActionSessionVerified(req.user.id);
+  }
   if (token && token.startsWith('kz_sess_')) {
-    try { await revokeSession(token); } catch {}
+    try {
+      const existing = await getSession(token);
+      if (existing?.userId) clearActionSessionVerified(existing.userId);
+      await revokeSession(token);
+    } catch {}
   } else if (token && isSupabaseAuthConfigured()) {
     try { await signOutCustomer(token); }
     catch { return res.status(503).json({ success: false, error: 'Sign-out could not be completed. Please retry.', code: 'SIGN_OUT_UNAVAILABLE', requestId: req.id }); }
@@ -2378,6 +2662,50 @@ router.post('/auth/password/reset', async (req: AuthenticatedRequest, res: Respo
 });
 
 /**
+ * POST /api/v1/auth/change-password
+ * Protected by email verification code (or active 10-minute session grant).
+ */
+router.post('/auth/change-password', requireAuth, requireActionEmailVerification('investor.password.change'), async (req: AuthenticatedRequest, res: Response) => {
+  const currentPassword = String(req.body?.currentPassword || '');
+  const newPassword = String(req.body?.newPassword || '');
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, error: 'Current password and new password are required.', code: 'MISSING_FIELDS', requestId: req.id });
+  }
+  const strength = validatePasswordStrength(newPassword);
+  if (!strength.valid) {
+    return res.status(400).json({ success: false, error: strength.error || 'Password does not meet security requirements.', code: 'WEAK_PASSWORD', requestId: req.id });
+  }
+
+  if (!shouldUseSupabaseForCustomer(req)) {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(503).json({ success: false, error: 'Customer authentication is not configured.', code: 'SUPABASE_AUTH_NOT_CONFIGURED', requestId: req.id });
+    }
+    const devUser = devCustomersById.get(req.user!.id);
+    if (!devUser) {
+      return res.status(404).json({ success: false, error: 'Account not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    }
+    if (!verifyPassword(currentPassword, devUser.passwordHash)) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect.', code: 'INVALID_CREDENTIALS', requestId: req.id });
+    }
+    devUser.passwordHash = hashPassword(newPassword);
+    await persistDevState();
+    return res.json({ success: true, message: 'Password changed successfully.', requestId: req.id });
+  }
+
+  try {
+    const verified = await signInCustomer(req.user!.email, currentPassword);
+    await updateCustomerPassword(verified.session.access_token, newPassword);
+    return res.json({ success: true, message: 'Password changed successfully.', requestId: req.id });
+  } catch (error: any) {
+    const msg = String(error?.message || '').toLowerCase();
+    if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('password')) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect.', code: 'INVALID_CREDENTIALS', requestId: req.id });
+    }
+    return res.status(400).json({ success: false, error: 'Unable to update your password right now. Please try again.', code: 'PASSWORD_CHANGE_FAILED', requestId: req.id });
+  }
+});
+
+/**
  * GET /api/v1/auth/session
  * Validates active session, verifies account non-suspended status, and returns sanitized profile.
  * Gracefully handles unauthenticated probes with 200 OK { authenticated: false }.
@@ -2499,7 +2827,7 @@ router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => 
 /**
  * GET /api/v1/admin/users
  */
-router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/users', requireStaffSection('investors', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (canUseLiveSupabaseData()) {
     try {
       const users = await listAdminUsers();
@@ -2535,7 +2863,7 @@ router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: 
  * GET /api/v1/admin/users/:id
  * Read one authoritative Supabase customer profile for the admin user drawer.
  */
-router.get('/admin/users/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/users/:id', requireStaffSection('investors', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const profile = await getUserProfile(req.params.id);
@@ -2563,7 +2891,7 @@ router.get('/admin/users/:id', requireAdmin, async (req: AuthenticatedRequest, r
  * Administrators may correct contact/profile fields only. Roles, balances, KYC and
  * account status are deliberately managed by their dedicated protected workflows.
  */
-router.patch('/admin/users/:id/profile', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/admin/users/:id/profile', requireStaffSection('investors', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const input = req.body || {};
   const patch: Record<string, unknown> = {
@@ -2594,7 +2922,7 @@ router.patch('/admin/users/:id/profile', requireAdmin, async (req: Authenticated
 /**
  * GET /api/v1/admin/audit-logs
  */
-router.get('/admin/audit-logs', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/audit-logs', requireStaffSection('audit-log', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (canUseLiveSupabaseData()) {
     try {
       const logs = await listPersistentAuditLogs();
@@ -2619,7 +2947,7 @@ router.get('/admin/audit-logs', requireAdmin, async (req: AuthenticatedRequest, 
 /**
  * GET /api/v1/admin/system-health
  */
-router.get('/admin/system-health', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/system-health', requireStaffSection('dashboard', 'read'), (req: AuthenticatedRequest, res: Response) => {
   const metrics = logger.computeMetrics();
 
   logger.log({
@@ -2677,7 +3005,7 @@ router.get('/config', (req: AuthenticatedRequest, res: Response) => {
 /**
  * GET /api/v1/admin/settings
  */
-router.get('/admin/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/settings', requireStaffSection('settings', 'read'), (req: AuthenticatedRequest, res: Response) => {
   return res.json({
     success: true,
     data: platformConfig,
@@ -2689,7 +3017,7 @@ router.get('/admin/settings', requireAdmin, (req: AuthenticatedRequest, res: Res
  * PUT /api/v1/admin/settings
  * Update authoritative platform configuration with mandatory audit logging and validation
  */
-router.put('/admin/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.put('/admin/settings', requireStaffSection('settings', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const adminUser = req.user;
   const updates = req.body || {};
 
@@ -2809,7 +3137,7 @@ router.get('/admin/logs/export', requireAdminOrLogSecret, (req: AuthenticatedReq
 /**
  * POST /api/v1/admin/users/:id/kyc
  */
-router.patch('/admin/users/:id/profile', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/admin/users/:id/profile', requireStaffSection('investors', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent user database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const bankIban = typeof req.body?.bankIban === 'string' ? req.body.bankIban.trim() : undefined;
   const cryptoDepositAddress = typeof req.body?.cryptoDepositAddress === 'string' ? req.body.cryptoDepositAddress.trim() : undefined;
@@ -2825,7 +3153,7 @@ router.patch('/admin/users/:id/profile', requireAdmin, async (req: Authenticated
   }
 });
 
-router.post('/admin/users/:id/kyc', requireAdmin, requireActionEmailVerification('admin.user.kyc'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/kyc', requireStaffSection('kyc', 'write'), requireActionEmailVerification('admin.user.kyc'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { kycStatus = 'approved', notes } = req.body || {};
   const normalizedKyc = String(kycStatus).toLowerCase() === 'rejected' ? 'rejected' : 'verified';
@@ -2945,8 +3273,8 @@ const handleUserStatusUpdate = async (req: AuthenticatedRequest, res: Response) 
   }
 };
 
-router.patch('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
-router.post('/admin/users/:id/status', requireAdmin, requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
+router.patch('/admin/users/:id/status', requireStaffSection('investors', 'write'), requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
+router.post('/admin/users/:id/status', requireStaffSection('investors', 'write'), requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 
 const handleGateAssignment = async (userIds: string[], method: 'bank' | 'usdt', gateId: string | null, gateName: string | null, req: AuthenticatedRequest, res: Response) => {
   if (!userIds.length || userIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id)) || !['bank', 'usdt'].includes(method)) {
@@ -2987,7 +3315,7 @@ const handleGateAssignment = async (userIds: string[], method: 'bank' | 'usdt', 
   return res.json({ success: true, data: { success: true, method, assigned_count: userIds.length }, requestId: req.id });
 };
 
-router.post('/admin/users/assign-gate', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/assign-gate', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const userIds = Array.isArray(req.body?.userIds) ? req.body.userIds.map((id: unknown) => String(id)) : [];
   const method = String(req.body?.method || '').toLowerCase() as 'bank' | 'usdt';
   const gateId = req.body?.gateId ? String(req.body.gateId).trim() : null;
@@ -2995,14 +3323,14 @@ router.post('/admin/users/assign-gate', requireAdmin, async (req: AuthenticatedR
   return handleGateAssignment(userIds, method, gateId, gateName, req, res);
 });
 
-router.patch('/admin/users/:id/assign-gate', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/admin/users/:id/assign-gate', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const method = String(req.body?.method || 'bank').toLowerCase() as 'bank' | 'usdt';
   const gateId = req.body?.gateId ? String(req.body.gateId).trim() : null;
   const gateName = req.body?.gateName ? String(req.body.gateName).trim() : null;
   return handleGateAssignment([req.params.id], method, gateId, gateName, req, res);
 });
 
-router.post('/admin/staff-role', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/staff-role', requireStaffSection('staff-roles', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const userId = String(req.body?.userId || '').trim();
   const role = req.body?.role ? String(req.body.role).trim() : null;
   if (!userId) return res.status(400).json({ success: false, error: 'userId is required.', code: 'INVALID_PAYLOAD', requestId: req.id });
@@ -3034,7 +3362,7 @@ router.post('/admin/staff-role', requireAdmin, async (req: AuthenticatedRequest,
 /**
  * POST /api/v1/admin/users/:id/credit
  */
-router.post('/admin/users/:id/credit', requireAdmin, requireActionEmailVerification('admin.user.credit'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/users/:id/credit', requireStaffSection('deposits', 'write'), requireActionEmailVerification('admin.user.credit'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { amount, amountCents: rawAmountCents, currency = 'EUR', method = 'Manual Finance Credit', reference, notes } = req.body || {};
   const amountCents = rawAmountCents !== undefined ? Math.round(Number(rawAmountCents)) : toCents(amount);
@@ -3263,7 +3591,7 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: Authent
 /**
  * POST /api/v1/marketplace/listings & /api/v1/properties & /api/v1/admin/properties (Admin Only)
  */
-router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post(['/marketplace/listings', '/properties', '/admin/properties'], requireStaffSection('properties', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const body = req.body || {};
   const canManageProperties = Boolean(
     req.user!.isAdmin ||
@@ -3298,6 +3626,8 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
     slug,
     title: body.title,
     location: body.location,
+    city: body.city || String(body.location || '').split(',')[0].trim() || 'Paris',
+    country: body.country || String(body.location || '').split(',')[1]?.trim() || 'France',
     type: body.type || 'Luxury Villa',
     status: body.status || 'funding',
     fundedAmount: body.fundedAmount || 0,
@@ -3342,7 +3672,7 @@ router.post(['/marketplace/listings', '/properties', '/admin/properties'], requi
 /**
  * PUT /api/v1/marketplace/listings/:id & /api/v1/properties/:id & /api/v1/admin/properties/:id (Admin Only)
  */
-router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.put(['/marketplace/listings/:id', '/properties/:id', '/admin/properties/:id'], requireStaffSection('properties', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const canManageProperties = Boolean(
     req.user!.isAdmin ||
@@ -3446,19 +3776,38 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
       return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
     }
     const devCustomer = devCustomersById.get(req.user!.id);
+    const devGateId = (devCustomer as any)?.assignedGateId || getDevAssignedGateId(req.user!.id);
+    const devGate = devGateId ? getDevGateById(devGateId) : null;
+    const assignedBankAccount = devGate
+      ? {
+          gateId: devGate.id,
+          gateName: devGate.name,
+          method: devGate.method,
+          bankName: devGate.account_details?.Bank || devGate.name,
+          accountHolder: devGate.account_details?.Beneficiary || '',
+          iban: devGate.account_details?.IBAN || '',
+          bic: devGate.account_details?.BIC || '',
+        }
+      : null;
+    const baseData = devCustomer ? toPublicDevCustomer(devCustomer) : {
+      id: req.user!.id,
+      email: req.user!.email,
+      fullName: req.user!.fullName || 'Investor',
+      role: req.user!.role,
+      accountType: req.user!.accountType || 'individual_investor',
+      balance: Number(req.user!.balance || 0),
+      investedBalance: 0,
+      kycStatus: 'pending',
+      status: req.user!.status || 'active',
+      createdAt: new Date().toISOString()
+    };
     return res.json({
       success: true,
-      data: devCustomer ? toPublicDevCustomer(devCustomer) : {
-        id: req.user!.id,
-        email: req.user!.email,
-        fullName: req.user!.fullName || 'Investor',
-        role: req.user!.role,
-        accountType: req.user!.accountType || 'individual_investor',
-        balance: Number(req.user!.balance || 0),
-        investedBalance: 0,
-        kycStatus: 'pending',
-        status: req.user!.status || 'active',
-        createdAt: new Date().toISOString()
+      data: {
+        ...baseData,
+        iban: (baseData as any).bankIban || '',
+        bankHolder: (baseData as any).bankAccountHolder || baseData.fullName,
+        assignedBankAccount,
       },
       requestId: req.id
     });
@@ -3466,13 +3815,19 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
   try {
     const profile = await getUserProfile(req.user!.id);
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    const assignedGateId = profile.payment_gate_id ?? profile.assigned_gate_id;
+    const assignedBankAccount = assignedGateId ? await getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : null;
+    const resolvedIban = profile.iban ?? profile.bank_iban ?? '';
+    const resolvedHolder = profile.bank_holder ?? profile.bank_account_holder ?? profile.full_name ?? '';
     return res.json({ success: true, data: {
       id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
       countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
       balance: Number(profile.wallet_balance || 0), investedBalance: Number(profile.invested_balance || 0),
       kycStatus: profile.kyc_status, status: profile.account_status || 'active', createdAt: profile.created_at,
       address: profile.address, city: profile.city, postalCode: profile.postal_code, avatarUrl: profile.avatar_url,
-      bankIban: profile.bank_iban, bankAccountHolder: profile.bank_account_holder || profile.full_name,
+      iban: resolvedIban, bankIban: resolvedIban,
+      bankHolder: resolvedHolder, bankAccountHolder: resolvedHolder,
+      assignedBankAccount,
       cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
       dateOfBirth: profile.date_of_birth, preferences: profile.preferences
     }, requestId: req.id });
@@ -3488,18 +3843,33 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
  */
 const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res: Response) => {
   const input = req.body || {};
-  const normalizedIban = typeof input.bankIban === 'string'
-    ? input.bankIban.replace(/\s+/g, '').toUpperCase()
+  const rawIbanInput = typeof input.bankIban === 'string' ? input.bankIban : typeof input.iban === 'string' ? input.iban : undefined;
+  const rawHolderInput = typeof input.bankAccountHolder === 'string'
+    ? input.bankAccountHolder
+    : typeof input.bankHolder === 'string'
+    ? input.bankHolder
+    : typeof input.bank_holder === 'string'
+    ? input.bank_holder
+    : undefined;
+  const rawFullNameInput = typeof input.fullName === 'string'
+    ? input.fullName
+    : typeof input.full_name === 'string'
+    ? input.full_name
+    : undefined;
+  const normalizedIban = rawIbanInput !== undefined
+    ? rawIbanInput.replace(/\s+/g, '').toUpperCase()
     : undefined;
   if (normalizedIban && !isValidIbanServer(normalizedIban)) {
-    return res.status(400).json({ success: false, error: 'Enter a valid IBAN between 15 and 34 alphanumeric characters.', code: 'INVALID_IBAN', requestId: req.id });
+    return res.status(400).json({ success: false, error: 'Enter a valid IBAN (format and checksum).', code: 'INVALID_IBAN', requestId: req.id });
   }
 
   const patch: Record<string, unknown> = {
-    full_name: input.fullName, phone_number: input.phoneNumber, country: input.country,
+    full_name: rawFullNameInput, phone_number: input.phoneNumber, country: input.country,
     country_code: input.countryCode, address: input.address, city: input.city,
     postal_code: input.postalCode, avatar_url: input.avatarUrl, bank_iban: normalizedIban,
-    bank_account_holder: input.bankAccountHolder,
+    iban: normalizedIban,
+    bank_account_holder: rawHolderInput,
+    bank_holder: rawHolderInput,
     crypto_deposit_address: input.cryptoDepositAddress, tax_id: input.taxId,
     date_of_birth: input.dateOfBirth
   };
@@ -3516,10 +3886,10 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     if (!devCustomer) {
       return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     }
-    const targetLegalName = typeof input.fullName === 'string' && input.fullName.trim()
-      ? input.fullName.trim()
+    const targetLegalName = rawFullNameInput && rawFullNameInput.trim()
+      ? rawFullNameInput.trim()
       : devCustomer.fullName;
-    if (typeof input.bankAccountHolder === 'string' && input.bankAccountHolder.trim() && !namesMatchOwner(targetLegalName, input.bankAccountHolder)) {
+    if (rawHolderInput !== undefined && rawHolderInput.trim() && !namesMatchOwner(targetLegalName, rawHolderInput)) {
       return res.status(400).json({
         success: false,
         error: 'Bank account holder must match your own legal name. Third-party bank accounts are not permitted.',
@@ -3527,7 +3897,7 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
         requestId: req.id
       });
     }
-    if (typeof input.fullName === 'string') devCustomer.fullName = input.fullName;
+    if (rawFullNameInput !== undefined) devCustomer.fullName = rawFullNameInput.trim();
     if (typeof input.phoneNumber === 'string') devCustomer.phoneNumber = input.phoneNumber;
     if (typeof input.country === 'string') devCustomer.country = input.country;
     if (typeof input.countryCode === 'string') devCustomer.countryCode = input.countryCode;
@@ -3536,20 +3906,30 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     if (typeof input.postalCode === 'string') devCustomer.postalCode = input.postalCode;
     if (typeof input.avatarUrl === 'string') devCustomer.avatarUrl = input.avatarUrl;
     if (normalizedIban !== undefined) devCustomer.bankIban = normalizedIban;
-    if (typeof input.bankAccountHolder === 'string') devCustomer.bankAccountHolder = input.bankAccountHolder.trim();
+    if (rawHolderInput !== undefined) devCustomer.bankAccountHolder = rawHolderInput.trim();
     if (typeof input.cryptoDepositAddress === 'string') devCustomer.cryptoDepositAddress = input.cryptoDepositAddress;
     if (typeof input.taxId === 'string') devCustomer.taxId = input.taxId;
     if (typeof input.dateOfBirth === 'string') devCustomer.dateOfBirth = input.dateOfBirth;
     await persistDevState();
-    return res.json({ success: true, data: toPublicDevCustomer(devCustomer), message: 'User profile updated successfully.', requestId: req.id });
+    const publicProfile = toPublicDevCustomer(devCustomer);
+    return res.json({
+      success: true,
+      data: {
+        ...publicProfile,
+        iban: publicProfile.bankIban || '',
+        bankHolder: publicProfile.bankAccountHolder || publicProfile.fullName,
+      },
+      message: 'User profile updated successfully.',
+      requestId: req.id
+    });
   }
   try {
     const existing = await getUserProfile(req.user!.id);
     if (!existing) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-    const targetLegalName = typeof input.fullName === 'string' && input.fullName.trim()
-      ? input.fullName.trim()
+    const targetLegalName = rawFullNameInput && rawFullNameInput.trim()
+      ? rawFullNameInput.trim()
       : existing.full_name;
-    if (typeof input.bankAccountHolder === 'string' && input.bankAccountHolder.trim() && !namesMatchOwner(targetLegalName, input.bankAccountHolder)) {
+    if (rawHolderInput !== undefined && rawHolderInput.trim() && !namesMatchOwner(targetLegalName, rawHolderInput)) {
       return res.status(400).json({
         success: false,
         error: 'Bank account holder must match your own legal name. Third-party bank accounts are not permitted.',
@@ -3559,12 +3939,14 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     }
     const profile = await updateUserProfile(req.user!.id, patch);
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    const resolvedIban = profile.iban ?? profile.bank_iban ?? '';
+    const resolvedHolder = profile.bank_holder ?? profile.bank_account_holder ?? profile.full_name ?? '';
     return res.json({ success: true, data: {
       id: profile.id, email: profile.email, fullName: profile.full_name, country: profile.country,
       countryCode: profile.country_code, phoneNumber: profile.phone_number, accountType: profile.account_type,
       address: profile.address, city: profile.city, postalCode: profile.postal_code,
-      avatarUrl: profile.avatar_url, bankIban: profile.bank_iban,
-      bankAccountHolder: profile.bank_account_holder || profile.full_name,
+      avatarUrl: profile.avatar_url, iban: resolvedIban, bankIban: resolvedIban,
+      bankHolder: resolvedHolder, bankAccountHolder: resolvedHolder,
       cryptoDepositAddress: profile.crypto_deposit_address, taxId: profile.tax_id,
       dateOfBirth: profile.date_of_birth, balance: Number(profile.wallet_balance || 0),
       kycStatus: profile.kyc_status, status: profile.account_status || 'active'
@@ -3588,11 +3970,21 @@ router.get(['/portfolio', '/portfolio/summary', '/holdings'], requireAuth, async
       const holdings = rows.map((row: any) => {
         const property = row.investment_plans || {};
         const cost = Number(row.total_amount_invested || 0);
+        const valueCents = row.value_cents !== undefined && row.value_cents !== null
+          ? Math.round(Number(row.value_cents))
+          : Math.round(Number(row.current_valuation || cost) * 100);
+        const gainCents = row.gain_cents !== undefined && row.gain_cents !== null
+          ? Math.round(Number(row.gain_cents))
+          : Math.round(valueCents - cost * 100);
+        const shares = Number(row.shares ?? row.tokens_purchased ?? 0);
         const annualYield = Number(property.estimated_annual_yield || 0);
+        const name = row.name || property.title || row.plan_id;
+        const city = row.city || property.city || '';
         return {
-          id: row.id, propertyId: row.plan_id, propertyTitle: property.title || row.plan_id,
-          tokensPurchased: Number(row.tokens_purchased || 0), totalCost: cost,
-          currentValue: Number(row.current_valuation || cost),
+          id: row.id, propertyId: row.plan_id, name, propertyTitle: name, city,
+          tokensPurchased: shares, shares, totalCost: cost,
+          currentValue: valueCents / 100, valueCents, value_cents: valueCents,
+          gainCents, gain_cents: gainCents,
           projectedAnnualDividend: Number((cost * annualYield / 100).toFixed(2)),
           dividendsReceived: Number(row.total_dividends_received || 0),
           purchaseDate: row.purchased_at, certificateId: row.certificate_id,
@@ -3626,25 +4018,41 @@ router.get(['/portfolio', '/portfolio/summary', '/holdings'], requireAuth, async
     const existing = holdingsMap.get(propId);
     if (existing) {
       existing.tokensPurchased += Number((tx as any).tokensPurchased || 0);
+      existing.shares = existing.tokensPurchased;
       existing.totalCost += Number(tx.amount || 0);
-      existing.currentValue = Math.round(existing.totalCost * 1.0);
+      existing.currentValue = Math.round(existing.totalCost * 100) / 100;
+      existing.valueCents = Math.round(existing.currentValue * 100);
+      existing.value_cents = existing.valueCents;
+      existing.gainCents = Math.round(existing.valueCents - existing.totalCost * 100);
+      existing.gain_cents = existing.gainCents;
       existing.projectedAnnualDividend = Math.round(existing.totalCost * annualYieldRate * 100) / 100;
     } else {
       const cost = Number(tx.amount || 0);
+      const shares = Number((tx as any).tokensPurchased || 0);
+      const valueCents = Math.round(cost * 100);
       const realDividendsForProp = mockTransactions
         .filter(t => (t.userId === userId || (Boolean(resolvedEmail) && t.userEmail === resolvedEmail)) &&
                      (t.type === 'dividend' || t.type === 'distribution' || t.type === 'payout') &&
                      t.status === 'completed' &&
                      (t as any).propertyId === propId)
         .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const title = (tx as any).propertyTitle || prop?.title || 'Tokenized Property SPV';
+      const city = (prop as any)?.city || (prop?.location ? String(prop.location).split(',')[0].trim() : '');
 
       holdingsMap.set(propId, {
         id: tx.id,
         propertyId: propId,
-        propertyTitle: (tx as any).propertyTitle || prop?.title || 'Tokenized Property SPV',
-        tokensPurchased: Number((tx as any).tokensPurchased || 0),
+        name: title,
+        propertyTitle: title,
+        city,
+        tokensPurchased: shares,
+        shares,
         totalCost: cost,
         currentValue: cost,
+        valueCents,
+        value_cents: valueCents,
+        gainCents: 0,
+        gain_cents: 0,
         projectedAnnualDividend: Math.round(cost * annualYieldRate * 100) / 100,
         dividendsReceived: realDividendsForProp,
         purchaseDate: tx.createdAt,
@@ -3679,9 +4087,27 @@ router.get(['/portfolio', '/portfolio/summary', '/holdings'], requireAuth, async
 router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'], requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (shouldUseSupabaseForCustomer(req)) {
     try {
-      const wallet = await getWalletSummary(req.user!.id);
+      const [wallet, profile] = await Promise.all([
+        getWalletSummary(req.user!.id),
+        getUserProfile(req.user!.id).catch(() => null),
+      ]);
       if (!wallet) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-      return res.json({ success: true, data: { balance: wallet.availableBalance, availableBalance: wallet.availableBalance, reservedBalance: wallet.reservedBalance, subBalances: { EUR: wallet.availableBalance }, currency: wallet.currency }, requestId: req.id });
+      const gateId = profile?.payment_gate_id ?? profile?.assigned_gate_id;
+      const assignedBankAccount = gateId ? await getAssignedPaymentGate(String(gateId)).catch(() => null) : null;
+      return res.json({
+        success: true,
+        data: {
+          balance: wallet.balance,
+          balanceCents: wallet.balanceCents,
+          availableBalance: wallet.availableBalance,
+          availableCents: wallet.availableCents,
+          reservedBalance: wallet.reservedBalance,
+          subBalances: { EUR: wallet.availableBalance },
+          currency: wallet.currency,
+          assignedBankAccount,
+        },
+        requestId: req.id
+      });
     } catch (error: any) {
       return res.status(503).json({ success: false, error: 'Wallet balance is temporarily unavailable.', code: 'WALLET_DATABASE_UNAVAILABLE', requestId: req.id });
     }
@@ -3718,13 +4144,32 @@ router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'
     user.balance = calculatedBalance;
   }
 
+  const devCustomer = devCustomersById.get(userId);
+  const devGateId = (devCustomer as any)?.assignedGateId || getDevAssignedGateId(userId);
+  const devGate = devGateId ? getDevGateById(devGateId) : null;
+  const assignedBankAccount = devGate
+    ? {
+        gateId: devGate.id,
+        gateName: devGate.name,
+        method: devGate.method,
+        bankName: devGate.account_details?.Bank || devGate.name,
+        accountHolder: devGate.account_details?.Beneficiary || '',
+        iban: devGate.account_details?.IBAN || '',
+        bic: devGate.account_details?.BIC || '',
+      }
+    : null;
+  const balanceCents = Math.round(calculatedBalance * 100);
+
   res.json({
     success: true,
     data: {
       balance: calculatedBalance,
+      balanceCents,
       availableBalance: calculatedBalance,
+      availableCents: balanceCents,
       subBalances: getOrInitUserSubBalances(req.user!.id, calculatedBalance),
-      currency: 'EUR'
+      currency: 'EUR',
+      assignedBankAccount,
     },
     requestId: req.id
   });
@@ -3801,7 +4246,8 @@ router.get('/transactions', requireAuth, async (req: AuthenticatedRequest, res: 
     tokensPurchased: (t as any).tokensPurchased,
     txHash: (t as any).txHash,
     destination: (t as any).destination,
-    notes: (t as any).notes,
+    note: (t as any).note || (t as any).notes,
+    notes: (t as any).note || (t as any).notes,
     metadata: (t as any).metadata || {},
   }));
 
@@ -3889,7 +4335,7 @@ router.post('/notifications/read-all', requireAuth, async (req: AuthenticatedReq
   });
 });
 
-router.get('/admin/notifications', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/notifications', requireStaffSection('notifications', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (isSupabaseServerConfigured()) {
     try {
       const rows = await listAdminNotifications(200);
@@ -3933,7 +4379,7 @@ router.get('/admin/notifications', requireAdmin, async (req: AuthenticatedReques
   return res.json({ success: true, data: allNotifs, total: allNotifs.length, requestId: req.id });
 });
 
-router.post('/admin/notifications', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/notifications', requireStaffSection('notifications', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const targetUserId = typeof req.body?.userId === 'string' && req.body.userId.trim() ? req.body.userId.trim() : 'all';
   const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
   const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
@@ -4329,7 +4775,7 @@ router.post('/webhooks/kyc', async (req: AuthenticatedRequest, res: Response) =>
 /**
  * Staff Admin: Provider Integrations Health & Compliance Document Vault
  */
-router.get('/admin/providers/status', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/providers/status', requireStaffSection('settings', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   const emailProv = getProviderConfig();
   const paymentProv = getPaymentProviderStatus();
   const kycProv = getKycProviderStatus();
@@ -4363,7 +4809,7 @@ router.get('/admin/providers/status', requireAdmin, async (req: AuthenticatedReq
   });
 });
 
-router.get('/admin/documents', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/documents', requireStaffSection('documents', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (isSupabaseServerConfigured()) {
     try {
       const docs = await listAdminComplianceDocuments(250);
@@ -4390,7 +4836,7 @@ router.get('/admin/documents', requireAdmin, async (req: AuthenticatedRequest, r
   return res.json({ success: true, data: allDocs, total: allDocs.length, requestId: req.id });
 });
 
-router.post('/admin/documents/upload', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/documents/upload', requireStaffSection('documents', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const userId = String(req.body?.userId || '').trim();
   const title = String(req.body?.title || '').trim();
   const fileName = String(req.body?.fileName || 'document.pdf').trim();
@@ -4425,7 +4871,7 @@ router.post('/admin/documents/upload', requireAdmin, async (req: AuthenticatedRe
   return res.status(201).json({ success: true, data: doc, message: 'Investor document uploaded.', requestId: req.id });
 });
 
-router.delete('/admin/documents/:docId', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/admin/documents/:docId', requireStaffSection('documents', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const { docId } = req.params;
   if (isSupabaseServerConfigured()) {
     try {
@@ -4452,7 +4898,7 @@ router.delete('/admin/documents/:docId', requireAdmin, async (req: Authenticated
   return res.json({ success: true, message: 'Document deleted.', requestId: req.id });
 });
 
-router.post('/admin/documents/:docId/review', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/documents/:docId/review', requireStaffSection('kyc', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const { docId } = req.params;
   const approved = req.body?.approved !== false;
   const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : undefined;
@@ -5359,7 +5805,7 @@ router.post('/withdrawals', requireAuth, requireLatestLegalConsent, requireActio
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, requireLatestLegalConsent, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, requireLatestLegalConsent, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
@@ -5407,7 +5853,7 @@ router.post('/investments', requireAuth, requireLatestLegalConsent, requireActio
     try {
       const prop = await getInvestmentPlan(String(propertyId));
       if (!prop) return res.status(404).json({ success: false, error: 'Target property not found in the persistent offerings catalogue.', code: 'PROPERTY_NOT_FOUND', requestId: req.id });
-      if (prop.status !== 'funding' && prop.status !== 'active') return res.status(409).json({ success: false, error: 'This property is not currently accepting investments.', code: 'OFFERING_NOT_OPEN', requestId: req.id });
+      if (!['open', 'funding', 'active'].includes(prop.status)) return res.status(409).json({ success: false, error: 'This property is not currently accepting investments.', code: 'OFFERING_NOT_OPEN', requestId: req.id });
       if (prop.availableTokens < count) return res.status(400).json({ success: false, error: `Only ${prop.availableTokens} tokens remain available in ${prop.title}.`, code: 'INSUFFICIENT_AVAILABLE_TOKENS', requestId: req.id });
       const principal = count * prop.tokenPrice;
       if (principal < prop.minimumInvestment) return res.status(400).json({ success: false, error: `Minimum investment for ${prop.title} is €${prop.minimumInvestment}.`, code: 'BELOW_MINIMUM_INVESTMENT', requestId: req.id });
@@ -5617,7 +6063,7 @@ router.post('/investments', requireAuth, requireLatestLegalConsent, requireActio
  * GET /api/v1/admin/database/health
  * Returns database health and diagnostics report
  */
-router.get('/admin/database/health', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/database/health', requireStaffSection('settings', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (isSupabaseServerConfigured()) {
     try {
       const health = await databaseHealth();
@@ -5637,7 +6083,7 @@ router.get('/admin/database/health', requireAdmin, async (req: AuthenticatedRequ
  * POST /api/v1/admin/database/repair
  * Scans, repairs, and synchronizes database state
  */
-router.post('/admin/database/repair', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/database/repair', requireStaffSection('settings', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   if (isSupabaseServerConfigured()) {
     try {
       const health = await databaseHealth();
@@ -5942,7 +6388,7 @@ router.get('/payments/config', (req: AuthenticatedRequest, res: Response) => {
 /**
  * GET & PUT /api/v1/admin/payment-config
  */
-router.get('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/payment-config', requireStaffSection('settings', 'read'), (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
     data: paymentConfig,
@@ -5950,7 +6396,7 @@ router.get('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, re
   });
 });
 
-router.put('/admin/payment-config', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.put('/admin/payment-config', requireStaffSection('settings', 'write'), (req: AuthenticatedRequest, res: Response) => {
   paymentConfig = {
     ...paymentConfig,
     ...req.body
@@ -5974,13 +6420,33 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
       return res.status(503).json({ success: false, error: 'Persistent profile storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
     }
     const devCustomer = devCustomersById.get(req.user!.id);
+    const devGateId = (devCustomer as any)?.assignedGateId || getDevAssignedGateId(req.user!.id);
+    const devGate = devGateId ? getDevGateById(devGateId) : null;
+    const assignedBankAccount = devGate
+      ? {
+          gateId: devGate.id,
+          gateName: devGate.name,
+          method: devGate.method,
+          bankName: devGate.account_details?.Bank || devGate.name,
+          accountHolder: devGate.account_details?.Beneficiary || '',
+          iban: devGate.account_details?.IBAN || '',
+          bic: devGate.account_details?.BIC || '',
+        }
+      : null;
+    const publicDev = devCustomer ? toPublicDevCustomer(devCustomer) : null;
     return res.json({
       success: true,
-      data: devCustomer ? toPublicDevCustomer(devCustomer) : {
+      data: publicDev ? {
+        ...publicDev,
+        iban: publicDev.bankIban || '',
+        bankHolder: publicDev.bankAccountHolder || publicDev.fullName,
+        assignedBankAccount,
+      } : {
         ...req.user,
         kycStatus: 'pending',
         balance: Number(req.user!.balance || 0),
-        status: req.user!.status || 'active'
+        status: req.user!.status || 'active',
+        assignedBankAccount,
       },
       requestId: req.id
     });
@@ -5988,6 +6454,10 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
   try {
     const profile = await getUserProfile(req.user!.id);
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+    const assignedGateId = profile.payment_gate_id ?? profile.assigned_gate_id;
+    const assignedBankAccount = assignedGateId ? await getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : null;
+    const resolvedIban = profile.iban ?? profile.bank_iban ?? '';
+    const resolvedHolder = profile.bank_holder ?? profile.bank_account_holder ?? profile.full_name ?? '';
     return res.json({ success: true, data: {
       ...req.user,
       isAdmin: Boolean(req.user!.isAdmin),
@@ -5995,8 +6465,9 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
       fullName: profile.full_name, country: profile.country,
       accountType: profile.account_type, balance: Number(profile.wallet_balance || 0),
       kycStatus: profile.kyc_status, phoneNumber: profile.phone_number,
-      bankIban: profile.bank_iban,
-      bankAccountHolder: profile.bank_account_holder || profile.full_name,
+      iban: resolvedIban, bankIban: resolvedIban,
+      bankHolder: resolvedHolder, bankAccountHolder: resolvedHolder,
+      assignedBankAccount,
       status: profile.account_status || 'active'
     }, requestId: req.id });
   } catch {
@@ -6274,22 +6745,30 @@ router.get('/dashboard/performance', requireAuth, async (req: AuthenticatedReque
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  const userInvTxs = mockTransactions.filter(
-    t => t.userId === userId && t.type === 'investment' && t.status === 'completed'
-  );
+  const completedTxs = [...mockTransactions]
+    .filter(t => t.userId === userId && t.status === 'completed')
+    .sort((a, b) => new Date(a.createdAt || a.created_at || 0).getTime() - new Date(b.createdAt || b.created_at || 0).getTime());
 
-  const totalInv = userInvTxs.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-  const userDividends = mockTransactions.filter(
-    t => t.userId === userId && (t.type === 'dividend' || t.type === 'payout' || t.type === 'distribution') && t.status === 'completed'
-  );
+  const totalInv = completedTxs
+    .filter(t => t.type === 'investment' || t.type === 'purchase')
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-  // Group real dividends by month if any exist
+  let runningTotal = 0;
   const historyMap = new Map<string, { yield: number; totalValue: number }>();
-  userDividends.forEach(d => {
-    const dDate = new Date(d.createdAt || Date.now());
-    const mKey = dDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    const prev = historyMap.get(mKey) || { yield: 0, totalValue: totalInv };
-    prev.yield += Number(d.amount || 0);
+  completedTxs.forEach(tx => {
+    const amt = Number(tx.amount || 0);
+    const kind = String(tx.type || '').toLowerCase();
+    const isDist = kind === 'dividend' || kind === 'payout' || kind === 'distribution';
+    if (kind === 'deposit' || isDist) {
+      runningTotal += amt;
+    } else if (kind === 'withdrawal') {
+      runningTotal = Math.max(0, runningTotal - amt);
+    }
+    const dDate = new Date(tx.createdAt || tx.created_at || Date.now());
+    const mKey = dDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+    const prev = historyMap.get(mKey) || { yield: 0, totalValue: runningTotal };
+    if (isDist) prev.yield += amt;
+    prev.totalValue = Number(runningTotal.toFixed(2));
     historyMap.set(mKey, prev);
   });
 
@@ -6355,6 +6834,58 @@ router.get('/reports/account-statement', requireAuth, async (req: AuthenticatedR
   });
 });
 
+router.get('/reports/statements', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (shouldUseSupabaseForCustomer(req)) {
+    try {
+      const docs = await listUserStatementDocuments(req.user!.id);
+      return res.json({ success: true, data: docs, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Statements are temporarily unavailable.', code: 'DOCUMENTS_UNAVAILABLE', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Document storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const docs = (devComplianceDocsByUser.get(req.user!.id) || []).map((d: any) => ({
+    id: d.id,
+    userId: d.userId,
+    category: d.category === 'tax_document' ? 'tax_document' : 'statement',
+    title: d.title || d.fileName,
+    taxYear: d.taxYear,
+    periodLabel: d.periodLabel,
+    fileName: d.fileName,
+    mimeType: d.mimeType || 'application/pdf',
+    fileSize: d.fileSize || 0,
+    uploadedAt: d.uploadedAt,
+  }));
+  return res.json({ success: true, data: docs, requestId: req.id });
+});
+
+router.get('/reports/statements/:docId/signed-url', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const { docId } = req.params;
+  if (shouldUseSupabaseForCustomer(req)) {
+    try {
+      const signed = await getSignedDocumentUrl(req.user!.id, docId);
+      if (!signed) {
+        return res.status(404).json({ success: false, error: 'Document not found or file unavailable.', code: 'DOCUMENT_NOT_FOUND', requestId: req.id });
+      }
+      return res.json({ success: true, data: signed, requestId: req.id });
+    } catch {
+      return res.status(503).json({ success: false, error: 'Unable to generate secure download link.', code: 'SIGNED_URL_FAILED', requestId: req.id });
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Document storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const docs = devComplianceDocsByUser.get(req.user!.id) || [];
+  const doc = docs.find((d) => d.id === docId);
+  if (!doc) {
+    return res.status(404).json({ success: false, error: 'Document not found.', code: 'DOCUMENT_NOT_FOUND', requestId: req.id });
+  }
+  const url = doc.fileDataUrl || `data:${doc.mimeType || 'application/pdf'};base64,${Buffer.from(`L'Agence Real Estate Document: ${doc.title}`).toString('base64')}`;
+  return res.json({ success: true, data: { url, fileName: doc.fileName, expiresInSeconds: 60 }, requestId: req.id });
+});
+
 // Referral Program
 router.get('/referrals', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   const userCode = `REF-${req.user?.id?.slice(0, 8).toUpperCase() || 'KZ2026'}`;
@@ -6407,7 +6938,7 @@ router.get('/investment-plans/:planId', (req: AuthenticatedRequest, res: Respons
 });
 
 // Admin Control Contract Endpoints
-router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get(['/admin/dashboard', '/admin/stats'], requireStaffSection('dashboard', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (canUseLiveSupabaseData()) {
     try {
       const stats = await getPersistentAdminDashboard();
@@ -6502,7 +7033,7 @@ const resolveDatabaseErrorStatus = (error: any): number => {
   return error?.code || error?.message ? 400 : 503;
 };
 
-router.get('/admin/finance/summary', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/finance/summary', requireStaffSection('finance', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   const fromRaw = typeof req.query.from === 'string' && req.query.from.trim() ? req.query.from.trim() : null;
   const toRaw = typeof req.query.to === 'string' && req.query.to.trim() ? req.query.to.trim() : null;
 
@@ -6596,7 +7127,7 @@ router.get('/admin/finance/summary', requireAdmin, async (req: AuthenticatedRequ
   });
 });
 
-router.post('/admin/finance/manual-deposit', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/finance/manual-deposit', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const userId = String(req.body?.userId || '').trim();
   const amountCents = req.body?.amountCents !== undefined ? Math.round(Number(req.body.amountCents)) : toCents(req.body?.amount);
   const amount = centsToEur(amountCents);
@@ -6681,7 +7212,7 @@ router.post('/admin/finance/manual-deposit', requireAdmin, async (req: Authentic
   return res.status(201).json({ success: true, data: { transaction: tx, balance: cust.balance, balanceCents: nextBalCents }, message: `Recorded manual deposit of €${amount.toFixed(2)} for ${cust.email}.`, requestId: req.id });
 });
 
-router.post('/admin/finance/charge-fee', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/finance/charge-fee', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const userId = String(req.body?.userId || '').trim();
   const amountCents = req.body?.amountCents !== undefined ? Math.round(Number(req.body.amountCents)) : toCents(req.body?.amount);
   const amount = centsToEur(amountCents);
@@ -6756,7 +7287,7 @@ router.post('/admin/finance/charge-fee', requireAdmin, async (req: Authenticated
   return res.json({ success: true, data: { transaction: tx, balance: cust.balance, balanceCents: nextBalCents }, message: `Charged €${amount.toFixed(2)} fee to ${cust.email}.`, requestId: req.id });
 });
 
-router.post('/admin/finance/adjust', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/finance/adjust', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const userId = String(req.body?.userId || '').trim();
   const reason = String(req.body?.reason || '').trim();
   const deltaCents = req.body?.deltaCents !== undefined
@@ -6829,7 +7360,7 @@ router.post('/admin/finance/adjust', requireAdmin, async (req: AuthenticatedRequ
   return res.json({ success: true, data: { transaction: tx, balance: cust.balance, balanceCents: nextBalCents }, message: `Adjusted ${cust.email} balance by ${deltaCents >= 0 ? '+' : '-'}€${absAmt.toFixed(2)}.`, requestId: req.id });
 });
 
-router.post('/admin/finance/reverse', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/finance/reverse', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const transactionId = String(req.body?.transactionId || '').trim();
   const reason = String(req.body?.reason || '').trim();
   if (!transactionId || reason.length < 3) {
@@ -6919,7 +7450,7 @@ router.post('/admin/finance/reverse', requireAdmin, async (req: AuthenticatedReq
   return res.json({ success: true, data: { reversal: revTx, originalId: orig.id, balance: cust.balance, balanceCents: nextBalCents }, message: `Reversed ${orig.reference} via ${revRef}.`, requestId: req.id });
 });
 
-router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/investments', requireStaffSection('investments', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (canUseLiveSupabaseData()) {
     try { return res.json({ success: true, data: await listPersistentInvestments(), requestId: req.id }); }
     catch (error: any) {
@@ -6952,7 +7483,7 @@ router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest,
   return res.json({ success: true, data: devInvestments, requestId: req.id });
 });
 
-router.post('/admin/investments', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/investments', requireStaffSection('investments', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const userId = String(req.body?.userId || '').trim();
   const propertyId = String(req.body?.propertyId || '').trim();
   const shares = Math.max(1, Math.floor(Number(req.body?.shares || 0)));
@@ -7014,7 +7545,7 @@ router.post('/admin/investments', requireAdmin, async (req: AuthenticatedRequest
   return res.status(201).json({ success: true, data: tx, message: `Recorded ${shares} shares (€${totalCost.toFixed(2)}) for ${cust?.fullName || userId}.`, requestId: req.id });
 });
 
-router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/transactions', requireStaffSection('transactions', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (canUseLiveSupabaseData()) {
     try { const rows = await listAdminTransactions(); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
     catch (error: any) {
@@ -7033,7 +7564,7 @@ router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest
   });
 });
 
-router.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/deposits', requireStaffSection('deposits', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (canUseLiveSupabaseData()) {
     try { const rows = await listAdminTransactions('deposit'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
     catch (error: any) {
@@ -7053,7 +7584,7 @@ router.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, re
   });
 });
 
-router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/withdrawals', requireStaffSection('withdrawals', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   if (canUseLiveSupabaseData()) {
     try { const rows = await listAdminTransactions('withdrawal'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
     catch (error: any) {
@@ -7073,7 +7604,7 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
   });
 });
 
-router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEmailVerification('admin.deposit.approve'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/approve', requireStaffSection('deposits', 'write'), requireActionEmailVerification('admin.deposit.approve'), async (req: AuthenticatedRequest, res: Response) => {
   const actualCents = req.body?.amountCents !== undefined ? Math.round(Number(req.body.amountCents)) : toCents(req.body?.amount);
   const actualAmount = centsToEur(actualCents);
   if (canUseLiveSupabaseData()) {
@@ -7149,7 +7680,7 @@ router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEma
   return res.json({ success: true, data: tx, message: 'Deposit approved and wallet credited.', requestId: req.id });
 });
 
-router.post('/admin/deposits/:depositId/reject', requireAdmin, requireActionEmailVerification('admin.deposit.reject'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/deposits/:depositId/reject', requireStaffSection('deposits', 'write'), requireActionEmailVerification('admin.deposit.reject'), async (req: AuthenticatedRequest, res: Response) => {
   const reason = String(req.body?.reason || '').trim() || 'Transfer verification could not be matched.';
   if (canUseLiveSupabaseData()) {
     try {
@@ -7210,7 +7741,7 @@ router.post('/admin/deposits/:depositId/reject', requireAdmin, requireActionEmai
   return res.json({ success: true, data: tx, message: 'Deposit rejected.', requestId: req.id });
 });
 
-router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, requireActionEmailVerification('admin.withdrawal.approve'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/approve', requireStaffSection('withdrawals', 'write'), requireActionEmailVerification('admin.withdrawal.approve'), async (req: AuthenticatedRequest, res: Response) => {
   const payoutReference = String(req.body?.payoutReference || req.body?.payoutRef || req.body?.payout_ref || '').trim();
   const feeCents = req.body?.feeCents !== undefined
     ? Math.max(0, Math.round(Number(req.body.feeCents)))
@@ -7315,7 +7846,7 @@ router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, requireAct
   return res.json({ success: true, data: tx, payout: payoutResult, message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
 });
 
-router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, requireActionEmailVerification('admin.withdrawal.reject'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/withdrawals/:withdrawalId/reject', requireStaffSection('withdrawals', 'write'), requireActionEmailVerification('admin.withdrawal.reject'), async (req: AuthenticatedRequest, res: Response) => {
   const reason = String(req.body?.reason || '').trim() || 'Withdrawal rejected by finance review.';
   if (canUseLiveSupabaseData()) {
     try {
@@ -7543,7 +8074,7 @@ router.get('/blog/:slug', (req: AuthenticatedRequest, res: Response) => {
 });
 
 // Admin endpoints
-router.get('/admin/insights', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/insights', requireStaffSection('staff-roles', 'read'), (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
     data: mockInsightArticles,
@@ -7551,7 +8082,7 @@ router.get('/admin/insights', requireAdmin, (req: AuthenticatedRequest, res: Res
   });
 });
 
-router.post('/admin/insights', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/insights', requireStaffSection('staff-roles', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const body = req.body || {};
   if (!body.title || !body.slug) {
     return res.status(400).json({
@@ -7587,7 +8118,7 @@ router.post('/admin/insights', requireAdmin, (req: AuthenticatedRequest, res: Re
   });
 });
 
-router.patch('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.patch('/admin/insights/:id', requireStaffSection('staff-roles', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const target = mockInsightArticles.find(a => a.id === id);
   if (!target) {
@@ -7616,7 +8147,7 @@ router.patch('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, re
   });
 });
 
-router.delete('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.delete('/admin/insights/:id', requireStaffSection('staff-roles', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const targetIndex = mockInsightArticles.findIndex(a => a.id === id);
   if (targetIndex === -1) {
@@ -7653,7 +8184,7 @@ router.delete('/admin/insights/:id', requireAdmin, (req: AuthenticatedRequest, r
  * GET /api/v1/admin/email/templates
  * List all available email templates with descriptions, categories, commands, and variables
  */
-router.get('/admin/email/templates', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/templates', requireStaffSection('staff-roles', 'read'), (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
     data: emailTemplates.map(t => ({
@@ -7674,7 +8205,7 @@ router.get('/admin/email/templates', requireAdmin, (req: AuthenticatedRequest, r
  * GET /api/v1/admin/email/preview/:templateId
  * Render live preview of an email template with HTML, plain text, and variable interpolation
  */
-router.get('/admin/email/preview/:templateId', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/preview/:templateId', requireStaffSection('staff-roles', 'read'), (req: AuthenticatedRequest, res: Response) => {
   const { templateId } = req.params;
   const template = emailTemplates.find(t => t.id === templateId);
 
@@ -7718,7 +8249,7 @@ router.get('/admin/email/preview/:templateId', requireAdmin, (req: Authenticated
  * POST /api/v1/admin/email/execute-command
  * Executes an authenticated command-based email notification
  */
-router.post('/admin/email/execute-command', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/email/execute-command', requireStaffSection('staff-roles', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const { command, recipient, payload, idempotencyKey, eventId } = req.body || {};
 
   if (!command || !recipient) {
@@ -7757,7 +8288,7 @@ router.post('/admin/email/execute-command', requireAdmin, async (req: Authentica
  * POST /api/v1/admin/email/send-test
  * Dispatches a real test email for any template to an admin-designated recipient
  */
-router.post('/admin/email/send-test', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/email/send-test', requireStaffSection('staff-roles', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const { templateId, recipient, customData, subjectOverride } = req.body || {};
 
   if (!templateId || !recipient) {
@@ -7807,7 +8338,7 @@ router.post('/admin/email/send-test', requireAdmin, async (req: AuthenticatedReq
  * GET /api/v1/admin/email/automations
  * Retrieve all event-driven email automation trigger rules
  */
-router.get('/admin/email/automations', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/automations', requireStaffSection('staff-roles', 'read'), (req: AuthenticatedRequest, res: Response) => {
   res.json({
     success: true,
     data: getAutomationRules(),
@@ -7819,7 +8350,7 @@ router.get('/admin/email/automations', requireAdmin, (req: AuthenticatedRequest,
  * PATCH /api/v1/admin/email/automations/:id
  * Toggle or update an event automation rule
  */
-router.patch('/admin/email/automations/:id', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.patch('/admin/email/automations/:id', requireStaffSection('staff-roles', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   try {
     const updated = updateAutomationRule(id, req.body || {});
@@ -7842,7 +8373,7 @@ router.patch('/admin/email/automations/:id', requireAdmin, (req: AuthenticatedRe
  * GET /api/v1/admin/email/logs
  * Retrieve recent email transmission activity logs
  */
-router.get('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/logs', requireStaffSection('staff-roles', 'read'), (req: AuthenticatedRequest, res: Response) => {
   const { recipient, status, templateId, search } = req.query;
   let logs = getEmailLogs();
 
@@ -7876,7 +8407,7 @@ router.get('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res: R
  * POST /api/v1/admin/email/logs/:id/retry
  * Safely retry failed message delivery
  */
-router.post('/admin/email/logs/:id/retry', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/email/logs/:id/retry', requireStaffSection('staff-roles', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   try {
     const result = await retryFailedEmail(id);
@@ -7899,7 +8430,7 @@ router.post('/admin/email/logs/:id/retry', requireAdmin, async (req: Authenticat
  * DELETE /api/v1/admin/email/logs
  * Clear in-memory log buffer
  */
-router.delete('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.delete('/admin/email/logs', requireStaffSection('staff-roles', 'write'), (req: AuthenticatedRequest, res: Response) => {
   clearEmailLogs();
   res.json({
     success: true,
@@ -7912,7 +8443,7 @@ router.delete('/admin/email/logs', requireAdmin, (req: AuthenticatedRequest, res
  * GET /api/v1/admin/email/settings
  * Retrieve sender metadata, support info, and provider transport status
  */
-router.get('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/settings', requireStaffSection('staff-roles', 'read'), (req: AuthenticatedRequest, res: Response) => {
   const prov = getProviderConfig();
   res.json({
     success: true,
@@ -7930,7 +8461,7 @@ router.get('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, re
  * POST /api/v1/admin/email/settings
  * Update sender name, address, support contact, and subject overrides
  */
-router.post('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/email/settings', requireStaffSection('staff-roles', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const updates = req.body || {};
   const updated = updateEmailSettings(updates);
 
@@ -7946,7 +8477,7 @@ router.post('/admin/email/settings', requireAdmin, (req: AuthenticatedRequest, r
  * GET /api/v1/admin/email/verify-smtp
  * Test provider connection and return SPF/DMARC/DKIM recommendations
  */
-router.get('/admin/email/verify-smtp', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/verify-smtp', requireStaffSection('staff-roles', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   const result = await verifySmtpConnection();
   res.json({
     success: result.connected,
@@ -7955,7 +8486,7 @@ router.get('/admin/email/verify-smtp', requireAdmin, async (req: AuthenticatedRe
   });
 });
 
-router.get('/admin/email/verify-provider', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/email/verify-provider', requireStaffSection('staff-roles', 'read'), async (req: AuthenticatedRequest, res: Response) => {
   const result = await verifySmtpConnection();
   res.json({
     success: result.connected,
@@ -8271,7 +8802,7 @@ router.get('/distributions/properties/:id', (req: AuthenticatedRequest, res: Res
  * GET /api/v1/admin/distributions/configs
  * Admin: Retrieve all property payment distribution configurations
  */
-router.get('/admin/distributions/configs', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/distributions/configs', requireStaffSection('distributions', 'read'), (req: AuthenticatedRequest, res: Response) => {
   // Ensure all current catalog listings have a configuration
   for (const listing of mockListings) {
     dailyPaymentService.ensurePropertyConfig(listing);
@@ -8288,7 +8819,7 @@ router.get('/admin/distributions/configs', requireAdmin, (req: AuthenticatedRequ
  * PUT /api/v1/admin/distributions/configs/:propertyId
  * Admin: Authorize or update property payment percentage, schedule, or available funds
  */
-router.put('/admin/distributions/configs/:propertyId', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.put('/admin/distributions/configs/:propertyId', requireStaffSection('distributions', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const { propertyId } = req.params;
   try {
     const updated = dailyPaymentService.updateConfig(propertyId, req.body || {}, req.user!.email);
@@ -8323,7 +8854,7 @@ router.put('/admin/distributions/configs/:propertyId', requireAdmin, (req: Authe
  * POST /api/v1/admin/distributions/properties/:id/toggle
  * Admin: Suspend or resume daily payouts for a property
  */
-router.post('/admin/distributions/properties/:id/toggle', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/distributions/properties/:id/toggle', requireStaffSection('distributions', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   const { status, reason } = req.body || {};
   if (!['active', 'suspended', 'paused'].includes(status)) {
@@ -8366,7 +8897,7 @@ router.post('/admin/distributions/properties/:id/toggle', requireAdmin, (req: Au
  * POST /api/v1/admin/distributions/process
  * Admin: Execute daily payment calculation and processing run with idempotency protection
  */
-router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/distributions/process', requireStaffSection('distributions', 'write'), (req: AuthenticatedRequest, res: Response) => {
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent distribution processing is not configured. No customer balances were changed.', code: 'DISTRIBUTION_DATABASE_NOT_CONFIGURED', requestId: req.id });
   try {
     const result = dailyPaymentService.processDailyRun(
@@ -8455,7 +8986,7 @@ router.post('/admin/distributions/process', requireAdmin, (req: AuthenticatedReq
  * POST /api/v1/admin/distributions/records/:id/adjust
  * Admin: Adjust or correct a payment record with mandatory audit reason
  */
-router.post('/admin/distributions/records/:id/adjust', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/distributions/records/:id/adjust', requireStaffSection('distributions', 'write'), (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
   try {
     const updated = dailyPaymentService.adjustRecord(id, req.body || {}, req.user!.email);
@@ -8490,7 +9021,7 @@ router.post('/admin/distributions/records/:id/adjust', requireAdmin, (req: Authe
  * GET /api/v1/admin/distributions/records
  * Admin: Query all payment distribution records with filters
  */
-router.get('/admin/distributions/records', requireAdmin, (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/distributions/records', requireStaffSection('distributions', 'read'), (req: AuthenticatedRequest, res: Response) => {
   const { propertyId, userId, status, startDate, endDate } = req.query;
   const records = dailyPaymentService.getRecords({
     propertyId: propertyId ? String(propertyId) : undefined,
@@ -8511,7 +9042,7 @@ router.get('/admin/distributions/records', requireAdmin, (req: AuthenticatedRequ
   });
 });
 
-router.post('/admin/distributions/pay', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/distributions/pay', requireStaffSection('distributions', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const propertyId = String(req.body?.propertyId || '').trim();
   const totalCents = req.body?.totalAmountCents !== undefined
     ? Math.round(Number(req.body.totalAmountCents))

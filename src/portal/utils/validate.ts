@@ -57,6 +57,18 @@ export function validateIban(iban: string): { valid: boolean; clean: string; err
   if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(clean)) {
     return { valid: false, clean, error: 'IBAN must begin with a 2-letter country code and 2 check digits.' };
   }
+  const rearranged = `${clean.slice(4)}${clean.slice(0, 4)}`;
+  let remainder = 0;
+  for (let i = 0; i < rearranged.length; i += 1) {
+    const ch = rearranged.charCodeAt(i);
+    const digits = ch >= 65 && ch <= 90 ? String(ch - 55) : rearranged[i];
+    for (let j = 0; j < digits.length; j += 1) {
+      remainder = (remainder * 10 + Number(digits[j])) % 97;
+    }
+  }
+  if (remainder !== 1) {
+    return { valid: false, clean, error: 'IBAN checksum is invalid. Please double-check the characters.' };
+  }
   return { valid: true, clean };
 }
 

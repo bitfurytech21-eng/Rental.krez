@@ -93,10 +93,13 @@ export const OverviewPage: React.FC = () => {
     profile?.email?.split('@')[0] ||
     'Investor';
 
-  const totalPortfolioValue =
-    summary?.totalPortfolioValue ?? balance + (portfolio?.totalPortfolioValue || 0);
   const holdings = portfolio?.holdings || [];
-  const investedCapital = summary?.investedCapital ?? portfolio?.totalHoldingsValue ?? 0;
+  const holdingsValue = holdings.reduce(
+    (sum, h) => sum + (h.currentValueCents != null ? h.currentValueCents / 100 : Number(h.currentValue || 0)),
+    0
+  );
+  const totalPortfolioValue = Number((balance + holdingsValue).toFixed(2));
+  const investedCapital = holdingsValue || summary?.investedCapital || portfolio?.totalHoldingsValue || 0;
   const projectedMonthly = summary?.projectedMonthlyIncome ?? 0;
   const monthlyChangePct =
     investedCapital > 0
@@ -106,7 +109,7 @@ export const OverviewPage: React.FC = () => {
       : 0;
 
   const openProperties = properties
-    .filter((p) => p.status === 'funding' || p.status === 'active')
+    .filter((p) => String(p.status || '').toLowerCase() === 'open')
     .slice(0, 2);
 
   const handleDismissBanner = (key: string) => {
@@ -288,12 +291,20 @@ export const OverviewPage: React.FC = () => {
       )}
 
       {/* New Investor Empty State OR Current Holdings Snapshot */}
-      {holdings.length === 0 ? (
+      {holdings.length === 0 && balance <= 0 ? (
         <EmptyState
           icon={<Building2 className="w-5 h-5" />}
           title="Make your first investment"
           description="Explore curated European residential and commercial SPVs to build your fractional real estate portfolio."
           actionLabel="Explore"
+          onAction={() => navigatePortal('explore')}
+        />
+      ) : holdings.length === 0 ? (
+        <EmptyState
+          icon={<Building2 className="w-5 h-5" />}
+          title="No property holdings yet"
+          description="Your wallet is funded. Explore open property SPVs to acquire your first fractional shares."
+          actionLabel="Explore properties"
           onAction={() => navigatePortal('explore')}
         />
       ) : (

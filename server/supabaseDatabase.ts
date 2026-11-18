@@ -298,24 +298,84 @@ export async function updateUserProfile(userId: string, patch: Record<string, un
 
 export async function getWalletSummary(userId: string) {
   const admin = getSupabaseAdmin();
+  const { data: wb, error: wbErr } = await admin.from('wallet_balances').select('*').eq('user_id', userId).maybeSingle();
+  if (!wbErr && wb) {
+    const balanceCents = wb.balance_cents !== undefined && wb.balance_cents !== null
+      ? Math.round(Number(wb.balance_cents))
+      : Math.round(Number(wb.balance ?? wb.available_balance ?? 0) * 100);
+    const availableCents = wb.available_cents !== undefined && wb.available_cents !== null
+      ? Math.round(Number(wb.available_cents))
+      : wb.available_balance !== undefined && wb.available_balance !== null
+        ? Math.round(Number(wb.available_balance) * 100)
+        : balanceCents;
+    const balance = balanceCents / 100;
+    const availableBalance = availableCents / 100;
+    const reservedBalance = Number(wb.reserved_balance ?? Math.max(0, (balanceCents - availableCents) / 100));
+    return {
+      userId: String(wb.user_id || userId),
+      currency: wb.currency || 'EUR',
+      balance,
+      balanceCents,
+      availableBalance,
+      availableCents,
+      reservedBalance,
+      updatedAt: wb.updated_at || new Date().toISOString(),
+    };
+  }
   const { data: wallet, error } = await admin.from('wallets').select('*').eq('user_id', userId).maybeSingle();
   if (!error && wallet) {
+    const balanceCents = wallet.balance_cents !== undefined && wallet.balance_cents !== null
+      ? Math.round(Number(wallet.balance_cents))
+      : Math.round(Number(wallet.balance ?? wallet.available_balance ?? 0) * 100);
+    const availableCents = wallet.available_cents !== undefined && wallet.available_cents !== null
+      ? Math.round(Number(wallet.available_cents))
+      : Math.round(Number(wallet.available_balance ?? 0) * 100);
     return {
       userId: wallet.user_id,
       currency: wallet.currency || 'EUR',
-      availableBalance: Number(wallet.available_balance || 0),
+      balance: balanceCents / 100,
+      balanceCents,
+      availableBalance: availableCents / 100,
+      availableCents,
       reservedBalance: Number(wallet.reserved_balance || 0),
       updatedAt: wallet.updated_at,
     };
   }
   const profile = await getUserProfile(userId);
   if (!profile) return null;
+  const fallbackCents = profile.balance_cents !== undefined && profile.balance_cents !== null
+    ? Math.round(Number(profile.balance_cents))
+    : Math.round(Number(profile.wallet_balance || 0) * 100);
   return {
     userId: profile.id,
     currency: 'EUR',
-    availableBalance: Number(profile.wallet_balance || 0),
+    balance: fallbackCents / 100,
+    balanceCents: fallbackCents,
+    availableBalance: fallbackCents / 100,
+    availableCents: fallbackCents,
     reservedBalance: 0,
     updatedAt: profile.updated_at,
+  };
+}
+
+export async function getAssignedPaymentGate(gateId: string) {
+  if (!gateId) return null;
+  const { data, error } = await getSupabaseAdmin()
+    .from('manual_payment_methods')
+    .select('id,name,method,account_details,detail_rows')
+    .eq('id', gateId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const details = (data.account_details && typeof data.account_details === 'object') ? data.account_details : {};
+  return {
+    gateId: String(data.id),
+    gateName: String(data.name || ''),
+    method: String(data.method || 'sepa'),
+    bankName: String(details.Bank || details.bankName || details.bank || data.name || ''),
+    accountHolder: String(details.Beneficiary || details.beneficiary || details.accountHolder || ''),
+    iban: String(details.IBAN || details.iban || ''),
+    bic: String(details.BIC || details.bic || ''),
+    detailRows: Array.isArray(data.detail_rows) ? data.detail_rows : [],
   };
 }
 
@@ -356,7 +416,8 @@ export function toApiTransaction(row: any) {
     destIban: row.dest_iban || meta.dest_iban || meta.destination || meta.bankIban || row.tx_hash || undefined,
     destination: row.dest_iban || meta.dest_iban || meta.destination || meta.bankIban || undefined,
     proofUrl: meta.proof_url || meta.proof_storage_path || undefined,
-    notes: row.notes || undefined
+    note: row.note || row.notes || undefined,
+    notes: row.note || row.notes || undefined
   };
 }
 
@@ -410,11 +471,63 @@ export async function getInvestmentPlan(identifier: string) {
 }
 
 export async function listUserInvestments(userId: string) {
-  const { data, error } = await getSupabaseAdmin().from('investments')
-    .select('*, investment_plans(title,location,images,estimated_annual_yield)')
+  const admin = getSupabaseAdmin();
+  const { data: viewRows, error: viewErr } = await admin
+    .from('my_holdings')
+    .select('*')
+    .eq('user_id', userId);
+  if (!viewErr && Array.isArray(viewRows)) {
+    return viewRows.map((row: any) => {
+      const valueCents = row.value_cents !== undefined && row.value_cents !== null
+        ? Math.round(Number(row.value_cents))
+        : Math.round(Number(row.current_valuation ?? row.total_amount_invested ?? 0) * 100);
+      const costCents = row.cost_cents !== undefined && row.cost_cents !== null
+        ? Math.round(Number(row.cost_cents))
+        : Math.round(Number(row.total_amount_invested ?? valueCents / 100) * 100);
+      const gainCents = row.gain_cents !== undefined && row.gain_cents !== null
+        ? Math.round(Number(row.gain_cents))
+        : valueCents - costCents;
+      const shares = Number(row.shares ?? row.tokens_purchased ?? 0);
+      return {
+        ...row,
+        id: row.id || row.property_id || row.plan_id,
+        plan_id: row.plan_id || row.property_id,
+        tokens_purchased: shares,
+        shares,
+        total_amount_invested: costCents / 100,
+        current_valuation: valueCents / 100,
+        value_cents: valueCents,
+        gain_cents: gainCents,
+        city: row.city || '',
+        investment_plans: row.investment_plans || {
+          title: row.name || row.property_title || row.title || row.plan_id,
+          city: row.city || '',
+          location: row.city ? `${row.city}` : '',
+          estimated_annual_yield: Number(row.estimated_annual_yield || 0),
+        },
+      };
+    });
+  }
+  const { data, error } = await admin.from('investments')
+    .select('*, investment_plans(title,city,location,images,estimated_annual_yield)')
     .eq('user_id', userId).order('purchased_at', { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).map((row: any) => {
+    const valueCents = row.value_cents !== undefined && row.value_cents !== null
+      ? Math.round(Number(row.value_cents))
+      : Math.round(Number(row.current_valuation ?? row.total_amount_invested ?? 0) * 100);
+    const costCents = Math.round(Number(row.total_amount_invested ?? valueCents / 100) * 100);
+    const gainCents = row.gain_cents !== undefined && row.gain_cents !== null
+      ? Math.round(Number(row.gain_cents))
+      : valueCents - costCents;
+    return {
+      ...row,
+      shares: Number(row.shares ?? row.tokens_purchased ?? 0),
+      value_cents: valueCents,
+      gain_cents: gainCents,
+      city: row.investment_plans?.city || row.city || '',
+    };
+  });
 }
 
 export async function listAdminUsers(limit = 500) {
@@ -821,13 +934,26 @@ export async function getPersistentPerformance(userId: string) {
     getUserProfile(userId), listUserTransactions(userId, 1000), listUserInvestments(userId)
   ]);
   if (!profile) return null;
-  const dividends = transactions.filter((row: any) => row.type === 'dividend' && row.status === 'completed');
+  const completed = [...transactions]
+    .filter((row: any) => row.status === 'completed')
+    .sort((a: any, b: any) => new Date(a.created_at || a.inserted_at || 0).getTime() - new Date(b.created_at || b.inserted_at || 0).getTime());
+
+  let runningTotal = 0;
   const byMonth = new Map<string, { yield: number; totalValue: number }>();
-  for (const row of dividends) {
-    const date = new Date(row.created_at);
+  for (const row of completed) {
+    const amt = Number(row.amount || 0);
+    const type = String(row.type || '').toLowerCase();
+    const isDistribution = type === 'dividend' || type === 'distribution' || type === 'payout';
+    if (type === 'deposit' || isDistribution) {
+      runningTotal += amt;
+    } else if (type === 'withdrawal') {
+      runningTotal = Math.max(0, runningTotal - amt);
+    }
+    const date = new Date(row.created_at || row.inserted_at || Date.now());
     const key = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-    const current = byMonth.get(key) || { yield: 0, totalValue: 0 };
-    current.yield += Number(row.amount || 0);
+    const current = byMonth.get(key) || { yield: 0, totalValue: runningTotal };
+    if (isDistribution) current.yield += amt;
+    current.totalValue = Number(runningTotal.toFixed(2));
     byMonth.set(key, current);
   }
   const invested = investments.reduce((total: number, row: any) => total + Number(row.total_amount_invested || 0), 0);
@@ -844,21 +970,21 @@ export async function getPersistentPerformance(userId: string) {
 
 export async function listUserNotifications(userId: string, limit = 100) {
   const { data, error } = await getSupabaseAdmin().from('notifications').select('*')
-    .eq('user_id', userId).order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 250));
+    .or(`user_id.eq.${userId},user_id.is.null`).order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 250));
   if (error) throw error;
   return data || [];
 }
 
 export async function markUserNotificationRead(userId: string, notificationId: string) {
   const { data, error } = await getSupabaseAdmin().from('notifications')
-    .update({ read: true }).eq('user_id', userId).eq('id', notificationId).select('*').maybeSingle();
+    .update({ read: true }).eq('id', notificationId).or(`user_id.eq.${userId},user_id.is.null`).select('*').maybeSingle();
   if (error) throw error;
   return data;
 }
 
 export async function markAllUserNotificationsRead(userId: string) {
   const { data, error } = await getSupabaseAdmin().from('notifications')
-    .update({ read: true }).eq('user_id', userId).eq('read', false).select('id');
+    .update({ read: true }).or(`user_id.eq.${userId},user_id.is.null`).eq('read', false).select('id');
   if (error) throw error;
   return data?.length || 0;
 }
@@ -1225,6 +1351,57 @@ export async function reviewComplianceDocument(
     uploadedAt: String(data.uploaded_at || ''),
     fileDataUrl: data.file_data_url || undefined,
   };
+}
+
+export async function listUserStatementDocuments(userId: string) {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('documents')
+    .select('*')
+    .eq('user_id', userId)
+    .order('uploaded_at', { ascending: false })
+    .limit(100);
+  if (error || !Array.isArray(data)) return [];
+  return data.map((row: any) => ({
+    id: String(row.id),
+    userId: String(row.user_id),
+    category: row.category === 'tax_document' ? ('tax_document' as const) : ('statement' as const),
+    title: String(row.title || row.file_name || 'Document'),
+    taxYear: row.tax_year ? String(row.tax_year) : undefined,
+    periodLabel: row.period_label ? String(row.period_label) : undefined,
+    fileName: String(row.file_name || 'document.pdf'),
+    mimeType: String(row.mime_type || 'application/pdf'),
+    fileSize: Number(row.file_size || 0),
+    storagePath: row.storage_path || row.file_path || undefined,
+    fileDataUrl: row.file_data_url || undefined,
+    uploadedAt: String(row.uploaded_at || row.created_at || new Date().toISOString()),
+  }));
+}
+
+export async function getSignedDocumentUrl(userId: string, docId: string): Promise<{ url: string; fileName: string; expiresInSeconds: number } | null> {
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin
+    .from('documents')
+    .select('*')
+    .eq('id', docId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const fileName = String(data.file_name || 'document.pdf');
+  const storagePath = data.storage_path || data.file_path;
+  if (storagePath && typeof storagePath === 'string') {
+    const cleanPath = storagePath.replace(/^documents\//, '');
+    const { data: signed, error: signErr } = await admin.storage
+      .from('documents')
+      .createSignedUrl(cleanPath, 60);
+    if (!signErr && signed?.signedUrl) {
+      return { url: signed.signedUrl, fileName, expiresInSeconds: 60 };
+    }
+  }
+  if (data.file_data_url && typeof data.file_data_url === 'string') {
+    return { url: data.file_data_url, fileName, expiresInSeconds: 60 };
+  }
+  return null;
 }
 
 export async function findTransactionByReferenceOrId(idOrRef: string) {

@@ -11,8 +11,17 @@ process.env.NODE_ENV = 'test';
 import express from 'express';
 import http from 'http';
 import v1Routes, { __testSetCustomerFinancialState } from './routes';
-import { correlationAndTimingMiddleware, authenticateToken, errorHandler } from './middleware';
+import { correlationAndTimingMiddleware, authenticateToken, errorHandler, normalizeStaffRole } from './middleware';
 import { setDevAssignedGateId } from './manualPaymentRoutes';
+import { isValidIBAN } from '../src/lib/validation';
+import {
+  formatEmailCodeSendError,
+  sanitizeErrorForMonitoring,
+  markActionVerified,
+  isActionVerifiedInSession,
+  getValidActionGrant,
+  clearActionVerification,
+} from '../src/lib/actionVerificationSession';
 
 let passed = 0;
 let failed = 0;
@@ -682,6 +691,133 @@ async function runApiTests() {
         listNotifRes.status === 200 &&
         sentFound,
       'POST /admin/notifications dispatches alert and GET /admin/notifications lists it'
+    );
+
+    // Deliverable 1: Generic wrong-password error & OTP scope rules
+    const badLoginRes = await api('POST', '/auth/login', {
+      email: validRegEmail,
+      password: 'WrongPassword999',
+    });
+    assert(
+      badLoginRes.status === 401 && badLoginRes.json.error === 'Email or password is incorrect.',
+      'POST /auth/login returns generic "Email or password is incorrect." message on invalid credentials'
+    );
+
+    const investmentOtpRes = await api(
+      'POST',
+      '/security/action-code/request',
+      { actionScope: 'investor.investment.create' },
+      customerToken
+    );
+    assert(
+      investmentOtpRes.status === 400 && investmentOtpRes.json.code === 'INVALID_ACTION_SCOPE',
+      'Investments no longer use or allow action security-code scope'
+    );
+
+    const withdrawOtpReq = await api(
+      'POST',
+      '/security/action-code/request',
+      { actionScope: 'investor.withdrawal.create' },
+      customerToken
+    );
+    const otpStatusAfter = await api('GET', '/security/action-code/status', undefined, customerToken);
+    const repeatBankOtpReq = await api(
+      'POST',
+      '/security/action-code/request',
+      { actionScope: 'investor.profile.bank.update' },
+      customerToken
+    );
+    assert(
+      withdrawOtpReq.status === 200 &&
+        withdrawOtpReq.json.success === true &&
+        otpStatusAfter.status === 200 &&
+        otpStatusAfter.json.verified === true &&
+        Number(otpStatusAfter.json.remainingSeconds) > 0 &&
+        repeatBankOtpReq.status === 200 &&
+        repeatBankOtpReq.json.otpRequired === false &&
+        repeatBankOtpReq.json.alreadyVerified === true,
+      'Sensitive action security verification is cached in session for 10 minutes across sensitive scopes'
+    );
+
+    // Deliverable 1 client-side helpers: error formatting, monitoring redaction, 10m session store
+    assert(
+      formatEmailCodeSendError({ status: 429, message: 'Rate limit raw SMTP trace' }) ===
+        'Too many attempts. Please wait a few minutes and try again.' &&
+        formatEmailCodeSendError({ status: 500, message: 'Internal SMTP socket ECONNREFUSED' }) ===
+        'We couldn’t send your code. Please try again, or contact support.',
+      'formatEmailCodeSendError hides raw error text and distinguishes rate-limit vs generic failures'
+    );
+
+    const redactedMon = sanitizeErrorForMonitoring({
+      status: 502,
+      message: 'Failed for investor@example.com with code 482910 and Bearer secret.jwt.token',
+    });
+    assert(
+      !redactedMon.message.includes('investor@example.com') &&
+        !redactedMon.message.includes('482910') &&
+        !redactedMon.message.includes('secret.jwt.token'),
+      'sanitizeErrorForMonitoring strips email, OTP code, and bearer token before logging'
+    );
+
+    const monitoringRes = await api('POST', '/monitoring/client-error', {
+      category: 'security',
+      eventType: 'EMAIL_CODE_SEND_FAILED',
+      errorCode: redactedMon.errorCode,
+      message: redactedMon.message,
+      scope: 'login_email_code',
+    });
+    assert(monitoringRes.status === 200 && monitoringRes.json.success === true, 'POST /monitoring/client-error accepts sanitized failure telemetry');
+
+    clearActionVerification();
+    assert(!isActionVerifiedInSession(), 'clearActionVerification clears active 10m session cache');
+    markActionVerified('investor.password.change', 'grant-test-123');
+    assert(
+      isActionVerifiedInSession() && getValidActionGrant('investor.password.change') === 'grant-test-123',
+      'Client session cache remembers action verification for 10 minutes and clears on logout'
+    );
+    clearActionVerification();
+
+    // Deliverable 2: IBAN checksum validation, transaction pagination, and signed document URL
+    assert(
+      isValidIBAN('FR7630006000011234567890189') === true &&
+        isValidIBAN('DE89370400440532013000') === true &&
+        isValidIBAN('FR7630006000011234567890100') === false &&
+        isValidIBAN('INVALID-IBAN') === false,
+      'ISO 7064 mod-97 IBAN validation accepts valid IBANs and rejects bad checksums/formats'
+    );
+
+    const pagedTxs = await api('GET', '/transactions?limit=2&offset=0', undefined, customerToken);
+    assert(
+      pagedTxs.status === 200 &&
+        Array.isArray(pagedTxs.json.data) &&
+        pagedTxs.json.data.length <= 2 &&
+        typeof pagedTxs.json.total === 'number',
+      'GET /transactions honors limit & offset pagination parameters and reports total'
+    );
+
+    const signedUrlRes = await api(
+      'GET',
+      `/reports/statements/${encodeURIComponent(uploadedDocId)}/signed-url`,
+      undefined,
+      customerToken
+    );
+    assert(
+      signedUrlRes.status === 200 &&
+        Boolean(signedUrlRes.json.data?.url) &&
+        Number(signedUrlRes.json.data?.expiresInSeconds) === 60,
+      'GET /reports/statements/:docId/signed-url returns short-lived 60s download URL'
+    );
+
+    // Deliverable 3: Staff role normalization
+    assert(
+      normalizeStaffRole('super_admin') === 'super_admin' &&
+        normalizeStaffRole('finance_admin') === 'finance' &&
+        normalizeStaffRole('compliance_officer') === 'compliance' &&
+        normalizeStaffRole('operations_admin') === 'property_manager' &&
+        normalizeStaffRole('support_agent') === 'support' &&
+        normalizeStaffRole('admin') === 'super_admin' &&
+        normalizeStaffRole('investor') === null,
+      'normalizeStaffRole maps valid staff roles to canonical RBAC roles and rejects non-staff roles'
     );
 
     console.log(`\nAPI Smoke & Contract Test Summary: ${passed} passed, ${failed} failed.`);

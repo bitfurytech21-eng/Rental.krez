@@ -19,12 +19,15 @@ export interface PortalHolding {
   id: string;
   propertyId: string;
   propertyTitle: string;
+  city?: string;
   tokensPurchased: number;
   totalCost: number;
   currentValue: number;
-  /** Derived from EUR-decimal source values; never persisted. */
+  gain?: number;
+  /** Derived from EUR-decimal or integer-cent source values; never persisted. */
   totalCostCents?: number;
   currentValueCents?: number;
+  gainCents?: number;
   dividendsReceivedCents?: number;
   projectedAnnualDividend: number;
   dividendsReceived: number;
@@ -32,6 +35,14 @@ export interface PortalHolding {
   certificateId?: string;
   status?: string;
   maturityDate?: string;
+}
+
+export interface PortalAssignedBankAccount {
+  beneficiary: string;
+  bankName: string;
+  iban: string;
+  bic: string;
+  reference?: string;
 }
 
 export interface PortalPortfolioData {
@@ -103,6 +114,7 @@ export interface PortalTransaction {
   reference: string;
   createdAt: string;
   description?: string;
+  note?: string;
   paymentMethod?: string;
   propertyId?: string;
   propertyTitle?: string;
@@ -132,6 +144,8 @@ export interface PortalProfile {
   balance: number;
   investedBalance: number;
   balanceCents?: number;
+  availableBalance?: number;
+  availableCents?: number;
   investedBalanceCents?: number;
   kycStatus: 'verified' | 'pending' | 'rejected' | 'unverified' | string;
   status: string;
@@ -140,6 +154,7 @@ export interface PortalProfile {
   postalCode: string;
   bankIban: string;
   bankAccountHolder?: string;
+  assignedBankAccount?: PortalAssignedBankAccount | null;
   cryptoDepositAddress: string;
   taxId: string;
   dateOfBirth: string;

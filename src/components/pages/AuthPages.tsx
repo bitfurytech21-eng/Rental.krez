@@ -21,6 +21,8 @@ import {
   EyeOff
 } from 'lucide-react';
 import { ledger } from '../../lib/ledger';
+import { monitoringApi } from '../../lib/api';
+import { formatEmailCodeSendError, sanitizeErrorForMonitoring } from '../../lib/actionVerificationSession';
 import authLuxuryKeyBg from '../../assets/images/auth_luxury_key_1794021673223.jpg';
 
 interface AuthPageProps {
@@ -38,6 +40,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 }) => {
   const {
     login,
+    requestEmailLoginCode,
+    verifyEmailLoginCode,
     register,
     resendSignupConfirmation,
     sendPasswordReset,
@@ -51,6 +55,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   );
 
   useEffect(() => {
+    setShowPassword(false);
     if (isRecoveryMode) {
       setMode('reset-password');
     } else if (initialMode) {
@@ -64,7 +69,11 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailCode, setEmailCode] = useState('');
-  const [requiresEmailCode, setRequiresEmailCode] = useState(false);
+  const [useEmailCodeLogin, setUseEmailCodeLogin] = useState(false);
+  const [loginCodeSent, setLoginCodeSent] = useState(false);
+  const [codeSendCooldown, setCodeSendCooldown] = useState(0);
+  const [consecutiveCodeFailures, setConsecutiveCodeFailures] = useState(0);
+  const [codeNotice, setCodeNotice] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -102,6 +111,12 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   }, [resendCooldown]);
 
   useEffect(() => {
+    if (codeSendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setCodeSendCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [codeSendCooldown]);
+
+  useEffect(() => {
     if (loginCooldown <= 0) return;
     const timer = window.setTimeout(() => setLoginCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => window.clearTimeout(timer);
@@ -121,14 +136,54 @@ export const AuthPages: React.FC<AuthPageProps> = ({
     setResetSent(false);
     setPasswordResetSuccess(false);
     setEmailCode('');
-    setRequiresEmailCode(false);
+    setUseEmailCodeLogin(false);
+    setLoginCodeSent(false);
+    setConsecutiveCodeFailures(0);
+    setCodeNotice(null);
     setMode(newMode);
     onNavigateMode(newMode);
   };
 
-  // Real Email/Password Login
+  const handleRequestLoginCode = async () => {
+    if (loading || codeSendCooldown > 0 || consecutiveCodeFailures >= 2) return;
+    setError(null);
+    setCodeNotice(null);
+    if (!isValidEmail(email)) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await requestEmailLoginCode(email);
+      setLoginCodeSent(true);
+      setConsecutiveCodeFailures(0);
+      setCodeSendCooldown(res.cooldownSeconds ?? 60);
+      setCodeNotice(
+        res.maskedEmail
+          ? `A 6-digit security code has been sent to ${res.maskedEmail}.`
+          : 'A 6-digit security code has been sent to your registered email.'
+      );
+    } catch (err: any) {
+      const nextFailures = consecutiveCodeFailures + 1;
+      setConsecutiveCodeFailures(nextFailures);
+      const { message, errorCode } = sanitizeErrorForMonitoring(err);
+      void monitoringApi.logClientError({
+        category: 'auth',
+        eventType: 'LOGIN_EMAIL_CODE_SEND_FAILED',
+        errorCode,
+        message,
+        scope: 'auth_pages',
+      });
+      setError(formatEmailCodeSendError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Real Email/Password Login (with optional alternative email-code login mode)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError(null);
     setOfferRegister(false);
     setOfferLogin(false);
@@ -140,28 +195,56 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please provide a valid email address.');
       return;
     }
+
+    if (useEmailCodeLogin) {
+      if (!loginCodeSent) {
+        await handleRequestLoginCode();
+        return;
+      }
+      const cleanCode = emailCode.replace(/\D/g, '').slice(0, 6);
+      if (cleanCode.length !== 6) {
+        setError('Please enter the 6-digit security code sent to your email.');
+        return;
+      }
+      setLoading(true);
+      try {
+        await verifyEmailLoginCode(email, cleanCode);
+        setFailedLoginAttempts(0);
+        setLoginCooldown(0);
+        try { sessionStorage.removeItem('auth_login_failed_attempts'); sessionStorage.removeItem('auth_login_lock_until'); } catch {}
+        onSuccess();
+      } catch (err: any) {
+        const { message, errorCode } = sanitizeErrorForMonitoring(err);
+        void monitoringApi.logClientError({
+          category: 'auth',
+          eventType: 'LOGIN_EMAIL_CODE_VERIFY_FAILED',
+          errorCode,
+          message,
+          scope: 'auth_pages',
+        });
+        setError('The security code is invalid or expired. Request a new code and try again.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!password) {
       setError('Please enter your password.');
       return;
     }
     setLoading(true);
     try {
-      await login(email, password, emailCode || undefined);
+      await login(email, password);
       setFailedLoginAttempts(0);
       setLoginCooldown(0);
       try { sessionStorage.removeItem('auth_login_failed_attempts'); sessionStorage.removeItem('auth_login_lock_until'); } catch {}
       onSuccess();
     } catch (err: any) {
-      if (err?.code === 'EMAIL_CODE_REQUIRED') {
-        setRequiresEmailCode(true);
-        setError('A six-digit security code has been sent to your email address.');
-        return;
-      }
       const msg = String(err?.message || '');
-      if (err?.code === 'INVALID_EMAIL_CODE') {
-        setError('The security code is invalid or expired. Request a new code and try again.');
-      } else if (
+      if (
         err?.code === 'INVALID_CREDENTIALS' ||
+        err?.status === 401 ||
         /invalid login credentials|invalid email address or password|email or password|email not confirmed/i.test(msg)
       ) {
         const nextAttempts = failedLoginAttempts + 1;
@@ -177,10 +260,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
           } catch {}
           setError('Email or password is incorrect. Please wait 30 seconds before trying again.');
         } else {
-          setError('Email or password is incorrect');
+          setError('Email or password is incorrect.');
         }
-      } else if (msg.includes('405') || msg.includes('HTTP Error') || msg.includes('Method Not Allowed')) {
-        setError('Authentication service is currently unavailable. Please try again shortly.');
       } else {
         setError('Authentication service is currently unavailable. Please try again shortly.');
       }
@@ -413,11 +494,19 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <div className="flex-1 space-y-2">
                 <span className="leading-relaxed block">{error}</span>
+                {useEmailCodeLogin && consecutiveCodeFailures >= 2 && (
+                  <a
+                    href="/contact"
+                    className="inline-flex min-h-[44px] items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white"
+                  >
+                    Contact support
+                  </a>
+                )}
                 {offerRegister && mode === 'login' && (
                   <button
                     type="button"
                     onClick={() => switchMode('register')}
-                    className="inline-flex items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
+                    className="inline-flex min-h-[44px] items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
                   >
                     Register with {email.trim() || 'this email'} →
                   </button>
@@ -426,12 +515,18 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className="inline-flex items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
+                    className="inline-flex min-h-[44px] items-center text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
                   >
                     Sign in with {email.trim() || 'this email'} →
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {codeNotice && mode === 'login' && (
+            <div role="status" className="p-3.5 mb-5 rounded-2xl bg-emerald-950/60 text-emerald-200 text-xs font-medium border border-emerald-500/30">
+              {codeNotice}
             </div>
           )}
 
@@ -441,7 +536,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`min-h-[44px] py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                   mode === 'login'
                     ? 'bg-[#C5A880] text-[#1A1A1A] shadow-md font-black'
                     : 'text-[#8EA7C7] hover:text-white'
@@ -453,7 +548,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               <button
                 type="button"
                 onClick={() => switchMode('register')}
-                className={`py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`min-h-[44px] py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                   mode === 'register'
                     ? 'bg-[#C5A880] text-[#1A1A1A] shadow-md font-black'
                     : 'text-[#8EA7C7] hover:text-white'
@@ -478,51 +573,51 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                  className="min-h-[44px] w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                 />
               </div>
 
-              <div className="form-field space-y-1">
-                <div className="flex justify-between items-center">
-                  <label htmlFor="login-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password</label>
-                  <button
-                    type="button"
-                    onClick={() => switchMode('forgot-password')}
-                    className="text-[11px] font-bold text-[#C5A880] hover:underline cursor-pointer"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
-                <div className="relative">
-                  <input
-                    id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                    required
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-11 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="absolute inset-y-0 right-2 flex items-center px-2 text-[#8EA7C7] hover:text-white cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              
-
-              {requiresEmailCode && (
+              {!useEmailCodeLogin && (
                 <div className="form-field space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label htmlFor="login-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password</label>
+                    <button
+                      type="button"
+                      onClick={() => switchMode('forgot-password')}
+                      className="inline-flex min-h-[44px] items-center px-1 text-[11px] font-bold text-[#C5A880] hover:underline cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="login-password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="min-h-[44px] w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-12 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      className="absolute inset-y-0 right-0 flex min-h-[44px] min-w-[44px] items-center justify-center text-[#8EA7C7] hover:text-white cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {useEmailCodeLogin && loginCodeSent && (
+                <div className="form-field space-y-1.5">
                   <label htmlFor="login-email-code" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email security code</label>
                   <input
                     id="login-email-code"
-                  type="password"
+                    type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     pattern="[0-9]{6}"
@@ -531,24 +626,38 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     value={emailCode}
                     onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="Enter 6-digit code"
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium tracking-[0.35em] text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                    className="min-h-[44px] w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium tracking-[0.35em] text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
-                  <p className="text-[11px] text-[#8EA7C7]">The code expires in five minutes.</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-[#8EA7C7]">The code expires in five minutes.</p>
+                    {consecutiveCodeFailures < 2 && (
+                      <button
+                        type="button"
+                        disabled={loading || codeSendCooldown > 0}
+                        onClick={() => void handleRequestLoginCode()}
+                        className="inline-flex min-h-[44px] items-center px-2 text-xs font-bold text-[#C5A880] underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                      >
+                        {codeSendCooldown > 0 ? `Resend code (${codeSendCooldown}s)` : 'Resend code'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={loading || loginCooldown > 0}
-                className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                disabled={loading || loginCooldown > 0 || (useEmailCodeLogin && !loginCodeSent && consecutiveCodeFailures >= 2)}
+                className="min-h-[44px] bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? (
                   <>
                     <span className="w-3.5 h-3.5 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
-                    <span>Signing in...</span>
+                    <span>{useEmailCodeLogin && !loginCodeSent ? 'Sending code...' : 'Signing in...'}</span>
                   </>
                 ) : loginCooldown > 0 ? (
                   `Try again in ${loginCooldown}s`
+                ) : useEmailCodeLogin ? (
+                  loginCodeSent ? 'Verify code & Sign In' : 'Send sign-in code'
                 ) : preservedProperty ? (
                   `Sign In & Continue to ${preservedProperty.title.split(' ')[0]}`
                 ) : (
@@ -556,12 +665,35 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 )}
               </button>
 
+              <div className="relative flex items-center py-1" role="separator">
+                <div className="flex-grow border-t border-[#1D3860]" />
+                <span className="mx-3 shrink text-[10px] uppercase tracking-wider text-[#8EA7C7]">or</span>
+                <div className="flex-grow border-t border-[#1D3860]" />
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setCodeNotice(null);
+                    setEmailCode('');
+                    setLoginCodeSent(false);
+                    setConsecutiveCodeFailures(0);
+                    setUseEmailCodeLogin((prev) => !prev);
+                  }}
+                  className="inline-flex min-h-[44px] items-center justify-center px-3 text-xs font-bold text-[#C5A880] underline underline-offset-4 hover:text-white cursor-pointer"
+                >
+                  {useEmailCodeLogin ? 'Sign in with password instead' : 'Sign in with an email code instead'}
+                </button>
+              </div>
+
               <div className="text-center pt-3 border-t border-[#1D3860]">
                 <span className="text-xs text-[#8EA7C7]">Don't have an account yet? </span>
                 <button
                   type="button"
                   onClick={() => switchMode('register')}
-                  className="text-xs font-bold text-[#C5A880] hover:underline cursor-pointer"
+                  className="inline-flex min-h-[44px] items-center px-2 text-xs font-bold text-[#C5A880] hover:underline cursor-pointer"
                 >
                   Register Here
                 </button>
@@ -612,13 +744,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                         placeholder="Create secure password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-11 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                        className="min-h-[44px] w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-12 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        className="absolute inset-y-0 right-2 flex items-center px-2 text-[#8EA7C7] hover:text-white cursor-pointer"
+                        className="absolute inset-y-0 right-0 flex min-h-[44px] min-w-[44px] items-center justify-center text-[#8EA7C7] hover:text-white cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -812,13 +944,13 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     placeholder="Enter new password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-11 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                    className="min-h-[44px] w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 pr-12 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="absolute inset-y-0 right-2 flex items-center px-2 text-[#8EA7C7] hover:text-white cursor-pointer"
+                    className="absolute inset-y-0 right-0 flex min-h-[44px] min-w-[44px] items-center justify-center text-[#8EA7C7] hover:text-white cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -829,19 +961,20 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                 <label htmlFor="reset-confirm-password" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Confirm New Password</label>
                 <input
                   id="reset-confirm-password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="new-password"
                   placeholder="Repeat new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
+                  className="min-h-[44px] w-full text-xs bg-[#0B1B30] border border-[#1D3860] rounded-xl px-3.5 py-3 font-medium text-white placeholder-[#8EA7C7] focus:outline-none focus:border-[#C5A880]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading || password.length < 12 || password !== confirmPassword}
-                className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                className="min-h-[44px] bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
               >
                 {loading ? 'Updating Password...' : 'Update Password'}
               </button>

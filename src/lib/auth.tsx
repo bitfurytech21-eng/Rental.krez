@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured, getAuthRedirectUrl } from './supabaseCl
 import { Session } from '@supabase/supabase-js';
 import { setAuthToken, apiRequest, authApi, userApi, getAuthToken } from './api';
 import { hasStaffAccess } from '../components/admin/adminRbac';
+import { clearActionVerification, markActionVerified } from './actionVerificationSession';
 
 interface RegisterResult {
   user: any;
@@ -23,6 +24,8 @@ interface AuthContextType {
   isRecoveryMode: boolean;
   setIsRecoveryMode: (val: boolean) => void;
   login: (email: string, pass: string, emailCode?: string) => Promise<User>;
+  requestEmailLoginCode: (email: string) => Promise<{ maskedEmail?: string; cooldownSeconds?: number }>;
+  verifyEmailLoginCode: (email: string, code: string) => Promise<User>;
   adminLogin: (email: string, pass: string, emailCode?: string) => Promise<User>;
   customizeAdminCredentials: (params: {
     currentEmail: string;
@@ -39,7 +42,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<void>;
   updateUserEmail: (newEmail: string) => Promise<void>;
   updateUserPassword: (newPassword: string) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string, grantId?: string) => Promise<void>;
   verifyMfaCode: (factorId: string, challengeId: string, code: string) => Promise<boolean>;
   quickDemoSession: (role: 'investor' | 'admin', accountType?: AccountType) => Promise<User>;
   syncAdminSession: (newToken: string, updatedFields: { email: string; fullName?: string }) => void;
@@ -465,10 +468,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         res = await authApi.login(cleanEmail, pass, emailCode);
       } catch (err: any) {
         if (err?.code === 'EMAIL_CODE_REQUIRED') throw err;
+        if (err?.status === 401 || err?.code === 'INVALID_CREDENTIALS') {
+          const credentialError: any = new Error('Email or password is incorrect.');
+          credentialError.code = 'INVALID_CREDENTIALS';
+          credentialError.status = 401;
+          throw credentialError;
+        }
         if (import.meta.env.PROD) {
-          // Preserve the API's safe, actionable error response (for example,
-          // Supabase auth setup) instead of hiding
-          // every production failure behind one generic message.
           throw new Error(err?.message || 'Authentication service is unavailable. Please try again shortly.');
         }
         // Only use the generic outage response for transport/server failures.
@@ -484,7 +490,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ) {
           throw new Error('Authentication service is unavailable. Please try again shortly.');
         }
-        const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Invalid email address or password.';
+        const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Email or password is incorrect.';
         const typedErr: any = new Error(errMsg);
         typedErr.code = err?.code;
         typedErr.status = err?.status;
@@ -502,7 +508,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const serverRefreshToken = (res as any)?.refreshToken || (res as any)?.data?.refreshToken;
 
       if (!serverToken || !serverUser) {
-        throw new Error('Authentication failed. Invalid email address or password.');
+        throw new Error('Email or password is incorrect.');
       }
 
       if (serverUser.role === 'admin' && !serverUser.staffRole && !serverUser.isAdmin) {
@@ -596,9 +602,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (
         error.message.toLowerCase().includes('email not confirmed') ||
-        error.message.toLowerCase().includes('invalid login credentials')
+        error.message.toLowerCase().includes('invalid login credentials') ||
+        error.status === 400 ||
+        error.status === 401
       ) {
-        const credentialError: any = new Error('Email or password is incorrect');
+        const credentialError: any = new Error('Email or password is incorrect.');
         credentialError.code = 'INVALID_CREDENTIALS';
         throw credentialError;
       }
@@ -610,7 +618,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     if (!(data.user.email_confirmed_at || (data.user as any).confirmed_at)) {
       await supabase.auth.signOut({ scope: 'local' });
-      throw new Error('Email not confirmed yet. Please check your inbox and confirm your account before signing in.');
+      const credentialError: any = new Error('Email or password is incorrect.');
+      credentialError.code = 'INVALID_CREDENTIALS';
+      throw credentialError;
     }
 
     const synced = ledger.syncSupabaseUser(
@@ -637,6 +647,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { targetUserId: hydrated.id, targetUserEmail: hydrated.email }
       );
     } catch (e) {}
+    return hydrated;
+  };
+
+  const requestEmailLoginCode = async (email: string): Promise<{ maskedEmail?: string; cooldownSeconds?: number }> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const res = await authApi.requestLoginCode(cleanEmail);
+    return {
+      maskedEmail: res?.maskedEmail,
+      cooldownSeconds: res?.cooldownSeconds ?? 60,
+    };
+  };
+
+  const verifyEmailLoginCode = async (email: string, code: string): Promise<User> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const res = await authApi.verifyLoginCode(cleanEmail, code);
+    const serverUser = (res as any)?.user || (res as any)?.data?.user;
+    const serverToken = (res as any)?.token || (res as any)?.data?.token;
+    const serverRefreshToken = (res as any)?.refreshToken || (res as any)?.data?.refreshToken;
+
+    if (!serverToken || !serverUser) {
+      throw new Error('The security code is invalid or expired. Please try again.');
+    }
+
+    const synced = ledger.syncSupabaseUser(
+      serverUser.id,
+      serverUser.email || cleanEmail,
+      serverUser.fullName || cleanEmail.split('@')[0] || 'Investor',
+      (serverUser.role as UserRole) || 'investor',
+      (serverUser.accountType as AccountType) || 'individual_investor',
+      serverUser.country,
+      serverUser.phoneNumber
+    );
+    synced.isAdmin = Boolean(serverUser.isAdmin || serverUser.role === 'admin' || serverUser.role === 'super_admin');
+    synced.staffRole = serverUser.staffRole ?? (synced.isAdmin ? 'super_admin' : null);
+    if (typeof serverUser.balance === 'number') {
+      synced.walletBalance = serverUser.balance;
+    }
+
+    setToken(serverToken);
+    setAuthToken(serverToken);
+    markActionVerified();
+
+    if (isConfigured && serverRefreshToken) {
+      try {
+        await supabase.auth.setSession({
+          access_token: serverToken,
+          refresh_token: serverRefreshToken,
+        });
+      } catch {
+        // Session will still function with the issued access token
+      }
+    }
+
+    const hydrated = await hydrateUserFromBackendAndProfile(synced, serverToken);
+    setUser(hydrated);
+    localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+    localStorage.setItem(CURRENT_USER_KEY, hydrated.id);
     return hydrated;
   };
 
@@ -758,6 +825,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSession(null);
     setToken(null);
     setAuthToken(null);
+    clearActionVerification();
     localStorage.removeItem(CURRENT_USER_KEY);
     localStorage.removeItem('kretz_auth_token');
     localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
@@ -850,30 +918,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Investor password changes require the current password to be verified by Supabase Auth.
-  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  // Investor password changes require current-password verification and an active 10m email verification grant.
+  const changePassword = async (currentPassword: string, newPassword: string, grantId?: string): Promise<void> => {
     if (!currentPassword) throw new Error('Enter your current password.');
     if (!newPassword || newPassword.length < 12) {
       throw new Error('New password must be at least 12 characters long.');
     }
-    if (!isConfigured) {
-      throw new Error('Password changes are unavailable until secure authentication is configured.');
+
+    await authApi.changePassword(currentPassword, newPassword, grantId);
+
+    if (isConfigured) {
+      const currentEmail = user?.email?.trim().toLowerCase();
+      if (currentEmail) {
+        try {
+          const { data } = await supabase.auth.signInWithPassword({
+            email: currentEmail,
+            password: newPassword,
+          });
+          if (data?.session) {
+            setSession(data.session);
+            setToken(data.session.access_token);
+            setAuthToken(data.session.access_token);
+          }
+        } catch {
+          // Backend password change already succeeded
+        }
+      }
     }
-
-    const currentEmail = user?.email?.trim().toLowerCase();
-    if (!currentEmail) throw new Error('Your signed-in account could not be verified. Please sign in again.');
-
-    // Supabase Auth re-authenticates the account by checking the current credentials.
-    const { error: reauthenticationError } = await supabase.auth.signInWithPassword({
-      email: currentEmail,
-      password: currentPassword,
-    });
-    if (reauthenticationError) {
-      throw new Error('Your current password is incorrect.');
-    }
-
-    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-    if (updateError) throw new Error(updateError.message);
   };
 
   // MFA Challenge & Verification Step
@@ -1187,6 +1258,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isRecoveryMode,
         setIsRecoveryMode,
         login,
+        requestEmailLoginCode,
+        verifyEmailLoginCode,
         adminLogin,
         customizeAdminCredentials,
         register,

@@ -44,7 +44,19 @@ export function isValidPassword(password: string): { valid: boolean; reason?: st
 
 export function isValidIBAN(iban: string): boolean {
   const clean = iban.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  return clean.length >= 15 && clean.length <= 34;
+  if (clean.length < 15 || clean.length > 34) return false;
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(clean)) return false;
+
+  const rearranged = `${clean.slice(4)}${clean.slice(0, 4)}`;
+  let remainder = 0;
+  for (let i = 0; i < rearranged.length; i += 1) {
+    const ch = rearranged.charCodeAt(i);
+    const digits = ch >= 65 && ch <= 90 ? String(ch - 55) : rearranged[i];
+    for (let j = 0; j < digits.length; j += 1) {
+      remainder = (remainder * 10 + Number(digits[j])) % 97;
+    }
+  }
+  return remainder === 1;
 }
 
 export function isValidCryptoAddress(address: string): boolean {

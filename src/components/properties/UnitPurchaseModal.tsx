@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { ledger } from '../../lib/ledger';
-import { investmentsApi, securityApi, ApiError } from '../../lib/api';
+import { investmentsApi } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import { getSolanaExplorerUrl, isValidSolanaAddress } from '../../lib/solanaService';
 import {
@@ -92,10 +92,6 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
   const [showAgreementModal, setShowAgreementModal] = useState<boolean>(false);
   const [isPrintingAgreement, setIsPrintingAgreement] = useState<boolean>(false);
   const [isDownloadingAgreement, setIsDownloadingAgreement] = useState<boolean>(false);
-  const [verifyingCodeStep, setVerifyingCodeStep] = useState<boolean>(false);
-  const [maskedSecurityEmail, setMaskedSecurityEmail] = useState<string>('');
-  const [verificationCodeInput, setVerificationCodeInput] = useState<string>('');
-  const [verifyingCodeBusy, setVerifyingCodeBusy] = useState<boolean>(false);
 
   useEffect(() => {
     return ledger.subscribe(() => setLiveTick((t) => t + 1));
@@ -121,9 +117,6 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
       setInputMode('tokens');
       setSelectedFeeTierId(PAYMENT_FEE_TIERS[0].id);
       setIsConfirmStep(false);
-      setVerifyingCodeStep(false);
-      setVerificationCodeInput('');
-      setMaskedSecurityEmail('');
       setError(null);
       setSuccessResult(null);
       setOrderSummarySnapshot(null);
@@ -238,7 +231,8 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
       return;
     }
 
-    if (maxAvailable <= 0 || selectedProperty.status !== 'funding') {
+    const normalizedStatus = String(selectedProperty.status || '').toLowerCase();
+    if (maxAvailable <= 0 || (normalizedStatus !== 'open' && normalizedStatus !== 'funding' && normalizedStatus !== 'active')) {
       setError('This offering has no remaining primary units available for subscription.');
       return;
     }
@@ -325,7 +319,6 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
         await refreshUser();
       }
 
-      setVerifyingCodeStep(false);
       setOrderSummarySnapshot({
         tokens: effectiveTokens,
         subtotal: subtotalCost,
@@ -344,48 +337,10 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
         onSuccess();
       }
     } catch (err: any) {
-      if (
-        (err instanceof ApiError && (err.status === 428 || err.code === 'ACTION_EMAIL_VERIFICATION_REQUIRED')) ||
-        err?.code === 'ACTION_EMAIL_VERIFICATION_REQUIRED'
-      ) {
-        try {
-          const issued = await securityApi.requestActionCode('investor.investment.create');
-          setMaskedSecurityEmail(issued?.maskedEmail || user.email);
-          setVerifyingCodeStep(true);
-          setError(null);
-        } catch (codeErr: any) {
-          setError(codeErr?.message || 'Unable to send security verification code to your email.');
-        }
-        return;
-      }
       console.error('Unit purchase error:', err);
       setError(err?.message || 'An unexpected transaction error occurred. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleVerifySecurityCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (verifyingCodeBusy || loading) return;
-    const cleanCode = verificationCodeInput.trim();
-    if (!/^\d{6}$/.test(cleanCode)) {
-      setError('Enter the 6-digit security code sent to your email.');
-      return;
-    }
-    setVerifyingCodeBusy(true);
-    setError(null);
-    try {
-      const verified = await securityApi.verifyActionCode('investor.investment.create', cleanCode);
-      if (!verified?.grantId) {
-        throw new Error('Security code verification failed. Please retry.');
-      }
-      setVerifyingCodeBusy(false);
-      await handleExecuteOrder(String(verified.grantId));
-    } catch (err: any) {
-      setError(err?.message || 'Invalid or expired 6-digit security code.');
-    } finally {
-      setVerifyingCodeBusy(false);
     }
   };
 
@@ -608,78 +563,6 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
                 </button>
               </div>
             </div>
-          ) : verifyingCodeStep ? (
-            <form onSubmit={handleVerifySecurityCode} className="space-y-4 animate-fadeIn">
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-emerald-300 font-heading">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Confirm Investment Authorization</span>
-                </div>
-                <p className="text-[11px] text-slate-300">
-                  Enter the 6-digit verification code dispatched to{' '}
-                  <strong className="text-white">{maskedSecurityEmail || user?.email}</strong> to execute your order for{' '}
-                  <strong className="text-white">{effectiveTokens} units</strong> ({formatCurrency(totalPayable)}).
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="unit-purchase-2fa-code" className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  6-Digit Verification Code
-                </label>
-                <input
-                  id="unit-purchase-2fa-code"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  autoFocus
-                  value={verificationCodeInput}
-                  onChange={(e) => {
-                    setVerificationCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6));
-                    if (error) setError(null);
-                  }}
-                  placeholder="000000"
-                  className="w-full py-3 px-4 rounded-xl border border-[#262B28] bg-[#121413] text-center text-lg font-bold font-mono tracking-[0.35em] text-white focus:outline-none focus:ring-2 focus:ring-[#27845D]"
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-semibold flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="flex gap-2.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVerifyingCodeStep(false);
-                    setError(null);
-                  }}
-                  disabled={verifyingCodeBusy || loading}
-                  className="flex-1 py-3 px-4 bg-[#18211F] border border-[#262B28] hover:bg-[#202D29] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  disabled={verifyingCodeBusy || loading || verificationCodeInput.trim().length !== 6}
-                  className="flex-[2] py-3 px-4 bg-[#27845D] hover:bg-[#1f6b4a] text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {verifyingCodeBusy || loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Verifying &amp; Settling...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Verify &amp; Execute Order</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
           ) : isConfirmStep ? (
             /* Confirmation Step */
             <div className="space-y-4 animate-fadeIn">
@@ -1115,7 +998,7 @@ export const UnitPurchaseModal: React.FC<UnitPurchaseModalProps> = ({
 
               {/* Validation Error */}
               {(error || (!liveCalc.isValid && liveCalc.validationError && !isInsufficient)) && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-semibold flex items-start gap-2">
+                <div role="alert" className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-semibold flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                   <span>{error || liveCalc.validationError}</span>
                 </div>

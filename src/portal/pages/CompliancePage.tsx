@@ -203,7 +203,13 @@ export const CompliancePage: React.FC = () => {
     try {
       const { data, error } = await supabase.storage.from('kyc').createSignedUrl(row.file_path, 60);
       if (error || !data?.signedUrl) throw error || new Error('Unable to create a secure preview.');
-      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+      const link = document.createElement('a');
+      link.href = data.signedUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error: any) { toast.error(safeErrorMessage(error, 'Unable to open secure document preview.')); }
   };
 

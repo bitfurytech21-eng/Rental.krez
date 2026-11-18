@@ -151,9 +151,23 @@ export const ReportsPage: React.FC = () => {
     }
   };
 
-  const handleDownloadUploadedDoc = (doc: PortalUploadedDocument) => {
+  const handleDownloadUploadedDoc = async (doc: PortalUploadedDocument) => {
     setDownloading(doc.id);
+    setError(null);
     try {
+      const signed = await portalApi.getDocumentSignedUrl(doc.id);
+      const a = document.createElement('a');
+      a.href = signed.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      if (signed.fileName || doc.fileName) {
+        a.download = signed.fileName || doc.fileName;
+      }
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success(`${doc.title} opened.`);
+    } catch (err: any) {
       if (doc.fileDataUrl && doc.fileDataUrl.startsWith('data:')) {
         const a = document.createElement('a');
         a.href = doc.fileDataUrl;
@@ -164,24 +178,9 @@ export const ReportsPage: React.FC = () => {
         toast.success(`${doc.title} downloaded.`);
         return;
       }
-      const summary = [
-        'L’AGENCE INVESTOR PORTAL — OFFICIAL DOCUMENT RECORD',
-        `Document ID: ${doc.id}`,
-        `Category: ${doc.category === 'tax_document' ? 'Annual Tax Document' : 'Account Statement'}`,
-        `Title: ${doc.title}`,
-        doc.taxYear ? `Tax Year: ${doc.taxYear}` : '',
-        doc.periodLabel ? `Period: ${doc.periodLabel}` : '',
-        `Investor: ${profile?.fullName || profile?.email || doc.userEmail || 'Registered Investor'}`,
-        `Issued Date: ${formatShortDate(doc.uploadedAt)}`,
-        `File Name: ${doc.fileName}`,
-      ]
-        .filter(Boolean)
-        .join('\n');
-      triggerTextDownload(
-        doc.fileName.endsWith('.txt') ? doc.fileName : `${doc.fileName}.txt`,
-        summary
-      );
-      toast.success(`${doc.title} downloaded.`);
+      const msg = safeErrorMessage(err, 'Unable to generate secure download link.');
+      setError(msg);
+      toast.error(msg);
     } finally {
       setDownloading(null);
     }

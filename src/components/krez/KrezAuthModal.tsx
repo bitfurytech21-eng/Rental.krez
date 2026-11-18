@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { X, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { X, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
 import { getPasswordChecklist, isValidEmail } from '../../lib/validation';
+import { monitoringApi } from '../../lib/api';
+import { formatEmailCodeSendError, sanitizeErrorForMonitoring } from '../../lib/actionVerificationSession';
 
 export type KrezAuthMode = 'login' | 'register' | 'forgot';
 
@@ -18,7 +20,7 @@ export function openKrezAuthModal(mode: KrezAuthMode = 'login', redirectTo?: str
 }
 
 export const KrezAuthModal: React.FC = () => {
-  const { login, sendPasswordReset } = useAuth();
+  const { login, requestEmailLoginCode, verifyEmailLoginCode, sendPasswordReset } = useAuth();
   const { navigateTo } = useNavigation();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -29,8 +31,11 @@ export const KrezAuthModal: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [useEmailCodeMode, setUseEmailCodeMode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
   const [emailCode, setEmailCode] = useState('');
-  const [requiresEmailCode, setRequiresEmailCode] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [consecutiveCodeFailures, setConsecutiveCodeFailures] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offerRegister, setOfferRegister] = useState(false);
@@ -52,8 +57,10 @@ export const KrezAuthModal: React.FC = () => {
       setOfferLogin(false);
       setNotice(null);
       setShowPassword(false);
+      setUseEmailCodeMode(false);
+      setCodeSent(false);
       setEmailCode('');
-      setRequiresEmailCode(false);
+      setConsecutiveCodeFailures(0);
       setIsOpen(true);
     };
     window.addEventListener(OPEN_AUTH_EVENT, handleOpen);
@@ -71,6 +78,12 @@ export const KrezAuthModal: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setResendCooldown((prev) => Math.max(0, prev - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
+
   if (!isOpen) return null;
 
   const switchMode = (nextMode: KrezAuthMode) => {
@@ -85,8 +98,48 @@ export const KrezAuthModal: React.FC = () => {
     setOfferLogin(false);
     setNotice(null);
     setShowPassword(false);
+    setUseEmailCodeMode(false);
+    setCodeSent(false);
     setEmailCode('');
-    setRequiresEmailCode(false);
+    setConsecutiveCodeFailures(0);
+  };
+
+  const handleRequestCode = async () => {
+    if (busy || resendCooldown > 0 || consecutiveCodeFailures >= 2) return;
+    const cleanEmail = email.trim();
+    if (!isValidEmail(cleanEmail)) {
+      setError('Please provide a valid email address.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await requestEmailLoginCode(cleanEmail);
+      setCodeSent(true);
+      setConsecutiveCodeFailures(0);
+      setResendCooldown(res.cooldownSeconds ?? 60);
+      setNotice(
+        res.maskedEmail
+          ? `A 6-digit sign-in code was sent to ${res.maskedEmail}.`
+          : 'A 6-digit sign-in code was sent to your registered email.'
+      );
+    } catch (err: any) {
+      const nextFailures = consecutiveCodeFailures + 1;
+      setConsecutiveCodeFailures(nextFailures);
+      const { message, errorCode } = sanitizeErrorForMonitoring(err);
+      void monitoringApi.logClientError({
+        category: 'auth',
+        eventType: 'LOGIN_EMAIL_CODE_SEND_FAILED',
+        errorCode,
+        message,
+        scope: 'krez_auth_modal',
+      });
+      setError(formatEmailCodeSendError(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,14 +161,50 @@ export const KrezAuthModal: React.FC = () => {
       return;
     }
 
+    if (mode === 'login' && useEmailCodeMode) {
+      if (!codeSent) {
+        await handleRequestCode();
+        return;
+      }
+      const cleanCode = emailCode.replace(/\D/g, '').slice(0, 6);
+      if (cleanCode.length !== 6) {
+        setError('Please enter the 6-digit code sent to your email.');
+        return;
+      }
+      setBusy(true);
+      try {
+        await verifyEmailLoginCode(cleanEmail, cleanCode);
+        setIsOpen(false);
+        setPassword('');
+        setEmailCode('');
+        if (redirectTo) {
+          navigateTo(redirectTo);
+        }
+      } catch (err: any) {
+        const { message, errorCode } = sanitizeErrorForMonitoring(err);
+        void monitoringApi.logClientError({
+          category: 'auth',
+          eventType: 'LOGIN_EMAIL_CODE_VERIFY_FAILED',
+          errorCode,
+          message,
+          scope: 'krez_auth_modal',
+        });
+        setError('The security code is invalid or expired. Request a new code and try again.');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     if (mode === 'login' && !password) {
       setError('Please enter your password.');
       return;
     }
+
     setBusy(true);
     try {
       if (mode === 'login') {
-        await login(cleanEmail, password, emailCode || undefined);
+        await login(cleanEmail, password);
         setIsOpen(false);
         setPassword('');
         if (redirectTo) {
@@ -126,14 +215,14 @@ export const KrezAuthModal: React.FC = () => {
         setNotice('If an account exists for that email, password reset instructions have been sent.');
       }
     } catch (err: any) {
-      if (err?.code === 'EMAIL_CODE_REQUIRED') {
-        setRequiresEmailCode(true);
-        setNotice(err?.message || 'A six-digit security code has been sent to your email address.');
-        setError(null);
-        return;
-      }
       const rawMsg = String(err?.message || '');
       if (
+        err?.code === 'INVALID_CREDENTIALS' ||
+        err?.status === 401 ||
+        /invalid login credentials|invalid email address or password|email or password|email not confirmed/i.test(rawMsg)
+      ) {
+        setError('Email or password is incorrect.');
+      } else if (
         rawMsg.includes('405') ||
         rawMsg.includes('Method Not Allowed') ||
         rawMsg.includes('HTTP Error') ||
@@ -147,7 +236,7 @@ export const KrezAuthModal: React.FC = () => {
           err?.code === 'EMAIL_ALREADY_EXISTS' ||
           /already exists|already registered/i.test(rawMsg)
         );
-        setError(rawMsg || 'Unable to complete request. Please check your details and try again.');
+        setError('Email or password is incorrect.');
       }
     } finally {
       setBusy(false);
@@ -171,7 +260,7 @@ export const KrezAuthModal: React.FC = () => {
           type="button"
           onClick={() => setIsOpen(false)}
           aria-label="Close sign in dialog"
-          className="absolute top-5 right-5 flex h-9 w-9 items-center justify-center rounded-pill border border-border text-muted transition-colors duration-fast hover:border-foreground hover:text-foreground cursor-pointer"
+          className="absolute top-4 right-4 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-pill border border-border text-muted transition-colors duration-fast hover:border-foreground hover:text-foreground cursor-pointer"
         >
           <X className="h-4 w-4" />
         </button>
@@ -191,7 +280,9 @@ export const KrezAuthModal: React.FC = () => {
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
           {mode === 'login'
-            ? 'View your building shares, monthly rent distributions, and ledger statements.'
+            ? useEmailCodeMode
+              ? 'Sign in using a one-time security code sent to your registered email.'
+              : 'View your building shares, monthly rent distributions, and ledger statements.'
             : mode === 'register'
             ? 'Register once to subscribe to shares and receive monthly payouts on the ledger.'
             : 'Enter the email address registered to your account.'}
@@ -213,7 +304,7 @@ export const KrezAuthModal: React.FC = () => {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Alex Morgan"
-                className="mt-2 w-full rounded-input border border-border bg-white px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+                className="mt-2 min-h-[44px] w-full rounded-input border border-border bg-white px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
               />
             </div>
           )}
@@ -233,13 +324,13 @@ export const KrezAuthModal: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@domain.com"
-              className="mt-2 w-full rounded-input border border-border bg-white px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
+              className="mt-2 min-h-[44px] w-full rounded-input border border-border bg-white px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none"
             />
           </div>
 
-          {mode !== 'forgot' && (
+          {mode !== 'forgot' && !useEmailCodeMode && (
             <div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <label
                   htmlFor="krez-auth-password"
                   className="block text-xs font-semibold tracking-widest uppercase text-muted"
@@ -250,13 +341,13 @@ export const KrezAuthModal: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => switchMode('forgot')}
-                    className="text-xs font-medium text-muted underline underline-offset-4 hover:text-foreground cursor-pointer"
+                    className="inline-flex min-h-[44px] items-center px-1 text-xs font-medium text-muted underline underline-offset-4 hover:text-foreground cursor-pointer"
                   >
                     Forgot password?
                   </button>
                 )}
               </div>
-              <div className="relative mt-2">
+              <div className="relative mt-1">
                 <input
                   id="krez-auth-password"
                   type={showPassword ? 'text' : 'password'}
@@ -266,13 +357,13 @@ export const KrezAuthModal: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-input border border-border bg-white px-4 py-3 pr-11 text-sm text-foreground focus:border-primary focus:outline-none"
+                  className="min-h-[44px] w-full rounded-input border border-border bg-white px-4 py-3 pr-12 text-sm text-foreground focus:border-primary focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-2 flex items-center px-2 text-muted hover:text-foreground cursor-pointer"
+                  className="absolute inset-y-0 right-0 flex min-h-[44px] min-w-[44px] items-center justify-center text-muted hover:text-foreground cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -298,7 +389,7 @@ export const KrezAuthModal: React.FC = () => {
             </div>
           )}
 
-          {mode === 'login' && requiresEmailCode && (
+          {mode === 'login' && useEmailCodeMode && codeSent && (
             <div>
               <label htmlFor="krez-auth-email-code" className="block text-xs font-semibold tracking-widest uppercase text-muted">
                 Email security code
@@ -314,33 +405,61 @@ export const KrezAuthModal: React.FC = () => {
                 value={emailCode}
                 onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="Enter 6-digit code"
-                className="mt-2 w-full rounded-input border border-border bg-white px-4 py-3 text-sm tracking-[0.35em] text-foreground focus:border-primary focus:outline-none"
+                className="mt-2 min-h-[44px] w-full rounded-input border border-border bg-white px-4 py-3 text-sm tracking-[0.35em] text-foreground focus:border-primary focus:outline-none"
               />
-              <p className="mt-1 text-xs text-muted">The code expires in five minutes.</p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted">The code expires in five minutes.</p>
+                {consecutiveCodeFailures < 2 && (
+                  <button
+                    type="button"
+                    disabled={busy || resendCooldown > 0}
+                    onClick={() => void handleRequestCode()}
+                    className="inline-flex min-h-[44px] items-center px-2 text-xs font-semibold text-foreground underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+                  >
+                    {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
           {error && (
-            <div className="rounded-input border border-red-300 bg-red-50 px-3.5 py-2.5 text-xs text-red-800 space-y-2" role="alert">
-              <p>{error}</p>
-              {offerRegister && mode === 'login' && (
-                <button
-                  type="button"
-                  onClick={() => switchMode('register')}
-                  className="inline-flex items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700 cursor-pointer"
-                >
-                  Create account with {email.trim() || 'this email'} →
-                </button>
-              )}
-              {offerLogin && mode === 'register' && (
-                <button
-                  type="button"
-                  onClick={() => switchMode('login')}
-                  className="inline-flex items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700 cursor-pointer"
-                >
-                  Sign in with {email.trim() || 'this email'} →
-                </button>
-              )}
+            <div className="flex items-start gap-2 rounded-input border border-red-300 bg-red-50 px-3.5 py-2.5 text-xs text-red-800" role="alert">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <div className="space-y-2">
+                <p>{error}</p>
+                {useEmailCodeMode && consecutiveCodeFailures >= 2 && (
+                  <a
+                    href="/contact"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsOpen(false);
+                      navigateTo('/contact');
+                    }}
+                    className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700"
+                  >
+                    Contact support
+                  </a>
+                )}
+                {offerRegister && mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('register')}
+                    className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700 cursor-pointer"
+                  >
+                    Create account with {email.trim() || 'this email'} →
+                  </button>
+                )}
+                {offerLogin && mode === 'register' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('login')}
+                    className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-4 text-red-900 hover:text-red-700 cursor-pointer"
+                  >
+                    Sign in with {email.trim() || 'this email'} →
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -352,17 +471,46 @@ export const KrezAuthModal: React.FC = () => {
 
           <button
             type="submit"
-            disabled={busy}
-            className="w-full rounded-pill bg-primary px-6 py-3.5 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
+            disabled={busy || (useEmailCodeMode && !codeSent && consecutiveCodeFailures >= 2)}
+            className="min-h-[44px] w-full rounded-pill bg-primary px-6 py-3 text-sm font-medium text-white transition-transform duration-fast hover:scale-hover active:scale-active disabled:opacity-50 cursor-pointer"
           >
             {busy
               ? 'Please wait...'
               : mode === 'login'
-              ? (requiresEmailCode ? 'Verify code & sign in' : 'Continue with email code')
+              ? useEmailCodeMode
+                ? (codeSent ? 'Verify code & sign in' : 'Send sign-in code')
+                : 'Sign in'
               : mode === 'register'
               ? 'Create account'
               : 'Send reset link'}
           </button>
+
+          {mode === 'login' && (
+            <>
+              <div className="relative flex items-center py-1" role="separator">
+                <div className="flex-grow border-t border-border" />
+                <span className="mx-3 shrink text-[11px] uppercase tracking-wider text-muted">or</span>
+                <div className="flex-grow border-t border-border" />
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setNotice(null);
+                    setEmailCode('');
+                    setCodeSent(false);
+                    setConsecutiveCodeFailures(0);
+                    setUseEmailCodeMode((prev) => !prev);
+                  }}
+                  className="inline-flex min-h-[44px] items-center justify-center px-3 text-xs font-medium text-foreground underline underline-offset-4 hover:text-accent cursor-pointer"
+                >
+                  {useEmailCodeMode ? 'Sign in with password instead' : 'Sign in with an email code instead'}
+                </button>
+              </div>
+            </>
+          )}
         </form>
 
         <div className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs text-muted">
@@ -372,7 +520,7 @@ export const KrezAuthModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => switchMode('register')}
-                className="font-semibold uppercase tracking-widest text-foreground hover:text-accent cursor-pointer"
+                className="inline-flex min-h-[44px] items-center px-2 font-semibold uppercase tracking-widest text-foreground hover:text-accent cursor-pointer"
               >
                 Create account
               </button>
@@ -383,7 +531,7 @@ export const KrezAuthModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="font-semibold uppercase tracking-widest text-foreground hover:text-accent cursor-pointer"
+                className="inline-flex min-h-[44px] items-center px-2 font-semibold uppercase tracking-widest text-foreground hover:text-accent cursor-pointer"
               >
                 Sign in
               </button>

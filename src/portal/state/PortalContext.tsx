@@ -7,6 +7,7 @@ import { portalApi } from '../services/portalApi';
 import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
 import { buildSamplePortalDataset, SamplePortalDataset } from '../config/samplePortalData';
 import {
+  PortalAssignedBankAccount,
   PortalConfig,
   PortalDashboardSummary,
   PortalNotification,
@@ -183,6 +184,10 @@ interface PortalContextValue {
   summary: PortalDashboardSummary | null;
   portfolio: PortalPortfolioData | null;
   balance: number;
+  balanceCents: number;
+  availableBalance: number;
+  availableCents: number;
+  assignedBankAccount: PortalAssignedBankAccount | null;
   subBalances: Record<string, number>;
   properties: PortalProperty[];
   transactions: PortalTransaction[];
@@ -236,6 +241,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [summary, setSummary] = useState<PortalDashboardSummary | null>(null);
   const [portfolio, setPortfolio] = useState<PortalPortfolioData | null>(null);
   const [balance, setBalance] = useState<number>(0);
+  const [balanceCents, setBalanceCents] = useState<number>(0);
+  const [availableBalance, setAvailableBalance] = useState<number>(0);
+  const [availableCents, setAvailableCents] = useState<number>(0);
+  const [assignedBankAccount, setAssignedBankAccount] = useState<PortalAssignedBankAccount | null>(null);
   const [subBalances, setSubBalances] = useState<Record<string, number>>({ EUR: 0 });
   const [properties, setProperties] = useState<PortalProperty[]>([]);
   const [transactions, setTransactions] = useState<PortalTransaction[]>([]);
@@ -361,6 +370,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSummary(summaryRes);
       setPortfolio(portfolioRes);
       setBalance(walletRes.balance);
+      setBalanceCents(walletRes.balanceCents);
+      setAvailableBalance(walletRes.availableBalance);
+      setAvailableCents(walletRes.availableCents);
+      setAssignedBankAccount(walletRes.assignedBankAccount || profileRes.assignedBankAccount || null);
       setSubBalances(walletRes.subBalances);
       setProperties(propsRes);
       setTransactions(txRes);
@@ -399,6 +412,12 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSummary(summaryRes);
       setPortfolio(portfolioRes);
       setBalance(walletRes.balance);
+      setBalanceCents(walletRes.balanceCents);
+      setAvailableBalance(walletRes.availableBalance);
+      setAvailableCents(walletRes.availableCents);
+      if (walletRes.assignedBankAccount) {
+        setAssignedBankAccount(walletRes.assignedBankAccount);
+      }
       setSubBalances(walletRes.subBalances);
       setTransactions(txRes);
       setLastSyncedAt(new Date());
@@ -417,6 +436,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ]);
       setProfile(p);
       setBalance(walletRes.balance);
+      setBalanceCents(walletRes.balanceCents);
+      setAvailableBalance(walletRes.availableBalance);
+      setAvailableCents(walletRes.availableCents);
+      setAssignedBankAccount(walletRes.assignedBankAccount || p.assignedBankAccount || null);
       setSubBalances(walletRes.subBalances);
       setSummary(summaryRes);
       setLastSyncedAt(new Date());
@@ -431,6 +454,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSummary(null);
     setPortfolio(null);
     setBalance(0);
+    setBalanceCents(0);
+    setAvailableBalance(0);
+    setAvailableCents(0);
+    setAssignedBankAccount(null);
     setSubBalances({ EUR: 0 });
     setProperties([]);
     setTransactions([]);
@@ -480,6 +507,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'notifications',
         filter: `user_id=eq.${user.id}`,
+      }, () => schedule('notifications', () => { void refreshNotifications(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: 'user_id=is.null',
       }, () => schedule('notifications', () => { void refreshNotifications(); }))
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -598,6 +629,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         summary: sampleDataset ? sampleDataset.summary : summary,
         portfolio: sampleDataset ? sampleDataset.portfolio : portfolio,
         balance: sampleDataset ? sampleDataset.balance : balance,
+        balanceCents: sampleDataset ? Math.round(sampleDataset.balance * 100) : balanceCents,
+        availableBalance: sampleDataset ? sampleDataset.balance : availableBalance,
+        availableCents: sampleDataset ? Math.round(sampleDataset.balance * 100) : availableCents,
+        assignedBankAccount: sampleDataset ? portalConfig.traditional : assignedBankAccount,
         subBalances: sampleDataset ? sampleDataset.subBalances : subBalances,
         properties: sampleDataset ? sampleDataset.properties : properties,
         transactions: sampleDataset ? sampleDataset.transactions : transactions,

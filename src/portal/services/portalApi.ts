@@ -3,6 +3,7 @@ import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
 import { eurToCents } from './money';
 import {
   PortalAccountStatement,
+  PortalAssignedBankAccount,
   PortalComplianceDoc,
   PortalComplianceStep,
   PortalConfig,
@@ -47,12 +48,42 @@ export const portalApi = {
     const res = await api.get<any>('/portfolio');
     const data = unwrap<any>(res) || {};
     return {
-      holdings: Array.isArray(data.holdings) ? data.holdings.map((holding: any) => ({
-        ...holding,
-        totalCostCents: eurToCents(holding.totalCost ?? holding.total_amount_invested ?? 0),
-        ...(holding.currentValue == null ? {} : { currentValueCents: eurToCents(holding.currentValue) }),
-        dividendsReceivedCents: eurToCents(holding.dividendsReceived ?? holding.total_dividends_received ?? 0),
-      })) : [],
+      holdings: Array.isArray(data.holdings)
+        ? data.holdings.map((holding: any) => {
+            const valueCents =
+              holding.value_cents !== undefined && holding.value_cents !== null
+                ? Math.round(Number(holding.value_cents))
+                : holding.valueCents !== undefined && holding.valueCents !== null
+                ? Math.round(Number(holding.valueCents))
+                : eurToCents(holding.currentValue ?? holding.totalCost ?? 0);
+            const totalCostCents =
+              holding.cost_cents !== undefined && holding.cost_cents !== null
+                ? Math.round(Number(holding.cost_cents))
+                : eurToCents(holding.totalCost ?? holding.total_amount_invested ?? valueCents / 100);
+            const gainCents =
+              holding.gain_cents !== undefined && holding.gain_cents !== null
+                ? Math.round(Number(holding.gain_cents))
+                : holding.gainCents !== undefined && holding.gainCents !== null
+                ? Math.round(Number(holding.gainCents))
+                : valueCents - totalCostCents;
+            const currentValue = valueCents / 100;
+            const totalCost = totalCostCents / 100;
+            const gain = gainCents / 100;
+            return {
+              ...holding,
+              propertyTitle: String(holding.name || holding.propertyTitle || holding.title || holding.propertyId || ''),
+              city: String(holding.city || ''),
+              tokensPurchased: Number(holding.shares ?? holding.tokensPurchased ?? 0),
+              totalCost,
+              currentValue,
+              gain,
+              totalCostCents,
+              currentValueCents: valueCents,
+              gainCents,
+              dividendsReceivedCents: eurToCents(holding.dividendsReceived ?? holding.total_dividends_received ?? 0),
+            };
+          })
+        : [],
       totalHoldingsValue: Number(data.totalHoldingsValue || 0),
       totalPortfolioValue: Number(data.totalPortfolioValue || 0),
       totalHoldingsValueCents: eurToCents(data.totalHoldingsValue || 0),
@@ -64,13 +95,39 @@ export const portalApi = {
     };
   },
 
-  async getWalletBalance(): Promise<{ balance: number; balanceCents: number; subBalances: Record<string, number>; currency: string }> {
+  async getWalletBalance(): Promise<{
+    balance: number;
+    balanceCents: number;
+    availableBalance: number;
+    availableCents: number;
+    assignedBankAccount: PortalAssignedBankAccount | null;
+    subBalances: Record<string, number>;
+    currency: string;
+  }> {
     const res = await api.get<any>('/wallet/balance');
     const data = unwrap<any>(res) || {};
+    const balanceCents =
+      data.balanceCents !== undefined && data.balanceCents !== null
+        ? Math.round(Number(data.balanceCents))
+        : data.balance_cents !== undefined && data.balance_cents !== null
+        ? Math.round(Number(data.balance_cents))
+        : eurToCents(data.balance || 0);
+    const availableCents =
+      data.availableCents !== undefined && data.availableCents !== null
+        ? Math.round(Number(data.availableCents))
+        : data.available_cents !== undefined && data.available_cents !== null
+        ? Math.round(Number(data.available_cents))
+        : eurToCents(data.availableBalance ?? data.balance ?? balanceCents / 100);
+    const balance = balanceCents / 100;
+    const availableBalance = availableCents / 100;
     return {
-      balance: Number(data.balance || 0),
-      balanceCents: eurToCents(data.balance || 0),
-      subBalances: data.subBalances && typeof data.subBalances === 'object' ? data.subBalances : { EUR: Number(data.balance || 0) },
+      balance,
+      balanceCents,
+      availableBalance,
+      availableCents,
+      assignedBankAccount: data.assignedBankAccount || null,
+      subBalances:
+        data.subBalances && typeof data.subBalances === 'object' ? data.subBalances : { EUR: balance },
       currency: String(data.currency || 'EUR'),
     };
   },
@@ -86,28 +143,41 @@ export const portalApi = {
     return unwrap<PortalProperty>(res);
   },
 
-  async getTransactions(): Promise<PortalTransaction[]> {
-    const res = await api.get<any>('/transactions');
+  async getTransactions(params?: { limit?: number; offset?: number }): Promise<PortalTransaction[]> {
+    const res = await api.get<any>('/transactions', { params });
     const list = unwrap<any[]>(res);
     if (!Array.isArray(list)) return [];
-    return list.map((t) => ({
-      id: String(t.id),
-      type: String(t.type || 'transaction'),
-      amount: Number(t.amount || 0),
-      amountCents: String(t.currency || 'EUR').toUpperCase() === 'EUR' ? eurToCents(t.amount || 0) : undefined,
-      currency: String(t.currency || 'EUR'),
-      status: String(t.status || 'pending'),
-      reference: String(t.reference || t.id),
-      createdAt: String(t.createdAt || t.created_at || ''),
-      description: t.description,
-      paymentMethod: t.paymentMethod || t.method,
-      propertyId: t.propertyId,
-      propertyTitle: t.propertyTitle,
-      tokensPurchased: t.tokensPurchased,
-      destination: t.destination,
-      txHash: t.txHash,
-      metadata: t.metadata && typeof t.metadata === 'object' ? t.metadata : {},
-    }));
+    return list.map((t) => {
+      const noteValue =
+        typeof t.note === 'string' && t.note.trim()
+          ? t.note.trim()
+          : typeof t.notes === 'string' && t.notes.trim()
+          ? t.notes.trim()
+          : typeof t.metadata?.reason === 'string' && t.metadata.reason.trim()
+          ? t.metadata.reason.trim()
+          : typeof t.metadata?.rejectionReason === 'string' && t.metadata.rejectionReason.trim()
+          ? t.metadata.rejectionReason.trim()
+          : undefined;
+      return {
+        id: String(t.id),
+        type: String(t.type || 'transaction'),
+        amount: Number(t.amount || 0),
+        amountCents: String(t.currency || 'EUR').toUpperCase() === 'EUR' ? eurToCents(t.amount || 0) : undefined,
+        currency: String(t.currency || 'EUR'),
+        status: String(t.status || 'pending'),
+        reference: String(t.reference || t.id),
+        createdAt: String(t.createdAt || t.created_at || ''),
+        description: t.description,
+        note: noteValue,
+        paymentMethod: t.paymentMethod || t.method,
+        propertyId: t.propertyId,
+        propertyTitle: t.propertyTitle,
+        tokensPurchased: t.tokensPurchased,
+        destination: t.destination,
+        txHash: t.txHash,
+        metadata: t.metadata && typeof t.metadata === 'object' ? t.metadata : {},
+      };
+    });
   },
 
   async getNotifications(): Promise<{ items: PortalNotification[]; unreadCount: number }> {
@@ -134,22 +204,25 @@ export const portalApi = {
     return {
       id: String(d.id || ''),
       email: String(d.email || ''),
-      fullName: String(d.fullName || ''),
+      fullName: String(d.fullName || d.full_name || ''),
       country: String(d.country || 'France'),
       countryCode: String(d.countryCode || ''),
       phoneNumber: String(d.phoneNumber || ''),
       accountType: String(d.accountType || 'individual_investor'),
       balance: Number(d.balance || 0),
       investedBalance: Number(d.investedBalance || 0),
-      balanceCents: eurToCents(d.balance || 0),
+      balanceCents: d.balanceCents ?? eurToCents(d.balance || 0),
+      availableBalance: d.availableBalance ?? Number(d.balance || 0),
+      availableCents: d.availableCents ?? eurToCents(d.availableBalance ?? d.balance ?? 0),
       investedBalanceCents: eurToCents(d.investedBalance || 0),
       kycStatus: String(d.kycStatus || 'pending'),
       status: String(d.status || 'active'),
       address: String(d.address || ''),
       city: String(d.city || ''),
       postalCode: String(d.postalCode || ''),
-      bankIban: String(d.bankIban || ''),
-      bankAccountHolder: String(d.bankAccountHolder || d.fullName || ''),
+      bankIban: String(d.bankIban || d.iban || ''),
+      bankAccountHolder: String(d.bankAccountHolder || d.bank_holder || d.fullName || d.full_name || ''),
+      assignedBankAccount: d.assignedBankAccount || null,
       cryptoDepositAddress: String(d.cryptoDepositAddress || ''),
       taxId: String(d.taxId || ''),
       dateOfBirth: String(d.dateOfBirth || ''),
@@ -169,22 +242,25 @@ export const portalApi = {
     return {
       id: String(d.id || ''),
       email: String(d.email || ''),
-      fullName: String(d.fullName || ''),
+      fullName: String(d.fullName || d.full_name || ''),
       country: String(d.country || 'France'),
       countryCode: String(d.countryCode || ''),
       phoneNumber: String(d.phoneNumber || ''),
       accountType: String(d.accountType || 'individual_investor'),
       balance: Number(d.balance || 0),
       investedBalance: Number(d.investedBalance || 0),
-      balanceCents: eurToCents(d.balance || 0),
+      balanceCents: d.balanceCents ?? eurToCents(d.balance || 0),
+      availableBalance: d.availableBalance ?? Number(d.balance || 0),
+      availableCents: d.availableCents ?? eurToCents(d.availableBalance ?? d.balance ?? 0),
       investedBalanceCents: eurToCents(d.investedBalance || 0),
       kycStatus: String(d.kycStatus || 'pending'),
       status: String(d.status || 'active'),
       address: String(d.address || ''),
       city: String(d.city || ''),
       postalCode: String(d.postalCode || ''),
-      bankIban: String(d.bankIban || ''),
-      bankAccountHolder: String(d.bankAccountHolder || d.fullName || ''),
+      bankIban: String(d.bankIban || d.iban || ''),
+      bankAccountHolder: String(d.bankAccountHolder || d.bank_holder || d.fullName || d.full_name || ''),
+      assignedBankAccount: d.assignedBankAccount || null,
       cryptoDepositAddress: String(d.cryptoDepositAddress || ''),
       taxId: String(d.taxId || ''),
       dateOfBirth: String(d.dateOfBirth || ''),
@@ -245,7 +321,9 @@ export const portalApi = {
     return unwrap<PortalTransaction>(res);
   },
 
-  async requestActionVerification(actionScope: 'investor.withdrawal.create' | 'investor.investment.create' | 'investor.profile.bank.update'): Promise<{
+  async requestActionVerification(
+    actionScope: 'investor.withdrawal.create' | 'investor.profile.bank.update' | 'investor.password.change'
+  ): Promise<{
     otpRequired: boolean;
     grantId?: string;
     maskedEmail?: string;
@@ -262,7 +340,7 @@ export const portalApi = {
   },
 
   async verifyActionCode(
-    actionScope: 'investor.withdrawal.create' | 'investor.investment.create' | 'investor.profile.bank.update',
+    actionScope: 'investor.withdrawal.create' | 'investor.profile.bank.update' | 'investor.password.change',
     code: string
   ): Promise<string> {
     const res = await apiRequest<any>('/security/action-code/verify', {
@@ -376,6 +454,25 @@ export const portalApi = {
     const res = await api.get<any>('/reports/statements');
     const list = unwrap<PortalUploadedDocument[]>(res);
     return Array.isArray(list) ? list : [];
+  },
+
+  async getDocumentSignedUrl(docId: string): Promise<{
+    url: string;
+    expiresInSeconds: number;
+    fileName?: string;
+    mimeType?: string;
+  }> {
+    const res = await api.get<any>(`/reports/statements/${encodeURIComponent(docId)}/signed-url`);
+    const data = unwrap<any>(res) || {};
+    if (!data?.url) {
+      throw new Error('Document download URL is unavailable.');
+    }
+    return {
+      url: String(data.url),
+      expiresInSeconds: Number(data.expiresInSeconds || 60),
+      fileName: data.fileName ? String(data.fileName) : undefined,
+      mimeType: data.mimeType ? String(data.mimeType) : undefined,
+    };
   },
 
   async getPerformance(): Promise<PortalPerformanceData> {

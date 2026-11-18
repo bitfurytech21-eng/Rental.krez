@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { safeErrorMessage } from '../../lib/safeErrorMessage';
-import { Building2, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Building2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
 import { portalApi } from '../services/portalApi';
@@ -31,9 +31,6 @@ export const PropertyDetailPage: React.FC = () => {
   const [tokensCount, setTokensCount] = useState<number>(1);
   const [sharesError, setSharesError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [otpStep, setOtpStep] = useState<{ maskedEmail?: string } | null>(null);
-  const [otpCode, setOtpCode] = useState('');
-  const [otpError, setOtpError] = useState<string | null>(null);
   const [txSuccess, setTxSuccess] = useState<{
     certificateId?: string;
     totalCost: number;
@@ -133,7 +130,8 @@ export const PropertyDetailPage: React.FC = () => {
   const totalCost = Math.round((principalCost + feeAmount) * 100) / 100;
   const estAnnualIncome =
     Math.round(principalCost * (property.projectedYield / 100) * 100) / 100;
-  const isOpen = property.status === 'funding' || property.status === 'active';
+  const statusLower = String(property.status || '').toLowerCase();
+  const isOpen = statusLower === 'open' || statusLower === 'funding' || statusLower === 'active';
   const minTokens = Math.max(
     1,
     Math.ceil(
@@ -165,13 +163,13 @@ export const PropertyDetailPage: React.FC = () => {
   );
 
   const badgeStatus =
-    property.status === 'funded' || property.status === 'active' || property.status === 'funding'
+    statusLower === 'funded' || statusLower === 'active' || statusLower === 'funding' || statusLower === 'open'
       ? 'completed'
       : 'pending';
   const badgeLabel =
-    property.status === 'funded'
+    statusLower === 'funded'
       ? 'Completed'
-      : property.status === 'upcoming'
+      : statusLower === 'upcoming'
       ? 'Pending'
       : 'Open';
 
@@ -230,37 +228,14 @@ export const PropertyDetailPage: React.FC = () => {
       return;
     }
 
-    if (otpStep && otpCode.trim().length !== 6) {
-      setOtpError('Enter the 6-digit email security code.');
-      return;
-    }
-    setOtpError(null);
-
     setSubmitting(true);
     try {
-      let grantId: string | undefined;
-      if (otpStep) {
-        grantId = await portalApi.verifyActionCode('investor.investment.create', otpCode.trim());
-      } else {
-        const reqRes = await portalApi.requestActionVerification('investor.investment.create');
-        if (reqRes.otpRequired) {
-          setOtpStep({ maskedEmail: reqRes.maskedEmail });
-          setSubmitting(false);
-          toast.info(`Security code sent to ${reqRes.maskedEmail || 'your email'}.`);
-          return;
-        }
-        grantId = reqRes.grantId;
-      }
-
       const result = await portalApi.executeInvestment({
         propertyId: property.id,
         tokensCount,
         paymentMethod: 'Platform Balance',
-        grantId,
       });
 
-      setOtpStep(null);
-      setOtpCode('');
       setTxSuccess({
         certificateId: result?.investment?.certificateId,
         totalCost,
@@ -514,48 +489,14 @@ export const PropertyDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {otpStep && (
-                <div className="portal-surface-elevated p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#6FD8B0]">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Email security code ({otpStep.maskedEmail})</span>
-                  </div>
-                  <input
-                    id="property-otp"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                      setOtpCode(val);
-                      if (otpError && val.length === 6) setOtpError(null);
-                    }}
-                    aria-invalid={Boolean(otpError)}
-                    aria-describedby={otpError ? 'property-otp-error' : undefined}
-                    placeholder="Enter 6-digit code"
-                    className={`portal-input tracking-[0.3em] font-mono ${
-                      otpError ? '!border-[#FB7185]' : ''
-                    }`}
-                  />
-                  {otpError && (
-                    <p id="property-otp-error" role="alert" className="text-xs text-[#FB7185]">
-                      {otpError}
-                    </p>
-                  )}
-                </div>
-              )}
-
               <div className="space-y-2.5">
                 <button
                   type="submit"
                   disabled={submitting || !isOpen || totalCost > balance}
-                  className="portal-btn-primary w-full"
+                  className="portal-btn-primary w-full min-h-[44px]"
                 >
                   {submitting
                     ? 'Processing subscription...'
-                    : otpStep
-                    ? 'Verify & complete subscription'
                     : `Invest from ${formatEuro(totalCost)}`}
                 </button>
 

@@ -43,6 +43,9 @@ export const ExplorePage: React.FC = () => {
   const filtered = useMemo(() => {
     const q = exploreSearch.trim().toLowerCase();
     return properties.filter((p) => {
+      if (String(p.status || '').toLowerCase() !== 'open') {
+        return false;
+      }
       if (activeFilter === 'Residential' && classifyPropertySegment(p.type) !== 'Residential') {
         return false;
       }

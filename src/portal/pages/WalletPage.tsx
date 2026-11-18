@@ -17,6 +17,8 @@ export const WalletPage: React.FC = () => {
   const {
     loading,
     balance,
+    availableBalance,
+    assignedBankAccount,
     subBalances,
     profile,
     portalConfig,
@@ -138,19 +140,23 @@ export const WalletPage: React.FC = () => {
       {requestError && <ErrorBanner message={requestError} onRetry={() => void refreshAll()} />}
       {/* Wallet Balance Hero */}
       <section className="portal-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="space-y-1">
           <div className="text-xs font-semibold uppercase tracking-wider text-[#8FA1A8]">
-            Available Wallet Balance
+            Wallet Balance
           </div>
-          <div className="mt-1.5 text-3xl font-bold text-[#F2F5F4] portal-tabular">
+          <div className="text-3xl font-bold text-[#F2F5F4] portal-tabular">
             {formatEuro(balance)}
+          </div>
+          <div className="text-xs text-[#8FA1A8] portal-tabular">
+            Available for withdrawal &amp; investment:{' '}
+            <span className="font-semibold text-[#6FD8B0]">{formatEuro(availableBalance)}</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => navigatePortal('deposit')}
-            className="portal-btn-primary"
+            className="portal-btn-primary min-h-[44px]"
           >
             <ArrowDownLeft className="w-4 h-4" />
             <span>Deposit</span>
@@ -158,7 +164,7 @@ export const WalletPage: React.FC = () => {
           <button
             type="button"
             onClick={() => navigatePortal('withdraw')}
-            className="portal-btn-secondary"
+            className="portal-btn-secondary min-h-[44px]"
           >
             <ArrowUpRight className="w-4 h-4" />
             <span>Withdraw</span>
@@ -166,43 +172,70 @@ export const WalletPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Linked Bank Account Card */}
-      <section className="portal-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-[14px] bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center shrink-0">
-            <Landmark className="w-5 h-5" />
+      {/* Assigned Deposit Bank Account from Profile & Linked Withdrawal Bank */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="portal-card space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-[#F2F5F4]">Assigned bank account (Deposits)</h3>
+            <StatusBadge
+              status={assignedBankAccount?.iban ? 'completed' : 'pending'}
+              label={assignedBankAccount?.iban ? 'Active' : 'Standard'}
+            />
           </div>
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h3 className="text-sm font-semibold text-[#F2F5F4]">Linked bank account</h3>
-              <StatusBadge
-                status={hasLinkedBank ? 'completed' : 'not_started'}
-                label={hasLinkedBank ? 'Linked' : 'Not linked'}
-              />
-            </div>
-            {hasLinkedBank ? (
-              <div className="text-xs text-[#8FA1A8] space-y-0.5">
-                <div className="text-[#F2F5F4] font-medium truncate">
-                  {profile?.fullName || 'Registered Investor'}
-                </div>
-                <div className="font-mono">{maskIban(profile?.bankIban)}</div>
+          {assignedBankAccount?.iban ? (
+            <div className="text-xs text-[#8FA1A8] space-y-1">
+              <div className="text-[#F2F5F4] font-medium">
+                {assignedBankAccount.beneficiary} · {assignedBankAccount.bankName}
               </div>
-            ) : (
-              <p className="text-xs text-[#8FA1A8]">
-                Add your personal SEPA IBAN in Profile settings to enable withdrawals.
-              </p>
-            )}
-          </div>
-        </div>
+              <div className="font-mono text-[#6FD8B0]">{assignedBankAccount.iban}</div>
+              {assignedBankAccount.bic && (
+                <div className="font-mono">BIC: {assignedBankAccount.bic}</div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-[#8FA1A8]">
+              Deposit wiring instructions are provisioned on the Deposit screen.
+            </p>
+          )}
+        </section>
 
-        <button
-          type="button"
-          onClick={() => navigatePortal('profile')}
-          className="portal-btn-secondary shrink-0"
-        >
-          {hasLinkedBank ? 'Manage banking' : 'Add bank account'}
-        </button>
-      </section>
+        <section className="portal-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-[14px] bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center shrink-0">
+              <Landmark className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h3 className="text-sm font-semibold text-[#F2F5F4]">Linked withdrawal bank</h3>
+                <StatusBadge
+                  status={hasLinkedBank ? 'completed' : 'not_started'}
+                  label={hasLinkedBank ? 'Linked' : 'Not linked'}
+                />
+              </div>
+              {hasLinkedBank ? (
+                <div className="text-xs text-[#8FA1A8] space-y-0.5">
+                  <div className="text-[#F2F5F4] font-medium truncate">
+                    {profile?.bankAccountHolder || profile?.fullName || 'Registered Investor'}
+                  </div>
+                  <div className="font-mono">{maskIban(profile?.bankIban)}</div>
+                </div>
+              ) : (
+                <p className="text-xs text-[#8FA1A8]">
+                  Add your personal SEPA IBAN in Profile &amp; Banking to enable withdrawals.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigatePortal('profile')}
+            className="portal-btn-secondary shrink-0 min-h-[44px]"
+          >
+            {hasLinkedBank ? 'Manage banking' : 'Add bank account'}
+          </button>
+        </section>
+      </div>
 
       {/* Sub-currency treasury balances */}
       {subBalanceEntries.length === 0 ? (
