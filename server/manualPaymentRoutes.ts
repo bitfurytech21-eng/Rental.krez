@@ -271,6 +271,10 @@ function safeMethodInput(body: any, actorId: string, existing?: any) {
   }
   const activeFlag = typeof body?.active === 'boolean' ? body.active :
     typeof body?.enabled === 'boolean' ? body.enabled : (existing?.enabled ?? true);
+  const rawRows = body?.detailRows ?? body?.detail_rows;
+  if (method === 'bank' && Array.isArray(rawRows) && rawRows.some((row: any) => !String(row?.label || '').trim() || !String(row?.value || '').trim())) {
+    throw new Error('BANK_DETAILS_REQUIRED');
+  }
   const { detail_rows } = normalizeDetailRows(body, existing);
   const network = String(body?.network ?? previousDetails[GATE_META_NETWORK] ?? '').trim().toUpperCase();
   const walletAddress = String(body?.walletAddress ?? body?.wallet_address ?? previousDetails[GATE_META_WALLET] ?? '').trim();
@@ -280,7 +284,7 @@ function safeMethodInput(body: any, actorId: string, existing?: any) {
   if (method === 'usdt') {
     const validNetwork = ['TRC20', 'ERC20', 'BEP20'].includes(network);
     const validAddress = network === 'TRC20'
-      ? /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(walletAddress)
+      ? /^T[^\\s]{33}$/.test(walletAddress)
       : ['ERC20', 'BEP20'].includes(network) ? /^0x[a-fA-F0-9]{40}$/.test(walletAddress) : false;
     if (!validNetwork || !validAddress) throw new Error('INVALID_USDT_NETWORK_OR_ADDRESS');
   }
