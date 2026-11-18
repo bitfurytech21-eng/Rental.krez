@@ -1,511 +1,289 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { UploadCloud, FileText, CheckCircle2 } from 'lucide-react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle2, Clock3, Eye, FileCheck2, FileText, ShieldCheck, UploadCloud, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../lib/auth';
+import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { usePortal } from '../state/PortalContext';
-import { portalApi } from '../services/portalApi';
-import { PortalComplianceDoc, PortalComplianceStep } from '../types';
-import { formatNumber, formatShortDate } from '../utils/format';
-import { validateComplianceFile } from '../utils/validate';
-import { EmptyState } from '../components/EmptyState';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
-import { StatusBadge } from '../components/StatusBadge';
 
-type ComplianceCategory = 'kyc_identity' | 'proof_of_address' | 'accredited_proof';
-
-const COMPLIANCE_STEPS: Array<{
-  category: ComplianceCategory;
-  title: string;
-  description: string;
-  defaultDocType: string;
-}> = [
-  {
-    category: 'kyc_identity',
-    title: 'Identity verification',
-    description: 'Valid passport or EU national identity card',
-    defaultDocType: 'Passport',
-  },
-  {
-    category: 'proof_of_address',
-    title: 'Proof of address',
-    description: 'Utility bill or bank statement dated within 90 days',
-    defaultDocType: 'Utility Bill',
-  },
-  {
-    category: 'accredited_proof',
-    title: 'Investor questionnaire',
-    description: 'Regulatory suitability, source of funds & risk declaration',
-    defaultDocType: 'Investor Questionnaire',
-  },
+type DocType = 'identity' | 'proof_of_address' | 'questionnaire';
+type KycRow = {
+  id: string; user_id: string; doc_type: DocType; file_path: string | null;
+  answers: Record<string, unknown> | null; status: 'pending' | 'approved' | 'rejected';
+  reason: string | null; created_at: string;
+};
+type Step = { docType: DocType; title: string; subtitle: string; instruction: string };
+const STEPS: Step[] = [
+  { docType: 'identity', title: 'Identity verification', subtitle: 'Passport or national ID', instruction: 'Upload a clear, valid passport or national identity document.' },
+  { docType: 'proof_of_address', title: 'Proof of address', subtitle: 'Utility bill or bank statement', instruction: 'Upload a statement showing your name and current address, dated within the last 3 months.' },
+  { docType: 'questionnaire', title: 'Investor questionnaire', subtitle: 'Investor suitability information', instruction: 'Tell us about your investment experience, finances and objectives.' },
 ];
-
-function buildQuestionnaireDataUrl(summaryText: string): { dataUrl: string; byteSize: number } {
-  const escaped = summaryText.replace(/[()\\]/g, '');
-  const pdfContent = `%PDF-1.4
-1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
-2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
-3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj
-4 0 obj << /Length ${escaped.length + 32} >>
-stream
-BT /F1 11 Tf 40 740 Td (${escaped}) Tj ET
-endstream
-endobj
-xref
-0 5
-0000000000 65535 f 
-0000000010 00000 n 
-0000000060 00000 n 
-0000000117 00000 n 
-0000000200 00000 n 
-trailer << /Size 5 /Root 1 0 R >>
-startxref
-300
-%%EOF`;
-  const encoded = btoa(unescape(encodeURIComponent(pdfContent)));
-  return {
-    dataUrl: `data:application/pdf;base64,${encoded}`,
-    byteSize: pdfContent.length,
-  };
-}
+const MAX_BYTES = 10 * 1024 * 1024;
+const MIME_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+const profileLabel = (status: string | null) => ({ not_started: 'Not started', in_review: 'In review', verified: 'Verified', rejected: 'Rejected' }[status || ''] || 'Status unavailable');
+const dateLabel = (value: string) => new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
+const fileExtension = (file: File) => {
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (file.type === 'image/jpeg' && (ext === 'jpg' || ext === 'jpeg')) return ext;
+  if (file.type === 'image/png' && ext === 'png') return ext;
+  if (file.type === 'application/pdf' && ext === 'pdf') return ext;
+  return file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'pdf';
+};
+const OPTIONS = {
+  experience: ['none', 'some', 'experienced'],
+  income: ['Under €25,000', '€25,000–€50,000', '€50,000–€100,000', '€100,000–€250,000', 'Over €250,000', 'Prefer not to say'],
+  funds: ['Employment income', 'Business income', 'Savings', 'Investment proceeds', 'Property sale or inheritance', 'Other'],
+  goal: ['Capital preservation', 'Income generation', 'Long-term growth', 'Diversification'],
+  risk: ['low', 'medium', 'high'],
+};
+type Answers = { experience: string; income: string; funds: string; goal: string; risk: string; capitalRisk: boolean };
+const EMPTY_ANSWERS: Answers = { experience: '', income: '', funds: '', goal: '', risk: '', capitalRisk: false };
 
 export const CompliancePage: React.FC = () => {
   const toast = useToast();
-  const { loading, profile, sampleDataEnabled, sampleDataset, refreshProfile } = usePortal();
-  const fileRef = useRef<HTMLInputElement | null>(null);
-
-  const [docs, setDocs] = useState<PortalComplianceDoc[]>([]);
-  const [steps, setSteps] = useState<PortalComplianceStep[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(true);
-  const [category, setCategory] = useState<ComplianceCategory>('kyc_identity');
-  const [documentType, setDocumentType] = useState('Passport');
+  const { user } = useAuth();
+  const { loading: portalLoading, sampleDataEnabled } = usePortal();
+  const [rows, setRows] = useState<KycRow[]>([]);
+  const [overallStatus, setOverallStatus] = useState<string | null>(null);
+  const [loadingKyc, setLoadingKyc] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState<DocType | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [docTypeError, setDocTypeError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [questionnaireError, setQuestionnaireError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [addressConfirmed, setAddressConfirmed] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [insertRetry, setInsertRetry] = useState<{ path: string; docType: DocType } | null>(null);
+  const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS);
+  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({});
+  const [questionSubmitting, setQuestionSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Investor questionnaire state
-  const [experience, setExperience] = useState('Intermediate (3-5 years)');
-  const [sourceOfFunds, setSourceOfFunds] = useState('Employment & Business Income');
-  const [riskAck, setRiskAck] = useState(false);
+  const refreshKyc = useCallback(async () => {
+    if (!isSupabaseConfigured() || !user?.id) throw new Error('Your secure investor session is unavailable. Please sign in again.');
+    const [{ data: auth, error: authError }, profile, submissions] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from('profiles').select('kyc_status').eq('id', user.id).single(),
+      supabase.from('kyc_submissions').select('id,user_id,doc_type,file_path,answers,status,reason,created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
+    ]);
+    if (authError || auth.user?.id !== user.id) throw new Error('Your secure investor session has expired. Please sign in again.');
+    if (profile.error) throw profile.error;
+    if (submissions.error) throw submissions.error;
+    setOverallStatus(profile.data.kyc_status || 'not_started');
+    setRows((submissions.data || []) as KycRow[]);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (sampleDataEnabled) {
-      setLoadingDocs(false);
-      return;
-    }
-    let active = true;
-    setLoadingDocs(true);
-    Promise.all([
-      portalApi.getComplianceDocuments().catch(() => [] as PortalComplianceDoc[]),
-      portalApi.getComplianceSteps().catch(() => [] as PortalComplianceStep[]),
-    ])
-      .then(([docList, stepList]) => {
-        if (!active) return;
-        setDocs(docList);
-        setSteps(stepList);
-      })
-      .finally(() => {
-        if (active) setLoadingDocs(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [sampleDataEnabled]);
+    let alive = true;
+    setLoadingKyc(true);
+    refreshKyc().catch((e: any) => alive && setLoadError(safeErrorMessage(e, 'Unable to load compliance records.'))).finally(() => alive && setLoadingKyc(false));
+    if (!user?.id || sampleDataEnabled) return () => { alive = false; };
+    const channel = supabase.channel('investor-kyc-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kyc_submissions', filter: `user_id=eq.${user.id}` }, () => { void refreshKyc(); })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => { void refreshKyc(); })
+      .subscribe();
+    const poll = window.setInterval(() => { void refreshKyc(); }, 30000);
+    return () => { alive = false; window.clearInterval(poll); void supabase.removeChannel(channel); };
+  }, [refreshKyc, user?.id, sampleDataEnabled]);
 
-  if (loading && !sampleDataEnabled && !profile) {
-    return <LoadingSkeleton rows={4} />;
-  }
+  useEffect(() => {
+    if (!selectedFile || !selectedFile.type.startsWith('image/')) { setPreviewUrl(null); return; }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
 
-  const displayedDocs = sampleDataEnabled && sampleDataset ? sampleDataset.complianceDocs : docs;
-  const kycStatus = profile?.kycStatus || 'pending';
+  const latestByType = useMemo(() => {
+    const map = new Map<DocType, KycRow>();
+    rows.forEach((row) => { if (!map.has(row.doc_type)) map.set(row.doc_type, row); });
+    return map;
+  }, [rows]);
+  const verifiedCount = STEPS.filter((s) => latestByType.get(s.docType)?.status === 'approved').length;
+  const pendingCount = STEPS.filter((s) => latestByType.get(s.docType)?.status === 'pending').length;
+  const rejectedRows = STEPS.map((s) => ({ step: s, row: latestByType.get(s.docType) })).filter((x) => x.row?.status === 'rejected');
+  const isFullyVerified = overallStatus === 'verified';
 
-  const getStepState = (cat: ComplianceCategory): { status: string; label: string } => {
-    if (!sampleDataEnabled && steps.length > 0) {
-      const serverStep = steps.find((s) => s.stepKey === cat);
-      if (serverStep) {
-        if (serverStep.status === 'verified') return { status: 'completed', label: 'Verified' };
-        if (serverStep.status === 'in_review') return { status: 'pending', label: 'In review' };
-        if (serverStep.status === 'rejected') return { status: 'failed', label: 'Rejected' };
-        return { status: 'not_started', label: 'Not started' };
-      }
-    }
-    if (kycStatus === 'verified' && !sampleDataEnabled) {
-      return { status: 'completed', label: 'Verified' };
-    }
-    const matching = displayedDocs.filter((d) => d.category === cat);
-    if (matching.length === 0) {
-      if (kycStatus === 'rejected') {
-        return { status: 'failed', label: 'Action needed' };
-      }
-      return { status: 'not_started', label: 'Not started' };
-    }
-    const latest = matching[0];
-    if (latest.status === 'verified') {
-      return { status: 'completed', label: 'Verified' };
-    }
-    if (latest.status === 'rejected') {
-      return { status: 'failed', label: 'Rejected' };
-    }
-    return { status: 'pending', label: 'In review' };
+  const closeSheet = () => { setActiveStep(null); setSelectedFile(null); setFileError(null); setAddressConfirmed(false); setInsertRetry(null); };
+  const openStep = (docType: DocType) => {
+    setActiveStep(docType); setSelectedFile(null); setFileError(null); setAddressConfirmed(false); setInsertRetry(null);
+    if (docType === 'questionnaire') { setAnswers(EMPTY_ANSWERS); setAnswerErrors({}); }
   };
 
-  const selectStepCategory = (cat: ComplianceCategory) => {
-    setCategory(cat);
-    const meta = COMPLIANCE_STEPS.find((s) => s.category === cat);
-    if (meta) {
-      setDocumentType(meta.defaultDocType);
-    }
-    setSelectedFile(null);
-    setDocTypeError(null);
-    setFileError(null);
-    setQuestionnaireError(null);
-    if (fileRef.current) fileRef.current.value = '';
-  };
-
-  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const chooseFile = (file?: File) => {
     if (!file) return;
-    const check = validateComplianceFile(file);
-    if (!check.valid) {
-      setFileError(check.error || 'Select a valid PDF, JPG, or PNG scan (max 15 MB).');
-      setSelectedFile(null);
-      e.target.value = '';
-      return;
-    }
-    setFileError(null);
-    setSelectedFile(file);
+    if (!MIME_TYPES.includes(file.type)) { setSelectedFile(null); setFileError('Unsupported file type. Choose a JPG, PNG or PDF.'); return; }
+    if (file.size > MAX_BYTES) { setSelectedFile(null); setFileError('This file is larger than 10 MB. Choose a smaller file.'); return; }
+    setFileError(null); setInsertRetry(null); setSelectedFile(file);
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
+  const insertSubmission = async (path: string, docType: DocType) => {
+    const { error } = await supabase.from('kyc_submissions').insert({ user_id: user!.id, doc_type: docType, file_path: path, status: 'pending' });
+    if (error) throw error;
+  };
 
-    const trimmedDocType = documentType.trim();
-    let hasError = false;
-    if (!trimmedDocType) {
-      setDocTypeError('Specify the document type (e.g. Passport, Utility Bill).');
-      hasError = true;
-    } else {
-      setDocTypeError(null);
-    }
-    if (!selectedFile) {
-      setFileError('Choose a PDF, JPG, or PNG file before submitting.');
-      hasError = true;
-    } else {
-      setFileError(null);
-    }
-    if (hasError || !selectedFile) return;
-
-    if (sampleDataEnabled) {
-      toast.info('Sample data preview is active. Disable Sample data to submit live compliance documents.');
-      return;
-    }
-
-    setSubmitting(true);
+  const uploadFile = async (retryInsert = false) => {
+    if (!activeStep || activeStep === 'questionnaire' || !user?.id || uploading) return;
+    if (sampleDataEnabled) { toast.info('Switch to live account data before uploading compliance documents.'); return; }
+    if (activeStep === 'proof_of_address' && !addressConfirmed) { setFileError('Confirm that your proof of address is dated within the last 3 months.'); return; }
+    if (!retryInsert && !selectedFile) { setFileError('Choose a document before submitting.'); return; }
+    setUploading(true); setFileError(null);
     try {
-      let dataUrl: string | undefined;
-      if (selectedFile.size <= 1_500_000) {
-        dataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ''));
-          reader.onerror = () => resolve('');
-          reader.readAsDataURL(selectedFile);
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || auth.user?.id !== user.id) throw new Error('Your secure investor session has expired. Please sign in again.');
+      let path: string;
+      if (retryInsert && insertRetry?.path && insertRetry.docType === activeStep) {
+        path = insertRetry.path;
+        await insertSubmission(path, activeStep);
+      } else {
+        if (!selectedFile) throw new Error('Choose a document before submitting.');
+        const ext = fileExtension(selectedFile);
+        const timestamp = Date.now();
+        path = `${user.id}/${activeStep}-${timestamp}.${ext}`;
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData.session?.access_token) throw new Error('Your secure session has expired. Please sign in again.');
+        const env = (import.meta as any).env || {};
+        const baseUrl = String(env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
+        const apiKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        if (!baseUrl || !apiKey) throw new Error('Secure storage is not configured. Please contact support.');
+        setUploadProgress(0);
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${baseUrl}/storage/v1/object/kyc/${path.split('/').map(encodeURIComponent).join('/')}`);
+          xhr.setRequestHeader('Authorization', `Bearer ${sessionData.session!.access_token}`);
+          xhr.setRequestHeader('apikey', apiKey);
+          xhr.setRequestHeader('Content-Type', selectedFile.type);
+          xhr.setRequestHeader('x-upsert', 'false');
+          xhr.upload.onprogress = (event) => { if (event.lengthComputable) setUploadProgress(Math.round((event.loaded / event.total) * 100)); };
+          xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText || `Storage upload failed (${xhr.status}).`));
+          xhr.onerror = () => reject(new Error('Network error while uploading. Check your connection and retry.'));
+          xhr.onabort = () => reject(new Error('Upload cancelled.'));
+          xhr.send(selectedFile);
         });
+        setUploadProgress(100);
+        try { await insertSubmission(path, activeStep); }
+        catch (error: any) {
+          setInsertRetry({ path, docType: activeStep });
+          throw new Error('Your file uploaded securely, but the submission record could not be saved. Select “Retry submission” to finish without uploading the file again.');
+        }
       }
-
-      const res = await portalApi.uploadComplianceDocument({
-        category,
-        documentType: trimmedDocType,
-        fileName: selectedFile.name,
-        fileSize: selectedFile.size,
-        mimeType: selectedFile.type || 'application/pdf',
-        fileDataUrl: dataUrl || undefined,
-      });
-
-      setDocs(res.documents);
-      setSelectedFile(null);
-      if (fileRef.current) fileRef.current.value = '';
-      const updatedSteps = await portalApi.getComplianceSteps().catch(() => null);
-      if (updatedSteps) setSteps(updatedSteps);
-      await refreshProfile();
-      toast.success('Document submitted for compliance review.');
-    } catch (err: any) {
-      toast.error(err?.message || 'Unable to submit compliance document.');
-    } finally {
-      setSubmitting(false);
-    }
+      await refreshKyc();
+      closeSheet();
+      toast.success('Submitted. Your information is securely received and awaiting review.');
+    } catch (error: any) {
+      setFileError(safeErrorMessage(error, 'Unable to submit your document. Please retry.'));
+    } finally { setUploading(false); }
   };
 
-  const handleSubmitQuestionnaire = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-    if (!riskAck) {
-      setQuestionnaireError('Confirm the capital-at-risk disclosure before submitting your questionnaire.');
-      return;
-    }
-    setQuestionnaireError(null);
-
-    if (sampleDataEnabled) {
-      toast.info('Sample data preview is active. Disable Sample data to submit your live questionnaire.');
-      return;
-    }
-
-    setSubmitting(true);
+  const submitQuestionnaire = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const errors: Record<string, string> = {};
+    (['experience', 'income', 'funds', 'goal', 'risk'] as const).forEach((key) => { if (!answers[key]) errors[key] = 'Please select an answer.'; });
+    if (!answers.capitalRisk) errors.capitalRisk = 'This acknowledgement is required.';
+    setAnswerErrors(errors);
+    if (Object.keys(errors).length || questionSubmitting || !user?.id) return;
+    if (sampleDataEnabled) { toast.info('Switch to live account data before submitting your questionnaire.'); return; }
+    setQuestionSubmitting(true);
     try {
-      const summaryLine = `Investor: ${profile?.email || 'Investor'} | Experience: ${experience} | Source: ${sourceOfFunds} | CapitalAtRiskAcknowledged: Yes`;
-      const { dataUrl, byteSize } = buildQuestionnaireDataUrl(summaryLine);
-      const res = await portalApi.uploadComplianceDocument({
-        category: 'accredited_proof',
-        documentType: 'Investor Questionnaire',
-        fileName: 'investor-suitability-questionnaire.pdf',
-        fileSize: byteSize,
-        mimeType: 'application/pdf',
-        fileDataUrl: dataUrl,
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError || auth.user?.id !== user.id) throw new Error('Your secure investor session has expired. Please sign in again.');
+      const { error } = await supabase.from('kyc_submissions').insert({
+        user_id: user.id, doc_type: 'questionnaire', status: 'pending',
+        answers: { investment_experience: answers.experience, annual_income_range: answers.income, source_of_funds: answers.funds, investment_goal: answers.goal, risk_tolerance: answers.risk, capital_at_risk_acknowledged: answers.capitalRisk },
       });
-
-      setDocs(res.documents);
-      const updatedSteps = await portalApi.getComplianceSteps().catch(() => null);
-      if (updatedSteps) setSteps(updatedSteps);
-      await refreshProfile();
-      toast.success('Investor questionnaire submitted for review.');
-    } catch (err: any) {
-      toast.error(err?.message || 'Unable to submit investor questionnaire.');
-    } finally {
-      setSubmitting(false);
-    }
+      if (error) throw error;
+      await refreshKyc(); closeSheet(); toast.success('Submitted. We’ll review it shortly.');
+    } catch (error: any) { setAnswerErrors({ form: safeErrorMessage(error, 'Unable to submit questionnaire. Please retry.') }); }
+    finally { setQuestionSubmitting(false); }
   };
 
-  return (
-    <div className="max-w-4xl space-y-6">
-      <div>
-        <h2 className="text-xl font-heading font-bold text-[#F2F5F4]">Compliance Vault</h2>
-        <p className="text-sm text-[#8FA1A8] mt-0.5">
-          Complete identity verification, proof of address, and your investor suitability questionnaire.
-        </p>
-      </div>
+  const viewUploaded = async (row: KycRow) => {
+    if (!row.file_path) return;
+    try {
+      const { data, error } = await supabase.storage.from('kyc').createSignedUrl(row.file_path, 60);
+      if (error || !data?.signedUrl) throw error || new Error('Unable to create a secure preview.');
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error: any) { toast.error(safeErrorMessage(error, 'Unable to open secure document preview.')); }
+  };
 
-      {/* 3 Verification Steps */}
-      <section aria-label="Verification steps" className="portal-card-list divide-y divide-[#1F2C33]">
-        {COMPLIANCE_STEPS.map((item, idx) => {
-          const stepState = getStepState(item.category);
-          const isSelected = category === item.category;
-          return (
-            <button
-              key={item.category}
-              type="button"
-              onClick={() => selectStepCategory(item.category)}
-              className={`w-full min-h-[72px] p-4 flex items-center justify-between gap-4 text-left transition-colors ${
-                isSelected ? 'bg-[#172228]' : 'hover:bg-[#172228]/70'
-              }`}
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-[#F2F5F4] flex items-center gap-2">
-                  <span className="text-[#6FD8B0] portal-tabular">{idx + 1}.</span>
-                  <span>{item.title}</span>
-                </div>
-                <div className="text-xs text-[#8FA1A8] mt-0.5">{item.description}</div>
-              </div>
-              <StatusBadge status={stepState.status} label={stepState.label} />
-            </button>
-          );
+  const setAnswer = (key: keyof Answers, value: string | boolean) => {
+    setAnswers((current) => ({ ...current, [key]: value }));
+    setAnswerErrors((current) => ({ ...current, [key]: '', form: '' }));
+  };
+  const renderRadio = (key: keyof Answers, label: string, options: string[]) => (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium text-[#E5ECE9]">{label}</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map((option) => <label key={option} className="flex min-h-11 items-center gap-2 rounded-xl border border-[#1F2C33] bg-[#0B0F10] px-3 py-2 text-xs text-[#C6D1CE]">
+          <input type="radio" name={key} value={option} checked={answers[key] === option} onChange={() => setAnswer(key, option)} className="accent-[#6FD8B0]" />{option}
+        </label>)}
+      </div>
+      {answerErrors[key] && <p role="alert" className="text-xs text-rose-300">{answerErrors[key]}</p>}
+    </fieldset>
+  );
+
+  if (portalLoading && !user) return <LoadingSkeleton rows={4} />;
+  return (
+    <div className="max-w-4xl space-y-6 text-[#F2F5F4]">
+      <header>
+        <div className="flex items-center gap-2 text-[#6FD8B0]"><ShieldCheck className="h-5 w-5" /><span className="text-xs font-semibold uppercase tracking-[0.16em]">Investor compliance</span></div>
+        <h2 className="mt-2 text-xl font-heading font-bold">Compliance Vault</h2>
+        <p className="mt-1 text-sm text-[#8FA1A8]">We use these details to confirm your identity, address and investment suitability. Your documents are kept in a private vault and can only be accessed through authorized review.</p>
+      </header>
+
+      {isFullyVerified && <div className="flex items-center gap-3 rounded-2xl border border-[#6FD8B0]/40 bg-[#6FD8B0]/10 p-4 text-[#6FD8B0]"><CheckCircle2 className="h-5 w-5 shrink-0" /><div><p className="font-semibold">You’re fully verified</p><p className="mt-0.5 text-xs text-[#B8E9D6]">Your compliance checks are complete. No further uploads are required.</p></div></div>}
+      {rejectedRows.length > 0 && !isFullyVerified && <div className="rounded-2xl border border-rose-400/40 bg-rose-400/10 p-4" role="alert"><p className="font-semibold text-rose-200">Action required — update your documents</p>{rejectedRows.map(({ step, row }) => <p key={step.docType} className="mt-1 text-sm text-rose-100"><strong>{step.title}:</strong> {row?.reason || 'Please upload a corrected document.'}</p>)}</div>}
+
+      <section className="rounded-2xl border border-[#1F2C33] bg-[#121A1F] p-4 sm:p-5" aria-label="Verification progress">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs text-[#8FA1A8]">Verification progress</p><p className="mt-1 text-2xl font-semibold tabular-nums">{verifiedCount} <span className="text-sm font-normal text-[#8FA1A8]">of 3 verified</span></p></div><div className="text-right"><p className="text-xs text-[#8FA1A8]">Overall account status</p><span className={`mt-1 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${overallStatus === 'verified' ? 'border-[#6FD8B0]/40 bg-[#6FD8B0]/10 text-[#6FD8B0]' : overallStatus === 'rejected' ? 'border-rose-400/40 bg-rose-400/10 text-rose-300' : overallStatus === 'in_review' ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : 'border-[#1F2C33] bg-[#0B0F10] text-[#AAB8BC]'}`}>{loadingKyc ? 'Loading status…' : profileLabel(overallStatus)}</span></div></div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#0B0F10]" role="progressbar" aria-valuemin={0} aria-valuemax={3} aria-valuenow={verifiedCount}><div className="h-full rounded-full bg-[#6FD8B0] transition-all" style={{ width: `${verifiedCount / 3 * 100}%` }} /></div>
+        <p className="mt-2 text-xs text-[#8FA1A8]">{pendingCount ? `${pendingCount} submission${pendingCount === 1 ? '' : 's'} currently in review.` : 'Complete all three steps to finish investor verification.'}</p>
+      </section>
+
+      {sampleDataEnabled && <div className="rounded-xl border border-amber-300/30 bg-[#121A1F] p-3 text-sm text-amber-200">Sample data is active. Switch to live account data to submit real compliance information.</div>}
+      {loadError && <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-400/30 p-3 text-sm text-rose-200"><AlertCircle className="h-4 w-4" />{loadError}<button className="ml-auto min-h-[44px] px-2 underline" onClick={() => { setLoadingKyc(true); refreshKyc().catch((e: any) => setLoadError(safeErrorMessage(e, 'Unable to load compliance records.'))).finally(() => setLoadingKyc(false)); }}>Retry</button></div>}
+
+      <section className="space-y-3" aria-label="Verification steps">
+        {STEPS.map((step, index) => {
+          const row = latestByType.get(step.docType);
+          const pending = row?.status === 'pending'; const approved = row?.status === 'approved'; const rejected = row?.status === 'rejected';
+          const statusText = !row ? 'Not started' : approved ? 'Verified' : pending ? 'In review' : 'Rejected';
+          const statusClass = !row ? 'border-[#1F2C33] bg-[#0B0F10] text-[#AAB8BC]' : approved ? 'border-[#6FD8B0]/40 bg-[#6FD8B0]/10 text-[#6FD8B0]' : pending ? 'border-amber-300/40 bg-amber-300/10 text-amber-200' : 'border-rose-400/40 bg-rose-400/10 text-rose-300';
+          return <article key={step.docType} className="overflow-hidden rounded-2xl border border-[#1F2C33] bg-[#121A1F]">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5"><div className="flex min-w-0 items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#1F2C33] bg-[#0B0F10] text-sm font-semibold text-[#6FD8B0]">{index + 1}</div><div><h3 className="text-sm font-semibold">{step.title}</h3><p className="mt-0.5 text-xs text-[#8FA1A8]">{step.subtitle}</p>{row && <p className="mt-1.5 text-xs text-[#8FA1A8]">Submitted {dateLabel(row.created_at)}</p>}</div></div>
+              <div className="flex items-center gap-2"><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClass}`}>{approved && <CheckCircle2 className="h-3.5 w-3.5" />}{pending && <Clock3 className="h-3.5 w-3.5" />}{statusText}</span>{row?.file_path && <button type="button" onClick={() => void viewUploaded(row)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[#1F2C33] px-2.5 text-xs text-[#AAB8BC]" aria-label="View uploaded document with temporary secure link"><Eye className="h-4 w-4" />View</button>}{!isFullyVerified && !pending && !approved && <button type="button" disabled={loadingKyc || uploading || Boolean(loadError) || sampleDataEnabled} onClick={() => openStep(step.docType)} className="min-h-[44px] rounded-lg bg-[#6FD8B0] px-3.5 text-xs font-semibold text-[#0B0F10] disabled:opacity-50">{rejected ? 'Upload again' : step.docType === 'questionnaire' ? 'Complete' : 'Upload'}</button>}</div>
+            </div>
+            {rejected && <div className="mx-4 mb-4 rounded-xl border border-rose-400/35 bg-rose-400/10 p-3 sm:mx-5"><p className="text-xs font-semibold text-rose-300">Reason for rejection</p><p className="mt-1 whitespace-pre-wrap text-sm text-rose-100">{row.reason || 'Please submit an updated response.'}</p></div>}
+          </article>;
         })}
       </section>
+      <div className="flex items-start gap-2 rounded-xl border border-[#1F2C33] bg-[#121A1F] p-3 text-xs leading-relaxed text-[#8FA1A8]"><FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-[#6FD8B0]" />Your documents are stored in a private vault. Secure previews use short-lived links and are never public.</div>
 
-      {/* Active Step Submission Panel */}
-      {category === 'accredited_proof' ? (
-        <form onSubmit={handleSubmitQuestionnaire} noValidate className="portal-card space-y-4">
-          <div>
-            <h3 className="text-base font-semibold text-[#F2F5F4]">Investor questionnaire</h3>
-            <p className="text-xs text-[#8FA1A8] mt-0.5">
-              Required regulatory suitability and source-of-funds confirmation.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="quest-exp" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-                Real estate / private markets experience
-              </label>
-              <select
-                id="quest-exp"
-                value={experience}
-                onChange={(e) => setExperience(e.target.value)}
-                className="portal-input"
-              >
-                <option value="First-time investor">First-time investor</option>
-                <option value="Intermediate (3-5 years)">Intermediate (3–5 years)</option>
-                <option value="Experienced / Professional (5+ years)">Experienced / Professional (5+ years)</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="quest-source" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-                Primary source of funds
-              </label>
-              <select
-                id="quest-source"
-                value={sourceOfFunds}
-                onChange={(e) => setSourceOfFunds(e.target.value)}
-                className="portal-input"
-              >
-                <option value="Employment & Business Income">Employment &amp; Business Income</option>
-                <option value="Savings & Investment Proceeds">Savings &amp; Investment Proceeds</option>
-                <option value="Property Sale or Inheritance">Property Sale or Inheritance</option>
-                <option value="Corporate / Family Office Treasury">Corporate / Family Office Treasury</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label
-              className={`min-h-[44px] flex items-start gap-3 p-3.5 rounded-[14px] border bg-[#0B0F10] cursor-pointer ${
-                questionnaireError ? 'border-[#FB7185]' : 'border-[#1F2C33]'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={riskAck}
-                onChange={(e) => {
-                  setRiskAck(e.target.checked);
-                  if (e.target.checked) setQuestionnaireError(null);
-                }}
-                aria-invalid={Boolean(questionnaireError)}
-                aria-describedby={questionnaireError ? 'quest-ack-error' : undefined}
-                className="mt-1 h-4 w-4 accent-[#6FD8B0] shrink-0"
-              />
-              <span className="text-xs text-[#8FA1A8] leading-relaxed">
-                I confirm the information provided is accurate and understand that real estate SPV investments involve illiquidity and capital risk, and target returns are not guaranteed.
-              </span>
-            </label>
-            {questionnaireError && (
-              <p id="quest-ack-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
-                {questionnaireError}
-              </p>
-            )}
-          </div>
-
-          <button type="submit" disabled={submitting} className="portal-btn-primary">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{submitting ? 'Submitting...' : 'Submit questionnaire'}</span>
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleUpload} noValidate className="portal-card space-y-4">
-          <h3 className="text-base font-semibold text-[#F2F5F4]">
-            Upload {category === 'kyc_identity' ? 'identity document' : 'proof of address'}
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="comp-category" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-                Verification step
-              </label>
-              <select
-                id="comp-category"
-                value={category}
-                onChange={(e) => selectStepCategory(e.target.value as ComplianceCategory)}
-                className="portal-input"
-              >
-                <option value="kyc_identity">Identity verification</option>
-                <option value="proof_of_address">Proof of address</option>
-                <option value="accredited_proof">Investor questionnaire</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="comp-doctype" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-                Document type
-              </label>
-              <input
-                id="comp-doctype"
-                type="text"
-                value={documentType}
-                onChange={(e) => {
-                  setDocumentType(e.target.value);
-                  if (docTypeError) setDocTypeError(null);
-                }}
-                aria-invalid={Boolean(docTypeError)}
-                aria-describedby={docTypeError ? 'comp-doctype-error' : undefined}
-                placeholder="e.g. Passport, Utility Bill"
-                className={`portal-input ${docTypeError ? '!border-[#FB7185]' : ''}`}
-              />
-              {docTypeError && (
-                <p id="comp-doctype-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
-                  {docTypeError}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="comp-file"
-              className={`min-h-[120px] flex flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed bg-[#0B0F10] p-6 text-center cursor-pointer transition-colors ${
-                fileError ? 'border-[#FB7185]' : 'border-[#1F2C33] hover:border-[#6FD8B0]'
-              }`}
-            >
-              <UploadCloud className="w-6 h-6 text-[#6FD8B0]" />
-              <span className="text-sm font-medium text-[#F2F5F4]">
-                {selectedFile ? selectedFile.name : 'Select PDF, JPG, or PNG scan (max 15 MB)'}
-              </span>
-              <input
-                ref={fileRef}
-                id="comp-file"
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={handleFilePick}
-                aria-invalid={Boolean(fileError)}
-                aria-describedby={fileError ? 'comp-file-error' : undefined}
-                className="sr-only"
-              />
-            </label>
-            {fileError && (
-              <p id="comp-file-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
-                {fileError}
-              </p>
-            )}
-          </div>
-
-          <button type="submit" disabled={submitting} className="portal-btn-primary">
-            {submitting ? 'Uploading...' : 'Submit document'}
-          </button>
-        </form>
-      )}
-
-      {/* Submitted Documents */}
-      <section className="space-y-3">
-        <h3 className="text-base font-semibold text-[#F2F5F4]">Submitted records</h3>
-        {loadingDocs && !sampleDataEnabled ? (
-          <LoadingSkeleton rows={2} />
-        ) : displayedDocs.length === 0 ? (
-          <EmptyState
-            icon={<FileText className="w-5 h-5" />}
-            title="No documents submitted yet"
-            description="Select one of the steps above to upload your verification documents or submit the investor questionnaire."
-          />
-        ) : (
-          <div className="portal-card-list divide-y divide-[#1F2C33]">
-            {displayedDocs.map((doc) => (
-              <div key={doc.id} className="p-4 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-[#F2F5F4] truncate">{doc.title}</div>
-                  <div className="text-xs text-[#8FA1A8] mt-0.5 truncate portal-tabular">
-                    {doc.fileName} · {formatNumber(Math.round(doc.fileSize / 1024))} KB · {formatShortDate(doc.uploadedAt)}
-                  </div>
-                </div>
-                <StatusBadge
-                  status={doc.status}
-                  label={
-                    doc.status === 'verified'
-                      ? 'Verified'
-                      : doc.status === 'rejected'
-                      ? 'Rejected'
-                      : 'In review'
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {activeStep && <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 sm:items-center sm:p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !uploading && !questionSubmitting) closeSheet(); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="kyc-sheet-title" className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl border border-[#1F2C33] bg-[#121A1F] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl">
+          <div className="mb-4 flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-[#6FD8B0]">Compliance Vault</p><h3 id="kyc-sheet-title" className="mt-1 text-lg font-semibold">{STEPS.find((s) => s.docType === activeStep)?.title}</h3></div><button type="button" disabled={uploading || questionSubmitting} onClick={closeSheet} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#1F2C33] text-[#AAB8BC]" aria-label="Close"><X className="h-5 w-5" /></button></div>
+          {activeStep === 'questionnaire' ? <form onSubmit={submitQuestionnaire} className="space-y-5">
+            {renderRadio('experience', 'Investing experience', OPTIONS.experience)}
+            {renderRadio('income', 'Annual income range', OPTIONS.income)}
+            {renderRadio('funds', 'Source of funds', OPTIONS.funds)}
+            {renderRadio('goal', 'Investment goal', OPTIONS.goal)}
+            {renderRadio('risk', 'Risk tolerance', OPTIONS.risk)}
+            <div><label className="flex items-start gap-3 rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3 text-xs leading-relaxed text-[#C6D1CE]"><input type="checkbox" checked={answers.capitalRisk} onChange={(e) => setAnswer('capitalRisk', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#6FD8B0]" /><span>I understand capital is at risk and target returns are not guaranteed. <span className="text-rose-300">*</span></span></label>{answerErrors.capitalRisk && <p role="alert" className="mt-1 text-xs text-rose-300">{answerErrors.capitalRisk}</p>}</div>
+            {answerErrors.form && <p role="alert" className="text-sm text-rose-300">{answerErrors.form}</p>}
+            <div className="flex gap-2"><button type="button" onClick={closeSheet} className="portal-btn-secondary flex-1">Cancel</button><button type="submit" disabled={questionSubmitting} className="portal-btn-primary flex-1">{questionSubmitting ? 'Submitting…' : 'Submit questionnaire'}</button></div>
+          </form> : <div className="space-y-4">
+            <div className="rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3"><p className="text-sm font-semibold text-[#E5ECE9]">Before you upload</p><ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed text-[#AAB8BC]"><li>All four corners must be visible.</li><li>Text and details must be clear and readable.</li><li>The document must not be expired.</li><li>Do not edit, crop, alter or obscure the document.</li></ul></div>
+            {activeStep === 'proof_of_address' && <p className="text-xs text-[#AAB8BC]">Your utility bill or bank statement must be dated within the last 3 months.</p>}
+            {!selectedFile ? <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#36504B] bg-[#0B0F10] p-5 text-center hover:border-[#6FD8B0]"><UploadCloud className="h-6 w-6 text-[#6FD8B0]" /><span className="text-sm font-medium">Choose a file or take a photo</span><span className="text-xs text-[#8FA1A8]">JPG, PNG or PDF · Maximum 10 MB</span><input ref={fileInputRef} type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" capture="environment" className="sr-only" onChange={(e) => chooseFile(e.target.files?.[0])} /></label> : <div className="flex items-center gap-3 rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3">{previewUrl ? <img src={previewUrl} alt="Selected document preview" className="h-20 w-20 rounded-lg object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[#121A1F]"><FileText className="h-8 w-8 text-[#6FD8B0]" /></div>}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{selectedFile.name}</p><p className="text-xs text-[#8FA1A8]">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p></div><button type="button" disabled={uploading} onClick={() => { setSelectedFile(null); setFileError(null); fileInputRef.current?.click(); }} className="min-h-[44px] rounded-lg border border-[#1F2C33] px-3 text-xs font-semibold text-[#6FD8B0]">Replace</button></div>}
+            {activeStep === 'proof_of_address' && <label className="flex items-start gap-2 text-xs text-[#AAB8BC]"><input type="checkbox" checked={addressConfirmed} onChange={(e) => setAddressConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#6FD8B0]" />I confirm this document is dated within the last 3 months.</label>}
+            {fileError && <p role="alert" className="rounded-lg border border-rose-400/30 bg-rose-400/10 p-3 text-xs leading-relaxed text-rose-200">{fileError}</p>}
+            {uploading && <div><div className="mb-1 flex justify-between text-xs text-[#AAB8BC]"><span>Uploading securely…</span><span>{uploadProgress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#0B0F10]"><div className="h-full bg-[#6FD8B0] transition-all" style={{ width: `${uploadProgress}%` }} /></div></div>}
+            {insertRetry && <button type="button" disabled={uploading} onClick={() => void uploadFile(true)} className="w-full rounded-xl border border-amber-300/40 bg-amber-300/10 px-4 py-3 text-sm font-semibold text-amber-200">Retry submission record (do not upload again)</button>}
+            <div className="flex gap-2"><button type="button" disabled={uploading} onClick={closeSheet} className="portal-btn-secondary flex-1">Cancel</button><button type="button" disabled={uploading || !selectedFile || (activeStep === 'proof_of_address' && !addressConfirmed)} onClick={() => void uploadFile()} className="portal-btn-primary flex-1">{uploading ? 'Submitting…' : 'Submit'}</button></div>
+          </div>}
+        </section>
+      </div>}
     </div>
   );
 };

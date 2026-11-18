@@ -3,6 +3,7 @@ import type { StaffRole, User } from '../../types/user';
 export type AdminSectionId =
   | 'dashboard'
   | 'investors'
+  | 'finance'
   | 'deposits'
   | 'withdrawals'
   | 'properties'
@@ -17,6 +18,15 @@ export type AdminSectionId =
   | 'settings'
   | 'audit-log';
 
+export type FinanceTabSlug =
+  | 'overview'
+  | 'deposits'
+  | 'withdrawals'
+  | 'payments'
+  | 'investments'
+  | 'ledger'
+  | 'gates';
+
 export type AdminSettingsTabId = 'general' | 'payment-gates' | 'security';
 
 export interface AdminNavItem {
@@ -28,10 +38,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { id: 'dashboard', label: 'Dashboard', group: 'Overview' },
   { id: 'investors', label: 'Investors', group: 'Overview' },
-  { id: 'deposits', label: 'Deposits', group: 'Treasury' },
-  { id: 'withdrawals', label: 'Withdrawals', group: 'Treasury' },
-  { id: 'transactions', label: 'Transactions', group: 'Treasury' },
-  { id: 'distributions', label: 'Distributions', group: 'Treasury' },
+  { id: 'finance', label: 'Finance', group: 'Treasury' },
   { id: 'properties', label: 'Properties', group: 'Assets & Portfolio' },
   { id: 'investments', label: 'Investments', group: 'Assets & Portfolio' },
   { id: 'kyc', label: 'KYC', group: 'Compliance & Comms' },
@@ -47,6 +54,7 @@ export const ROLE_ALLOWED_SECTIONS: Record<StaffRole, AdminSectionId[]> = {
   super_admin: [
     'dashboard',
     'investors',
+    'finance',
     'deposits',
     'withdrawals',
     'properties',
@@ -64,6 +72,7 @@ export const ROLE_ALLOWED_SECTIONS: Record<StaffRole, AdminSectionId[]> = {
   finance: [
     'dashboard',
     'investors',
+    'finance',
     'deposits',
     'withdrawals',
     'investments',
@@ -163,6 +172,19 @@ export function getDefaultSectionForRole(role: StaffRole | null): AdminSectionId
   return ROLE_ALLOWED_SECTIONS[role][0] || 'dashboard';
 }
 
+export function mapHashToFinanceTab(rawHashOrPath: string): FinanceTabSlug | null {
+  const clean = rawHashOrPath.replace(/^#/, '').replace(/^\/admin\/?/, '').toLowerCase();
+  if (!clean) return null;
+  if (clean.includes('finance/deposits') || clean.includes('deposit')) return 'deposits';
+  if (clean.includes('finance/withdrawals') || clean.includes('withdrawal')) return 'withdrawals';
+  if (clean.includes('finance/payments') || clean.includes('correction')) return 'payments';
+  if (clean.includes('finance/investments') || clean.includes('distribution') || clean.includes('dividend')) return 'investments';
+  if (clean.includes('finance/ledger') || clean.includes('ledger') || clean.includes('transaction')) return 'ledger';
+  if (clean.includes('finance/gates') || clean === 'gates') return 'gates';
+  if (clean.startsWith('finance')) return 'overview';
+  return null;
+}
+
 export function mapHashToSection(rawHashOrPath: string): AdminSectionId | null {
   const clean = rawHashOrPath.replace(/^#/, '').replace(/^\/admin\/?/, '').toLowerCase();
   if (!clean) return null;
@@ -170,12 +192,22 @@ export function mapHashToSection(rawHashOrPath: string): AdminSectionId | null {
   if (clean.includes('audit') || clean.includes('log')) return 'audit-log';
   if (clean.includes('dashboard') || clean === 'overview') return 'dashboard';
   if (clean.includes('user') || clean.includes('investor')) return 'investors';
-  if (clean.includes('withdrawal')) return 'withdrawals';
-  if (clean.includes('deposit') || clean.includes('manual-payment')) return 'deposits';
+  if (
+    clean.startsWith('finance') ||
+    clean.includes('withdrawal') ||
+    clean.includes('deposit') ||
+    clean.includes('manual-payment') ||
+    clean.includes('dividend') ||
+    clean.includes('distribution') ||
+    clean.includes('ledger') ||
+    clean.includes('transaction') ||
+    clean.includes('reconcil') ||
+    clean === 'gates'
+  ) {
+    return 'finance';
+  }
   if (clean.includes('propert') || clean.includes('spv')) return 'properties';
   if (clean.includes('investment')) return 'investments';
-  if (clean.includes('dividend') || clean.includes('distribution')) return 'distributions';
-  if (clean.includes('ledger') || clean.includes('transaction') || clean.includes('reconcil')) return 'transactions';
   if (clean.includes('kyc')) return 'kyc';
   if (clean.includes('document') || clean.includes('proof')) return 'documents';
   if (clean.includes('notification') || clean.includes('ticket')) return 'notifications';

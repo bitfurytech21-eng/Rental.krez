@@ -12,6 +12,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
+import { requireLatestLegalConsent } from './legalConsent';
 import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
 import {
   manualPaymentRouter,
@@ -77,7 +78,8 @@ import { BLOG_POSTS } from '../src/data/blogPosts';
 import { dailyPaymentService } from './dailyPaymentService';
 import { generatePropertyPaymentsCsv } from '../src/lib/distributionService';
 import {
-  isSupabaseServerConfigured, isSupabaseAuthConfigured, getSupabaseAdmin, databaseHealth, listUserTransactions, listAdminTransactions,
+  isSupabaseServerConfigured, isSupabaseAuthConfigured, canUseLiveSupabaseData, isMissingSchemaError, markSupabaseSchemaMissingInDev,
+  getSupabaseAdmin, databaseHealth, listUserTransactions, listAdminTransactions,
   getUserProfile, updateUserProfile, runFinancialRpc, toApiTransaction, listInvestmentPlans,
   getInvestmentPlan, listUserInvestments, listAdminUsers, getPersistentDashboardSummary,
   getPersistentAdminDashboard, listPersistentInvestments, listPersistentAuditLogs, getAdminIdentityByEmail,
@@ -111,6 +113,7 @@ router.use('/manual-payments', manualPaymentRouter);
 const DASHBOARD_ACTION_SCOPES = new Set([
   'investor.withdrawal.create',
   'investor.investment.create',
+  'investor.profile.bank.update',
   'admin.deposit.approve',
   'admin.deposit.reject',
   'admin.withdrawal.approve',
@@ -216,6 +219,49 @@ const requireActionEmailVerification = (actionScope: string) =>
     }
   };
 
+
+const requireBankChangeEmailVerification = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const input = req.body || {};
+  const includesBankFields =
+    Object.prototype.hasOwnProperty.call(input, 'bankIban') ||
+    Object.prototype.hasOwnProperty.call(input, 'bankAccountHolder');
+  if (!includesBankFields) return next();
+
+  try {
+    let existing: any = null;
+    if (shouldUseSupabaseForCustomer(req)) {
+      existing = await getUserProfile(req.user!.id);
+    } else {
+      existing = devCustomersById.get(req.user!.id) || null;
+    }
+    if (!existing) return next();
+
+    const currentIban = String(existing.bank_iban ?? existing.bankIban ?? existing.iban ?? '')
+      .replace(/\\s+/g, '').toUpperCase();
+    const nextIban = typeof input.bankIban === 'string'
+      ? input.bankIban.replace(/\\s+/g, '').toUpperCase()
+      : currentIban;
+    const currentHolder = String(existing.bank_account_holder ?? existing.bankAccountHolder ?? existing.bank_holder ?? existing.full_name ?? existing.fullName ?? '')
+      .trim().toLowerCase();
+    const nextHolder = typeof input.bankAccountHolder === 'string'
+      ? input.bankAccountHolder.trim().toLowerCase()
+      : currentHolder;
+
+    if (currentIban === nextIban && currentHolder === nextHolder) return next();
+    return requireActionEmailVerification('investor.profile.bank.update')(req, res, next);
+  } catch {
+    return res.status(503).json({
+      success: false,
+      error: 'Unable to verify this bank-account change. Please try again.',
+      code: 'BANK_CHANGE_VERIFICATION_UNAVAILABLE',
+      requestId: req.id
+    });
+  }
+};
 
 const maskLoginEmail = (email: string) => {
   const [local, domain] = email.split('@');
@@ -566,7 +612,7 @@ async function persistDevState(): Promise<void> {
 }
 
 registerManualPaymentDevHooks({
-  onDepositCreated: async (deposit) => {
+  onDepositCreated: async (deposit: any) => {
     const depTx = {
       id: deposit.id,
       userId: deposit.user_id,
@@ -595,7 +641,7 @@ registerManualPaymentDevHooks({
       type: 'info',
     });
   },
-  onDepositReviewed: async (deposit, approve, reason) => {
+  onDepositReviewed: async (deposit: any, approve: boolean, reason?: string) => {
     const tx = mockTransactions.find((t) => t.id === deposit.id || t.reference === deposit.reference);
     if (tx) {
       tx.status = approve ? 'completed' : 'rejected';
@@ -771,6 +817,15 @@ let platformConfig = {
   baseCurrency: 'EUR',
   minInvestment: 750,
   maxInvestmentPerInvestor: 500000,
+  limits: {
+    min_deposit_eur: 100,
+    max_deposit_eur: 500000,
+    min_withdrawal_eur: 250,
+    max_withdrawal_eur: 250000,
+    min_investment_eur: 500,
+    withdrawal_fee_eur: 0,
+    require_kyc_for_withdrawal: true
+  },
   tradingEnabled: true,
   depositsEnabled: true,
   withdrawalsEnabled: true,
@@ -2443,30 +2498,34 @@ router.get('/auth/session', async (req: AuthenticatedRequest, res: Response) => 
  * GET /api/v1/admin/users
  */
 router.get('/admin/users', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (canUseLiveSupabaseData()) {
+    try {
+      const users = await listAdminUsers();
+      const data = users.map((u: any) => ({
+        id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number,
+        role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','finance','compliance','property_manager','support','auditor'].includes(role)) || (u.is_admin ? 'super_admin' : (u.staff_role || 'investor')),
+        isAdmin: Boolean(u.is_admin),
+        staffRole: u.staff_role ?? null,
+        frozen: Boolean(u.frozen ?? u.account_status === 'suspended'),
+        assignedGateId: u.assigned_gate_id ?? null,
+        accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0),
+        kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), bankIban: u.bank_iban || u.iban || undefined, bankAccountHolder: u.bank_account_holder || u.bank_holder || u.full_name, cryptoDepositAddress: u.crypto_deposit_address || undefined, status: (u.frozen || u.account_status === 'suspended') ? 'suspended' : 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
+      }));
+      return res.json({ success: true, data, total: data.length, requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-users-db', eventType: 'ADMIN_USERS_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load users.' });
+        return res.status(503).json({ success: false, error: 'The investor registry is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
     }
-    const data = Array.from(devCustomersById.values()).map(toPublicDevCustomer);
-    return res.json({ success: true, data, total: data.length, requestId: req.id });
   }
-  try {
-    const users = await listAdminUsers();
-    const data = users.map((u: any) => ({
-      id: u.id, email: u.email, fullName: u.full_name, country: u.country, phoneNumber: u.phone_number,
-      role: (u.user_roles || []).map((r: any) => r.role).find((role: string) => ['super_admin','admin','finance_admin','operations_admin','finance','compliance','property_manager','support','auditor'].includes(role)) || (u.is_admin ? 'super_admin' : (u.staff_role || 'investor')),
-      isAdmin: Boolean(u.is_admin),
-      staffRole: u.staff_role ?? null,
-      frozen: Boolean(u.frozen ?? u.account_status === 'suspended'),
-      assignedGateId: u.assigned_gate_id ?? null,
-      accountType: u.account_type, balance: Number(u.wallet_balance || 0), investedBalance: Number(u.invested_balance || 0),
-      kycStatus: u.kyc_status, totalEarned: Number(u.total_dividends_earned || 0), bankIban: u.bank_iban || u.iban || undefined, bankAccountHolder: u.bank_account_holder || u.bank_holder || u.full_name, cryptoDepositAddress: u.crypto_deposit_address || undefined, status: (u.frozen || u.account_status === 'suspended') ? 'suspended' : 'active', suspendedReason: u.suspended_reason, createdAt: u.created_at
-    }));
-    return res.json({ success: true, data, total: data.length, requestId: req.id });
-  } catch (error: any) {
-    logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-users-db', eventType: 'ADMIN_USERS_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load users.' });
-    return res.status(503).json({ success: false, error: 'The investor registry is temporarily unavailable.', code: 'USER_DATABASE_UNAVAILABLE', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent user registry is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
+  const data = Array.from(devCustomersById.values()).map(toPublicDevCustomer);
+  return res.json({ success: true, data, total: data.length, requestId: req.id });
 });
 
 /**
@@ -2533,12 +2592,16 @@ router.patch('/admin/users/:id/profile', requireAdmin, async (req: Authenticated
  * GET /api/v1/admin/audit-logs
  */
 router.get('/admin/audit-logs', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
       const logs = await listPersistentAuditLogs();
       return res.json({ success: true, data: logs, total: logs.length, requestId: req.id });
     } catch (error: any) {
-      return res.status(503).json({ success: false, error: 'Audit records are temporarily unavailable.', code: 'AUDIT_DATABASE_UNAVAILABLE', requestId: req.id });
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'Audit records are temporarily unavailable.', code: 'AUDIT_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent audit log storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
@@ -2636,6 +2699,9 @@ router.put('/admin/settings', requireAdmin, (req: AuthenticatedRequest, res: Res
   if (typeof updates.maintenanceMode === 'boolean') platformConfig.maintenanceMode = updates.maintenanceMode;
   if (typeof updates.minInvestment === 'number') platformConfig.minInvestment = updates.minInvestment;
   if (typeof updates.maxInvestmentPerInvestor === 'number') platformConfig.maxInvestmentPerInvestor = updates.maxInvestmentPerInvestor;
+  if (updates.limits && typeof updates.limits === 'object') {
+    platformConfig.limits = { ...platformConfig.limits, ...updates.limits };
+  }
   if (updates.announcementBanner && typeof updates.announcementBanner === 'object') {
     platformConfig.announcementBanner = {
       active: Boolean(updates.announcementBanner.active),
@@ -2883,49 +2949,57 @@ router.patch('/admin/users/:id/assign-gate', requireAdmin, async (req: Authentic
   const { id } = req.params;
   const gateId = req.body?.gateId ? String(req.body.gateId).trim() : null;
   const gateName = req.body?.gateName ? String(req.body.gateName).trim() : null;
-  if (!isSupabaseServerConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (canUseLiveSupabaseData()) {
+    try {
+      const { data, error } = await getSupabaseAdmin().rpc('assign_gate', { p_user: id, p_gate: gateId });
+      if (error) throw error;
+      return res.json({ success: true, data, message: 'Payment gate updated.', requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: err?.message || 'Unable to assign payment gate.', code: 'ASSIGN_GATE_FAILED', requestId: req.id });
+      }
     }
-    const cust = devCustomersById.get(id);
-    if (!cust) return res.status(404).json({ success: false, error: 'Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-    (cust as any).assignedGateId = gateId;
-    (cust as any).assignedGateName = gateName;
-    await persistDevState();
-    return res.json({ success: true, data: toPublicDevCustomer(cust), message: gateId ? 'Payment gate assigned.' : 'Assigned payment gate cleared.', requestId: req.id });
   }
-  try {
-    const { data, error } = await getSupabaseAdmin().rpc('assign_gate', { p_user: id, p_gate: gateId });
-    if (error) throw error;
-    return res.json({ success: true, data, message: 'Payment gate updated.', requestId: req.id });
-  } catch (err: any) {
-    return res.status(503).json({ success: false, error: err?.message || 'Unable to assign payment gate.', code: 'ASSIGN_GATE_FAILED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
+  const cust = devCustomersById.get(id);
+  if (!cust) return res.status(404).json({ success: false, error: 'Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  (cust as any).assignedGateId = gateId;
+  (cust as any).assignedGateName = gateName;
+  await persistDevState();
+  return res.json({ success: true, data: toPublicDevCustomer(cust), message: gateId ? 'Payment gate assigned.' : 'Assigned payment gate cleared.', requestId: req.id });
 });
 
 router.post('/admin/staff-role', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const userId = String(req.body?.userId || '').trim();
   const role = req.body?.role ? String(req.body.role).trim() : null;
   if (!userId) return res.status(400).json({ success: false, error: 'userId is required.', code: 'INVALID_PAYLOAD', requestId: req.id });
-  if (!isSupabaseServerConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  if (canUseLiveSupabaseData()) {
+    try {
+      const { data, error } = await getSupabaseAdmin().rpc('set_staff_role', { p_user: userId, p_role: role || '' });
+      if (error) throw error;
+      return res.json({ success: true, data, message: role ? `Assigned role ${role}.` : 'Staff role removed.', requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: err?.message || 'Unable to update staff role.', code: 'SET_STAFF_ROLE_FAILED', requestId: req.id });
+      }
     }
-    const cust = devCustomersById.get(userId);
-    if (!cust) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
-    (cust as any).staffRole = role;
-    (cust as any).isAdmin = role === 'super_admin' || role === 'admin';
-    cust.role = (role || 'investor') as any;
-    await persistDevState();
-    return res.json({ success: true, data: toPublicDevCustomer(cust), message: role ? `Assigned role ${role}.` : 'Staff role removed.', requestId: req.id });
   }
-  try {
-    const { data, error } = await getSupabaseAdmin().rpc('set_staff_role', { p_user: userId, p_role: role || '' });
-    if (error) throw error;
-    return res.json({ success: true, data, message: role ? `Assigned role ${role}.` : 'Staff role removed.', requestId: req.id });
-  } catch (err: any) {
-    return res.status(503).json({ success: false, error: err?.message || 'Unable to update staff role.', code: 'SET_STAFF_ROLE_FAILED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
+  const cust = devCustomersById.get(userId);
+  if (!cust) return res.status(404).json({ success: false, error: 'User not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  (cust as any).staffRole = role;
+  (cust as any).isAdmin = role === 'super_admin' || role === 'admin';
+  cust.role = (role || 'investor') as any;
+  await persistDevState();
+  return res.json({ success: true, data: toPublicDevCustomer(cust), message: role ? `Assigned role ${role}.` : 'Staff role removed.', requestId: req.id });
 });
 
 /**
@@ -2933,23 +3007,71 @@ router.post('/admin/staff-role', requireAdmin, async (req: AuthenticatedRequest,
  */
 router.post('/admin/users/:id/credit', requireAdmin, requireActionEmailVerification('admin.user.credit'), async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const { amount, currency = 'EUR', method = 'Direct Wire Received', reference, notes } = req.body || {};
-  const numericAmount = Number(amount);
-  if (!Number.isFinite(numericAmount) || numericAmount <= 0) return res.status(400).json({ success: false, error: 'Credit amount must be greater than zero.', code: 'INVALID_AMOUNT', requestId: req.id });
+  const { amount, amountCents: rawAmountCents, currency = 'EUR', method = 'Manual Finance Credit', reference, notes } = req.body || {};
+  const amountCents = rawAmountCents !== undefined ? Math.round(Number(rawAmountCents)) : toCents(amount);
+  const numericAmount = centsToEur(amountCents);
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return res.status(400).json({ success: false, error: 'Credit amount must be greater than zero.', code: 'INVALID_AMOUNT', requestId: req.id });
   if (currency !== 'EUR') return res.status(400).json({ success: false, error: 'Manual wallet adjustments currently support EUR only.', code: 'UNSUPPORTED_CURRENCY', requestId: req.id });
-  if (!isSupabaseServerConfigured()) return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-  try {
-    const result: any = await runFinancialRpc('kretz_admin_credit_user', {
-      p_user_id: id, p_admin_id: req.user!.id, p_amount: numericAmount,
-      p_method: String(method), p_reference: String(reference || `KZ-MANUAL-${crypto.randomInt(100000,1000000)}`),
-      p_notes: String(notes || 'Administrator manual wallet credit'), p_transaction_id: crypto.randomUUID()
-    });
-    return res.json({ success: true, data: { transaction: toApiTransaction(result.transaction), walletBalance: Number(result.balance) }, message: `Credited €${numericAmount.toFixed(2)} to the investor wallet.`, requestId: req.id });
-  } catch (error: any) {
-    const message = String(error?.message || '');
-    const statusCode = message.includes('USER_NOT_FOUND') ? 404 : message.includes('REQUIRED') ? 403 : 503;
-    return res.status(statusCode).json({ success: false, error: statusCode === 503 ? 'Wallet adjustment could not be saved. Please retry.' : message, code: statusCode === 503 ? 'WALLET_ADJUSTMENT_FAILED' : 'WALLET_ADJUSTMENT_REJECTED', requestId: req.id });
+  if (canUseLiveSupabaseData()) {
+    try {
+      let result: any;
+      try {
+        result = await runFinancialRpc('admin_credit_deposit', {
+          p_user_id: id, p_amount: numericAmount, p_note: String(notes || 'Manual deposit credited by finance'), p_admin_id: req.user!.id
+        });
+      } catch (rpcErr: any) {
+        if (!isMissingSchemaError(rpcErr)) throw rpcErr;
+        result = await runFinancialRpc('kretz_admin_credit_user', {
+          p_user_id: id, p_admin_id: req.user!.id, p_amount: numericAmount,
+          p_method: String(method), p_reference: String(reference || `KZ-MANUAL-${crypto.randomInt(100000,1000000)}`),
+          p_notes: String(notes || 'Administrator manual wallet credit'), p_transaction_id: crypto.randomUUID()
+        });
+      }
+      return res.json({ success: true, data: { transaction: toApiTransaction(result.transaction), walletBalance: Number(result.balance) }, message: `Credited €${numericAmount.toFixed(2)} to the investor wallet.`, requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        const statusCode = resolveDatabaseErrorStatus(error);
+        return res.status(statusCode).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Wallet adjustment could not be saved.'),
+          code: error?.code || (statusCode >= 500 ? 'WALLET_ADJUSTMENT_FAILED' : 'WALLET_ADJUSTMENT_REJECTED'),
+          requestId: req.id,
+        });
+      }
+    }
   }
+  if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const cust = devCustomersById.get(id);
+  if (!cust) return res.status(404).json({ success: false, error: 'USER_NOT_FOUND: Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  const nextBalCents = toCents(cust.balance) + amountCents;
+  cust.balance = centsToEur(nextBalCents);
+  if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+  const nowIso = new Date().toISOString();
+  const tx = {
+    id: `dep-man-${crypto.randomUUID()}`,
+    userId: cust.id,
+    userEmail: cust.email,
+    userName: cust.fullName,
+    type: 'deposit',
+    amount: numericAmount,
+    amountCents,
+    netAmount: numericAmount,
+    feeAmount: 0,
+    currency: 'EUR',
+    status: 'completed',
+    method: String(method || 'Manual Finance Credit'),
+    reference: String(reference || `KZ-MAN-${crypto.randomInt(100000, 999999)}`),
+    notes: String(notes || 'Manual deposit credited by finance'),
+    processedBy: req.user?.email || 'finance@kretz.com',
+    processedById: req.user?.id,
+    processedAt: nowIso,
+    createdAt: nowIso,
+  };
+  mockTransactions.unshift(tx as any);
+  await persistDevState();
+  return res.json({ success: true, data: { transaction: tx, walletBalance: cust.balance, balanceCents: nextBalCents }, message: `Credited €${numericAmount.toFixed(2)} to ${cust.email}.`, requestId: req.id });
 });
 
 /**
@@ -2962,7 +3084,7 @@ router.get(['/marketplace/listings', '/properties', '/listings'], async (req: Au
   }
   const { search, type, status, location, minPrice, maxPrice, sortBy, page, limit } = req.query;
   let items = [...mockListings];
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
       items = await listInvestmentPlans({
         search: typeof search === 'string' ? search : undefined,
@@ -2970,11 +3092,18 @@ router.get(['/marketplace/listings', '/properties', '/listings'], async (req: Au
         status: typeof status === 'string' ? status : undefined
       });
     } catch (error: any) {
-      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-listings-db', eventType: 'PROPERTY_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property catalogue from Supabase.' });
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(503).json({ success: false, error: 'The property catalogue is temporarily unavailable. Please try again shortly.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        if (markSupabaseSchemaMissingInDev()) {
+          logger.log({ level: 'info', category: 'database', requestId: req.id || 'req-listings-db', eventType: 'PROPERTY_CATALOGUE_DEV_FALLBACK', outcome: 'success', message: 'Supabase investment_plans schema not present in dev container; using local catalogue fallback.' });
+        }
+        items = [...mockListings];
+      } else {
+        logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-listings-db', eventType: 'PROPERTY_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property catalogue from Supabase.' });
+        if (process.env.NODE_ENV === 'production') {
+          return res.status(503).json({ success: false, error: 'The property catalogue is temporarily unavailable. Please try again shortly.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+        }
+        items = [...mockListings];
       }
-      items = [...mockListings];
     }
   }
   const canViewUnpublished = Boolean(
@@ -3066,15 +3195,20 @@ router.get(['/marketplace/listings/:id', '/properties/:id'], async (req: Authent
   }
   const { id } = req.params;
   let found = mockListings.find(p => p.id === id || p.slug === id);
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
       found = await getInvestmentPlan(id) as any;
     } catch (error: any) {
-      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-property-db', eventType: 'PROPERTY_DETAIL_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property.' });
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(503).json({ success: false, error: 'Property details are temporarily unavailable.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+        found = mockListings.find(p => p.id === id || p.slug === id);
+      } else {
+        logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-property-db', eventType: 'PROPERTY_DETAIL_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load property.' });
+        if (process.env.NODE_ENV === 'production') {
+          return res.status(503).json({ success: false, error: 'Property details are temporarily unavailable.', code: 'PROPERTY_DATABASE_UNAVAILABLE', requestId: req.id });
+        }
+        found = mockListings.find(p => p.id === id || p.slug === id);
       }
-      found = mockListings.find(p => p.id === id || p.slug === id);
     }
   }
 
@@ -3411,8 +3545,8 @@ const updateAuthenticatedCustomerProfile = async (req: AuthenticatedRequest, res
     return res.status(503).json({ success: false, error: 'Profile changes could not be saved. Please try again.', code: 'PROFILE_UPDATE_FAILED', requestId: req.id });
   }
 };
-router.patch('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
-router.put('/user/profile', requireAuth, updateAuthenticatedCustomerProfile);
+router.patch('/user/profile', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
+router.put('/user/profile', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
 
 /**
  * GET /api/v1/portfolio
@@ -3686,7 +3820,7 @@ router.get('/transactions/:transactionId', requireAuth, async (req: Authenticate
  * GET /api/v1/notifications
  */
 router.get('/notifications', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (shouldUseSupabaseForCustomer(req)) { try { const rows = await listUserNotifications(req.user!.id); const data = rows.map((n: any) => ({ id: n.id, title: n.title, message: n.message, type: n.type, read: n.read, createdAt: n.created_at, metadata: n.metadata })); return res.json({ success: true, data, unreadCount: data.filter((n: any) => !n.read).length, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'NOTIFICATION_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (shouldUseSupabaseForCustomer(req)) { try { const rows = await listUserNotifications(req.user!.id); const data = rows.map((n: any) => ({ id: n.id, title: n.title, message: n.message || n.body || '', type: n.type || 'info', read: n.read, createdAt: n.created_at, metadata: n.metadata || null })); return res.json({ success: true, data, unreadCount: data.filter((n: any) => !n.read).length, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'NOTIFICATION_DATABASE_UNAVAILABLE', requestId: req.id }); } }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   res.json({
@@ -4491,7 +4625,7 @@ router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, 
   });
 });
 
-router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/treasury/convert', requireAuth, requireLatestLegalConsent, async (req: AuthenticatedRequest, res: Response) => {
   const { fromCurrency, toCurrency, amount, quoteId } = req.body || {};
   const from = String(fromCurrency || '').toUpperCase();
   const to = String(toCurrency || '').toUpperCase();
@@ -4696,7 +4830,7 @@ router.get('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Resp
 /**
  * POST /api/v1/deposits
  */
-router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.depositsEnabled) {
     return res.status(403).json({
       success: false,
@@ -4900,7 +5034,7 @@ router.get('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: R
 /**
  * POST /api/v1/withdrawals
  */
-router.post('/withdrawals', requireAuth, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/withdrawals', requireAuth, requireLatestLegalConsent, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.withdrawalsEnabled) {
     return res.status(403).json({
       success: false,
@@ -5196,7 +5330,7 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, requireLatestLegalConsent, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
@@ -5841,7 +5975,7 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
   }
 });
 
-router.patch('/users/me', requireAuth, updateAuthenticatedCustomerProfile);
+router.patch('/users/me', requireAuth, requireBankChangeEmailVerification, updateAuthenticatedCustomerProfile);
 
 // Dashboard summary & performance endpoints
 router.get('/dashboard/summary', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -6245,13 +6379,17 @@ router.get('/investment-plans/:planId', (req: AuthenticatedRequest, res: Respons
 
 // Admin Control Contract Endpoints
 router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
       const stats = await getPersistentAdminDashboard();
       return res.json({ success: true, data: { ...stats, systemUptimePercent: 99.9 }, requestId: req.id });
     } catch (error: any) {
-      logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-dashboard-db', eventType: 'ADMIN_DASHBOARD_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load admin dashboard.' });
-      return res.status(503).json({ success: false, error: 'The administrator dashboard is temporarily unavailable.', code: 'ADMIN_DASHBOARD_DATABASE_UNAVAILABLE', requestId: req.id });
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        logger.log({ level: 'error', category: 'database', requestId: req.id || 'req-admin-dashboard-db', eventType: 'ADMIN_DASHBOARD_QUERY_FAILED', outcome: 'failure', message: error?.message || 'Unable to load admin dashboard.' });
+        return res.status(503).json({ success: false, error: 'The administrator dashboard is temporarily unavailable.', code: 'ADMIN_DASHBOARD_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
     }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
@@ -6280,10 +6418,488 @@ router.get(['/admin/dashboard', '/admin/stats'], requireAdmin, async (req: Authe
   });
 });
 
+const toCents = (eur: unknown): number => {
+  const num = Number(eur ?? 0);
+  if (!Number.isFinite(num)) return 0;
+  return Math.round(num * 100);
+};
+
+const centsToEur = (cents: number): number => Math.round(cents) / 100;
+
+const allocateProportionalCents = (
+  totalCents: number,
+  holders: Array<{ userId: string; shares: number }>
+): Map<string, number> => {
+  const out = new Map<string, number>();
+  const totalShares = holders.reduce((s, h) => s + h.shares, 0);
+  if (totalShares <= 0 || totalCents <= 0 || holders.length === 0) return out;
+  const enriched = holders.map((h, idx) => {
+    const exact = (totalCents * h.shares) / totalShares;
+    const base = Math.floor(exact);
+    return { userId: h.userId, base, frac: exact - base, idx };
+  });
+  let remainder = totalCents - enriched.reduce((s, r) => s + r.base, 0);
+  const byRemainder = [...enriched].sort((a, b) => (b.frac - a.frac) || (a.idx - b.idx));
+  for (let i = 0; i < byRemainder.length && remainder > 0; i++) {
+    byRemainder[i].base += 1;
+    remainder -= 1;
+  }
+  for (const row of enriched) {
+    out.set(row.userId, row.base);
+  }
+  return out;
+};
+
+const formatDatabaseRefusal = (error: any, fallback: string): string => {
+  if (!error) return fallback;
+  const msg = String(error?.message || '').trim();
+  const details = String(error?.details || '').trim();
+  const hint = String(error?.hint || '').trim();
+  const code = String(error?.code || '').trim();
+  if (!msg) return fallback;
+  let full = code && !msg.includes(code) ? `[${code}] ${msg}` : msg;
+  if (details && !full.includes(details)) full = `${full} — ${details}`;
+  if (hint && !full.includes(hint)) full = `${full} (${hint})`;
+  return full;
+};
+
+const resolveDatabaseErrorStatus = (error: any): number => {
+  const code = String(error?.code || '');
+  const msg = String(error?.message || '').toUpperCase();
+  if (code === 'P0002' || msg.includes('NOT_FOUND')) return 404;
+  if (code === '42501' || msg.includes('ADMIN_REQUIRED') || msg.includes('ROLE_REQUIRED')) return 403;
+  if (code === '23505' || msg.includes('NOT_PENDING') || msg.includes('ALREADY_')) return 409;
+  if (code === '22023' || code === 'P0001' || msg.includes('INSUFFICIENT') || msg.includes('REQUIRED') || msg.includes('CANNOT_') || msg.includes('INVALID') || msg.includes('ONLY_COMPLETED')) return 400;
+  return error?.code || error?.message ? 400 : 503;
+};
+
+router.get('/admin/finance/summary', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const fromRaw = typeof req.query.from === 'string' && req.query.from.trim() ? req.query.from.trim() : null;
+  const toRaw = typeof req.query.to === 'string' && req.query.to.trim() ? req.query.to.trim() : null;
+
+  if (canUseLiveSupabaseData()) {
+    try {
+      const { data, error } = await getSupabaseAdmin().rpc('finance_summary', {
+        p_from: fromRaw ? new Date(fromRaw).toISOString() : null,
+        p_to: toRaw ? new Date(toRaw.length <= 10 ? `${toRaw}T23:59:59.999Z` : toRaw).toISOString() : null,
+        p_admin_id: req.user!.id,
+      });
+      if (error) throw error;
+      return res.json({ success: true, data, source: 'rpc', requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(resolveDatabaseErrorStatus(error)).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Unable to compute finance summary.'),
+          code: error?.code || 'FINANCE_SUMMARY_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+
+  const fromMs = fromRaw ? new Date(fromRaw).getTime() : null;
+  const toMs = toRaw ? new Date(toRaw.length <= 10 ? `${toRaw}T23:59:59.999Z` : toRaw).getTime() : null;
+  const filtered = mockTransactions.filter((t) => {
+    const ts = new Date(t.createdAt).getTime();
+    if (fromMs && ts < fromMs) return false;
+    if (toMs && ts > toMs) return false;
+    return true;
+  });
+
+  const customers = Array.from(devCustomersById.values()).filter(
+    (c) => !((c as any).isAdmin || ((c as any).staffRole && String((c as any).staffRole).trim() !== ''))
+  );
+  const walletLiabilitiesCents = customers.reduce((s, c) => s + toCents(c.balance), 0);
+  const pendingDeposits = mockTransactions.filter((t) => t.type === 'deposit' && t.status === 'pending');
+  const pendingWithdrawals = mockTransactions.filter((t) => t.type === 'withdrawal' && t.status === 'pending');
+
+  const kindCents: Record<string, { count: number; cents: number }> = {};
+  const statusCents: Record<string, { count: number; cents: number }> = {};
+  for (const t of filtered) {
+    const kind = String(t.type || 'transaction');
+    const st = String(t.status || 'pending');
+    const amtCents = toCents(t.amount);
+    if (!kindCents[kind]) kindCents[kind] = { count: 0, cents: 0 };
+    kindCents[kind].count += 1;
+    kindCents[kind].cents += amtCents;
+
+    if (!statusCents[st]) statusCents[st] = { count: 0, cents: 0 };
+    statusCents[st].count += 1;
+    statusCents[st].cents += amtCents;
+  }
+
+  const totalsByKind: Record<string, { count: number; total: number; totalCents: number }> = {};
+  for (const [k, v] of Object.entries(kindCents)) {
+    totalsByKind[k] = { count: v.count, total: centsToEur(v.cents), totalCents: v.cents };
+  }
+  const totalsByStatus: Record<string, { count: number; total: number; totalCents: number }> = {};
+  for (const [k, v] of Object.entries(statusCents)) {
+    totalsByStatus[k] = { count: v.count, total: centsToEur(v.cents), totalCents: v.cents };
+  }
+
+  const pendingDepositsCents = pendingDeposits.reduce((s, d) => s + toCents(d.amount), 0);
+  const pendingWithdrawalsCents = pendingWithdrawals.reduce((s, w) => s + toCents(w.amount), 0);
+
+  return res.json({
+    success: true,
+    source: 'computed',
+    data: {
+      wallet_liabilities: centsToEur(walletLiabilitiesCents),
+      wallet_liabilities_cents: walletLiabilitiesCents,
+      pending_deposits_count: pendingDeposits.length,
+      pending_deposits_total: centsToEur(pendingDepositsCents),
+      pending_deposits_cents: pendingDepositsCents,
+      pending_withdrawals_count: pendingWithdrawals.length,
+      pending_withdrawals_total: centsToEur(pendingWithdrawalsCents),
+      pending_withdrawals_cents: pendingWithdrawalsCents,
+      totals_by_kind: totalsByKind,
+      totals_by_status: totalsByStatus,
+      from: fromRaw,
+      to: toRaw,
+    },
+    requestId: req.id,
+  });
+});
+
+router.post('/admin/finance/manual-deposit', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = String(req.body?.userId || '').trim();
+  const amountCents = req.body?.amountCents !== undefined ? Math.round(Number(req.body.amountCents)) : toCents(req.body?.amount);
+  const amount = centsToEur(amountCents);
+  const note = String(req.body?.note || '').trim();
+  if (!userId || !Number.isFinite(amountCents) || amountCents <= 0) {
+    return res.status(400).json({ success: false, error: 'Investor and positive EUR amount are required.', code: 'INVALID_MANUAL_DEPOSIT', requestId: req.id });
+  }
+  if (canUseLiveSupabaseData()) {
+    try {
+      let data: any;
+      try {
+        data = await runFinancialRpc('admin_credit_deposit', {
+          p_user_id: userId,
+          p_amount: amount,
+          p_note: note || 'Manual deposit credited by finance',
+          p_admin_id: req.user!.id,
+        });
+      } catch (rpcErr: any) {
+        if (!isMissingSchemaError(rpcErr)) throw rpcErr;
+        data = await runFinancialRpc('kretz_admin_credit_user', {
+          p_user_id: userId,
+          p_admin_id: req.user!.id,
+          p_amount: amount,
+          p_method: 'Manual Finance Credit',
+          p_reference: `KZ-MAN-${crypto.randomInt(100000, 999999)}`,
+          p_notes: note || 'Manual deposit credited by finance',
+          p_transaction_id: crypto.randomUUID(),
+        });
+      }
+      return res.status(201).json({ success: true, data, message: `Recorded manual deposit of €${amount.toFixed(2)}.`, requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(resolveDatabaseErrorStatus(error)).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Manual deposit failed.'),
+          code: error?.code || 'MANUAL_DEPOSIT_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const cust = devCustomersById.get(userId);
+  if (!cust) return res.status(404).json({ success: false, error: 'USER_NOT_FOUND: Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  const nextBalCents = toCents(cust.balance) + amountCents;
+  cust.balance = centsToEur(nextBalCents);
+  if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+  const nowIso = new Date().toISOString();
+  const tx = {
+    id: `dep-man-${crypto.randomUUID()}`,
+    userId: cust.id,
+    userEmail: cust.email,
+    userName: cust.fullName,
+    type: 'deposit',
+    amount,
+    amountCents,
+    netAmount: amount,
+    feeAmount: 0,
+    currency: 'EUR',
+    status: 'completed',
+    method: 'Manual Finance Credit',
+    reference: `KZ-MAN-${crypto.randomInt(100000, 999999)}`,
+    notes: note || 'Manual deposit credited by finance',
+    processedBy: req.user?.email || 'finance@kretz.com',
+    processedById: req.user?.id,
+    processedAt: nowIso,
+    createdAt: nowIso,
+  };
+  mockTransactions.unshift(tx as any);
+  await notifyInvestorEvent({
+    userId: cust.id,
+    email: cust.email,
+    title: 'Manual deposit credited',
+    message: `€${amount.toFixed(2)} has been credited to your wallet (${tx.reference}).`,
+    type: 'success',
+  });
+  await persistDevState();
+  return res.status(201).json({ success: true, data: { transaction: tx, balance: cust.balance, balanceCents: nextBalCents }, message: `Recorded manual deposit of €${amount.toFixed(2)} for ${cust.email}.`, requestId: req.id });
+});
+
+router.post('/admin/finance/charge-fee', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = String(req.body?.userId || '').trim();
+  const amountCents = req.body?.amountCents !== undefined ? Math.round(Number(req.body.amountCents)) : toCents(req.body?.amount);
+  const amount = centsToEur(amountCents);
+  const reason = String(req.body?.reason || '').trim();
+  if (!userId || !Number.isFinite(amountCents) || amountCents <= 0) {
+    return res.status(400).json({ success: false, error: 'Investor and positive fee amount are required.', code: 'INVALID_FEE_PAYLOAD', requestId: req.id });
+  }
+  if (canUseLiveSupabaseData()) {
+    try {
+      const data = await runFinancialRpc('admin_charge_fee', {
+        p_user_id: userId,
+        p_amount: amount,
+        p_reason: reason || 'Platform administrative fee',
+        p_admin_id: req.user!.id,
+      });
+      return res.json({ success: true, data, message: `Charged €${amount.toFixed(2)} fee.`, requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(resolveDatabaseErrorStatus(error)).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Fee charge failed.'),
+          code: error?.code || 'CHARGE_FEE_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const cust = devCustomersById.get(userId);
+  if (!cust) return res.status(404).json({ success: false, error: 'USER_NOT_FOUND: Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  const balCents = toCents(cust.balance);
+  if (balCents < amountCents) {
+    return res.status(400).json({ success: false, error: `INSUFFICIENT_WALLET_BALANCE: Investor balance is €${centsToEur(balCents).toFixed(2)}.`, code: 'INSUFFICIENT_WALLET_BALANCE', requestId: req.id });
+  }
+  const nextBalCents = balCents - amountCents;
+  cust.balance = centsToEur(nextBalCents);
+  if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+  const nowIso = new Date().toISOString();
+  const tx = {
+    id: `fee-${crypto.randomUUID()}`,
+    userId: cust.id,
+    userEmail: cust.email,
+    userName: cust.fullName,
+    type: 'fee',
+    amount,
+    amountCents,
+    feeAmount: amount,
+    netAmount: 0,
+    currency: 'EUR',
+    status: 'completed',
+    method: 'Platform Fee Assessment',
+    reference: `KZ-FEE-${crypto.randomInt(100000, 999999)}`,
+    notes: reason || 'Platform administrative fee',
+    processedBy: req.user?.email || 'finance@kretz.com',
+    processedById: req.user?.id,
+    processedAt: nowIso,
+    createdAt: nowIso,
+  };
+  mockTransactions.unshift(tx as any);
+  await notifyInvestorEvent({
+    userId: cust.id,
+    email: cust.email,
+    title: 'Administrative fee assessed',
+    message: `A fee of €${amount.toFixed(2)} (${tx.reference}) was applied: ${tx.notes}.`,
+    type: 'info',
+  });
+  await persistDevState();
+  return res.json({ success: true, data: { transaction: tx, balance: cust.balance, balanceCents: nextBalCents }, message: `Charged €${amount.toFixed(2)} fee to ${cust.email}.`, requestId: req.id });
+});
+
+router.post('/admin/finance/adjust', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = String(req.body?.userId || '').trim();
+  const reason = String(req.body?.reason || '').trim();
+  const deltaCents = req.body?.deltaCents !== undefined
+    ? Math.round(Number(req.body.deltaCents))
+    : req.body?.delta !== undefined
+    ? toCents(req.body.delta)
+    : (req.body?.direction === 'debit' ? -Math.abs(toCents(req.body?.amount)) : Math.abs(toCents(req.body?.amount)));
+  const delta = centsToEur(deltaCents);
+  if (!userId || !Number.isFinite(deltaCents) || deltaCents === 0 || reason.length < 3) {
+    return res.status(400).json({ success: false, error: 'Investor, non-zero adjustment amount, and reason (min 3 chars) are required.', code: 'INVALID_ADJUST_PAYLOAD', requestId: req.id });
+  }
+  if (canUseLiveSupabaseData()) {
+    try {
+      const data = await runFinancialRpc('admin_adjust', {
+        p_user_id: userId,
+        p_delta: delta,
+        p_reason: reason,
+        p_admin_id: req.user!.id,
+      });
+      return res.json({ success: true, data, message: `Balance adjusted by ${delta >= 0 ? '+' : ''}€${delta.toFixed(2)}.`, requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(resolveDatabaseErrorStatus(error)).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Balance adjustment failed.'),
+          code: error?.code || 'ADMIN_ADJUST_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const cust = devCustomersById.get(userId);
+  if (!cust) return res.status(404).json({ success: false, error: 'USER_NOT_FOUND: Investor not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  const nextBalCents = toCents(cust.balance) + deltaCents;
+  if (nextBalCents < 0) {
+    return res.status(400).json({ success: false, error: `INSUFFICIENT_WALLET_BALANCE: Debit exceeds available balance (€${Number(cust.balance || 0).toFixed(2)}).`, code: 'INSUFFICIENT_WALLET_BALANCE', requestId: req.id });
+  }
+  cust.balance = centsToEur(nextBalCents);
+  if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+  const nowIso = new Date().toISOString();
+  const absAmt = centsToEur(Math.abs(deltaCents));
+  const tx = {
+    id: `adj-${crypto.randomUUID()}`,
+    userId: cust.id,
+    userEmail: cust.email,
+    userName: cust.fullName,
+    type: 'adjustment',
+    amount: absAmt,
+    amountCents: Math.abs(deltaCents),
+    netAmount: delta,
+    feeAmount: 0,
+    currency: 'EUR',
+    status: 'completed',
+    method: deltaCents > 0 ? 'Balance Adjustment (Credit)' : 'Balance Adjustment (Debit)',
+    reference: `KZ-ADJ-${crypto.randomInt(100000, 999999)}`,
+    notes: reason,
+    metadata: { delta, deltaCents, direction: deltaCents > 0 ? 'credit' : 'debit', reason },
+    processedBy: req.user?.email || 'finance@kretz.com',
+    processedById: req.user?.id,
+    processedAt: nowIso,
+    createdAt: nowIso,
+  };
+  mockTransactions.unshift(tx as any);
+  await persistDevState();
+  return res.json({ success: true, data: { transaction: tx, balance: cust.balance, balanceCents: nextBalCents }, message: `Adjusted ${cust.email} balance by ${deltaCents >= 0 ? '+' : '-'}€${absAmt.toFixed(2)}.`, requestId: req.id });
+});
+
+router.post('/admin/finance/reverse', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const transactionId = String(req.body?.transactionId || '').trim();
+  const reason = String(req.body?.reason || '').trim();
+  if (!transactionId || reason.length < 3) {
+    return res.status(400).json({ success: false, error: 'Transaction ID and reversal reason (min 3 chars) are required.', code: 'INVALID_REVERSAL_PAYLOAD', requestId: req.id });
+  }
+  if (canUseLiveSupabaseData()) {
+    try {
+      const data = await runFinancialRpc('reverse_transaction', {
+        p_transaction_id: transactionId,
+        p_reason: reason,
+        p_admin_id: req.user!.id,
+      });
+      return res.json({ success: true, data, message: 'Transaction reversed cleanly.', requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(resolveDatabaseErrorStatus(error)).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Transaction reversal failed.'),
+          code: error?.code || 'REVERSAL_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Database not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const orig = mockTransactions.find((t) => t.id === transactionId || t.reference === transactionId);
+  if (!orig) return res.status(404).json({ success: false, error: 'TRANSACTION_NOT_FOUND: Transaction not found.', code: 'TRANSACTION_NOT_FOUND', requestId: req.id });
+  if (orig.status !== 'completed') return res.status(400).json({ success: false, error: 'ONLY_COMPLETED_TRANSACTIONS_REVERSIBLE: Only completed transactions can be reversed.', code: 'ONLY_COMPLETED_TRANSACTIONS_REVERSIBLE', requestId: req.id });
+  if (orig.type === 'reversal') return res.status(400).json({ success: false, error: 'CANNOT_REVERSE_A_REVERSAL: Cannot reverse an existing reversal entry.', code: 'CANNOT_REVERSE_A_REVERSAL', requestId: req.id });
+  if (orig.reversedById || mockTransactions.some((t) => t.reversalOfId === orig.id || t.reversedTransactionId === orig.id)) {
+    return res.status(409).json({ success: false, error: 'TRANSACTION_ALREADY_REVERSED: This transaction has already been reversed.', code: 'TRANSACTION_ALREADY_REVERSED', requestId: req.id });
+  }
+
+  const origAmtCents = toCents(orig.amount);
+  let walletDeltaCents = 0;
+  if (['deposit', 'dividend', 'distribution', 'payout'].includes(orig.type)) walletDeltaCents = -origAmtCents;
+  else if (['withdrawal', 'fee', 'investment', 'purchase'].includes(orig.type)) walletDeltaCents = origAmtCents;
+  else if (orig.type === 'adjustment') walletDeltaCents = -toCents(orig.metadata?.delta ?? orig.netAmount ?? orig.amount);
+
+  const cust = devCustomersById.get(orig.userId);
+  if (!cust) return res.status(404).json({ success: false, error: 'USER_NOT_FOUND: Investor not found for transaction.', code: 'USER_NOT_FOUND', requestId: req.id });
+  const nextBalCents = toCents(cust.balance) + walletDeltaCents;
+  if (nextBalCents < 0) {
+    return res.status(400).json({ success: false, error: `INSUFFICIENT_WALLET_FOR_REVERSAL: Reversal would take wallet balance negative (€${centsToEur(nextBalCents).toFixed(2)}).`, code: 'INSUFFICIENT_WALLET_FOR_REVERSAL', requestId: req.id });
+  }
+  cust.balance = centsToEur(nextBalCents);
+  if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+
+  const nowIso = new Date().toISOString();
+  const revId = `rev-${crypto.randomUUID()}`;
+  const revRef = `KZ-REV-${crypto.randomInt(100000, 999999)}`;
+  const walletDelta = centsToEur(walletDeltaCents);
+  const revTx = {
+    id: revId,
+    userId: orig.userId,
+    userEmail: orig.userEmail || cust.email,
+    userName: orig.userName || cust.fullName,
+    type: 'reversal',
+    amount: centsToEur(origAmtCents),
+    amountCents: origAmtCents,
+    netAmount: walletDelta,
+    feeAmount: 0,
+    currency: orig.currency || 'EUR',
+    status: 'completed',
+    method: 'Transaction Reversal',
+    reference: revRef,
+    notes: `Reversal of ${orig.reference}: ${reason}`,
+    reversalOfId: orig.id,
+    reversedTransactionId: orig.id,
+    reversalOfReference: orig.reference,
+    reversalReason: reason,
+    processedBy: req.user?.email || 'finance@kretz.com',
+    processedById: req.user?.id,
+    processedAt: nowIso,
+    createdAt: nowIso,
+    metadata: { reversal_of_id: orig.id, reversal_of_reference: orig.reference, wallet_delta: walletDelta, wallet_delta_cents: walletDeltaCents },
+  };
+  orig.reversedById = revId;
+  orig.reversedByReference = revRef;
+  orig.reversalReason = reason;
+  mockTransactions.unshift(revTx as any);
+  await persistDevState();
+  return res.json({ success: true, data: { reversal: revTx, originalId: orig.id, balance: cust.balance, balanceCents: nextBalCents }, message: `Reversed ${orig.reference} via ${revRef}.`, requestId: req.id });
+});
+
 router.get('/admin/investments', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try { return res.json({ success: true, data: await listPersistentInvestments(), requestId: req.id }); }
-    catch (error: any) { return res.status(503).json({ success: false, error: 'Investment records are temporarily unavailable.', code: 'INVESTMENT_DATABASE_UNAVAILABLE', requestId: req.id }); }
+    catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'Investment records are temporarily unavailable.', code: 'INVESTMENT_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
+    }
   }
   if (process.env.NODE_ENV === 'production') {
     return res.status(503).json({ success: false, error: 'Persistent investment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
@@ -6314,13 +6930,17 @@ router.post('/admin/investments', requireAdmin, async (req: AuthenticatedRequest
   if (!userId || !propertyId || !Number.isFinite(shares) || shares <= 0) {
     return res.status(400).json({ success: false, error: 'Investor, property, and positive share count are required.', code: 'INVALID_INVESTMENT_PAYLOAD', requestId: req.id });
   }
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
-      const { data, error } = await getSupabaseAdmin().rpc('record_investment', { p_user: userId, p_property: propertyId, p_shares: shares });
+      const { data, error } = await getSupabaseAdmin().rpc('record_investment', { p_user_id: userId, p_property_id: propertyId, p_shares: shares, p_admin_id: req.user!.id });
       if (error) throw error;
       return res.status(201).json({ success: true, data, message: 'Investment recorded.', requestId: req.id });
     } catch (err: any) {
-      return res.status(503).json({ success: false, error: err?.message || 'Unable to record investment.', code: 'RECORD_INVESTMENT_FAILED', requestId: req.id });
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(resolveDatabaseErrorStatus(err)).json({ success: false, error: formatDatabaseRefusal(err, 'Unable to record investment.'), code: err?.code || 'RECORD_INVESTMENT_FAILED', requestId: req.id });
+      }
     }
   }
   if (process.env.NODE_ENV === 'production') {
@@ -6328,8 +6948,10 @@ router.post('/admin/investments', requireAdmin, async (req: AuthenticatedRequest
   }
   const cust = devCustomersById.get(userId);
   const prop = mockListings.find((p) => p.id === propertyId);
-  const sharePrice = Number(req.body?.sharePriceEur || prop?.tokenPrice || 500);
-  const totalCost = Math.round(shares * sharePrice * 100) / 100;
+  const sharePriceCents = toCents(req.body?.sharePriceEur || prop?.tokenPrice || 500);
+  const totalCostCents = shares * sharePriceCents;
+  const totalCost = centsToEur(totalCostCents);
+  const nowIso = new Date().toISOString();
   const tx = {
     id: `inv-${crypto.randomBytes(5).toString('hex')}`,
     userId,
@@ -6337,6 +6959,9 @@ router.post('/admin/investments', requireAdmin, async (req: AuthenticatedRequest
     userName: cust?.fullName,
     type: 'investment' as const,
     amount: totalCost,
+    amountCents: totalCostCents,
+    netAmount: totalCost,
+    feeAmount: 0,
     currency: 'EUR',
     status: 'completed' as const,
     method: 'Staff Allocation',
@@ -6344,23 +6969,32 @@ router.post('/admin/investments', requireAdmin, async (req: AuthenticatedRequest
     propertyId,
     propertyTitle: prop?.title || propertyId,
     tokensPurchased: shares,
-    createdAt: new Date().toISOString(),
+    processedBy: req.user?.email || 'finance@kretz.com',
+    processedById: req.user?.id,
+    processedAt: nowIso,
+    createdAt: nowIso,
   };
   mockTransactions.unshift(tx as any);
   if (cust) {
-    cust.investedBalance = Math.round((Number(cust.investedBalance || 0) + totalCost) * 100) / 100;
+    cust.investedBalance = centsToEur(toCents(cust.investedBalance) + totalCostCents);
   }
   if (prop) {
-    prop.fundedAmount = Number(prop.fundedAmount || 0) + totalCost;
+    prop.fundedAmount = centsToEur(toCents(prop.fundedAmount) + totalCostCents);
   }
   await persistDevState();
   return res.status(201).json({ success: true, data: tx, message: `Recorded ${shares} shares (€${totalCost.toFixed(2)}) for ${cust?.fullName || userId}.`, requestId: req.id });
 });
 
 router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try { const rows = await listAdminTransactions(); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
-    catch (error: any) { return res.status(503).json({ success: false, error: 'Financial transactions are temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id }); }
+    catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'Financial transactions are temporarily unavailable.', code: 'TRANSACTION_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
+    }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent financial storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   res.json({
@@ -6371,9 +7005,15 @@ router.get('/admin/transactions', requireAdmin, async (req: AuthenticatedRequest
 });
 
 router.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try { const rows = await listAdminTransactions('deposit'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
-    catch (error: any) { return res.status(503).json({ success: false, error: 'Deposit requests are temporarily unavailable.', code: 'DEPOSIT_DATABASE_UNAVAILABLE', requestId: req.id }); }
+    catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'Deposit requests are temporarily unavailable.', code: 'DEPOSIT_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
+    }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent deposit storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const deposits = mockTransactions.filter(t => t.type === 'deposit');
@@ -6385,9 +7025,15 @@ router.get('/admin/deposits', requireAdmin, async (req: AuthenticatedRequest, re
 });
 
 router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try { const rows = await listAdminTransactions('withdrawal'); return res.json({ success: true, data: rows.map(toApiTransaction), total: rows.length, requestId: req.id }); }
-    catch (error: any) { return res.status(503).json({ success: false, error: 'Withdrawal requests are temporarily unavailable.', code: 'WITHDRAWAL_DATABASE_UNAVAILABLE', requestId: req.id }); }
+    catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'Withdrawal requests are temporarily unavailable.', code: 'WITHDRAWAL_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
+    }
   }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent withdrawal storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const withdrawals = mockTransactions.filter(t => t.type === 'withdrawal');
@@ -6399,207 +7045,308 @@ router.get('/admin/withdrawals', requireAdmin, async (req: AuthenticatedRequest,
 });
 
 router.post('/admin/deposits/:depositId/approve', requireAdmin, requireActionEmailVerification('admin.deposit.approve'), async (req: AuthenticatedRequest, res: Response) => {
-  const actualAmount = Number(req.body?.amount);
-  if (!isSupabaseServerConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const actualCents = req.body?.amountCents !== undefined ? Math.round(Number(req.body.amountCents)) : toCents(req.body?.amount);
+  const actualAmount = centsToEur(actualCents);
+  if (canUseLiveSupabaseData()) {
+    try {
+      let row: any;
+      try {
+        row = await runFinancialRpc('approve_deposit', {
+          p_deposit_id: req.params.depositId,
+          p_received_amount: Number.isFinite(actualCents) && actualCents > 0 ? actualAmount : null,
+          p_admin_id: req.user!.id,
+        });
+      } catch (rpcErr: any) {
+        if (!isMissingSchemaError(rpcErr)) throw rpcErr;
+        row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
+      }
+      const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+      if (row?.user_id) {
+        await notifyInvestorEvent({
+          userId: row.user_id,
+          email: prof?.email,
+          title: 'Deposit approved',
+          message: `Your EUR ${Number(row.amount || 0).toFixed(2)} deposit (${row.reference}) has been approved and credited.`,
+          type: 'success',
+          emailTemplate: 'deposit_approved',
+          emailData: { fullName: prof?.full_name || 'Valued Investor', amount: Number(row.amount || 0).toFixed(2), currency: 'EUR', reference: row.reference, method: row.method || 'SEPA Transfer' },
+          idempotencyKey: `dep-appr-${row.id}`,
+        });
+      }
+      return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit approved and wallet credited.', requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        const status = resolveDatabaseErrorStatus(error);
+        return res.status(status).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Deposit approval could not be completed.'),
+          code: error?.code || (status >= 500 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED'),
+          requestId: req.id,
+        });
+      }
     }
-    const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.type === 'deposit');
-    if (!tx) return res.status(404).json({ success: false, error: 'Deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
-    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Deposit is no longer pending.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
-    if (Number.isFinite(actualAmount) && actualAmount > 0) {
-      tx.amount = Math.round(actualAmount * 100) / 100;
-    }
-    tx.status = 'completed';
-    const cust = devCustomersById.get(tx.userId);
-    if (cust) {
-      cust.balance = Math.round((Number(cust.balance || 0) + Number(tx.amount || 0)) * 100) / 100;
-      await notifyInvestorEvent({
-        userId: cust.id,
-        email: cust.email,
-        title: 'Deposit approved',
-        message: `Your EUR ${Number(tx.amount || 0).toFixed(2)} deposit (${tx.reference}) has been approved and credited.`,
-        type: 'success',
-        emailTemplate: 'deposit_approved',
-        emailData: { fullName: cust.fullName || 'Investor', amount: Number(tx.amount || 0).toFixed(2), currency: 'EUR', reference: tx.reference, method: tx.method || 'SEPA Transfer' },
-        idempotencyKey: `dep-appr-${tx.id}`,
-      });
-    }
-    await persistDevState();
-    return res.json({ success: true, data: tx, message: 'Deposit approved and wallet credited.', requestId: req.id });
   }
-  try {
-    const row: any = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
-    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
-    if (row?.user_id) {
-      await notifyInvestorEvent({
-        userId: row.user_id,
-        email: prof?.email,
-        title: 'Deposit approved',
-        message: `Your EUR ${Number(row.amount || 0).toFixed(2)} deposit (${row.reference}) has been approved and credited.`,
-        type: 'success',
-        emailTemplate: 'deposit_approved',
-        emailData: { fullName: prof?.full_name || 'Valued Investor', amount: Number(row.amount || 0).toFixed(2), currency: 'EUR', reference: row.reference, method: row.method || 'SEPA Transfer' },
-        idempotencyKey: `dep-appr-${row.id}`,
-      });
-    }
-    return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit approved and wallet credited.', requestId: req.id });
-  } catch (error: any) {
-    const message = String(error?.message || '');
-    const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-    return res.status(status).json({ success: false, error: status === 503 ? 'Deposit approval could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
+  const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.type === 'deposit');
+  if (!tx) return res.status(404).json({ success: false, error: 'DEPOSIT_NOT_FOUND: Deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
+  if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'DEPOSIT_NOT_PENDING: Deposit is no longer pending.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+  const settledCents = Number.isFinite(actualCents) && actualCents > 0 ? actualCents : toCents(tx.amount);
+  tx.amount = centsToEur(settledCents);
+  (tx as any).amountCents = settledCents;
+  tx.status = 'completed';
+  tx.processedBy = req.user?.email || 'finance@kretz.com';
+  tx.processedById = req.user?.id;
+  tx.processedAt = new Date().toISOString();
+  const cust = devCustomersById.get(tx.userId);
+  if (cust) {
+    cust.balance = centsToEur(toCents(cust.balance) + settledCents);
+    if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+    await notifyInvestorEvent({
+      userId: cust.id,
+      email: cust.email,
+      title: 'Deposit approved',
+      message: `Your EUR ${tx.amount.toFixed(2)} deposit (${tx.reference}) has been approved and credited.`,
+      type: 'success',
+      emailTemplate: 'deposit_approved',
+      emailData: { fullName: cust.fullName || 'Investor', amount: tx.amount.toFixed(2), currency: 'EUR', reference: tx.reference, method: tx.method || 'SEPA Transfer' },
+      idempotencyKey: `dep-appr-${tx.id}`,
+    });
+  }
+  await persistDevState();
+  return res.json({ success: true, data: tx, message: 'Deposit approved and wallet credited.', requestId: req.id });
 });
 
 router.post('/admin/deposits/:depositId/reject', requireAdmin, requireActionEmailVerification('admin.deposit.reject'), async (req: AuthenticatedRequest, res: Response) => {
-  const reason = req.body?.reason || 'Transfer verification could not be matched.';
-  if (!isSupabaseServerConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const reason = String(req.body?.reason || '').trim() || 'Transfer verification could not be matched.';
+  if (canUseLiveSupabaseData()) {
+    try {
+      let row: any;
+      try {
+        row = await runFinancialRpc('reject_deposit', { p_deposit_id: req.params.depositId, p_reason: reason, p_admin_id: req.user!.id });
+      } catch (rpcErr: any) {
+        if (!isMissingSchemaError(rpcErr)) throw rpcErr;
+        row = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason });
+      }
+      const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+      if (row?.user_id) {
+        await notifyInvestorEvent({
+          userId: row.user_id,
+          email: prof?.email,
+          title: 'Deposit declined',
+          message: `Deposit ${row.reference} was declined: ${reason}`,
+          type: 'warning',
+        });
+      }
+      return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit rejected.', requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        const status = resolveDatabaseErrorStatus(error);
+        return res.status(status).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Deposit rejection could not be completed.'),
+          code: error?.code || (status >= 500 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED'),
+          requestId: req.id,
+        });
+      }
     }
-    const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.type === 'deposit');
-    if (!tx) return res.status(404).json({ success: false, error: 'Deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
-    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Deposit is no longer pending.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
-    tx.status = 'rejected';
-    const cust = devCustomersById.get(tx.userId);
-    if (cust) {
-      await notifyInvestorEvent({
-        userId: cust.id,
-        email: cust.email,
-        title: 'Deposit declined',
-        message: `Deposit ${tx.reference} was declined: ${reason}`,
-        type: 'warning',
-      });
-    }
-    await persistDevState();
-    return res.json({ success: true, data: tx, message: 'Deposit rejected.', requestId: req.id });
   }
-  try {
-    const row: any = await runFinancialRpc('kretz_review_deposit', { p_transaction_id: req.params.depositId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason });
-    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
-    if (row?.user_id) {
-      await notifyInvestorEvent({
-        userId: row.user_id,
-        email: prof?.email,
-        title: 'Deposit declined',
-        message: `Deposit ${row.reference} was declined: ${reason}`,
-        type: 'warning',
-      });
-    }
-    return res.json({ success: true, data: toApiTransaction(row), message: 'Deposit rejected.', requestId: req.id });
-  } catch (error: any) {
-    const message = String(error?.message || '');
-    const status = message.includes('DEPOSIT_NOT_FOUND') ? 404 : message.includes('DEPOSIT_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-    return res.status(status).json({ success: false, error: status === 503 ? 'Deposit rejection could not be completed. Please retry.' : message, code: status === 503 ? 'DEPOSIT_REVIEW_FAILED' : 'DEPOSIT_REVIEW_REJECTED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
+  const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.type === 'deposit');
+  if (!tx) return res.status(404).json({ success: false, error: 'DEPOSIT_NOT_FOUND: Deposit not found.', code: 'DEPOSIT_NOT_FOUND', requestId: req.id });
+  if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'DEPOSIT_NOT_PENDING: Deposit is no longer pending.', code: 'DEPOSIT_NOT_PENDING', requestId: req.id });
+  tx.status = 'rejected';
+  tx.notes = reason;
+  tx.processedBy = req.user?.email || 'finance@kretz.com';
+  tx.processedById = req.user?.id;
+  tx.processedAt = new Date().toISOString();
+  const cust = devCustomersById.get(tx.userId);
+  if (cust) {
+    await notifyInvestorEvent({
+      userId: cust.id,
+      email: cust.email,
+      title: 'Deposit declined',
+      message: `Deposit ${tx.reference} was declined: ${reason}`,
+      type: 'warning',
+    });
+  }
+  await persistDevState();
+  return res.json({ success: true, data: tx, message: 'Deposit rejected.', requestId: req.id });
 });
 
 router.post('/admin/withdrawals/:withdrawalId/approve', requireAdmin, requireActionEmailVerification('admin.withdrawal.approve'), async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
-    }
-    const tx = mockTransactions.find((t) => t.id === req.params.withdrawalId && t.type === 'withdrawal');
-    if (!tx) return res.status(404).json({ success: false, error: 'Withdrawal not found.', code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
-    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Withdrawal is no longer pending.', code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
-    tx.status = 'completed';
-    const cust = devCustomersById.get(tx.userId);
-    const payoutResult = await dispatchBankPayoutInstruction({
-      transactionId: tx.id,
-      reference: tx.reference,
-      amount: Number(tx.amount || 0),
-      currency: 'EUR',
-      iban: String((tx as any).destination || cust?.bankIban || ''),
-      holderName: cust?.bankAccountHolder || cust?.fullName || 'Investor',
-    });
-    if (cust) {
-      await notifyInvestorEvent({
-        userId: cust.id,
-        email: cust.email,
-        title: 'Withdrawal approved for payout',
-        message: `Your withdrawal ${tx.reference} of EUR ${Number(tx.amount || 0).toFixed(2)} has been approved (${payoutResult.provider}).`,
-        type: 'success',
-        emailTemplate: 'payment_notification',
-        emailData: { fullName: cust.fullName || 'Investor', amount: Number(tx.amount || 0).toFixed(2), currency: 'EUR', reference: tx.reference, status: 'Approved & Dispatched' },
-        idempotencyKey: `wth-appr-${tx.id}`,
+  const payoutReference = String(req.body?.payoutReference || req.body?.payoutRef || req.body?.payout_ref || '').trim();
+  const feeCents = req.body?.feeCents !== undefined
+    ? Math.max(0, Math.round(Number(req.body.feeCents)))
+    : Math.max(0, toCents(req.body?.fee ?? req.body?.feeAmount ?? platformConfig.limits?.withdrawal_fee_eur ?? 0));
+  const fee = centsToEur(feeCents);
+
+  if (canUseLiveSupabaseData()) {
+    try {
+      let row: any;
+      try {
+        row = await runFinancialRpc('approve_withdrawal', {
+          p_withdrawal_id: req.params.withdrawalId,
+          p_payout_ref: payoutReference || `PAYOUT-${req.params.withdrawalId.slice(-6).toUpperCase()}`,
+          p_fee: fee,
+          p_admin_id: req.user!.id,
+        });
+      } catch (rpcErr: any) {
+        if (!isMissingSchemaError(rpcErr)) throw rpcErr;
+        row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: payoutReference || req.body?.reason || null });
+      }
+      const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+      const netSendCents = Math.max(0, toCents(row?.amount) - feeCents);
+      const netSend = centsToEur(netSendCents);
+      const payoutResult = await dispatchBankPayoutInstruction({
+        transactionId: row.id,
+        reference: payoutReference || row.reference,
+        amount: netSend,
+        currency: 'EUR',
+        iban: String(row.dest_iban || row.tx_hash || prof?.bank_iban || ''),
+        holderName: prof?.bank_account_holder || prof?.full_name || 'Investor',
       });
+      if (row?.user_id) {
+        await notifyInvestorEvent({
+          userId: row.user_id,
+          email: prof?.email,
+          title: 'Withdrawal approved for payout',
+          message: `Your withdrawal ${row.reference} (net €${netSend.toFixed(2)}, fee €${fee.toFixed(2)}, ref ${payoutReference || row.reference}) has been approved.`,
+          type: 'success',
+          emailTemplate: 'payment_notification',
+          emailData: { fullName: prof?.full_name || 'Valued Investor', amount: netSend.toFixed(2), currency: 'EUR', reference: payoutReference || row.reference, status: 'Approved & Dispatched' },
+          idempotencyKey: `wth-appr-${row.id}`,
+        });
+      }
+      return res.json({ success: true, data: toApiTransaction(row), payout: payoutResult, message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        const status = resolveDatabaseErrorStatus(error);
+        return res.status(status).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Withdrawal approval could not be completed.'),
+          code: error?.code || (status >= 500 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED'),
+          requestId: req.id,
+        });
+      }
     }
-    await persistDevState();
-    return res.json({ success: true, data: tx, payout: payoutResult, message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
   }
-  try {
-    const row: any = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: true, p_reason: req.body?.reason || null });
-    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
-    const payoutResult = await dispatchBankPayoutInstruction({
-      transactionId: row.id,
-      reference: row.reference,
-      amount: Number(row.amount || 0),
-      currency: 'EUR',
-      iban: String(row.tx_hash || prof?.bank_iban || ''),
-      holderName: prof?.bank_account_holder || prof?.full_name || 'Investor',
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const tx = mockTransactions.find((t) => t.id === req.params.withdrawalId && t.type === 'withdrawal');
+  if (!tx) return res.status(404).json({ success: false, error: 'WITHDRAWAL_NOT_FOUND: Withdrawal not found.', code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
+  if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'WITHDRAWAL_NOT_PENDING: Withdrawal is no longer pending.', code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
+  const txCents = toCents(tx.amount);
+  if (feeCents > txCents) {
+    return res.status(400).json({ success: false, error: 'WITHDRAWAL_FEE_EXCEEDS_AMOUNT: Fee cannot exceed withdrawal amount.', code: 'WITHDRAWAL_FEE_EXCEEDS_AMOUNT', requestId: req.id });
+  }
+  const netSendCents = Math.max(0, txCents - feeCents);
+  const netSend = centsToEur(netSendCents);
+  tx.status = 'completed';
+  tx.payoutReference = payoutReference || tx.reference;
+  tx.feeAmount = fee;
+  tx.netAmount = netSend;
+  (tx as any).feeCents = feeCents;
+  (tx as any).netCents = netSendCents;
+  tx.processedBy = req.user?.email || 'finance@kretz.com';
+  tx.processedById = req.user?.id;
+  tx.processedAt = new Date().toISOString();
+  const cust = devCustomersById.get(tx.userId);
+  const payoutResult = await dispatchBankPayoutInstruction({
+    transactionId: tx.id,
+    reference: tx.payoutReference,
+    amount: netSend,
+    currency: 'EUR',
+    iban: String((tx as any).destIban || (tx as any).destination || cust?.bankIban || ''),
+    holderName: cust?.bankAccountHolder || cust?.fullName || 'Investor',
+  });
+  if (cust) {
+    await notifyInvestorEvent({
+      userId: cust.id,
+      email: cust.email,
+      title: 'Withdrawal approved for payout',
+      message: `Your withdrawal ${tx.reference} (net EUR ${netSend.toFixed(2)}, fee EUR ${fee.toFixed(2)}, transfer ref ${tx.payoutReference}) has been approved.`,
+      type: 'success',
+      emailTemplate: 'payment_notification',
+      emailData: { fullName: cust.fullName || 'Investor', amount: netSend.toFixed(2), currency: 'EUR', reference: tx.payoutReference, status: 'Approved & Dispatched' },
+      idempotencyKey: `wth-appr-${tx.id}`,
     });
-    if (row?.user_id) {
-      await notifyInvestorEvent({
-        userId: row.user_id,
-        email: prof?.email,
-        title: 'Withdrawal approved for payout',
-        message: `Your withdrawal ${row.reference} of EUR ${Number(row.amount || 0).toFixed(2)} has been approved (${payoutResult.provider}).`,
-        type: 'success',
-        emailTemplate: 'payment_notification',
-        emailData: { fullName: prof?.full_name || 'Valued Investor', amount: Number(row.amount || 0).toFixed(2), currency: 'EUR', reference: row.reference, status: 'Approved & Dispatched' },
-        idempotencyKey: `wth-appr-${row.id}`,
-      });
-    }
-    return res.json({ success: true, data: toApiTransaction(row), payout: payoutResult, message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
-  } catch (error: any) {
-    const message = String(error?.message || '');
-    const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-    return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal approval could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
   }
+  await persistDevState();
+  return res.json({ success: true, data: tx, payout: payoutResult, message: 'Withdrawal approved and marked for payout processing.', requestId: req.id });
 });
 
 router.post('/admin/withdrawals/:withdrawalId/reject', requireAdmin, requireActionEmailVerification('admin.withdrawal.reject'), async (req: AuthenticatedRequest, res: Response) => {
-  const reason = req.body?.reason || 'Withdrawal rejected by finance review.';
-  if (!isSupabaseServerConfigured()) {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  const reason = String(req.body?.reason || '').trim() || 'Withdrawal rejected by finance review.';
+  if (canUseLiveSupabaseData()) {
+    try {
+      let row: any;
+      try {
+        row = await runFinancialRpc('reject_withdrawal', { p_withdrawal_id: req.params.withdrawalId, p_reason: reason, p_admin_id: req.user!.id });
+      } catch (rpcErr: any) {
+        if (!isMissingSchemaError(rpcErr)) throw rpcErr;
+        row = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason });
+      }
+      const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
+      if (row?.user_id) {
+        await notifyInvestorEvent({
+          userId: row.user_id,
+          email: prof?.email,
+          title: 'Withdrawal declined and funds returned',
+          message: `Withdrawal ${row.reference} was declined (${reason}). EUR ${Number(row.amount || 0).toFixed(2)} was returned to your wallet.`,
+          type: 'warning',
+        });
+      }
+      return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        const status = resolveDatabaseErrorStatus(error);
+        return res.status(status).json({
+          success: false,
+          error: formatDatabaseRefusal(error, 'Withdrawal rejection could not be completed.'),
+          code: error?.code || (status >= 500 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED'),
+          requestId: req.id,
+        });
+      }
     }
-    const tx = mockTransactions.find((t) => t.id === req.params.withdrawalId && t.type === 'withdrawal');
-    if (!tx) return res.status(404).json({ success: false, error: 'Withdrawal not found.', code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
-    if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'Withdrawal is no longer pending.', code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
-    tx.status = 'rejected';
-    const cust = devCustomersById.get(tx.userId);
-    if (cust) {
-      cust.balance = Math.round((Number(cust.balance || 0) + Number(tx.amount || 0)) * 100) / 100;
-      await notifyInvestorEvent({
-        userId: cust.id,
-        email: cust.email,
-        title: 'Withdrawal declined and funds returned',
-        message: `Withdrawal ${tx.reference} was declined (${reason}). EUR ${Number(tx.amount || 0).toFixed(2)} was returned to your wallet.`,
-        type: 'warning',
-      });
-    }
-    await persistDevState();
-    return res.json({ success: true, data: tx, message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
   }
-  try {
-    const row: any = await runFinancialRpc('kretz_review_withdrawal', { p_transaction_id: req.params.withdrawalId, p_admin_id: req.user!.id, p_approve: false, p_reason: reason });
-    const prof = row?.user_id ? await getUserProfile(row.user_id).catch(() => null) : null;
-    if (row?.user_id) {
-      await notifyInvestorEvent({
-        userId: row.user_id,
-        email: prof?.email,
-        title: 'Withdrawal declined and funds returned',
-        message: `Withdrawal ${row.reference} was declined (${reason}). EUR ${Number(row.amount || 0).toFixed(2)} was returned to your wallet.`,
-        type: 'warning',
-      });
-    }
-    return res.json({ success: true, data: toApiTransaction(row), message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
-  } catch (error: any) {
-    const message = String(error?.message || '');
-    const status = message.includes('WITHDRAWAL_NOT_FOUND') ? 404 : message.includes('WITHDRAWAL_NOT_PENDING') ? 409 : message.includes('ADMIN_REQUIRED') || message.includes('FINANCE_ADMIN_REQUIRED') ? 403 : 503;
-    return res.status(status).json({ success: false, error: status === 503 ? 'Withdrawal rejection could not be completed. Please retry.' : message, code: status === 503 ? 'WITHDRAWAL_REVIEW_FAILED' : 'WITHDRAWAL_REVIEW_REJECTED', requestId: req.id });
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent financial database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
+  const tx = mockTransactions.find((t) => t.id === req.params.withdrawalId && t.type === 'withdrawal');
+  if (!tx) return res.status(404).json({ success: false, error: 'WITHDRAWAL_NOT_FOUND: Withdrawal not found.', code: 'WITHDRAWAL_NOT_FOUND', requestId: req.id });
+  if (tx.status !== 'pending') return res.status(409).json({ success: false, error: 'WITHDRAWAL_NOT_PENDING: Withdrawal is no longer pending.', code: 'WITHDRAWAL_NOT_PENDING', requestId: req.id });
+  tx.status = 'rejected';
+  tx.notes = reason;
+  tx.processedBy = req.user?.email || 'finance@kretz.com';
+  tx.processedById = req.user?.id;
+  tx.processedAt = new Date().toISOString();
+  const cust = devCustomersById.get(tx.userId);
+  if (cust) {
+    cust.balance = centsToEur(toCents(cust.balance) + toCents(tx.amount));
+    if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+    await notifyInvestorEvent({
+      userId: cust.id,
+      email: cust.email,
+      title: 'Withdrawal declined and funds returned',
+      message: `Withdrawal ${tx.reference} was declined (${reason}). EUR ${Number(tx.amount || 0).toFixed(2)} was returned to your wallet.`,
+      type: 'warning',
+    });
+  }
+  await persistDevState();
+  return res.json({ success: true, data: tx, message: 'Withdrawal rejected and reserved funds refunded.', requestId: req.id });
 });
 
 /**
@@ -7737,22 +8484,30 @@ router.get('/admin/distributions/records', requireAdmin, (req: AuthenticatedRequ
 
 router.post('/admin/distributions/pay', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const propertyId = String(req.body?.propertyId || '').trim();
-  const totalAmountEur = Number(req.body?.totalAmountEur || 0);
+  const totalCents = req.body?.totalAmountCents !== undefined
+    ? Math.round(Number(req.body.totalAmountCents))
+    : toCents(req.body?.totalAmountEur);
+  const totalAmountEur = centsToEur(totalCents);
   const note = String(req.body?.note || '').trim();
-  if (!propertyId || !Number.isFinite(totalAmountEur) || totalAmountEur <= 0) {
+  if (!propertyId || !Number.isFinite(totalCents) || totalCents <= 0) {
     return res.status(400).json({ success: false, error: 'Property and positive distribution amount are required.', code: 'INVALID_DISTRIBUTION_PAYLOAD', requestId: req.id });
   }
-  if (isSupabaseServerConfigured()) {
+  if (canUseLiveSupabaseData()) {
     try {
       const { data, error } = await getSupabaseAdmin().rpc('pay_distribution', {
-        p_property: propertyId,
-        p_total: Math.round(totalAmountEur * 100),
+        p_property_id: propertyId,
+        p_total_amount: totalAmountEur,
         p_note: note || null,
+        p_admin_id: req.user!.id,
       });
       if (error) throw error;
-      return res.json({ success: true, data, paidCount: Number((data as any)?.paid_count || (data as any)?.investors_paid || 0), message: 'Distribution executed via database function.', requestId: req.id });
+      return res.json({ success: true, data, paidCount: Number((data as any)?.recipients_paid || (data as any)?.paid_count || (data as any)?.investors_paid || 0), message: 'Distribution executed via database function.', requestId: req.id });
     } catch (err: any) {
-      return res.status(503).json({ success: false, error: err?.message || 'Unable to process distribution.', code: 'DISTRIBUTION_FAILED', requestId: req.id });
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(resolveDatabaseErrorStatus(err)).json({ success: false, error: formatDatabaseRefusal(err, 'Unable to process distribution.'), code: err?.code || 'DISTRIBUTION_FAILED', requestId: req.id });
+      }
     }
   }
   if (process.env.NODE_ENV === 'production') {
@@ -7765,23 +8520,34 @@ router.post('/admin/distributions/pay', requireAdmin, async (req: AuthenticatedR
       if (units > 0) holdingsByUser.set(t.userId, (holdingsByUser.get(t.userId) || 0) + units);
     }
   }
-  const totalShares = Array.from(holdingsByUser.values()).reduce((s, n) => s + n, 0);
+  const holders = Array.from(holdingsByUser.entries()).map(([userId, shares]) => ({ userId, shares }));
+  const totalShares = holders.reduce((s, h) => s + h.shares, 0);
   if (totalShares <= 0) {
-    return res.status(400).json({ success: false, error: 'No active shareholdings found for this property.', code: 'NO_PROPERTY_HOLDERS', requestId: req.id });
+    return res.status(400).json({ success: false, error: 'NO_PROPERTY_HOLDERS: No active shareholdings found for this property.', code: 'NO_PROPERTY_HOLDERS', requestId: req.id });
   }
+  const allocatedCents = allocateProportionalCents(totalCents, holders);
   const prop = mockListings.find((p) => p.id === propertyId);
   let paidCount = 0;
-  for (const [uid, shares] of holdingsByUser.entries()) {
-    const payout = Math.round(((shares / totalShares) * totalAmountEur) * 100) / 100;
-    if (payout <= 0) continue;
+  const nowIso = new Date().toISOString();
+  for (const [uid] of holdingsByUser.entries()) {
+    const payoutCents = allocatedCents.get(uid) || 0;
+    if (payoutCents <= 0) continue;
+    const payout = centsToEur(payoutCents);
     const cust = devCustomersById.get(uid);
-    if (cust) cust.balance = Math.round((Number(cust.balance || 0) + payout) * 100) / 100;
+    if (cust) {
+      cust.balance = centsToEur(toCents(cust.balance) + payoutCents);
+      if (userSubBalancesStore.has(cust.id)) userSubBalancesStore.get(cust.id)!.EUR = cust.balance;
+    }
     mockTransactions.unshift({
       id: `dist-${crypto.randomBytes(5).toString('hex')}`,
       userId: uid,
       userEmail: cust?.email,
+      userName: cust?.fullName,
       type: 'dividend',
       amount: payout,
+      amountCents: payoutCents,
+      netAmount: payout,
+      feeAmount: 0,
       currency: 'EUR',
       status: 'completed',
       method: 'Property Yield Distribution',
@@ -7789,14 +8555,17 @@ router.post('/admin/distributions/pay', requireAdmin, async (req: AuthenticatedR
       propertyId,
       propertyTitle: prop?.title || propertyId,
       notes: note || undefined,
-      createdAt: new Date().toISOString(),
+      processedBy: req.user?.email || 'finance@kretz.com',
+      processedById: req.user?.id,
+      processedAt: nowIso,
+      createdAt: nowIso,
     } as any);
     paidCount += 1;
   }
   await persistDevState();
   return res.json({
     success: true,
-    data: { paidCount, totalAmountEur, propertyId, note },
+    data: { paidCount, totalAmountEur, totalCents, propertyId, note },
     paidCount,
     message: `Paid €${totalAmountEur.toFixed(2)} across ${paidCount} investor${paidCount === 1 ? '' : 's'}.`,
     requestId: req.id,

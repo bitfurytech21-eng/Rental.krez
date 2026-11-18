@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -30,9 +30,12 @@ import {
   PaymentGateRecord,
   approveDepositSubmission,
   approveWithdrawalRequest,
+  centsToEur,
   createPrivateBucketSignedUrl,
   deletePaymentGateRecord,
+  eurToCents,
   fetchSettingsRows,
+  formatCentsEur,
   maskIban,
   rejectDepositSubmission,
   rejectWithdrawalRequest,
@@ -260,7 +263,7 @@ export const AdminDepositsSection: React.FC<{
   transactions: any[];
   manualDeposits: any[];
   paymentGates: PaymentGateRecord[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
 }> = ({ loading, users, transactions, manualDeposits, paymentGates, onRefresh, onSuccess, onError }) => {
@@ -268,6 +271,7 @@ export const AdminDepositsSection: React.FC<{
   const [sortKey, setSortKey] = useState<'createdAt' | 'investorName' | 'amount' | 'status'>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const actionLockRef = useRef<boolean>(false);
 
   // Approve modal ("Amount actually received")
   const [approveTarget, setApproveTarget] = useState<any | null>(null);
@@ -384,43 +388,48 @@ export const AdminDepositsSection: React.FC<{
 
   const handleConfirmApprove = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!approveTarget) return;
-    const amt = Number(receivedAmount);
-    if (!Number.isFinite(amt) || amt <= 0) {
+    if (!approveTarget || actionLockRef.current || busyId) return;
+    const amtCents = eurToCents(receivedAmount);
+    if (!Number.isFinite(amtCents) || amtCents <= 0) {
       onError('Please enter a valid positive amount received.');
       return;
     }
+    const cleanEur = centsToEur(amtCents);
+    actionLockRef.current = true;
     setBusyId(approveTarget.id);
     try {
-      await approveDepositSubmission(approveTarget.id, amt, approveTarget.isManual);
+      await approveDepositSubmission(approveTarget.id, cleanEur, approveTarget.isManual);
       setApproveTarget(null);
-      onSuccess(`Deposit approved (${formatCurrency(amt)} credited).`);
-      onRefresh();
+      await onRefresh();
+      onSuccess(`Deposit approved (${formatCentsEur(amtCents)} credited).`);
     } catch (err: any) {
       onError(err?.message || 'Unable to approve deposit.');
     } finally {
       setBusyId(null);
+      actionLockRef.current = false;
     }
   };
 
   const handleConfirmReject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rejectTarget) return;
+    if (!rejectTarget || actionLockRef.current || busyId) return;
     if (!rejectReason.trim()) {
       onError('A rejection reason is required.');
       return;
     }
+    actionLockRef.current = true;
     setBusyId(rejectTarget.id);
     try {
       await rejectDepositSubmission(rejectTarget.id, rejectReason.trim(), rejectTarget.isManual);
       setRejectTarget(null);
       setRejectReason('');
+      await onRefresh();
       onSuccess('Deposit rejected.');
-      onRefresh();
     } catch (err: any) {
       onError(err?.message || 'Unable to reject deposit.');
     } finally {
       setBusyId(null);
+      actionLockRef.current = false;
     }
   };
 
@@ -502,10 +511,10 @@ export const AdminDepositsSection: React.FC<{
                       <div className="inline-flex items-center gap-2">
                         <button
                           type="button"
-                          disabled={busyId === row.id}
+                          disabled={Boolean(busyId)}
                           onClick={() => {
                             setApproveTarget(row);
-                            setReceivedAmount(String(row.amount));
+                            setReceivedAmount(centsToEur(eurToCents(row.amount)).toFixed(2));
                           }}
                           className="px-3 py-1.5 rounded-lg bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-[11px] font-bold cursor-pointer disabled:opacity-50"
                         >
@@ -513,7 +522,7 @@ export const AdminDepositsSection: React.FC<{
                         </button>
                         <button
                           type="button"
-                          disabled={busyId === row.id}
+                          disabled={Boolean(busyId)}
                           onClick={() => {
                             setRejectTarget(row);
                             setRejectReason('');
@@ -545,10 +554,12 @@ export const AdminDepositsSection: React.FC<{
       {approveTarget && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={handleConfirmApprove} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-sm font-bold text-[#F2F5F4]">Approve Deposit</h3>
-            <div className="text-xs text-[#8FA1A8] space-y-1">
-              <div>Investor: <strong className="text-[#F2F5F4]">{approveTarget.investorEmail}</strong></div>
+            <h3 className="text-sm font-bold text-[#F2F5F4]">Confirm Deposit Approval</h3>
+            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
+              <div>Action: <strong className="text-[#6FD8B0]">Approve Deposit (approve_deposit)</strong></div>
+              <div>Investor: <strong className="text-[#F2F5F4]">{approveTarget.investorName} ({approveTarget.investorEmail})</strong></div>
               <div>Reference: <strong className="font-mono text-[#F2F5F4]">{approveTarget.reference}</strong></div>
+              <div>Amount to Credit: <strong className="text-[#6FD8B0]">{formatCentsEur(eurToCents(receivedAmount))}</strong></div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-[#B6C4C9] mb-1">Amount actually received (EUR)</label>
@@ -557,6 +568,7 @@ export const AdminDepositsSection: React.FC<{
                 min={0.01}
                 step="0.01"
                 required
+                disabled={Boolean(busyId)}
                 value={receivedAmount}
                 onChange={(e) => setReceivedAmount(e.target.value)}
                 className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-sm text-[#6FD8B0] font-bold"
@@ -565,14 +577,15 @@ export const AdminDepositsSection: React.FC<{
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
+                disabled={Boolean(busyId)}
                 onClick={() => setApproveTarget(null)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={Boolean(busyId)}
+                disabled={Boolean(busyId) || eurToCents(receivedAmount) <= 0}
                 className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
               >
                 {busyId ? 'Approving...' : 'Confirm & Credit'}
@@ -586,11 +599,17 @@ export const AdminDepositsSection: React.FC<{
       {rejectTarget && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <form onSubmit={handleConfirmReject} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-sm font-bold text-[#F2F5F4]">Reject Deposit</h3>
-            <p className="text-xs text-[#8FA1A8]">Enter a required reason explaining why deposit <span className="font-mono text-[#F2F5F4]">{rejectTarget.reference}</span> is rejected.</p>
+            <h3 className="text-sm font-bold text-[#F2F5F4]">Confirm Deposit Rejection</h3>
+            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
+              <div>Action: <strong className="text-rose-400">Reject Deposit (reject_deposit)</strong></div>
+              <div>Investor: <strong className="text-[#F2F5F4]">{rejectTarget.investorName} ({rejectTarget.investorEmail})</strong></div>
+              <div>Reference: <strong className="font-mono text-[#F2F5F4]">{rejectTarget.reference}</strong></div>
+              <div>Amount: <strong className="text-[#F2F5F4]">{formatCentsEur(eurToCents(rejectTarget.amount))}</strong></div>
+            </div>
             <textarea
               rows={3}
               required
+              disabled={Boolean(busyId)}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="e.g. Wire transfer not received or reference mismatch..."
@@ -599,8 +618,9 @@ export const AdminDepositsSection: React.FC<{
             <div className="flex justify-end gap-2">
               <button
                 type="button"
+                disabled={Boolean(busyId)}
                 onClick={() => setRejectTarget(null)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -651,7 +671,7 @@ export const AdminWithdrawalsSection: React.FC<{
   loading: boolean;
   users: PlatformUser[];
   transactions: any[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
 }> = ({ loading, users, transactions, onRefresh, onSuccess, onError }) => {
@@ -660,6 +680,7 @@ export const AdminWithdrawalsSection: React.FC<{
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [revealedIds, setRevealedIds] = useState<Record<string, boolean>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const actionLockRef = useRef<boolean>(false);
 
   const [approveTarget, setApproveTarget] = useState<any | null>(null);
   const [rejectTarget, setRejectTarget] = useState<any | null>(null);
@@ -697,38 +718,46 @@ export const AdminWithdrawalsSection: React.FC<{
   );
 
   const handleConfirmApprove = async () => {
-    if (!approveTarget) return;
-    setBusyId(approveTarget.id);
+    if (!approveTarget || actionLockRef.current || busyId) return;
+    actionLockRef.current = true;
+    setBusyId(approveTarget.tx.id);
     try {
-      await approveWithdrawalRequest(approveTarget.id);
+      await approveWithdrawalRequest(
+        approveTarget.tx.id,
+        approveTarget.tx.reference || `PAYOUT-${approveTarget.tx.id.slice(0, 8)}`,
+        0
+      );
       setApproveTarget(null);
+      await onRefresh();
       onSuccess('Withdrawal approved and marked as paid.');
-      onRefresh();
     } catch (err: any) {
       onError(err?.message || 'Unable to approve withdrawal.');
     } finally {
       setBusyId(null);
+      actionLockRef.current = false;
     }
   };
 
   const handleConfirmReject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rejectTarget) return;
+    if (!rejectTarget || actionLockRef.current || busyId) return;
     if (!rejectReason.trim()) {
       onError('A rejection reason is required.');
       return;
     }
+    actionLockRef.current = true;
     setBusyId(rejectTarget.id);
     try {
       await rejectWithdrawalRequest(rejectTarget.id, rejectReason.trim());
       setRejectTarget(null);
       setRejectReason('');
+      await onRefresh();
       onSuccess('Withdrawal rejected and reserved balance restored.');
-      onRefresh();
     } catch (err: any) {
       onError(err?.message || 'Unable to reject withdrawal.');
     } finally {
       setBusyId(null);
+      actionLockRef.current = false;
     }
   };
 
@@ -833,7 +862,7 @@ export const AdminWithdrawalsSection: React.FC<{
                         <div className="inline-flex items-center gap-2">
                           <button
                             type="button"
-                            disabled={busyId === tx.id}
+                            disabled={Boolean(busyId)}
                             onClick={() => setApproveTarget({ tx, inv })}
                             className="px-3 py-1.5 rounded-lg bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-[11px] font-bold cursor-pointer disabled:opacity-50"
                           >
@@ -841,7 +870,7 @@ export const AdminWithdrawalsSection: React.FC<{
                           </button>
                           <button
                             type="button"
-                            disabled={busyId === tx.id}
+                            disabled={Boolean(busyId)}
                             onClick={() => {
                               setRejectTarget(tx);
                               setRejectReason('');
@@ -874,16 +903,19 @@ export const AdminWithdrawalsSection: React.FC<{
       {approveTarget && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-sm font-bold text-[#F2F5F4]">Confirm Withdrawal Payout</h3>
-            <p className="text-xs text-[#B6C4C9] leading-relaxed">
-              Confirm that <strong className="text-[#6FD8B0]">{formatCurrency(approveTarget.tx.amount)}</strong> has been dispatched to{' '}
-              <strong className="text-[#F2F5F4]">{approveTarget.inv?.email || approveTarget.tx.userId}</strong> ({approveTarget.tx.destination || approveTarget.inv?.bankIban || approveTarget.tx.reference}) and mark this withdrawal as paid?
-            </p>
+            <h3 className="text-sm font-bold text-[#F2F5F4]">Confirm Withdrawal Approval</h3>
+            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
+              <div>Action: <strong className="text-[#6FD8B0]">Approve Withdrawal (approve_withdrawal)</strong></div>
+              <div>Investor: <strong className="text-[#F2F5F4]">{approveTarget.inv?.fullName || approveTarget.inv?.email || approveTarget.tx.userId}</strong></div>
+              <div>Destination IBAN: <strong className="font-mono text-[#F2F5F4]">{approveTarget.tx.destination || approveTarget.inv?.bankIban || approveTarget.tx.reference}</strong></div>
+              <div>Amount: <strong className="text-[#6FD8B0]">{formatCentsEur(eurToCents(approveTarget.tx.amount))}</strong></div>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
+                disabled={Boolean(busyId)}
                 onClick={() => setApproveTarget(null)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -901,40 +933,47 @@ export const AdminWithdrawalsSection: React.FC<{
       )}
 
       {/* Confirmation Dialog: Reject (reason required) */}
-      {rejectTarget && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleConfirmReject} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-sm font-bold text-[#F2F5F4]">Reject Withdrawal &amp; Refund</h3>
-            <p className="text-xs text-[#8FA1A8]">
-              Provide a required reason for rejecting <strong className="text-[#F2F5F4]">{formatCurrency(rejectTarget.amount)}</strong>. Reserved funds will be returned to the investor wallet.
-            </p>
-            <textarea
-              rows={3}
-              required
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g. Beneficiary IBAN does not match verified account holder..."
-              className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setRejectTarget(null)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
+      {rejectTarget && (() => {
+        const inv = userById.get(rejectTarget.userId);
+        return (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <form onSubmit={handleConfirmReject} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
+              <h3 className="text-sm font-bold text-[#F2F5F4]">Confirm Withdrawal Rejection</h3>
+              <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
+                <div>Action: <strong className="text-rose-400">Reject Withdrawal &amp; Refund (reject_withdrawal)</strong></div>
+                <div>Investor: <strong className="text-[#F2F5F4]">{inv?.fullName || inv?.email || rejectTarget.userId}</strong></div>
+                <div>Refund Amount: <strong className="text-[#6FD8B0]">{formatCentsEur(eurToCents(rejectTarget.amount))}</strong></div>
+              </div>
+              <textarea
+                rows={3}
+                required
                 disabled={Boolean(busyId)}
-                className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
-              >
-                {busyId ? 'Rejecting...' : 'Confirm Rejection'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g. Beneficiary IBAN does not match verified account holder..."
+                className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={Boolean(busyId)}
+                  onClick={() => setRejectTarget(null)}
+                  className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={Boolean(busyId)}
+                  className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                >
+                  {busyId ? 'Rejecting...' : 'Confirm Rejection'}
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -1234,6 +1273,7 @@ export const AdminSettingsSection: React.FC<{
     min_withdrawal_eur: 250,
     max_withdrawal_eur: 250000,
     min_investment_eur: 500,
+    withdrawal_fee_eur: 0,
     require_kyc_for_withdrawal: true,
   });
   const [templatesJson, setTemplatesJson] = useState<string>('{}');
@@ -1432,11 +1472,14 @@ export const AdminSettingsSection: React.FC<{
                 { key: 'min_withdrawal_eur', label: 'Min Withdrawal (EUR)' },
                 { key: 'max_withdrawal_eur', label: 'Max Withdrawal (EUR)' },
                 { key: 'min_investment_eur', label: 'Min Investment (EUR)' },
+                { key: 'withdrawal_fee_eur', label: 'Withdrawal Fee (EUR)' },
               ].map((field) => (
                 <div key={field.key}>
                   <label className="block text-[#B6C4C9] font-semibold mb-1">{field.label}</label>
                   <input
                     type="number"
+                    min={0}
+                    step={field.key === 'withdrawal_fee_eur' ? '0.01' : '1'}
                     value={Number(limits[field.key] ?? 0)}
                     onChange={(e) => setLimits((prev) => ({ ...prev, [field.key]: Number(e.target.value) }))}
                     className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"

@@ -31,22 +31,15 @@ interface AuthContextType {
     newPassword: string;
     fullName?: string;
   }) => Promise<User>;
-  register: (
-    email: string,
-    pass: string,
-    fullName: string,
-    role?: UserRole,
-    accountType?: AccountType,
-    country?: string,
-    phoneNumber?: string,
-    countryCode?: string
-  ) => Promise<RegisterResult>;
+  register: (email: string, pass: string, fullName: string, acceptedTerms: boolean, acceptedRisk: boolean) => Promise<RegisterResult>;
+  resendSignupConfirmation: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<boolean>;
   updatePassword: (newPassword: string) => Promise<void>;
   updateUserEmail: (newEmail: string) => Promise<void>;
   updateUserPassword: (newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   verifyMfaCode: (factorId: string, challengeId: string, code: string) => Promise<boolean>;
   quickDemoSession: (role: 'investor' | 'admin', accountType?: AccountType) => Promise<User>;
   syncAdminSession: (newToken: string, updatedFields: { email: string; fullName?: string }) => void;
@@ -356,7 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearTimeout(failsafeTimer);
 
         if (error) {
-          console.error('Error fetching Supabase session:', error.message);
+          console.error('Unable to fetch the Supabase session.');
         }
         // Never overwrite an active cryptographically signed Administrator session with an investor Supabase session
         const currentAdminTok = localStorage.getItem('kretz_auth_token');
@@ -364,7 +357,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        if (initialSession?.user) {
+        if (initialSession?.user && !(initialSession.user.email_confirmed_at || (initialSession.user as any).confirmed_at)) {
+          setUser(null);
+          setSession(null);
+          setToken(null);
+          setAuthToken(null);
+          localStorage.removeItem('kretz_auth_token');
+          localStorage.removeItem(CURRENT_USER_KEY);
+          window.setTimeout(() => { void supabase.auth.signOut({ scope: 'local' }); }, 0);
+        } else if (initialSession?.user) {
           const synced = ledger.syncSupabaseUser(
             initialSession.user.id,
             initialSession.user.email || '',
@@ -392,7 +393,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isResolved) return;
         isResolved = true;
         clearTimeout(failsafeTimer);
-        console.error('Supabase getSession exception:', err);
+        console.error('Supabase session retrieval failed.');
       })
       .finally(() => {
         if (!isResolved) {
@@ -416,7 +417,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      if (currentSession?.user) {
+      if (currentSession?.user && !(currentSession.user.email_confirmed_at || (currentSession.user as any).confirmed_at)) {
+        setUser(null);
+        setSession(null);
+        setToken(null);
+        setAuthToken(null);
+        localStorage.removeItem('kretz_auth_token');
+        localStorage.removeItem(CURRENT_USER_KEY);
+        window.setTimeout(() => { void supabase.auth.signOut({ scope: 'local' }); }, 0);
+      } else if (currentSession?.user) {
         const synced = ledger.syncSupabaseUser(
           currentSession.user.id,
           currentSession.user.email || '',
@@ -531,10 +540,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             refresh_token: serverRefreshToken,
           });
           if (sessionError) {
-            console.warn('[auth] API login succeeded, but Supabase session persistence needs a retry:', sessionError.message);
+            console.warn('[auth] API login succeeded; session persistence needs a retry.');
           }
         } catch (sessionError: any) {
-          console.warn('[auth] API login succeeded, but Supabase session persistence failed:', sessionError?.message || sessionError);
+          console.warn('[auth] API login succeeded; session persistence failed.');
         }
       }
 
@@ -585,17 +594,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       } catch (e) {}
 
-      if (error.message.toLowerCase().includes('email not confirmed')) {
-        throw new Error('Email not verified yet. Please check your inbox and verify your email before signing in.');
-      }
-      if (error.message.toLowerCase().includes('invalid login credentials')) {
-        throw new Error('Invalid email or password. Please verify your credentials and try again.');
+      if (
+        error.message.toLowerCase().includes('email not confirmed') ||
+        error.message.toLowerCase().includes('invalid login credentials')
+      ) {
+        const credentialError: any = new Error('Email or password is incorrect');
+        credentialError.code = 'INVALID_CREDENTIALS';
+        throw credentialError;
       }
       throw new Error(error.message);
     }
 
     if (!data.user) {
       throw new Error('Authentication failed. No user was returned by Supabase.');
+    }
+    if (!(data.user.email_confirmed_at || (data.user as any).confirmed_at)) {
+      await supabase.auth.signOut({ scope: 'local' });
+      throw new Error('Email not confirmed yet. Please check your inbox and confirm your account before signing in.');
     }
 
     const synced = ledger.syncSupabaseUser(
@@ -631,279 +646,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     pass: string,
     fullName: string,
-    role: UserRole = 'investor',
-    accountType?: AccountType,
-    country?: string,
-    phoneNumber?: string,
-    countryCode?: string
+    acceptedTerms: boolean,
+    acceptedRisk: boolean
   ): Promise<RegisterResult> => {
-    const determinedAccountType: AccountType = (accountType === 'admin' ? 'individual_investor' : accountType) || 'individual_investor';
-    const determinedRole: UserRole = 'investor';
     const cleanEmail = email.trim().toLowerCase();
-
-    // Use Supabase Auth directly in production when it is configured.
-    // The legacy API is reserved for an unconfigured environment.
+    if (!acceptedTerms || !acceptedRisk) {
+      throw new Error('Both required acknowledgements must be accepted before creating an account.');
+    }
     if (!isConfigured) {
-      let serverUser: any = null;
-      let serverToken: string | null = null;
-      let registrationResponse: any = null;
-
-      try {
-        const res = await authApi.register({
-          email: cleanEmail,
-          password: pass,
-          pass,
-          fullName: fullName.trim(),
-          role: determinedRole,
-          accountType: determinedAccountType,
-          country: country || 'France',
-          phoneNumber: phoneNumber || '',
-          countryCode: countryCode || '',
-        });
-
-        registrationResponse = res;
-        serverUser = (res as any)?.user || (res as any)?.data?.user;
-        serverToken = (res as any)?.token || (res as any)?.data?.token;
-      } catch (err: any) {
-        const isTransportOutage =
-          err?.status === 405 ||
-          err?.status === 404 ||
-          err?.status === 0 ||
-          err?.status >= 500 ||
-          String(err?.message || '').includes('405') ||
-          String(err?.message || '').includes('Failed to fetch') ||
-          String(err?.message || '').includes('Network request failed') ||
-          String(err?.message || '').includes('temporarily unavailable');
-
-        // Production must never fall back to browser-local demo accounts when
-        // the durable Supabase-backed registration API is unavailable.
-        if (import.meta.env.PROD) {
-          if (isTransportOutage) {
-            throw new Error('Registration service is unavailable. Please try again shortly.');
-          }
-          const prodErr: any = new Error(err?.message || 'Registration could not be completed. Please try again.');
-          prodErr.code = err?.code;
-          prodErr.status = err?.status;
-          throw prodErr;
-        }
-        // Handle static host 405 / 404 / offline network fallback only in development.
-        if (isTransportOutage) {
-          let existing = ledger.getUserByEmail(cleanEmail);
-          const created = existing || ledger.createUser({
-            email: cleanEmail,
-            fullName: fullName.trim() || cleanEmail.split('@')[0],
-            role: determinedRole,
-            accountType: determinedAccountType,
-            country: country || 'France',
-            phoneNumber: phoneNumber || ''
-          });
-          setUser(created);
-          const fallbackToken = `kz_sess_local_${created.id}_${Date.now()}`;
-          setToken(fallbackToken);
-          setAuthToken(fallbackToken);
-          localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
-          localStorage.setItem(CURRENT_USER_KEY, created.id);
-          return {
-            user: created,
-            session: null,
-            requiresVerification: false
-          };
-        }
-        const errMsg = err?.message?.replace(/HTTP (?:Error )?\d+/gi, 'Service error') || 'Registration could not be completed. Please try again.';
-        const typedErr: any = new Error(errMsg);
-        typedErr.code = err?.code;
-        typedErr.status = err?.status;
-        throw typedErr;
-      }
-
-      if (!serverUser?.id) {
-        throw new Error('Registration failed. Please check your information and try again.');
-      }
-
-      const synced = ledger.syncSupabaseUser(
-        serverUser.id,
-        serverUser.email || cleanEmail,
-        serverUser.fullName || fullName.trim(),
-        determinedRole,
-        determinedAccountType,
-        country || 'France',
-        phoneNumber || ''
-      );
-
-      const requiresVerification = Boolean((registrationResponse as any)?.requiresVerification ?? (registrationResponse as any)?.data?.requiresVerification ?? !serverToken);
-      if (serverToken) {
-        setUser(synced);
-        setToken(serverToken);
-        setAuthToken(serverToken);
-        localStorage.setItem(CURRENT_USER_KEY, synced.id);
-      } else {
-        // Supabase email-confirmation mode creates the account but does not create an authenticated session.
-        setUser(null);
-        setSession(null);
-        setToken(null);
-        setAuthToken(null);
-        localStorage.removeItem(CURRENT_USER_KEY);
-        localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
-      }
-
-      return { user: synced, session: null, requiresVerification };
+      throw new Error('Account registration requires the configured email-confirmation service. Please try again later.');
     }
 
     const redirectUrl = getAuthRedirectUrl('/#login');
-
-    let data: any = null;
-    let error: any = null;
-    try {
-      const res = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: pass,
-        options: {
-          data: {
-            full_name: fullName.trim(),
-            role: determinedRole,
-            account_type: determinedAccountType,
-            country: country || 'France',
-            country_code: countryCode || '',
-            phone_number: phoneNumber || '',
-          },
-          emailRedirectTo: redirectUrl,
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password: pass,
+      options: {
+        data: {
+          full_name: fullName.trim(),
+          accepted_terms: true,
+          accepted_risk: true,
         },
-      });
-      data = res.data;
-      error = res.error;
-    } catch (networkErr: any) {
-      if (import.meta.env.PROD) {
-        throw new Error('Registration service is unavailable. Please try again shortly.');
-      }
-      console.warn('[auth] Supabase signUp network error, creating user in local ledger:', networkErr?.message || networkErr);
-      let existing = ledger.getUserByEmail(cleanEmail);
-      const created = existing || ledger.createUser({
-        email: cleanEmail,
-        fullName: fullName.trim() || cleanEmail.split('@')[0],
-        role: determinedRole,
-        accountType: determinedAccountType,
-        country: country || 'France',
-        phoneNumber: phoneNumber || ''
-      });
-      setUser(created);
-      setToken('local_sess_' + created.id);
-      localStorage.setItem(CURRENT_USER_KEY, created.id);
-      return {
-        user: created,
-        session: null,
-        requiresVerification: false
-      };
-    }
+        emailRedirectTo: redirectUrl,
+      },
+    });
 
     if (error) {
-      const errLower = error.message.toLowerCase();
-
-      // Case 1: User already registered
-      if (errLower.includes('already registered') || errLower.includes('already exists')) {
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password: pass,
-          });
-          if (!signInError && signInData?.user && signInData?.session) {
-            const synced = ledger.syncSupabaseUser(
-              signInData.user.id,
-              signInData.user.email || cleanEmail,
-              fullName.trim(),
-              determinedRole
-            );
-            setUser(synced);
-            setSession(signInData.session);
-            setToken(signInData.session.access_token);
-            setAuthToken(signInData.session.access_token);
-            localStorage.setItem(CURRENT_USER_KEY, synced.id);
-            return {
-              user: signInData.user,
-              session: signInData.session,
-              requiresVerification: false
-            };
-          }
-        } catch {
-          // fallback
-        }
-        throw new Error('An account with this email address already exists. Please sign in instead.');
-      }
-
-      // Case 2: Supabase email confirmation failure ("Error sending confirmation email" or SMTP issues)
-      if (
-        errLower.includes('confirmation email') ||
-        errLower.includes('error sending') ||
-        errLower.includes('email rate limit') ||
-        errLower.includes('smtp') ||
-        errLower.includes('transport')
-      ) {
-        // Attempt sign in first in case Supabase created the user record before email dispatch failed
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password: pass,
-          });
-          if (!signInError && signInData?.user && signInData?.session) {
-            const synced = ledger.syncSupabaseUser(
-              signInData.user.id,
-              signInData.user.email || cleanEmail,
-              fullName.trim(),
-              determinedRole
-            );
-            setUser(synced);
-            setSession(signInData.session);
-            const activeToken = signInData.session.access_token;
-            setToken(activeToken);
-            setAuthToken(activeToken);
-            localStorage.setItem(CURRENT_USER_KEY, synced.id);
-            return {
-              user: signInData.user,
-              session: signInData.session,
-              requiresVerification: false
-            };
-          }
-        } catch {}
-
-        throw new Error('Your account may have been created, but the confirmation email could not be sent. Please try again later or contact support to resend the verification email.');
-      }
-
-      throw new Error(error.message);
+      const message = error.message || 'Registration could not be completed. Please try again.';
+      const typedError: any = new Error(message);
+      typedError.code = (error as any).code;
+      throw typedError;
     }
-
     if (!data.user) {
       throw new Error('Account registration failed. Please try again.');
     }
 
-    const synced = ledger.syncSupabaseUser(
-      data.user.id,
-      data.user.email || cleanEmail,
-      fullName.trim(),
-      determinedRole,
-      determinedAccountType,
-      country || 'France',
-      phoneNumber || ''
-    );
+    const emailConfirmed = Boolean(data.user.email_confirmed_at || (data.user as any).confirmed_at);
+    if (data.session && !emailConfirmed) {
+      // Fail closed if Auth is configured to issue a session before confirmation.
+      await supabase.auth.signOut({ scope: 'local' });
+    }
 
-    if (data.session) {
-      setUser(synced);
+    if (data.session && emailConfirmed) {
+      const synced = ledger.syncSupabaseUser(
+        data.user.id,
+        data.user.email || cleanEmail,
+        fullName.trim(),
+        'investor'
+      );
       setSession(data.session);
       setToken(data.session.access_token);
       setAuthToken(data.session.access_token);
+      setUser(synced);
       localStorage.setItem(CURRENT_USER_KEY, synced.id);
-    } else {
-      // Email confirmation is required: do not fabricate a local token or mark the user authenticated.
-      setUser(null);
-      setSession(null);
-      setToken(null);
-      setAuthToken(null);
-      localStorage.removeItem(CURRENT_USER_KEY);
+      return { user: data.user, session: data.session, requiresVerification: false };
     }
 
-    return {
-      user: data.user,
-      session: data.session,
-      requiresVerification: !data.session,
-    };
+    setUser(null);
+    setSession(null);
+    setToken(null);
+    setAuthToken(null);
+    localStorage.removeItem(CURRENT_USER_KEY);
+    localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+    return { user: data.user, session: null, requiresVerification: true };
+  };
+
+  const resendSignupConfirmation = async (email: string): Promise<void> => {
+    if (!isConfigured) {
+      throw new Error('Email confirmation is unavailable because authentication is not configured.');
+    }
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim().toLowerCase(),
+      options: { emailRedirectTo: getAuthRedirectUrl('/#login') },
+    });
+    if (error) throw error;
   };
 
   // Working Sign Out action
@@ -934,7 +751,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         await supabase.auth.signOut();
       } catch (err) {
-        console.warn('Supabase signOut error:', err);
+        console.warn('Supabase sign-out did not complete cleanly.');
       }
     }
     setUser(null);
@@ -944,46 +761,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(CURRENT_USER_KEY);
     localStorage.removeItem('kretz_auth_token');
     localStorage.removeItem(ADMIN_PROFILE_STORAGE_KEY);
+    // Clear portal-only cached preview state; live financial data is held in memory and is reset on unmount.
+    try {
+      sessionStorage.removeItem('portal_sample_data_enabled');
+      sessionStorage.removeItem('portal_action_banner_dismissed');
+    } catch {
+      // Storage may be unavailable in private browsing contexts.
+    }
   };
 
-  // Send password reset email via Supabase recovery flow with server fallback
+  // Supabase Auth intentionally returns the same result for existing and unknown email addresses.
   const sendPasswordReset = async (email: string): Promise<boolean> => {
     const clean = email.trim().toLowerCase();
     if (!isConfigured) {
-      return true;
+      throw new Error('Password recovery is temporarily unavailable.');
     }
 
-    const redirectUrl = getAuthRedirectUrl('/#reset-password');
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(clean, {
-        redirectTo: redirectUrl,
-      });
-
-      if (error) {
-        if (
-          error.message.toLowerCase().includes('email') ||
-          error.message.toLowerCase().includes('sending') ||
-          error.message.toLowerCase().includes('rate limit')
-        ) {
-          try {
-            await authApi.sendPasswordReset(clean);
-            return true;
-          } catch {}
-        }
-        throw new Error(error.message);
-      }
-      return true;
-    } catch (err: any) {
-      try {
-        await authApi.sendPasswordReset(clean);
-        return true;
-      } catch {}
-      throw err;
-    }
+    const redirectUrl = getAuthRedirectUrl('/reset-password');
+    const { error } = await supabase.auth.resetPasswordForEmail(clean, {
+      redirectTo: redirectUrl,
+    });
+    if (error) throw new Error(error.message);
+    return true;
   };
 
   // Complete password reset when user clicks the recovery link
   const updatePassword = async (newPassword: string): Promise<void> => {
+    if (!isRecoveryMode) {
+      throw new Error('Open the password-reset link from your email before setting a new password.');
+    }
     if (!isConfigured) {
       setIsRecoveryMode(false);
       return;
@@ -1042,6 +848,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       throw new Error(error.message);
     }
+  };
+
+  // Investor password changes require the current password to be verified by Supabase Auth.
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!currentPassword) throw new Error('Enter your current password.');
+    if (!newPassword || newPassword.length < 12) {
+      throw new Error('New password must be at least 12 characters long.');
+    }
+    if (!isConfigured) {
+      throw new Error('Password changes are unavailable until secure authentication is configured.');
+    }
+
+    const currentEmail = user?.email?.trim().toLowerCase();
+    if (!currentEmail) throw new Error('Your signed-in account could not be verified. Please sign in again.');
+
+    // Supabase Auth re-authenticates the account by checking the current credentials.
+    const { error: reauthenticationError } = await supabase.auth.signInWithPassword({
+      email: currentEmail,
+      password: currentPassword,
+    });
+    if (reauthenticationError) {
+      throw new Error('Your current password is incorrect.');
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateError) throw new Error(updateError.message);
   };
 
   // MFA Challenge & Verification Step
@@ -1358,12 +1190,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         adminLogin,
         customizeAdminCredentials,
         register,
+        resendSignupConfirmation,
         logout,
         refreshUser,
         sendPasswordReset,
         updatePassword,
         updateUserEmail,
         updateUserPassword,
+        changePassword,
         verifyMfaCode,
         quickDemoSession,
         syncAdminSession,

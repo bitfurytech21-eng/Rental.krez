@@ -167,7 +167,7 @@ export async function verifyAdminCredentials(password: string): Promise<boolean>
     try {
       return await bcrypt.compare(password, config.passwordHash);
     } catch (err) {
-      console.error('Error verifying admin password hash with bcrypt:', err);
+      console.error('Administrator password verification failed.');
       return false;
     }
   }

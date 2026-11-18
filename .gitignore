@@ -10,3 +10,11 @@ coverage/
 server/.admin-credentials.json
 
 .env
+
+# Android Gradle caches & signing secrets (native android/ source remains tracked)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.jks
+*.keystore

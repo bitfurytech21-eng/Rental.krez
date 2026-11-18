@@ -15,7 +15,7 @@ export interface PasswordChecklist {
 
 export function getPasswordChecklist(password: string): PasswordChecklist {
   return {
-    minLength: password.length >= 8,
+    minLength: password.length >= 12,
     maxLength: password.length <= 128,
     hasUpper: /[A-Z]/.test(password),
     hasLower: /[a-z]/.test(password),

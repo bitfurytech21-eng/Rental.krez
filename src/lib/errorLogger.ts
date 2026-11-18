@@ -1,10 +1,8 @@
 /**
- * Frontend Error Logger & LocalStorage Buffer
- * 
- * Captures React component tree crashes and uncaught frontend errors into
- * a persistent local ring buffer for inspection by users and administrators.
+ * Privacy-safe frontend diagnostic buffer.
+ * Never persist exception messages, stacks, URLs, form values, or app state:
+ * those fields can contain passwords, one-time codes, or access tokens.
  */
-
 export interface FrontendErrorEntry {
   id: string;
   timestamp: string;
@@ -16,109 +14,102 @@ export interface FrontendErrorEntry {
   pathname: string;
   userAgent: string;
   viewport: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, never>;
 }
 
-const STORAGE_KEY = 'kretz_frontend_error_buffer_v1';
+const STORAGE_KEY = 'kretz_frontend_error_buffer_v2';
+const LEGACY_STORAGE_KEY = 'kretz_frontend_error_buffer_v1';
 const MAX_STORED_ERRORS = 50;
 
-/**
- * Retrieve all logged frontend errors from localStorage
- */
+function clearLegacyBuffer(): void {
+  if (typeof window === 'undefined') return;
+  try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+}
+
+// Purge pre-redaction diagnostics as soon as this module loads in the browser.
+clearLegacyBuffer();
+
 export function getFrontendErrors(): FrontendErrorEntry[] {
   if (typeof window === 'undefined') return [];
+  clearLegacyBuffer();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (err) {
-    console.warn('Failed to parse frontend error buffer:', err);
+    if (!Array.isArray(parsed)) return [];
+    // Reconstruct records from an explicit allowlist. Never expose legacy/free-form fields.
+    return parsed.filter((item) => item && typeof item === 'object').map((item) => ({
+      id: typeof item.id === 'string' ? item.id : 'frontend-error',
+      timestamp: typeof item.timestamp === 'string' ? item.timestamp : '',
+      name: 'FrontendError',
+      message: 'A frontend error occurred.',
+      url: '',
+      pathname: '',
+      userAgent: '',
+      viewport: typeof item.viewport === 'string' ? item.viewport : 'unknown',
+    })).slice(0, MAX_STORED_ERRORS);
+  } catch {
     return [];
   }
 }
 
-/**
- * Log a caught React error or runtime error into the buffer
- */
 export function logFrontendError(
-  error: Error,
-  errorInfo?: { componentStack?: string | null },
-  metadata?: Record<string, any>
+  _error: Error,
+  _errorInfo?: { componentStack?: string | null },
+  _metadata?: Record<string, unknown>
 ): FrontendErrorEntry {
   const entry: FrontendErrorEntry = {
     id: `fe_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
     timestamp: new Date().toISOString(),
-    name: error?.name || 'Error',
-    message: error?.message || String(error) || 'Unknown error occurred',
-    stack: error?.stack || undefined,
-    componentStack: errorInfo?.componentStack || undefined,
-    url: typeof window !== 'undefined' ? window.location.href : '',
-    pathname: typeof window !== 'undefined' ? (window.location.hash || window.location.pathname) : '',
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    name: 'FrontendError',
+    message: 'A frontend error occurred.',
+    url: '',
+    pathname: '',
+    userAgent: '',
     viewport: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'unknown',
-    metadata,
   };
 
   if (typeof window !== 'undefined') {
+    clearLegacyBuffer();
     try {
-      const existing = getFrontendErrors();
-      const updated = [entry, ...existing].slice(0, MAX_STORED_ERRORS);
+      const updated = [entry, ...getFrontendErrors()].slice(0, MAX_STORED_ERRORS);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-
-      // Dispatch CustomEvent for live UI updates in admin panel
       window.dispatchEvent(new CustomEvent('kretz:frontend-error-logged', { detail: entry }));
-    } catch (err) {
-      console.warn('Failed to store frontend error in localStorage buffer:', err);
+    } catch {
+      // Diagnostic logging must never affect the application.
     }
   }
-
   return entry;
 }
 
-/**
- * Clear the stored frontend errors buffer
- */
 export function clearFrontendErrors(): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(STORAGE_KEY);
+    clearLegacyBuffer();
     window.dispatchEvent(new CustomEvent('kretz:frontend-error-cleared'));
-  } catch (err) {
-    console.warn('Failed to clear error buffer:', err);
-  }
+  } catch {}
 }
 
-/**
- * Export all logged frontend errors as a formatted JSON string
- */
 export function exportFrontendErrorsJson(): string {
   const errors = getFrontendErrors();
-  return JSON.stringify(
-    {
-      exportTime: new Date().toISOString(),
-      platform: "L'Agence Institutional Real Estate Platform",
-      errorCount: errors.length,
-      errors,
-    },
-    null,
-    2
-  );
+  return JSON.stringify({
+    exportTime: new Date().toISOString(),
+    platform: "L'Agence Institutional Real Estate Platform",
+    errorCount: errors.length,
+    errors,
+  }, null, 2);
 }
 
-/**
- * Triggers a browser file download of the error log
- */
 export function downloadFrontendErrorsFile(): void {
   if (typeof window === 'undefined') return;
-  const json = exportFrontendErrorsJson();
-  const blob = new Blob([json], { type: 'application/json' });
+  const blob = new Blob([exportFrontendErrorsJson()], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `lagence-frontend-diagnostic-log-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `lagence-frontend-diagnostic-log-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
 }

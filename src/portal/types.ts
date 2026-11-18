@@ -22,6 +22,10 @@ export interface PortalHolding {
   tokensPurchased: number;
   totalCost: number;
   currentValue: number;
+  /** Derived from EUR-decimal source values; never persisted. */
+  totalCostCents?: number;
+  currentValueCents?: number;
+  dividendsReceivedCents?: number;
   projectedAnnualDividend: number;
   dividendsReceived: number;
   purchaseDate: string;
@@ -34,6 +38,9 @@ export interface PortalPortfolioData {
   holdings: PortalHolding[];
   totalHoldingsValue: number;
   totalPortfolioValue: number;
+  /** Derived integer-cent equivalents for financial calculations. */
+  totalHoldingsValueCents?: number;
+  totalPortfolioValueCents?: number;
   totalTokensHeld: number;
   activePropertiesCount: number;
   totalDividendsReceived: number;
@@ -47,6 +54,12 @@ export interface PortalDashboardSummary {
   totalEarnedDividends: number;
   activePropertiesCount: number;
   projectedMonthlyIncome: number;
+  /** Derived integer-cent equivalents for financial calculations. */
+  totalPortfolioValueCents?: number;
+  availableBalanceCents?: number;
+  investedCapitalCents?: number;
+  totalEarnedDividendsCents?: number;
+  projectedMonthlyIncomeCents?: number;
   currency: string;
 }
 
@@ -83,6 +96,8 @@ export interface PortalTransaction {
   id: string;
   type: string;
   amount: number;
+  /** Derived from the EUR-decimal amount at the API boundary. */
+  amountCents?: number;
   currency: string;
   status: string;
   reference: string;
@@ -115,6 +130,8 @@ export interface PortalProfile {
   accountType: string;
   balance: number;
   investedBalance: number;
+  balanceCents?: number;
+  investedBalanceCents?: number;
   kycStatus: 'verified' | 'pending' | 'rejected' | 'unverified' | string;
   status: string;
   address: string;
@@ -160,6 +177,23 @@ export interface PortalAccountStatement {
   totalInvested: number;
   totalDividendsReceived: number;
   currentBalance: number;
+}
+
+export interface PortalUploadedDocument {
+  id: string;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  category: 'statement' | 'tax_document';
+  title: string;
+  taxYear?: string;
+  periodLabel?: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  fileDataUrl?: string;
+  uploadedBy?: string;
+  uploadedAt: string;
 }
 
 export interface PortalPerformanceData {

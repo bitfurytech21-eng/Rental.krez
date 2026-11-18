@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function() {
+        // Suppress Vite HMR WebSocket connection errors in AI Studio iframe environment
+        window.addEventListener('unhandledrejection', function(event) {
+          var msg = event && event.reason && (event.reason.message || String(event.reason));
+          if (typeof msg === 'string' && (msg.includes('WebSocket') || msg.includes('vite') || msg.includes('closed without opened'))) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('error', function(event) {
+          var msg = event && (event.message || '');
+          var file = event && (event.filename || '');
+          if ((typeof msg === 'string' && (msg.includes('WebSocket') || msg.includes('@vite/client'))) ||
+              (typeof file === 'string' && file.includes('@vite/client'))) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        // Safe mock for Vite HMR WebSocket protocol so @vite/client never rejects with "WebSocket closed without opened"
+        if (typeof window !== 'undefined' && window.WebSocket) {
+          var RealWebSocket = window.WebSocket;
+          var MockViteSocket = function(url, protocols) {
+            var isViteProtocol = protocols === 'vite-hmr' || protocols === 'vite-ping' ||
+              (Array.isArray(protocols) && (protocols.indexOf('vite-hmr') !== -1 || protocols.indexOf('vite-ping') !== -1));
+            if (isViteProtocol) {
+              var listeners = {};
+              var socket = {
+                readyState: 1, // OPEN
+                send: function() {},
+                close: function() {},
+                addEventListener: function(type, fn) {
+                  if (!listeners[type]) listeners[type] = [];
+                  listeners[type].push(fn);
+                  if (type === 'open') {
+                    setTimeout(function() {
+                      try { fn(new Event('open')); } catch (_) {}
+                    }, 0);
+                  }
+                },
+                removeEventListener: function(type, fn) {
+                  if (listeners[type]) {
+                    listeners[type] = listeners[type].filter(function(cb) { return cb !== fn; });
+                  }
+                },
+                dispatchEvent: function() { return true; }
+              };
+              return socket;
+            }
+            return new RealWebSocket(url, protocols);
+          };
+          MockViteSocket.prototype = RealWebSocket.prototype;
+          MockViteSocket.CONNECTING = RealWebSocket.CONNECTING;
+          MockViteSocket.OPEN = RealWebSocket.OPEN;
+          MockViteSocket.CLOSING = RealWebSocket.CLOSING;
+          MockViteSocket.CLOSED = RealWebSocket.CLOSED;
+          window.WebSocket = MockViteSocket;
+        }
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <title>L’Agence | Kretz Prime Real Estate</title>
+    <meta name="description" content="Discover curated European real estate opportunities, fractional property ownership, and transparent monthly rental income with Kretz Prime Real Estate." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:site_name" content="L’Agence | Kretz Prime Real Estate" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="L’Agence | Kretz Prime Real Estate" />
+    <meta property="og:description" content="Discover curated European real estate opportunities, fractional property ownership, and transparent monthly rental income with Kretz Prime Real Estate." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="L’Agence | Kretz Prime Real Estate" />
+    <meta name="twitter:description" content="Discover curated European real estate opportunities, fractional property ownership, and transparent monthly rental income with Kretz Prime Real Estate." />
+    <meta name="twitter:image" content="https://files.kretzrealestate.com/45af1346e13e9c6539853447ccf5faa.jpg" />
+    <meta name="theme-color" content="#213138" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="L'Agence" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Public+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <meta name="color-scheme" content="light" />
+    <script type="module" crossorigin src="/assets/index-CPqI8XGP.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BM7GpUcZ.css">
+  <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+  <body class="bg-[#f5f0ea] text-[#1a1a1a] antialiased selection:bg-[#e4dbd0] selection:text-[#213138]">
+    <div id="root">
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #213138; color: #f5f0ea; font-family: 'Bricolage Grotesque', 'Archivo', Helvetica, sans-serif;">
+        <div style="font-weight: 700; font-size: 2.2rem; letter-spacing: -0.02em; color: #ffffff;">L'Agence</div>
+      </div>
+    </div>
+    <!-- Hidden Google Translate Element for Free Website Translation -->
+    <div id="google_translate_element" style="display:none !important; position:absolute; top:-9999px; left:-9999px; visibility:hidden; width:0; height:0; overflow:hidden;"></div>
+    <style>body{position:static!important;top:0!important}.goog-te-banner-frame,.goog-te-banner-frame.skiptranslate,iframe.goog-te-banner-frame{visibility:hidden!important;width:0!important;height:0!important;display:none!important}.goog-te-gadget,.goog-te-gadget-simple,#goog-gt-tt,.goog-te-balloon-frame{visibility:hidden!important;display:none!important}.goog-text-highlight{box-shadow:none!important;background-color:#0000!important}#google_translate_element,.goog-te-spinner-pos{display:none!important}</style>
+
+    <noscript>Powered by <a href="https://www.smartsupp.com" target="_blank">Smartsupp</a></noscript>
+  </body>
+</html>

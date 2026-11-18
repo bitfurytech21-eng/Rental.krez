@@ -26,6 +26,7 @@ import { PropertyDetailView } from './components/properties/PropertyDetailView';
 import { TokenPage } from './components/pages/TokenPage';
 import { FAQPage } from './components/pages/FAQPage';
 import { LegalPage } from './components/pages/LegalPage';
+import { PublicLegalDocumentPage } from './components/pages/PublicLegalDocumentPage';
 import { TrustCenterPage } from './components/pages/TrustCenterPage';
 import { TeamPage } from './components/pages/TeamPage';
 import { WealthPage } from './components/pages/WealthPage';
@@ -50,6 +51,9 @@ import { Breadcrumb } from './components/common/Breadcrumb';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 import { InitialPlatformLoader } from './components/visuals/InitialPlatformLoader';
+import { OfflineIndicator } from './components/pwa/OfflineIndicator';
+import { LegalReacceptanceGate } from './components/legal/LegalReacceptanceGate';
+import { SessionInactivityGuard } from './components/auth/SessionInactivityGuard';
 
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
@@ -276,59 +280,10 @@ function MainApp() {
     }
 
     // Authoritative Admin Portal Routes with strict role enforcement
-    const ADMIN_TAB_PREFIXES = [
-      '/admin',
-      '/admin-login',
-      '/users',
-      '/deposits',
-      '/withdrawals',
-      '/deposit-system',
-      '/spv',
-      '/kyc',
-      '/proofs',
-      '/wallets',
-      '/ledger',
-      '/reconciliation',
-      '/audit',
-      '/logs',
-      '/security',
-      '/admin-security',
-      '/dividends',
-      '/issuance',
-      '/restore',
-      '/manage-referral',
-      '/plan-manage',
-      '/support-ticket',
-      '/report',
-      '/promotional-tool',
-      '/subscribers',
-      '/language',
-      '/active-template',
-      '/manage-pages',
-      '/section-manage',
-      '/settings',
-      '/logo-icon-setting',
-      '/plugins',
-      '/seo',
-      '/email-manager',
-      '/sms-manager',
-      '/holiday-setting',
-      '/gdpr-cookie',
-      '/system-information',
-      '/custom-css',
-      '/clear-cache',
-      '/manual-payment'
-    ];
-
     const isAdminRoute =
-      basePath.startsWith('/admin') ||
-      basePath === '/admin-login' ||
-      ADMIN_TAB_PREFIXES.some(
-        (prefix) =>
-          basePath === prefix ||
-          basePath.startsWith(`${prefix}-`) ||
-          basePath.startsWith(`${prefix}/`)
-      );
+      basePath === '/admin' ||
+      basePath.startsWith('/admin/') ||
+      basePath === '/admin-login';
 
     if (isAdminRoute) {
       if (basePath === '/admin/login' || basePath === '/admin-login') {
@@ -346,6 +301,7 @@ function MainApp() {
         <ProtectedRoute
           requireAdmin
           onNavigateLogin={() => navigateTo('/admin/login')}
+          onRedirectUnauthorized={() => navigateTo('/dashboard', { bypassLoader: true })}
         >
           <AdminPanel />
         </ProtectedRoute>
@@ -484,17 +440,22 @@ function MainApp() {
       case '/transparency':
         return <TrustCenterPage onNavigate={navigateTo} />;
 
+      case '/terms':
+        return <PublicLegalDocumentPage document="terms" />;
+
+      case '/privacy':
+        return <PublicLegalDocumentPage document="privacy" />;
+
+      case '/risk-warning':
+        return <PublicLegalDocumentPage document="risk-warning" />;
+
       case '/legal':
       case '/compliance':
       case '/disclosures':
-      case '/cookies':
-      case '/terms':
-      case '/privacy': {
+      case '/cookies': {
         const docSlug = searchParams.get('doc') || undefined;
         const legalMode =
-          basePath === '/privacy'
-            ? 'privacy'
-            : basePath === '/cookies'
+          basePath === '/cookies'
             ? 'cookies'
             : basePath === '/disclosures'
             ? 'disclosures'
@@ -658,23 +619,9 @@ function MainApp() {
     currentBasePath.startsWith('/portal/') ||
     (Boolean(user) && (currentBasePath === '/portfolio' || currentBasePath === '/account'));
 
-  const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin');
+  const isAdminView = currentBasePath === '/admin' || currentBasePath.startsWith('/admin/');
   const isAdminLoginPage = currentBasePath === '/admin/login' || currentBasePath === '/admin-login';
   const isIsolatedAdminEnvironment = isAdminView || isAdminLoginPage;
-  const isAdminUtilityRoute = [
-    '/users', '/deposits', '/withdrawals', '/deposit-system', '/spv', '/kyc',
-    '/proofs', '/wallets', '/ledger', '/reconciliation', '/audit', '/logs',
-    '/security', '/admin-security', '/dividends', '/issuance', '/restore',
-    '/manage-referral', '/plan-manage', '/support-ticket', '/report',
-    '/promotional-tool', '/subscribers', '/language', '/active-template',
-    '/manage-pages', '/section-manage', '/settings', '/logo-icon-setting',
-    '/plugins', '/seo', '/email-manager', '/sms-manager', '/holiday-setting',
-    '/gdpr-cookie', '/system-information', '/custom-css', '/clear-cache', '/manual-payment'
-  ].some((prefix) =>
-    currentBasePath === prefix ||
-    currentBasePath.startsWith(`${prefix}/`) ||
-    currentBasePath.startsWith(`${prefix}-`)
-  );
 
   const isKrezTemplatePage =
     currentBasePath === '/' ||
@@ -733,12 +680,15 @@ function MainApp() {
         <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />
       )}
 
+      <LegalReacceptanceGate />
+      <SessionInactivityGuard />
       <InitialPlatformLoader />
 
       <ViewportDesktopMonitor />
 
       <SchemaJsonLd property={selectedProperty} />
-      {!isIsolatedAdminEnvironment && !isAdminUtilityRoute && <SmartsuppWidget />}
+      <OfflineIndicator />
+      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
     </div>
   );
 }

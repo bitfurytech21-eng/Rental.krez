@@ -1,7 +1,9 @@
 import React from 'react';
+import { useAuth } from '../lib/auth';
 import './styles/portal.css';
 import { useToast } from '../context/ToastContext';
 import { PortalProvider, usePortal } from './state/PortalContext';
+import { LoadingSkeleton, ErrorBanner } from './components/LoadingSkeleton';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -23,7 +25,15 @@ import { SupportPage } from './pages/SupportPage';
 
 const PortalLayout: React.FC = () => {
   const toast = useToast();
-  const { route, selectedPropertySlug, sampleDataEnabled, setSampleDataEnabled } = usePortal();
+  const {
+    route,
+    selectedPropertySlug,
+    sampleDataEnabled,
+    setSampleDataEnabled,
+    loading,
+    error,
+    refreshAll,
+  } = usePortal();
   const mainRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
@@ -99,7 +109,14 @@ const PortalLayout: React.FC = () => {
                 </button>
               </div>
             )}
-            {renderRoute()}
+            {loading && !sampleDataEnabled ? (
+              <LoadingSkeleton rows={5} />
+            ) : (
+              <>
+                {error && <ErrorBanner message={error} onRetry={() => void refreshAll()} />}
+                {renderRoute()}
+              </>
+            )}
           </div>
         </main>
         <BottomNav />
@@ -108,10 +125,21 @@ const PortalLayout: React.FC = () => {
   );
 };
 
-export const PortalShell: React.FC = () => {
+const PortalAuthGate: React.FC = () => {
+  const { user, isLoading } = useAuth();
+
+  React.useEffect(() => {
+    if (!isLoading && !user && typeof window !== 'undefined') {
+      window.location.replace('/#login');
+    }
+  }, [isLoading, user]);
+
+  if (isLoading || !user) return null;
   return (
     <PortalProvider>
       <PortalLayout />
     </PortalProvider>
   );
 };
+
+export const PortalShell: React.FC = () => <PortalAuthGate />;

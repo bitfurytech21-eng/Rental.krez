@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
+import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { useNavigation } from '../../context/NavigationContext';
 import { portalApi } from '../services/portalApi';
 import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
@@ -115,6 +117,7 @@ export function resolvePortalRouteFromPath(path: string): { route: PortalRoute; 
   }
   switch (clean) {
     case '/dashboard':
+    case '/overview':
     case '/account':
       return { route: 'overview' };
     case '/portfolio':
@@ -122,6 +125,7 @@ export function resolvePortalRouteFromPath(path: string): { route: PortalRoute; 
     case '/portal/explore':
     case '/explore':
       return { route: 'explore' };
+    case '/ledger':
     case '/transactions':
     case '/portal/ledger':
     case '/distributions':
@@ -328,7 +332,10 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const refreshAll = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -363,7 +370,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setPortalConfig(configRes);
       setLastSyncedAt(new Date());
     } catch (err: any) {
-      setError(err?.message || 'Unable to synchronize your investor portal with the server.');
+      setError(safeErrorMessage(err, 'Unable to synchronize your investor portal with the server.'));
     } finally {
       setLoading(false);
     }
@@ -376,23 +383,116 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setNotifications(res.items);
       setUnreadCount(res.unreadCount);
     } catch {
-      // Keep existing state on silent background poll
+      // Keep existing state on silent background refresh
+    }
+  }, [user]);
+
+  const refreshFinancialData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [summaryRes, portfolioRes, walletRes, txRes] = await Promise.all([
+        portalApi.getDashboardSummary(),
+        portalApi.getPortfolio(),
+        portalApi.getWalletBalance(),
+        portalApi.getTransactions(),
+      ]);
+      setSummary(summaryRes);
+      setPortfolio(portfolioRes);
+      setBalance(walletRes.balance);
+      setSubBalances(walletRes.subBalances);
+      setTransactions(txRes);
+      setLastSyncedAt(new Date());
+    } catch {
+      // Preserve the last good snapshot if a background refresh fails.
     }
   }, [user]);
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     try {
-      const p = await portalApi.getProfile();
+      const [p, walletRes, summaryRes] = await Promise.all([
+        portalApi.getProfile(),
+        portalApi.getWalletBalance(),
+        portalApi.getDashboardSummary(),
+      ]);
       setProfile(p);
+      setBalance(walletRes.balance);
+      setSubBalances(walletRes.subBalances);
+      setSummary(summaryRes);
+      setLastSyncedAt(new Date());
     } catch {
-      // Keep existing state
+      // Keep existing state if a background refresh fails.
     }
   }, [user]);
+
+  // Drop user-scoped portal snapshots immediately when the authenticated user disappears or changes.
+  useEffect(() => {
+    if (user?.id) return;
+    setSummary(null);
+    setPortfolio(null);
+    setBalance(0);
+    setSubBalances({ EUR: 0 });
+    setProperties([]);
+    setTransactions([]);
+    setNotifications([]);
+    setUnreadCount(0);
+    setProfile(null);
+    setLastSyncedAt(null);
+    setError(null);
+    setLoading(false);
+  }, [user?.id]);
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
+
+  // One user-scoped channel keeps the portal, transaction list, holdings and bell in sync.
+  // Holdings are a view over investments, so listen to the underlying investments table.
+  useEffect(() => {
+    if (!user?.id || sampleDataEnabled || !isSupabaseConfigured()) return;
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const pendingRefreshes = new Map<string, () => void>();
+    const schedule = (key: string, refresh: () => void) => {
+      pendingRefreshes.set(key, refresh);
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        const refreshes = Array.from(pendingRefreshes.values());
+        pendingRefreshes.clear();
+        refreshes.forEach((run) => run());
+      }, 180);
+    };
+
+    const channel = supabase
+      .channel(`investor-portal-live:${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'ledger_transactions',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'investments',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'profiles',
+        filter: `id=eq.${user.id}`,
+      }, () => schedule('profile', () => { void refreshProfile(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('notifications', () => { void refreshNotifications(); }))
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('Investor live updates are temporarily unavailable.', err);
+        }
+      });
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      pendingRefreshes.clear();
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, sampleDataEnabled, refreshFinancialData, refreshProfile, refreshNotifications]);
 
   const navigatePortal = useCallback(
     (nextRoute: PortalRoute, options?: { propertySlug?: string }) => {

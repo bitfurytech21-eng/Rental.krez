@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { ArrowDownLeft, ArrowUpRight, Landmark, RefreshCw } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
@@ -9,7 +10,7 @@ import { StatTile } from '../components/StatTile';
 import { StatusBadge } from '../components/StatusBadge';
 import { TransactionRow } from '../components/TransactionRow';
 import { EmptyState } from '../components/EmptyState';
-import { LoadingSkeleton } from '../components/LoadingSkeleton';
+import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
 
 export const WalletPage: React.FC = () => {
   const toast = useToast();
@@ -35,6 +36,7 @@ export const WalletPage: React.FC = () => {
   const [convertAmount, setConvertAmount] = useState<string>('500');
   const [pairError, setPairError] = useState<string | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
 
   useEffect(() => {
@@ -120,7 +122,8 @@ export const WalletPage: React.FC = () => {
       );
       await refreshAll();
     } catch (err: any) {
-      const msg = err?.message || 'Unable to execute FX conversion.';
+      const msg = safeErrorMessage(err, 'Unable to execute FX conversion.');
+      setRequestError(msg);
       setAmountError(msg);
       toast.error(msg);
     } finally {
@@ -132,6 +135,7 @@ export const WalletPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {requestError && <ErrorBanner message={requestError} onRetry={() => void refreshAll()} />}
       {/* Wallet Balance Hero */}
       <section className="portal-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

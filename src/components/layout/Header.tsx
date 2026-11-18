@@ -5,6 +5,7 @@ import { KREZ_IMAGES } from '../../data/krezTemplateData';
 import { KrezAuthModal, openKrezAuthModal } from '../krez/KrezAuthModal';
 import { HeaderLanguageButton } from './HeaderLanguageButton';
 import { LagenceLogo } from '../common/LagenceLogo';
+import { PWAInstallButton } from '../pwa/PWAInstallButton';
 
 interface HeaderProps {
   currentPath: string;
@@ -127,8 +128,13 @@ export const Header: React.FC<HeaderProps> = ({ currentPath, onNavigate }) => {
             })}
           </nav>
 
-          {/* Right Action Controls: Language, Auth, Menu Drawer Toggle */}
+          {/* Right Action Controls: Language, Install, Auth, Menu Drawer Toggle */}
           <div className="flex items-center gap-3 sm:gap-5">
+            {/* In-app PWA / mobile install trigger */}
+            <div className="hidden sm:block">
+              <PWAInstallButton variant="header" />
+            </div>
+
             {/* Language Switcher */}
             <div className="hidden sm:block">
               <HeaderLanguageButton />

@@ -1,5 +1,6 @@
 import { api, apiRequest, createIdempotencyKey, getBaseUrl } from '../../lib/api';
 import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
+import { eurToCents } from './money';
 import {
   PortalAccountStatement,
   PortalComplianceDoc,
@@ -12,6 +13,7 @@ import {
   PortalProfile,
   PortalProperty,
   PortalTransaction,
+  PortalUploadedDocument,
 } from '../types';
 
 function unwrap<T>(res: any): T {
@@ -30,6 +32,11 @@ export const portalApi = {
       availableBalance: Number(data.availableBalance || 0),
       investedCapital: Number(data.investedCapital || 0),
       totalEarnedDividends: Number(data.totalEarnedDividends || 0),
+      totalPortfolioValueCents: eurToCents(data.totalPortfolioValue || 0),
+      availableBalanceCents: eurToCents(data.availableBalance || 0),
+      investedCapitalCents: eurToCents(data.investedCapital || 0),
+      totalEarnedDividendsCents: eurToCents(data.totalEarnedDividends || 0),
+      projectedMonthlyIncomeCents: eurToCents(data.projectedMonthlyIncome || 0),
       activePropertiesCount: Number(data.activePropertiesCount || 0),
       projectedMonthlyIncome: Number(data.projectedMonthlyIncome || 0),
       currency: String(data.currency || 'EUR'),
@@ -40,9 +47,16 @@ export const portalApi = {
     const res = await api.get<any>('/portfolio');
     const data = unwrap<any>(res) || {};
     return {
-      holdings: Array.isArray(data.holdings) ? data.holdings : [],
+      holdings: Array.isArray(data.holdings) ? data.holdings.map((holding: any) => ({
+        ...holding,
+        totalCostCents: eurToCents(holding.totalCost ?? holding.total_amount_invested ?? 0),
+        ...(holding.currentValue == null ? {} : { currentValueCents: eurToCents(holding.currentValue) }),
+        dividendsReceivedCents: eurToCents(holding.dividendsReceived ?? holding.total_dividends_received ?? 0),
+      })) : [],
       totalHoldingsValue: Number(data.totalHoldingsValue || 0),
       totalPortfolioValue: Number(data.totalPortfolioValue || 0),
+      totalHoldingsValueCents: eurToCents(data.totalHoldingsValue || 0),
+      totalPortfolioValueCents: eurToCents(data.totalPortfolioValue || 0),
       totalTokensHeld: Number(data.totalTokensHeld || 0),
       activePropertiesCount: Number(data.activePropertiesCount || 0),
       totalDividendsReceived: Number(data.totalDividendsReceived || 0),
@@ -50,11 +64,12 @@ export const portalApi = {
     };
   },
 
-  async getWalletBalance(): Promise<{ balance: number; subBalances: Record<string, number>; currency: string }> {
+  async getWalletBalance(): Promise<{ balance: number; balanceCents: number; subBalances: Record<string, number>; currency: string }> {
     const res = await api.get<any>('/wallet/balance');
     const data = unwrap<any>(res) || {};
     return {
       balance: Number(data.balance || 0),
+      balanceCents: eurToCents(data.balance || 0),
       subBalances: data.subBalances && typeof data.subBalances === 'object' ? data.subBalances : { EUR: Number(data.balance || 0) },
       currency: String(data.currency || 'EUR'),
     };
@@ -79,6 +94,7 @@ export const portalApi = {
       id: String(t.id),
       type: String(t.type || 'transaction'),
       amount: Number(t.amount || 0),
+      amountCents: String(t.currency || 'EUR').toUpperCase() === 'EUR' ? eurToCents(t.amount || 0) : undefined,
       currency: String(t.currency || 'EUR'),
       status: String(t.status || 'pending'),
       reference: String(t.reference || t.id),
@@ -124,6 +140,8 @@ export const portalApi = {
       accountType: String(d.accountType || 'individual_investor'),
       balance: Number(d.balance || 0),
       investedBalance: Number(d.investedBalance || 0),
+      balanceCents: eurToCents(d.balance || 0),
+      investedBalanceCents: eurToCents(d.investedBalance || 0),
       kycStatus: String(d.kycStatus || 'pending'),
       status: String(d.status || 'active'),
       address: String(d.address || ''),
@@ -138,8 +156,14 @@ export const portalApi = {
     };
   },
 
-  async updateProfile(updates: Partial<PortalProfile>): Promise<PortalProfile> {
-    const res = await api.patch<any>('/users/me', updates);
+  async updateProfile(updates: Partial<PortalProfile>, bankChangeGrantId?: string): Promise<PortalProfile> {
+    const headers: Record<string, string> = {};
+    if (bankChangeGrantId) headers['X-Action-Verification'] = bankChangeGrantId;
+    const res = await apiRequest<any>('/users/me', {
+      method: 'PATCH',
+      body: updates,
+      headers,
+    });
     const d = unwrap<any>(res) || {};
     return {
       id: String(d.id || ''),
@@ -151,6 +175,8 @@ export const portalApi = {
       accountType: String(d.accountType || 'individual_investor'),
       balance: Number(d.balance || 0),
       investedBalance: Number(d.investedBalance || 0),
+      balanceCents: eurToCents(d.balance || 0),
+      investedBalanceCents: eurToCents(d.investedBalance || 0),
       kycStatus: String(d.kycStatus || 'pending'),
       status: String(d.status || 'active'),
       address: String(d.address || ''),
@@ -218,7 +244,7 @@ export const portalApi = {
     return unwrap<PortalTransaction>(res);
   },
 
-  async requestActionVerification(actionScope: 'investor.withdrawal.create' | 'investor.investment.create'): Promise<{
+  async requestActionVerification(actionScope: 'investor.withdrawal.create' | 'investor.investment.create' | 'investor.profile.bank.update'): Promise<{
     otpRequired: boolean;
     grantId?: string;
     maskedEmail?: string;
@@ -235,7 +261,7 @@ export const portalApi = {
   },
 
   async verifyActionCode(
-    actionScope: 'investor.withdrawal.create' | 'investor.investment.create',
+    actionScope: 'investor.withdrawal.create' | 'investor.investment.create' | 'investor.profile.bank.update',
     code: string
   ): Promise<string> {
     const res = await apiRequest<any>('/security/action-code/verify', {
@@ -343,6 +369,12 @@ export const portalApi = {
   async getAccountStatement(): Promise<PortalAccountStatement> {
     const res = await api.get<any>('/reports/account-statement');
     return unwrap<PortalAccountStatement>(res);
+  },
+
+  async getStatements(): Promise<PortalUploadedDocument[]> {
+    const res = await api.get<any>('/reports/statements');
+    const list = unwrap<PortalUploadedDocument[]>(res);
+    return Array.isArray(list) ? list : [];
   },
 
   async getPerformance(): Promise<PortalPerformanceData> {

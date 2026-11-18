@@ -6,6 +6,7 @@ import { PortalRoute } from '../types';
 import { getInitials } from '../utils/format';
 import { AccountMenu } from './AccountMenu';
 import { LagenceLogo } from '../../components/common/LagenceLogo';
+import { PWAInstallButton } from '../../components/pwa/PWAInstallButton';
 
 const ROUTE_TITLES: Record<PortalRoute, string> = {
   overview: 'Overview',
@@ -98,8 +99,9 @@ export const Header: React.FC = () => {
           </div>
         )}
 
-        {/* Right region: Notification bell with unread dot + Avatar account menu trigger */}
+        {/* Right region: Install + Notification bell with unread dot + Avatar account menu trigger */}
         <div className="flex items-center gap-2.5 shrink-0" ref={menuContainerRef}>
+          <PWAInstallButton variant="portal" />
           <button
             type="button"
             onClick={() => navigatePortal('notifications')}

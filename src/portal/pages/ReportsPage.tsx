@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { Download, FileText, Printer } from 'lucide-react';
 import { getAuthToken } from '../../lib/api';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
 import { portalApi } from '../services/portalApi';
-import { PortalAccountStatement } from '../types';
+import { PortalAccountStatement, PortalUploadedDocument } from '../types';
 import { formatEuro, formatShortDate } from '../utils/format';
 import { StatTile } from '../components/StatTile';
 import { EmptyState } from '../components/EmptyState';
@@ -15,6 +16,7 @@ export const ReportsPage: React.FC = () => {
   const { profile, transactions, sampleDataEnabled, sampleDataset, navigatePortal } = usePortal();
 
   const [statement, setStatement] = useState<PortalAccountStatement | null>(null);
+  const [uploadedDocs, setUploadedDocs] = useState<PortalUploadedDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
@@ -28,10 +30,14 @@ export const ReportsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await portalApi.getAccountStatement();
+      const [data, docs] = await Promise.all([
+        portalApi.getAccountStatement(),
+        portalApi.getStatements().catch(() => [] as PortalUploadedDocument[]),
+      ]);
       setStatement(data);
+      setUploadedDocs(docs);
     } catch (err: any) {
-      setError(err?.message || 'Unable to load statements and tax documents.');
+      setError(safeErrorMessage(err, 'Unable to load statements and tax documents.'));
     } finally {
       setLoading(false);
     }
@@ -139,7 +145,43 @@ export const ReportsPage: React.FC = () => {
       );
       toast.success('Distribution tax CSV downloaded.');
     } catch (err: any) {
-      toast.error(err?.message || 'Unable to download tax CSV right now.');
+      toast.error(safeErrorMessage(err, 'Unable to download tax CSV right now.'));
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDownloadUploadedDoc = (doc: PortalUploadedDocument) => {
+    setDownloading(doc.id);
+    try {
+      if (doc.fileDataUrl && doc.fileDataUrl.startsWith('data:')) {
+        const a = document.createElement('a');
+        a.href = doc.fileDataUrl;
+        a.download = doc.fileName || `${doc.title.replace(/\s+/g, '-').toLowerCase()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success(`${doc.title} downloaded.`);
+        return;
+      }
+      const summary = [
+        'L’AGENCE INVESTOR PORTAL — OFFICIAL DOCUMENT RECORD',
+        `Document ID: ${doc.id}`,
+        `Category: ${doc.category === 'tax_document' ? 'Annual Tax Document' : 'Account Statement'}`,
+        `Title: ${doc.title}`,
+        doc.taxYear ? `Tax Year: ${doc.taxYear}` : '',
+        doc.periodLabel ? `Period: ${doc.periodLabel}` : '',
+        `Investor: ${profile?.fullName || profile?.email || doc.userEmail || 'Registered Investor'}`,
+        `Issued Date: ${formatShortDate(doc.uploadedAt)}`,
+        `File Name: ${doc.fileName}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+      triggerTextDownload(
+        doc.fileName.endsWith('.txt') ? doc.fileName : `${doc.fileName}.txt`,
+        summary
+      );
+      toast.success(`${doc.title} downloaded.`);
     } finally {
       setDownloading(null);
     }
@@ -149,7 +191,10 @@ export const ReportsPage: React.FC = () => {
     return <LoadingSkeleton rows={3} />;
   }
 
+  const effectiveUploadedDocs = sampleDataEnabled ? [] : uploadedDocs;
+
   const hasActivity =
+    effectiveUploadedDocs.length > 0 ||
     transactions.length > 0 ||
     Boolean(
       effectiveStatement &&
@@ -192,8 +237,8 @@ export const ReportsPage: React.FC = () => {
           onAction={() => navigatePortal('explore')}
         />
       ) : (
-        effectiveStatement && (
-          <div className="space-y-6">
+        <div className="space-y-6">
+          {effectiveStatement && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <StatTile label="Total deposits" value={formatEuro(effectiveStatement.totalDeposits)} />
               <StatTile
@@ -208,9 +253,43 @@ export const ReportsPage: React.FC = () => {
               />
               <StatTile label="Closing balance" value={formatEuro(effectiveStatement.currentBalance)} />
             </div>
+          )}
 
+          {effectiveUploadedDocs.length > 0 && (
             <section className="space-y-3">
-              <h3 className="text-base font-semibold text-[#F2F5F4]">Available documents</h3>
+              <h3 className="text-base font-semibold text-[#F2F5F4]">Issued statements &amp; tax documents</h3>
+              <div className="portal-card-list divide-y divide-[#1F2C33]">
+                {effectiveUploadedDocs.map((doc) => (
+                  <div key={doc.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-[#F2F5F4]">{doc.title}</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-[#142026] text-[#6FD8B0] border border-[#1F2C33]">
+                          {doc.category === 'tax_document' ? 'Tax Document' : 'Statement'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#8FA1A8] mt-0.5 portal-tabular">
+                        {doc.periodLabel || (doc.taxYear ? `Tax year ${doc.taxYear}` : 'Official issue')} · Issued {formatShortDate(doc.uploadedAt)} · <span className="font-mono">{doc.fileName}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={downloading === doc.id}
+                      onClick={() => handleDownloadUploadedDoc(doc)}
+                      className="portal-btn-primary shrink-0"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>{downloading === doc.id ? 'Downloading...' : 'Download'}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {effectiveStatement && (
+            <section className="space-y-3">
+              <h3 className="text-base font-semibold text-[#F2F5F4]">Automated ledger exports</h3>
               <div className="portal-card-list divide-y divide-[#1F2C33]">
                 <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="min-w-0">
@@ -274,8 +353,8 @@ export const ReportsPage: React.FC = () => {
                 </div>
               </div>
             </section>
-          </div>
-        )
+          )}
+        </div>
       )}
     </div>
   );

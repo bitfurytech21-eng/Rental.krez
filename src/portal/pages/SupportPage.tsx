@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { CheckCircle2, HelpCircle, Send } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../context/ToastContext';
@@ -82,7 +83,7 @@ export const SupportPage: React.FC = () => {
       setMessage('');
       toast.success('Support inquiry submitted.');
     } catch (err: any) {
-      setError(err?.message || 'Unable to submit your inquiry at this moment.');
+      setError(safeErrorMessage(err, 'Unable to submit your inquiry at this moment.'));
     } finally {
       setSubmitting(false);
     }

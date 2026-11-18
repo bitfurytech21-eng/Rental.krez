@@ -3,6 +3,9 @@ import App from './App.tsx';
 import './index.css';
 import './PrintStyles.css';
 import './i18n/config';
+import { installFrontendErrorMonitoring } from './lib/monitoring';
+
+installFrontendErrorMonitoring();
 
 const container = document.getElementById('root');
 if (!container) {

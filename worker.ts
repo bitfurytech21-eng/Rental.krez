@@ -126,6 +126,8 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .map((origin) => origin.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
+const CAPACITOR_ORIGINS = ['https://localhost', 'http://localhost', 'capacitor://localhost'];
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -136,7 +138,12 @@ app.use((req, res, next) => {
       sameOrigin = false;
     }
 
-    const allowed = !isProduction || sameOrigin || allowedOrigins.includes(origin.replace(/\/$/, ''));
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const allowed =
+      !isProduction ||
+      sameOrigin ||
+      allowedOrigins.includes(normalizedOrigin) ||
+      CAPACITOR_ORIGINS.includes(normalizedOrigin);
     res.header('Vary', 'Origin');
     if (allowed) {
       res.header('Access-Control-Allow-Origin', origin);

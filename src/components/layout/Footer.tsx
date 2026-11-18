@@ -102,10 +102,24 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </button>
             <button
               type="button"
+              onClick={() => onNavigate('/terms')}
+              className="transition-colors duration-fast hover:text-white cursor-pointer"
+            >
+              Terms
+            </button>
+            <button
+              type="button"
               onClick={() => onNavigate('/privacy')}
               className="transition-colors duration-fast hover:text-white cursor-pointer"
             >
               Privacy
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('/risk-warning')}
+              className="transition-colors duration-fast hover:text-white cursor-pointer"
+            >
+              Risk Warning
             </button>
             <p>© 2026 L&apos;Agence. All rights reserved.</p>
           </div>

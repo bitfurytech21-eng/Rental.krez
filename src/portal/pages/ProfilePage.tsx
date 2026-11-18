@@ -1,5 +1,6 @@
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import React, { useEffect, useState } from 'react';
-import { Save } from 'lucide-react';
+import { Save, ShieldCheck, LockKeyhole } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../lib/auth';
 import { usePortal } from '../state/PortalContext';
@@ -17,7 +18,7 @@ interface ProfileFieldErrors {
 
 export const ProfilePage: React.FC = () => {
   const toast = useToast();
-  const { refreshUser } = useAuth();
+  const { refreshUser, changePassword } = useAuth();
   const { loading, profile, sampleDataEnabled, refreshProfile } = usePortal();
 
   const [fullName, setFullName] = useState('');
@@ -31,6 +32,14 @@ export const ProfilePage: React.FC = () => {
   const [bankIban, setBankIban] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
   const [saving, setSaving] = useState(false);
+  const [bankCodeRequested, setBankCodeRequested] = useState(false);
+  const [bankSecurityCode, setBankSecurityCode] = useState('');
+  const [bankCodeError, setBankCodeError] = useState<string | null>(null);
+  const [bankMaskedEmail, setBankMaskedEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -92,8 +101,34 @@ export const ProfilePage: React.FC = () => {
       return;
     }
 
+    const bankChanged =
+      cleanIban !== String(profile?.bankIban || '').replace(/\s+/g, '').toUpperCase() ||
+      trimmedHolder.trim().toLowerCase() !== String(profile?.bankAccountHolder || profile?.fullName || '').trim().toLowerCase();
+
     setSaving(true);
     try {
+      let bankGrantId: string | undefined;
+      if (bankChanged) {
+        if (!bankCodeRequested) {
+          const verification = await portalApi.requestActionVerification('investor.profile.bank.update');
+          setBankMaskedEmail(verification.maskedEmail || profile?.email || '');
+          setBankCodeError(null);
+          if (verification.otpRequired) {
+            setBankCodeRequested(true);
+            toast.info('A 6-digit bank-change security code was sent to ' + (verification.maskedEmail || 'your registered email') + '.');
+            return;
+          }
+          bankGrantId = verification.grantId;
+          if (!bankGrantId) throw new Error('Unable to prepare bank-account verification. Please try again.');
+        } else {
+          if (!/^\d{6}$/.test(bankSecurityCode.trim())) {
+            setBankCodeError('Enter the 6-digit code sent to your email.');
+            return;
+          }
+          bankGrantId = await portalApi.verifyActionCode('investor.profile.bank.update', bankSecurityCode.trim());
+        }
+      }
+
       await portalApi.updateProfile({
         fullName: trimmedName,
         phoneNumber: phoneNumber.trim(),
@@ -104,7 +139,7 @@ export const ProfilePage: React.FC = () => {
         taxId: taxId.trim(),
         bankIban: cleanIban,
         bankAccountHolder: trimmedHolder || trimmedName,
-      });
+      }, bankChanged ? bankGrantId : undefined);
       if (profile?.id && bankHolder.trim()) {
         try {
           window.localStorage.setItem(
@@ -116,15 +151,21 @@ export const ProfilePage: React.FC = () => {
         }
       }
       await Promise.all([refreshProfile(), refreshUser()]);
+      setBankCodeRequested(false);
+      setBankSecurityCode('');
+      setBankCodeError(null);
+      setBankMaskedEmail('');
       toast.success('Profile and banking details saved.');
     } catch (err: any) {
-      toast.error(err?.message || 'Unable to save profile updates.');
+      setBankCodeError(safeErrorMessage(err, 'Unable to save profile updates.'));
+      toast.error(safeErrorMessage(err, 'Unable to save profile updates.'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
+    <>
     <form onSubmit={handleSave} noValidate className="max-w-3xl space-y-6">
       <div>
         <h2 className="text-xl font-heading font-bold text-[#F2F5F4]">Profile &amp; Banking</h2>
@@ -294,6 +335,53 @@ export const ProfilePage: React.FC = () => {
                 {fieldErrors.bankIban}
               </p>
             )}
+            {bankCodeRequested && (
+              <div className="mt-4 space-y-2 rounded-xl border border-[#6FD8B0]/30 bg-[#6FD8B0]/5 p-4">
+                <label htmlFor="bank-change-code" className="block text-sm font-semibold text-[#F2F5F4]">
+                  Email security code {bankMaskedEmail ? 'sent to ' + bankMaskedEmail : ''}
+                </label>
+                <input
+                  id="bank-change-code"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={bankSecurityCode}
+                  onChange={(event) => {
+                    setBankSecurityCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                    setBankCodeError(null);
+                  }}
+                  placeholder="000000"
+                  className="portal-input font-mono tracking-[0.3em]"
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-[#8FA1A8]">Enter the 6-digit code to authorize this bank-account change. Submit Save again to confirm.</p>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        const verification = await portalApi.requestActionVerification('investor.profile.bank.update');
+                        setBankMaskedEmail(verification.maskedEmail || profile?.email || '');
+                        setBankSecurityCode('');
+                        setBankCodeError(null);
+                        toast.info('A new bank-change security code has been requested.');
+                      } catch (err: any) {
+                        setBankCodeError(safeErrorMessage(err, 'Unable to resend the security code.'));
+                        toast.error(safeErrorMessage(err, 'Unable to resend the security code.'));
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    className="text-xs font-semibold text-[#6FD8B0] hover:underline disabled:opacity-50"
+                  >
+                    Resend code
+                  </button>
+                </div>
+                {bankCodeError && <p role="alert" className="text-xs text-[#FB7185]">{bankCodeError}</p>}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -305,5 +393,63 @@ export const ProfilePage: React.FC = () => {
         </button>
       </div>
     </form>
+
+    <section className="max-w-3xl portal-card space-y-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#6FD8B0]/30 bg-[#6FD8B0]/10 text-[#6FD8B0]">
+          <LockKeyhole className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-[#F2F5F4]">Security</h3>
+          <p className="mt-1 text-xs leading-relaxed text-[#8FA1A8]">Confirm your current password before choosing a new one.</p>
+        </div>
+      </div>
+      <form onSubmit={async (event) => {
+        event.preventDefault();
+        if (changingPassword) return;
+        if (newPassword.length < 12) { toast.error('New password must be at least 12 characters long.'); return; }
+        if (newPassword !== confirmNewPassword) { toast.error('The new passwords do not match.'); return; }
+        setChangingPassword(true);
+        try {
+          await changePassword(currentPassword, newPassword);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmNewPassword('');
+          toast.success('Password changed successfully.');
+        } catch (err: any) {
+          toast.error(safeErrorMessage(err, 'Unable to change password.'));
+        } finally {
+          setChangingPassword(false);
+        }
+      }} className="space-y-3">
+        <div>
+          <label htmlFor="security-current-password" className="mb-1.5 block text-sm font-medium text-[#F2F5F4]">Current password</label>
+          <input id="security-current-password" type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="portal-input" />
+        </div>
+        <div>
+          <label htmlFor="security-new-password" className="mb-1.5 block text-sm font-medium text-[#F2F5F4]">New password (at least 12 characters)</label>
+          <input id="security-new-password" type="password" autoComplete="new-password" required minLength={12} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="portal-input" />
+        </div>
+        <div>
+          <label htmlFor="security-confirm-password" className="mb-1.5 block text-sm font-medium text-[#F2F5F4]">Confirm new password</label>
+          <input id="security-confirm-password" type="password" autoComplete="new-password" required minLength={12} value={confirmNewPassword} onChange={(event) => setConfirmNewPassword(event.target.value)} className="portal-input" />
+        </div>
+        <button type="submit" disabled={changingPassword || !currentPassword || newPassword.length < 12 || newPassword !== confirmNewPassword} className="portal-btn-primary disabled:cursor-not-allowed disabled:opacity-50">
+          <ShieldCheck className="h-4 w-4" />
+          <span>{changingPassword ? 'Changing password…' : 'Change password'}</span>
+        </button>
+      </form>
+      <div className="border-t border-[#1F2C33] pt-4">
+        <h4 className="text-sm font-semibold text-[#F2F5F4]">What happens when you sign out</h4>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-relaxed text-[#A9B8B5]">
+          <li>Your active authenticated session is ended.</li>
+          <li>Saved sign-in tokens and this browser’s cached account session are cleared.</li>
+          <li>Portal preview and temporary interface state are cleared.</li>
+          <li>You must authenticate again to access your account.</li>
+          <li>Your profile, holdings and transaction history remain in the account; signing out does not delete financial records.</li>
+        </ul>
+      </div>
+    </section>
+    </>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
@@ -48,7 +49,7 @@ export const NotificationsPage: React.FC = () => {
       await refreshNotifications();
       toast.success('Notification marked as read.');
     } catch (err: any) {
-      setError(err?.message || 'Unable to update notification status.');
+      setError(safeErrorMessage(err, 'Unable to update notification status.'));
     } finally {
       setBusyId(null);
     }
@@ -67,7 +68,7 @@ export const NotificationsPage: React.FC = () => {
       await refreshNotifications();
       toast.success('All notifications marked as read.');
     } catch (err: any) {
-      setError(err?.message || 'Unable to mark all notifications as read.');
+      setError(safeErrorMessage(err, 'Unable to mark all notifications as read.'));
     } finally {
       setMarkingAll(false);
     }

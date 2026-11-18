@@ -88,4 +88,20 @@ npm run lint
 
 # Build for production
 npm run build
+
+# Sync web bundle into native Android Capacitor project
+npm run cap:sync
+
+# Compile Android Debug APK (requires Java 21 + Android SDK)
+npm run apk:debug
 ```
+
+---
+
+## 6. Android APK Packaging (Capacitor + PWA/TWA)
+
+- **App ID**: `com.kretzdespain.lagence`
+- **Native Project**: `/android` (Capacitor 8 Android Gradle project configured via `capacitor.config.ts`)
+- **Automated CI APK Builds**: `.github/workflows/build-android-apk.yml` compiles `debug` or `release` APKs on GitHub Actions (`ubuntu-latest`, Java 21, Android SDK 36) and uploads the `.apk` artifact.
+- **PWA Installability**: Configured via `vite-plugin-pwa` with offline indicator and in-app install button (`PWAInstallButton`).
+

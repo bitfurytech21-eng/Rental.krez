@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Building2,
   XCircle,
@@ -32,10 +32,14 @@ import {
   InvestorDocumentRow,
   KycSubmissionRow,
   PastDistributionRow,
+  allocateProportionalCents,
   assignStaffRoleRpc,
+  centsToEur,
   createPrivateBucketSignedUrl,
   deleteInvestorDocumentRecord,
+  eurToCents,
   executePayDistribution,
+  formatCentsEur,
   recordInvestmentRpc,
   reviewKycSubmission,
   sendAdminNotificationRecord,
@@ -687,19 +691,21 @@ export const AdminInvestmentsSection: React.FC<{
   investments: any[];
   users: PlatformUser[];
   properties: Property[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
 }> = ({ investments, users, properties, onRefresh, onSuccess, onError }) => {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [recordOpen, setRecordOpen] = useState(false);
+  const [confirmStep, setConfirmStep] = useState(false);
 
   // Record investment form state
   const [formUserId, setFormUserId] = useState<string>(() => users[0]?.id || '');
   const [formPropId, setFormPropId] = useState<string>(() => properties[0]?.id || '');
   const [formShares, setFormShares] = useState<number>(10);
   const [submitting, setSubmitting] = useState(false);
+  const submitLockRef = useRef<boolean>(false);
 
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
@@ -711,7 +717,7 @@ export const AdminInvestmentsSection: React.FC<{
       const u = userById.get(uid);
       const p = propById.get(pid);
       const shares = Number(inv.tokensPurchased ?? inv.tokens_purchased ?? inv.shares ?? inv.tokensCount ?? 0);
-      const cost = Number(inv.totalCost ?? inv.total_amount_invested ?? inv.amountEUR ?? inv.amount ?? 0);
+      const costCents = eurToCents(inv.totalCost ?? inv.total_amount_invested ?? inv.amountEUR ?? inv.amount ?? 0);
       return {
         id: String(inv.id),
         userId: uid,
@@ -720,7 +726,7 @@ export const AdminInvestmentsSection: React.FC<{
         propertyId: pid,
         propertyTitle: inv.propertyTitle || p?.title || pid || 'Property SPV',
         shares,
-        cost,
+        cost: centsToEur(costCents),
         status: String(inv.status || 'completed').toLowerCase(),
         createdAt: String(inv.purchaseDate || inv.createdAt || inv.created_at || new Date().toISOString()),
       };
@@ -728,7 +734,7 @@ export const AdminInvestmentsSection: React.FC<{
   }, [investments, userById, propById]);
 
   const groupedByProperty = useMemo(() => {
-    const groups = new Map<string, { propertyId: string; propertyTitle: string; totalShares: number; totalCost: number; holders: Map<string, { userId: string; name: string; email: string; shares: number; cost: number }> }>();
+    const groups = new Map<string, { propertyId: string; propertyTitle: string; totalShares: number; totalCostCents: number; holders: Map<string, { userId: string; name: string; email: string; shares: number; costCents: number }> }>();
     const q = search.trim().toLowerCase();
 
     for (const row of normalized) {
@@ -741,56 +747,74 @@ export const AdminInvestmentsSection: React.FC<{
           propertyId: row.propertyId,
           propertyTitle: row.propertyTitle,
           totalShares: 0,
-          totalCost: 0,
+          totalCostCents: 0,
           holders: new Map(),
         });
       }
       const g = groups.get(row.propertyId)!;
+      const rowCostCents = eurToCents(row.cost);
       g.totalShares += row.shares;
-      g.totalCost += row.cost;
+      g.totalCostCents += rowCostCents;
       const existingHolder = g.holders.get(row.userId);
       if (existingHolder) {
         existingHolder.shares += row.shares;
-        existingHolder.cost += row.cost;
+        existingHolder.costCents += rowCostCents;
       } else {
         g.holders.set(row.userId, {
           userId: row.userId,
           name: row.investorName,
           email: row.investorEmail,
           shares: row.shares,
-          cost: row.cost,
+          costCents: rowCostCents,
         });
       }
     }
-    return Array.from(groups.values());
+    return Array.from(groups.values()).map((g) => ({
+      ...g,
+      totalCost: centsToEur(g.totalCostCents),
+      holders: new Map(
+        Array.from(g.holders.entries()).map(([k, h]) => [k, { ...h, cost: centsToEur(h.costCents) }])
+      ),
+    }));
   }, [normalized, selectedPropertyId, search]);
 
   const selectedFormProp = propById.get(formPropId) || properties[0];
-  const calculatedCost = (Number(formShares) || 0) * Number(selectedFormProp?.tokenPrice || 0);
+  const selectedFormInvestor = userById.get(formUserId) || users[0];
+  const calculatedCostCents =
+    Math.max(0, Math.floor(Number(formShares) || 0)) * eurToCents(selectedFormProp?.tokenPrice || 0);
+  const calculatedCost = centsToEur(calculatedCostCents);
 
   const handleRecordInvestment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLockRef.current || submitting) return;
     const uid = formUserId || users[0]?.id;
     const pid = formPropId || properties[0]?.id;
-    if (!uid || !pid || formShares <= 0) {
+    if (!uid || !pid || formShares <= 0 || calculatedCostCents <= 0) {
       onError('Select an investor, a property, and enter a positive number of shares.');
       return;
     }
+    if (!confirmStep) {
+      setConfirmStep(true);
+      return;
+    }
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       await recordInvestmentRpc({
         userId: uid,
         propertyId: pid,
         shares: Math.floor(formShares),
-        sharePriceEur: Number(selectedFormProp?.tokenPrice || 500),
+        sharePriceEur: centsToEur(eurToCents(selectedFormProp?.tokenPrice || 500)),
       });
       setRecordOpen(false);
-      onSuccess(`Recorded ${Math.floor(formShares)} shares (${formatCurrency(calculatedCost)}) via record_investment.`);
-      onRefresh();
+      setConfirmStep(false);
+      await onRefresh();
+      onSuccess(`Recorded ${Math.floor(formShares)} shares (${formatCentsEur(calculatedCostCents)}) via record_investment.`);
     } catch (err: any) {
       onError(err?.message || 'Unable to record investment.');
     } finally {
       setSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -825,6 +849,7 @@ export const AdminInvestmentsSection: React.FC<{
             onClick={() => {
               setFormUserId((prev) => prev || users[0]?.id || '');
               setFormPropId((prev) => prev || properties[0]?.id || '');
+              setConfirmStep(false);
               setRecordOpen(true);
             }}
             className="px-4 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
@@ -915,83 +940,125 @@ export const AdminInvestmentsSection: React.FC<{
       </div>
 
       {/* Record Investment Modal */}
-      {recordOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleRecordInvestment} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
-              <h3 className="text-sm font-bold text-[#F2F5F4]">Record Investment</h3>
-              <button type="button" onClick={() => setRecordOpen(false)} className="text-[#8FA1A8] cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Investor</label>
-                <select
-                  required
-                  value={formUserId}
-                  onChange={(e) => setFormUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+      {recordOpen && (() => {
+        const curCents = eurToCents(selectedFormInvestor?.walletBalance ?? 0);
+        const projCents = curCents - calculatedCostCents;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <form onSubmit={handleRecordInvestment} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
+                <h3 className="text-sm font-bold text-[#F2F5F4]">
+                  {confirmStep ? 'Confirm Investment Allocation' : 'Record Investment'}
+                </h3>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => {
+                    setRecordOpen(false);
+                    setConfirmStep(false);
+                  }}
+                  className="text-[#8FA1A8] cursor-pointer disabled:opacity-50"
                 >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullName || u.email} ({u.email})
-                    </option>
-                  ))}
-                </select>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Property</label>
-                <select
-                  required
-                  value={formPropId}
-                  onChange={(e) => setFormPropId(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+
+              {!confirmStep ? (
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Investor</label>
+                    <select
+                      required
+                      value={formUserId}
+                      onChange={(e) => setFormUserId(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    >
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.fullName || u.email} ({u.email}) — {formatCurrency(u.walletBalance)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Property</label>
+                    <select
+                      required
+                      value={formPropId}
+                      onChange={(e) => setFormPropId(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                    >
+                      {properties.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} ({formatCurrency(p.tokenPrice)} / share)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[#B6C4C9] font-semibold mb-1">Number of Shares</label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      value={formShares}
+                      onChange={(e) => setFormShares(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                    />
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] flex items-center justify-between">
+                    <span className="text-[#8FA1A8]">Total Cost</span>
+                    <span className="text-base font-bold text-[#6FD8B0] tabular-nums">
+                      {formatCentsEur(calculatedCostCents)}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3.5 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
+                  <div>Action: <strong className="text-[#6FD8B0]">Record Investment (record_investment)</strong></div>
+                  <div>Investor: <strong className="text-[#F2F5F4]">{selectedFormInvestor?.fullName || selectedFormInvestor?.email || formUserId}</strong></div>
+                  <div>Property: <strong className="text-[#F2F5F4]">{selectedFormProp?.title || formPropId}</strong> ({Math.floor(formShares)} shares)</div>
+                  <div>Amount: <strong className="text-rose-300">−{formatCentsEur(calculatedCostCents)}</strong></div>
+                  <div>Current Balance: <strong>{formatCentsEur(curCents)}</strong></div>
+                  <div>Projected Balance: <strong className="text-[#6FD8B0]">{formatCentsEur(projCents)}</strong></div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                {confirmStep ? (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => setConfirmStep(false)}
+                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
+                  >
+                    Back
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      setRecordOpen(false);
+                      setConfirmStep(false);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={submitting || calculatedCostCents <= 0}
+                  className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.title} ({formatCurrency(p.tokenPrice)} / share)
-                    </option>
-                  ))}
-                </select>
+                  {submitting ? 'Recording...' : confirmStep ? 'Confirm & Record' : 'Review Investment'}
+                </button>
               </div>
-              <div>
-                <label className="block text-[#B6C4C9] font-semibold mb-1">Number of Shares</label>
-                <input
-                  type="number"
-                  min={1}
-                  required
-                  value={formShares}
-                  onChange={(e) => setFormShares(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-                  className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                />
-              </div>
-              <div className="p-3.5 rounded-xl bg-[#0B0F10] border border-[#1F2C33] flex items-center justify-between">
-                <span className="text-[#8FA1A8]">Total Cost</span>
-                <span className="text-base font-bold text-[#6FD8B0] tabular-nums">
-                  {formatCurrency(calculatedCost)}
-                </span>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setRecordOpen(false)}
-                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
-              >
-                {submitting ? 'Recording...' : 'Confirm & Record'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -1005,14 +1072,16 @@ export const AdminDistributionsSection: React.FC<{
   users: PlatformUser[];
   transactions: any[];
   pastDistributions: PastDistributionRow[];
-  onRefresh: () => void;
+  onRefresh: () => Promise<void> | void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
 }> = ({ properties, investments, users, transactions, pastDistributions, onRefresh, onSuccess, onError }) => {
   const [selectedPropId, setSelectedPropId] = useState<string>(() => properties[0]?.id || '');
   const [totalAmountEur, setTotalAmountEur] = useState<number>(2500);
   const [note, setNote] = useState<string>('');
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [paying, setPaying] = useState(false);
+  const payLockRef = useRef<boolean>(false);
   const [lastPaidSummary, setLastPaidSummary] = useState<{ paidCount: number; totalAmountEur: number; propertyTitle: string } | null>(null);
 
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
@@ -1043,14 +1112,19 @@ export const AdminDistributionsSection: React.FC<{
     }
     const list = Array.from(byHolder.values());
     const totalShares = list.reduce((s, h) => s + h.shares, 0);
+    const totalCents = eurToCents(totalAmountEur);
+    const allocCents = allocateProportionalCents(totalCents, list);
     return {
       totalShares,
+      totalCents,
       rows: list.map((h) => {
         const ratio = totalShares > 0 ? h.shares / totalShares : 0;
+        const payoutCents = allocCents.get(h.userId) ?? 0;
         return {
           ...h,
           pct: ratio * 100,
-          payoutEur: Math.round(totalAmountEur * ratio * 100) / 100,
+          payoutCents,
+          payoutEur: centsToEur(payoutCents),
         };
       }),
     };
@@ -1077,32 +1151,46 @@ export const AdminDistributionsSection: React.FC<{
       }));
   }, [pastDistributions, transactions, propById]);
 
-  const handlePayDistribution = async (e: React.FormEvent) => {
+  const handleOpenConfirmDistribution = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activePropId || totalAmountEur <= 0) {
+    const totalCents = eurToCents(totalAmountEur);
+    if (!activePropId || totalCents <= 0 || holderSharesPreview.rows.length === 0) {
+      onError('Select a property with active holders and enter a positive distribution amount.');
+      return;
+    }
+    setConfirmModalOpen(true);
+  };
+
+  const handleConfirmPayDistribution = async () => {
+    if (payLockRef.current || paying) return;
+    const totalCents = eurToCents(totalAmountEur);
+    if (!activePropId || totalCents <= 0) {
       onError('Select a property and enter a positive distribution amount.');
       return;
     }
+    payLockRef.current = true;
     setPaying(true);
     try {
       const result = await executePayDistribution({
         propertyId: activePropId,
-        totalAmountEur: Number(totalAmountEur),
+        totalAmountEur: centsToEur(totalCents),
         note: note.trim() || undefined,
       });
       const paidDisplay = result.paidCount > 0 ? result.paidCount : holderSharesPreview.rows.length;
+      setConfirmModalOpen(false);
       setLastPaidSummary({
         paidCount: paidDisplay,
-        totalAmountEur: Number(totalAmountEur),
+        totalAmountEur: centsToEur(totalCents),
         propertyTitle: activeProp?.title || activePropId,
       });
       setNote('');
-      onSuccess(`Paid ${formatCurrency(totalAmountEur)} across ${paidDisplay} investor${paidDisplay === 1 ? '' : 's'}.`);
-      onRefresh();
+      await onRefresh();
+      onSuccess(`Paid ${formatCentsEur(totalCents)} across ${paidDisplay} investor${paidDisplay === 1 ? '' : 's'} via pay_distribution.`);
     } catch (err: any) {
       onError(err?.message || 'Unable to execute pay_distribution.');
     } finally {
       setPaying(false);
+      payLockRef.current = false;
     }
   };
 
@@ -1130,7 +1218,7 @@ export const AdminDistributionsSection: React.FC<{
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <form onSubmit={handlePayDistribution} className="lg:col-span-5 bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-5 space-y-4">
+        <form onSubmit={handleOpenConfirmDistribution} className="lg:col-span-5 bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
             <Coins className="w-4 h-4 text-[#6FD8B0]" />
             <span>New Distribution Payout</span>
@@ -1177,10 +1265,10 @@ export const AdminDistributionsSection: React.FC<{
 
           <button
             type="submit"
-            disabled={paying || holderSharesPreview.rows.length === 0 || totalAmountEur <= 0}
+            disabled={paying || holderSharesPreview.rows.length === 0 || holderSharesPreview.totalCents <= 0}
             className="w-full py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
           >
-            {paying ? 'Executing Payout...' : `Confirm & Pay ${holderSharesPreview.rows.length} Holder(s)`}
+            {paying ? 'Executing Payout...' : `Review & Pay ${holderSharesPreview.rows.length} Holder(s)`}
           </button>
         </form>
 
@@ -1263,6 +1351,79 @@ export const AdminDistributionsSection: React.FC<{
           </table>
         </div>
       </div>
+
+      {/* Confirm Distribution Payout Modal */}
+      {confirmModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-xl w-full p-6 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
+              <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#6FD8B0]" />
+                <span>Confirm Per-Investor Distribution Payout</span>
+              </h3>
+              <button
+                type="button"
+                disabled={paying}
+                onClick={() => setConfirmModalOpen(false)}
+                className="text-[#8FA1A8] cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3 text-xs text-[#B6C4C9] space-y-1 tabular-nums">
+              <div>Action: <strong className="text-[#6FD8B0]">Pay Distribution (pay_distribution)</strong></div>
+              <div>Investors: <strong className="text-[#F2F5F4]">{holderSharesPreview.rows.length} holder(s) of {activeProp?.title || activePropId}</strong></div>
+              <div>Total Amount: <strong className="text-[#6FD8B0]">{formatCentsEur(holderSharesPreview.totalCents)}</strong></div>
+            </div>
+
+            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#1F2C33] text-[11px] text-[#8FA1A8] uppercase">
+                    <th className="py-2 px-3">Investor</th>
+                    <th className="py-2 px-3 text-right">Shares</th>
+                    <th className="py-2 px-3 text-right">Share %</th>
+                    <th className="py-2 px-3 text-right">Payout</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1F2C33]">
+                  {holderSharesPreview.rows.map((r) => (
+                    <tr key={r.userId}>
+                      <td className="py-2 px-3">
+                        <div className="font-semibold text-[#F2F5F4]">{r.name}</div>
+                        <div className="text-[11px] text-[#8FA1A8]">{r.email}</div>
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono tabular-nums">{r.shares.toLocaleString()}</td>
+                      <td className="py-2 px-3 text-right font-mono text-[#B6C4C9] tabular-nums">{r.pct.toFixed(2)}%</td>
+                      <td className="py-2 px-3 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(r.payoutCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#1F2C33]">
+              <button
+                type="button"
+                disabled={paying}
+                onClick={() => setConfirmModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={paying}
+                onClick={handleConfirmPayDistribution}
+                className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
+              >
+                {paying ? 'Executing Payout...' : `Pay ${holderSharesPreview.rows.length} Investor(s)`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1893,41 +2054,41 @@ export const AdminReportsSection: React.FC<{
   transactions: any[];
   pastDistributions: PastDistributionRow[];
 }> = ({ users, properties, investments, transactions, pastDistributions }) => {
-  const aumAtCost = useMemo(() => {
+  const aumAtCostCents = useMemo(() => {
     if (investments.length > 0) {
-      return investments.reduce((s, i) => s + Number(i.totalCost ?? i.amountEUR ?? i.total_amount_invested ?? 0), 0);
+      return investments.reduce((s, i) => s + eurToCents(i.totalCost ?? i.amountEUR ?? i.total_amount_invested ?? 0), 0);
     }
-    return users.reduce((s, u) => s + Number(u.investedBalance || 0), 0);
+    return users.reduce((s, u) => s + eurToCents(u.investedBalance || 0), 0);
   }, [investments, users]);
 
-  const distributionsPaid = useMemo(() => {
+  const distributionsPaidCents = useMemo(() => {
     if (pastDistributions.length > 0) {
-      return pastDistributions.reduce((s, d) => s + Number(d.totalEur || 0), 0);
+      return pastDistributions.reduce((s, d) => s + eurToCents(d.totalEur || 0), 0);
     }
     return transactions
       .filter((t) => ['dividend', 'distribution', 'yield'].includes(String(t.type).toLowerCase()) && ['completed', 'approved', 'paid'].includes(String(t.status).toLowerCase()))
-      .reduce((s, t) => s + Number(t.amount || 0), 0);
+      .reduce((s, t) => s + eurToCents(t.amount || 0), 0);
   }, [pastDistributions, transactions]);
 
   const monthlyFlows = useMemo(() => {
-    const months = new Map<string, { month: string; depositsEur: number; withdrawalsEur: number; distributionsEur: number }>();
+    const months = new Map<string, { month: string; depositsCents: number; withdrawalsCents: number; distributionsCents: number }>();
     for (const tx of transactions) {
       if (!['completed', 'approved', 'paid'].includes(String(tx.status).toLowerCase())) continue;
       const month = String(tx.createdAt || '').slice(0, 7) || 'Unknown';
       if (!months.has(month)) {
-        months.set(month, { month, depositsEur: 0, withdrawalsEur: 0, distributionsEur: 0 });
+        months.set(month, { month, depositsCents: 0, withdrawalsCents: 0, distributionsCents: 0 });
       }
       const entry = months.get(month)!;
-      const amt = Number(tx.amount || 0);
-      if (tx.type === 'deposit') entry.depositsEur += amt;
-      else if (tx.type === 'withdrawal') entry.withdrawalsEur += amt;
-      else if (['dividend', 'distribution', 'yield'].includes(String(tx.type).toLowerCase())) entry.distributionsEur += amt;
+      const amtCents = eurToCents(tx.amount || 0);
+      if (tx.type === 'deposit') entry.depositsCents += amtCents;
+      else if (tx.type === 'withdrawal') entry.withdrawalsCents += amtCents;
+      else if (['dividend', 'distribution', 'yield'].includes(String(tx.type).toLowerCase())) entry.distributionsCents += amtCents;
     }
     return Array.from(months.values()).sort((a, b) => b.month.localeCompare(a.month));
   }, [transactions]);
 
-  const totalDeposits = monthlyFlows.reduce((s, m) => s + m.depositsEur, 0);
-  const totalWithdrawals = monthlyFlows.reduce((s, m) => s + m.withdrawalsEur, 0);
+  const totalDepositsCents = monthlyFlows.reduce((s, m) => s + m.depositsCents, 0);
+  const totalWithdrawalsCents = monthlyFlows.reduce((s, m) => s + m.withdrawalsCents, 0);
 
   return (
     <div className="space-y-6">
@@ -1945,14 +2106,18 @@ export const AdminReportsSection: React.FC<{
               triggerCsvDownload(
                 `lagence-property-funding-${new Date().toISOString().slice(0, 10)}.csv`,
                 ['Property', 'City', 'Target (EUR)', 'Funded (EUR)', 'Funded %', 'Status'],
-                properties.map((p) => [
-                  p.title,
-                  p.city || p.location,
-                  p.targetAmount,
-                  p.fundedAmount,
-                  p.targetAmount > 0 ? Math.round((p.fundedAmount / p.targetAmount) * 100) : 0,
-                  p.status,
-                ])
+                properties.map((p) => {
+                  const targetCents = eurToCents(p.targetAmount);
+                  const fundedCents = eurToCents(p.fundedAmount);
+                  return [
+                    p.title,
+                    p.city || p.location,
+                    centsToEur(targetCents).toFixed(2),
+                    centsToEur(fundedCents).toFixed(2),
+                    targetCents > 0 ? Math.round((fundedCents / targetCents) * 100) : 0,
+                    p.status,
+                  ];
+                })
               )
             }
             className="px-3.5 py-2 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
@@ -1966,7 +2131,13 @@ export const AdminReportsSection: React.FC<{
               triggerCsvDownload(
                 `lagence-monthly-cashflow-${new Date().toISOString().slice(0, 10)}.csv`,
                 ['Month', 'Deposits (EUR)', 'Withdrawals (EUR)', 'Net (EUR)', 'Distributions Paid (EUR)'],
-                monthlyFlows.map((m) => [m.month, m.depositsEur, m.withdrawalsEur, m.depositsEur - m.withdrawalsEur, m.distributionsEur])
+                monthlyFlows.map((m) => [
+                  m.month,
+                  centsToEur(m.depositsCents).toFixed(2),
+                  centsToEur(m.withdrawalsCents).toFixed(2),
+                  centsToEur(m.depositsCents - m.withdrawalsCents).toFixed(2),
+                  centsToEur(m.distributionsCents).toFixed(2),
+                ])
               )
             }
             className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer"
@@ -1981,19 +2152,19 @@ export const AdminReportsSection: React.FC<{
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[#121A1F] p-5 rounded-2xl border border-[#1F2C33]">
           <div className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Total AUM (at cost)</div>
-          <div className="text-xl font-bold text-[#6FD8B0] mt-1 tabular-nums">{formatCurrency(aumAtCost)}</div>
+          <div className="text-xl font-bold text-[#6FD8B0] mt-1 tabular-nums">{formatCentsEur(aumAtCostCents)}</div>
         </div>
         <div className="bg-[#121A1F] p-5 rounded-2xl border border-[#1F2C33]">
           <div className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Total Deposits Settled</div>
-          <div className="text-xl font-bold text-[#F2F5F4] mt-1 tabular-nums">{formatCurrency(totalDeposits)}</div>
+          <div className="text-xl font-bold text-[#F2F5F4] mt-1 tabular-nums">{formatCentsEur(totalDepositsCents)}</div>
         </div>
         <div className="bg-[#121A1F] p-5 rounded-2xl border border-[#1F2C33]">
           <div className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Total Withdrawals Paid</div>
-          <div className="text-xl font-bold text-[#F2F5F4] mt-1 tabular-nums">{formatCurrency(totalWithdrawals)}</div>
+          <div className="text-xl font-bold text-[#F2F5F4] mt-1 tabular-nums">{formatCentsEur(totalWithdrawalsCents)}</div>
         </div>
         <div className="bg-[#121A1F] p-5 rounded-2xl border border-[#1F2C33]">
           <div className="text-[11px] uppercase tracking-wider font-semibold text-[#8FA1A8]">Distributions Paid</div>
-          <div className="text-xl font-bold text-[#6FD8B0] mt-1 tabular-nums">{formatCurrency(distributionsPaid)}</div>
+          <div className="text-xl font-bold text-[#6FD8B0] mt-1 tabular-nums">{formatCentsEur(distributionsPaidCents)}</div>
         </div>
       </div>
 
@@ -2015,12 +2186,14 @@ export const AdminReportsSection: React.FC<{
             </thead>
             <tbody className="divide-y divide-[#1F2C33]">
               {properties.map((p) => {
-                const pct = p.targetAmount > 0 ? Math.round((p.fundedAmount / p.targetAmount) * 100) : 0;
+                const targetCents = eurToCents(p.targetAmount);
+                const fundedCents = eurToCents(p.fundedAmount);
+                const pct = targetCents > 0 ? Math.round((fundedCents / targetCents) * 100) : 0;
                 return (
                   <tr key={p.id} className="hover:bg-[#162026]">
                     <td className="py-3 px-4 font-semibold text-[#F2F5F4]">{p.title}</td>
-                    <td className="py-3 px-4 text-right text-[#B6C4C9] tabular-nums">{formatCurrency(p.targetAmount)}</td>
-                    <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCurrency(p.fundedAmount)}</td>
+                    <td className="py-3 px-4 text-right text-[#B6C4C9] tabular-nums">{formatCentsEur(targetCents)}</td>
+                    <td className="py-3 px-4 text-right font-bold text-[#6FD8B0] tabular-nums">{formatCentsEur(fundedCents)}</td>
                     <td className="py-3 px-4 text-right font-mono text-[#F2F5F4] tabular-nums">{pct}%</td>
                     <td className="py-3 px-4 uppercase text-[11px] text-[#B6C4C9]">{p.status}</td>
                   </tr>
@@ -2051,10 +2224,10 @@ export const AdminReportsSection: React.FC<{
               {monthlyFlows.map((m) => (
                 <tr key={m.month} className="hover:bg-[#162026]">
                   <td className="py-3 px-4 font-mono text-[#F2F5F4]">{m.month}</td>
-                  <td className="py-3 px-4 text-right text-[#6FD8B0] font-semibold tabular-nums">{formatCurrency(m.depositsEur)}</td>
-                  <td className="py-3 px-4 text-right text-[#F2F5F4] tabular-nums">{formatCurrency(m.withdrawalsEur)}</td>
-                  <td className="py-3 px-4 text-right text-[#B6C4C9] tabular-nums">{formatCurrency(m.depositsEur - m.withdrawalsEur)}</td>
-                  <td className="py-3 px-4 text-right text-[#6FD8B0] tabular-nums">{formatCurrency(m.distributionsEur)}</td>
+                  <td className="py-3 px-4 text-right text-[#6FD8B0] font-semibold tabular-nums">{formatCentsEur(m.depositsCents)}</td>
+                  <td className="py-3 px-4 text-right text-[#F2F5F4] tabular-nums">{formatCentsEur(m.withdrawalsCents)}</td>
+                  <td className="py-3 px-4 text-right text-[#B6C4C9] tabular-nums">{formatCentsEur(m.depositsCents - m.withdrawalsCents)}</td>
+                  <td className="py-3 px-4 text-right text-[#6FD8B0] tabular-nums">{formatCentsEur(m.distributionsCents)}</td>
                 </tr>
               ))}
               {monthlyFlows.length === 0 && (

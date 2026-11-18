@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import React, { useState } from 'react';
 import {
   Building2,
@@ -6,7 +7,6 @@ import {
   Check,
   CheckCircle2,
   ArrowRight,
-  ShieldAlert,
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
@@ -38,51 +38,7 @@ export const DepositPage: React.FC = () => {
     return <LoadingSkeleton rows={3} />;
   }
 
-  const isVerified = profile?.kycStatus === 'verified';
-
-  if (profile && !isVerified) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <div className="portal-card border-[#FCD34D]/45 space-y-4">
-          <div className="flex items-start gap-3.5">
-            <div className="w-11 h-11 rounded-[14px] bg-[#FCD34D]/12 border border-[#FCD34D]/35 text-[#FCD34D] flex items-center justify-center shrink-0">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-semibold text-[#F2F5F4]">Verification required to deposit</h2>
-                <StatusBadge
-                  status={profile.kycStatus}
-                  label={profile.kycStatus === 'rejected' ? 'Rejected' : 'In review'}
-                />
-              </div>
-              <p className="text-sm text-[#8FA1A8] mt-1.5 leading-relaxed">
-                European AML regulations require your identity, proof of address, and investor questionnaire to be verified before funding your wallet.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => navigatePortal('compliance')}
-              className="portal-btn-primary"
-            >
-              <span>Open Compliance Vault</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigatePortal('overview')}
-              className="portal-btn-secondary"
-            >
-              Back to overview
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Deposits require an authenticated investor account, not completed KYC.
 
   const copyValue = async (label: string, val: string) => {
     if (!val) return;
@@ -162,7 +118,7 @@ export const DepositPage: React.FC = () => {
       toast.success('Deposit instructions issued.');
       await refreshAll();
     } catch (err: any) {
-      const msg = err?.message || 'Unable to record deposit request.';
+      const msg = safeErrorMessage(err, 'Unable to record deposit request.');
       setSubmitError(msg);
       toast.error(msg);
     } finally {

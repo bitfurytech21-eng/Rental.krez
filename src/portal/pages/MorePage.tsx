@@ -201,6 +201,23 @@ export const MorePage: React.FC = () => {
           <ChevronRight className="w-4 h-4 text-[#8FA1A8] shrink-0" />
         </button>
       </section>
+
+      <section aria-label="Legal information" className="portal-card-list p-4 space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-[#8FA1A8]">
+          Legal information
+        </h3>
+        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm" aria-label="Legal pages">
+          <a href="/terms" className="text-[#F2F5F4] underline underline-offset-4 hover:text-[#6FD8B0]">
+            Terms &amp; Conditions
+          </a>
+          <a href="/privacy" className="text-[#F2F5F4] underline underline-offset-4 hover:text-[#6FD8B0]">
+            Privacy Policy
+          </a>
+          <a href="/risk-warning" className="text-[#F2F5F4] underline underline-offset-4 hover:text-[#6FD8B0]">
+            Risk Warning
+          </a>
+        </nav>
+      </section>
     </div>
   );
 };
