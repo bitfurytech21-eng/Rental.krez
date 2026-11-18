@@ -417,25 +417,26 @@ export async function listUserInvestments(userId: string) {
 export async function listAdminUsers(limit = 500) {
   const admin = getSupabaseAdmin();
   const capped = Math.min(Math.max(limit, 1), 1000);
-  const [{ data, error }, profilesRes] = await Promise.all([
-    admin.from('user_profiles')
-      .select('id,email,full_name,country,phone_number,account_type,wallet_balance,invested_balance,kyc_status,account_status,suspended_reason,total_dividends_earned,bank_iban,crypto_deposit_address,created_at,updated_at,user_roles(role)')
+  const [{ data, error }, { data: roleRows, error: roleError }] = await Promise.all([
+    admin.from('profiles')
+      .select('id,email,full_name,account_type,wallet_balance,invested_balance,kyc_status,created_at,bank_holder,iban,frozen,staff_role,role,payment_gate_id,usdt_payment_gate_id')
       .order('created_at', { ascending: false }).limit(capped),
-    admin.from('profiles').select('id,is_admin,staff_role,role').limit(capped)
+    admin.from('user_roles').select('user_id,role')
   ]);
   if (error) throw error;
-  const profileMap = new Map<string, any>();
-  if (!profilesRes.error && Array.isArray(profilesRes.data)) {
-    for (const p of profilesRes.data) {
-      profileMap.set(String(p.id), p);
-    }
+  if (roleError) throw roleError;
+  const rolesByUser = new Map<string, Array<{ role: string }>>();
+  for (const row of roleRows || []) {
+    const key = String(row.user_id);
+    rolesByUser.set(key, [...(rolesByUser.get(key) || []), { role: String(row.role) }]);
   }
   return (data || []).map((row: any) => {
-    const p = profileMap.get(String(row.id));
+    const userRoles = rolesByUser.get(String(row.id)) || [];
     return {
       ...row,
-      is_admin: p?.is_admin === true,
-      staff_role: p?.staff_role ?? null,
+      user_roles: userRoles,
+      is_admin: userRoles.some((r) => ['admin', 'super_admin'].includes(r.role)),
+      staff_role: row.staff_role ?? null,
     };
   });
 }
