@@ -453,9 +453,7 @@ function MainApp() {
       case '/cookies': {
         const docSlug = searchParams.get('doc') || undefined;
         const legalMode =
-          basePath === '/privacy'
-            ? 'privacy'
-            : basePath === '/cookies'
+          basePath === '/cookies'
             ? 'cookies'
             : basePath === '/disclosures'
             ? 'disclosures'
