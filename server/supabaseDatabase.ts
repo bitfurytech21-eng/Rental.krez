@@ -277,7 +277,7 @@ export async function listAdminTransactions(type?: 'deposit' | 'withdrawal', sta
 }
 
 export async function getUserProfile(userId: string) {
-  const { data, error } = await getSupabaseAdmin().from('user_profiles').select('*').eq('id', userId).maybeSingle();
+  const { data, error } = await getSupabaseAdmin().from('profiles').select('*').eq('id', userId).maybeSingle();
   if (error) throw error;
   return data;
 }
