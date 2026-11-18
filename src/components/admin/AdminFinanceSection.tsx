@@ -934,7 +934,7 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
     if (gateMethod === 'usdt') {
       const address = gateWalletAddress.trim();
       const valid = gateNetwork === 'TRC20'
-        ? /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address)
+        ? (address.startsWith('T') && address.length === 34 && [...address].every((char) => char.trim().length > 0))
         : ['ERC20', 'BEP20'].includes(gateNetwork) && /^0x[a-fA-F0-9]{40}$/.test(address);
       if (!valid) {
         onError(gateNetwork === 'TRC20'
