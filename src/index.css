@@ -3735,3 +3735,35 @@ body > div[id*="smartsupp"] {
     animation-iteration-count: 1 !important; transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Accessibility baseline: comfortable touch targets and visible keyboard focus. */
+@layer base {
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 24px;
+    min-height: 24px;
+  }
+
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    min-height: 44px;
+  }
+
+  :where(button, a, input, select, textarea, [role="button"]):focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+}
