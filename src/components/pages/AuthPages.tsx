@@ -522,7 +522,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   <label htmlFor="login-email-code" className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Email security code</label>
                   <input
                     id="login-email-code"
-                  type="text"
+                  type="password"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     pattern="[0-9]{6}"
