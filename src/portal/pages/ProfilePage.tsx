@@ -164,6 +164,7 @@ export const ProfilePage: React.FC = () => {
   };
 
   return (
+    <>
     <form onSubmit={handleSave} noValidate className="max-w-3xl space-y-6">
       <div>
         <h2 className="text-xl font-heading font-bold text-[#F2F5F4]">Profile &amp; Banking</h2>
@@ -448,5 +449,6 @@ export const ProfilePage: React.FC = () => {
         </ul>
       </div>
     </section>
+    </>
   );
 };
