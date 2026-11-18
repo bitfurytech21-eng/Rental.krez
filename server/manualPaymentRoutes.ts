@@ -284,7 +284,7 @@ function safeMethodInput(body: any, actorId: string, existing?: any) {
   if (method === 'usdt') {
     const validNetwork = ['TRC20', 'ERC20', 'BEP20'].includes(network);
     const validAddress = network === 'TRC20'
-      ? /^T[^\\s]{33}$/.test(walletAddress)
+      ? (/^T.{33}$/.test(walletAddress) && !/\\s/.test(walletAddress))
       : ['ERC20', 'BEP20'].includes(network) ? /^0x[a-fA-F0-9]{40}$/.test(walletAddress) : false;
     if (!validNetwork || !validAddress) throw new Error('INVALID_USDT_NETWORK_OR_ADDRESS');
   }
