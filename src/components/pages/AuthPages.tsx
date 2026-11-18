@@ -519,7 +519,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
               {!verificationPending ? (
                 <form onSubmit={handleRegister} noValidate className="space-y-4">
                   <div className="form-field space-y-1">
-                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Full Legal Name</label>
+                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Full Name</label>
                     <input
                       type="text"
                       required
