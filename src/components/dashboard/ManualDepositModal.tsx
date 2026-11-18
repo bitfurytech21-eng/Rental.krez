@@ -49,7 +49,6 @@ export const ManualDepositModal: React.FC<Props> = ({
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState<any>(null);
   const lockRef = useRef(false);
-  const token = getAuthToken();
 
   const selected = methods.find(item => item.method === method);
   const amountCents = parseEurCents(amount);
@@ -196,7 +195,7 @@ export const ManualDepositModal: React.FC<Props> = ({
           <span className="text-3xl font-bold text-[#8FA1A8]">€</span>
           <input aria-label="Deposit amount in euros" inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="h-full min-w-0 flex-1 bg-transparent pl-3 text-4xl font-bold outline-none placeholder:text-[#8FA1A8]/40" />
         </label>
-        <div className="grid grid-cols-4 gap-2">{[100,500,1000,5000].map(value => <button key={value} type="button" onClick={() => setAmount(String(value))} className="h-10 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-xs font-semibold hover:border-[#6FD8B0]">{money(value)}</button>)}</div>
+        <div className="grid grid-cols-4 gap-2">{[100,500,1000,5000].map(value => <button key={value} type="button" onClick={() => setAmount(String(value))} className="h-10 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-xs font-semibold hover:border-[#6FD8B0]">{money(value).replace(/\\.00$/, '')}</button>)}</div>
         <p className="text-xs text-[#8FA1A8]">The minimum and maximum depend on your assigned payment method.</p>
         <button type="button" disabled={!isVerified || !amount || loadingMethods} onClick={continueToMethod} className="h-12 w-full rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:cursor-not-allowed disabled:opacity-40">{loadingMethods ? 'Loading payment methods…' : 'Continue'}</button>
       </section>}
