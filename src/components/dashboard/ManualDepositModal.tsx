@@ -293,7 +293,7 @@ export const ManualDepositModal: React.FC<Props> = ({
           <h2 className="mt-1 text-xl font-bold">Deposit funds</h2>
           <p className="mt-1 text-xs text-[#8FA1A8]">Your wallet is credited after your payment is confirmed.</p>
         </div>
-        <button type="button" onClick={close} aria-label="Close deposit" className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#1F2C33] text-xl text-[#8FA1A8] hover:text-white">×</button>
+        <button type="button" onClick={close} aria-label="Close deposit" className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#1F2C33] text-xl text-[#8FA1A8] hover:text-white">×</button>
       </header>
 
       <div className="mb-5 flex gap-1.5" aria-label={`Step ${step} of 4`}>
@@ -313,7 +313,7 @@ export const ManualDepositModal: React.FC<Props> = ({
           <span className="text-3xl font-bold text-[#8FA1A8]">€</span>
           <input aria-label="Deposit amount in euros" inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="h-full min-w-0 flex-1 bg-transparent pl-3 text-4xl font-bold outline-none placeholder:text-[#8FA1A8]/40" />
         </label>
-        <div className="grid grid-cols-4 gap-2">{[100,500,1000,5000].map(value => <button key={value} type="button" onClick={() => setAmount(String(value))} className="h-10 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-xs font-semibold hover:border-[#6FD8B0]">{money(value).replace(/\.00$/, '')}</button>)}</div>
+        <div className="grid grid-cols-4 gap-2">{[100,500,1000,5000].map(value => <button key={value} type="button" onClick={() => setAmount(String(value))} className="h-11 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-xs font-semibold hover:border-[#6FD8B0]">{money(value).replace(/\.00$/, '')}</button>)}</div>
         <p className="text-xs text-[#8FA1A8]">The minimum and maximum depend on your assigned payment method.</p>
         <button type="button" disabled={!isVerified || !amount || loadingMethods} onClick={continueToMethod} className="h-12 w-full rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:cursor-not-allowed disabled:opacity-40">{loadingMethods ? 'Loading payment methods…' : 'Continue'}</button>
       </section>}
@@ -393,7 +393,7 @@ export const ManualDepositModal: React.FC<Props> = ({
             {selected?.detail_rows?.map((detail, index) => <div key={`${detail.label}-${index}`} className="flex items-start justify-between gap-3 border-b border-[#1F2C33] py-2 text-sm">
               <span className="shrink-0 text-[#8FA1A8]">{detail.label}</span>
               <span className="min-w-0 break-all text-right font-semibold">{detail.value}</span>
-              <button type="button" aria-label={`Copy ${detail.label}`} onClick={() => copyValue(detail.value, detail.label)} className="h-9 shrink-0 rounded-lg border border-[#6FD8B0]/40 px-2 text-xs font-semibold text-[#6FD8B0]">Copy</button>
+              <button type="button" aria-label={`Copy ${detail.label}`} onClick={() => copyValue(detail.value, detail.label)} className="h-11 shrink-0 rounded-lg border border-[#6FD8B0]/40 px-2 text-xs font-semibold text-[#6FD8B0]">Copy</button>
             </div>)}
             {selected?.instructions && <div className="pt-2 text-sm leading-relaxed text-[#C2CFD2]"><p className="mb-1 font-semibold">Instructions</p>{selected.instructions}</div>}
             <div className="rounded-xl border-2 border-[#6FD8B0] bg-[#6FD8B0]/10 p-3">
