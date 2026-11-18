@@ -3,7 +3,6 @@ import { useAuth } from '../../lib/auth';
 import { getPasswordChecklist, isValidEmail, isValidPassword } from '../../lib/validation';
 import { Property } from '../../types/property';
 import { formatCurrency } from '../../lib/utils';
-import { AccountType, ACCOUNT_TYPES, UserRole } from '../../types/user';
 import {
   Shield,
   ShieldCheck,
@@ -15,15 +14,12 @@ import {
   Lock,
   ExternalLink,
   Info,
-  Globe,
-  Phone,
   Tag,
   Gift,
   Eye,
   EyeOff
 } from 'lucide-react';
 import { authApi } from '../../lib/api';
-import { COUNTRIES, DEFAULT_COUNTRY, getCountryByCode } from '../../data/countries';
 import { ledger } from '../../lib/ledger';
 import authLuxuryKeyBg from '../../assets/images/auth_luxury_key_1794021673223.jpg';
 
@@ -43,9 +39,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const {
     login,
     register,
+    resendSignupConfirmation,
     sendPasswordReset,
     updatePassword,
-    isConfigured,
     isRecoveryMode,
     setIsRecoveryMode
   } = useAuth();
@@ -65,12 +61,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   // Form states
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>(DEFAULT_COUNTRY.code);
-  const [phoneCountryCode, setPhoneCountryCode] = useState<string>(DEFAULT_COUNTRY.code);
-  const [phoneDigits, setPhoneDigits] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountType, setAccountType] = useState<AccountType>('individual_investor');
   const [emailCode, setEmailCode] = useState('');
   const [requiresEmailCode, setRequiresEmailCode] = useState(false);
   const [referralCode, setReferralCode] = useState<string>(() => {
@@ -89,7 +81,16 @@ export const AuthPages: React.FC<AuthPageProps> = ({
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [verificationPending, setVerificationPending] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedRisk, setAcceptedRisk] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setResendCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   const switchMode = (newMode: 'login' | 'register' | 'forgot-password' | 'reset-password') => {
     setError(null);
@@ -152,41 +153,23 @@ export const AuthPages: React.FC<AuthPageProps> = ({
       setError('Please provide a valid email address.');
       return;
     }
+    if (password.length < 12) {
+      setError('Password must be at least 12 characters long.');
+      return;
+    }
     const passCheck = isValidPassword(password);
     if (!passCheck.valid) {
-      setError(passCheck.reason || 'Password must be at least 8 characters.');
+      setError(passCheck.reason || 'Please choose a stronger password.');
       return;
     }
-
-    if (!selectedCountryCode) {
-      setError('Please select your country of residence.');
+    if (!acceptedTerms || !acceptedRisk) {
+      setError('Please accept both required acknowledgements before creating your account.');
       return;
     }
-    const cleanPhoneDigits = phoneDigits.replace(/\D/g, '');
-    if (!cleanPhoneDigits) {
-      setError('Phone number digits are required.');
-      return;
-    }
-
-    const currentCountry = getCountryByCode(selectedCountryCode);
-    const phoneCountry = getCountryByCode(phoneCountryCode);
-    const fullPhoneNumber = `${phoneCountry.dialCode} ${phoneDigits.trim()}`;
-
-    const selectedOption = ACCOUNT_TYPES.find(a => a.id === accountType);
-    const determinedRole: UserRole = selectedOption?.role || (accountType === 'admin' ? 'admin' : 'investor');
 
     setLoading(true);
     try {
-      const result = await register(
-        email,
-        password,
-        fullName,
-        determinedRole,
-        accountType,
-        currentCountry.name,
-        fullPhoneNumber,
-        currentCountry.code
-      );
+      const result = await register(email, password, cleanName);
 
       if (referralCode) {
         try {
@@ -201,6 +184,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
 
       if (result.requiresVerification) {
         setVerificationPending(true);
+        setResendCooldown(60);
       } else {
         onSuccess();
       }
@@ -215,6 +199,20 @@ export const AuthPages: React.FC<AuthPageProps> = ({
         );
         setError(msg || 'Registration failed. Please check your information.');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (resendCooldown > 0 || loading) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await resendSignupConfirmation(email);
+      setResendCooldown(60);
+    } catch (err: any) {
+      setError(err?.message || 'Could not resend the confirmation email. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -542,7 +540,6 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     />
                   </div>
 
-                  {/* Country of Residence Selection */}
                   <div className="form-field space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider flex items-center gap-1.5">
@@ -610,12 +607,12 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   </div>
 
                   <div className="form-field space-y-1">
-                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Min 8 Characters)</label>
+                    <label className="text-xs font-bold text-[#C5A880] uppercase tracking-wider block">Password (Minimum 12 Characters)</label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
-                        minLength={8}
+                        minLength={12}
                         autoComplete="new-password"
                         placeholder="Create secure password"
                         value={password}
@@ -633,7 +630,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-1.5 pt-1.5 text-[11px]">
                       {[
-                        { ok: passChecks.minLength, label: '8+ characters' },
+                        { ok: passChecks.minLength, label: '12+ characters' },
                         { ok: passChecks.hasUpper, label: 'Uppercase (A–Z)' },
                         { ok: passChecks.hasLower, label: 'Lowercase (a–z)' },
                         { ok: passChecks.hasDigit, label: 'Number (0–9)' },
@@ -649,10 +646,37 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     </div>
                   </div>
 
+                  <div className="space-y-3 rounded-xl border border-[#1D3860] bg-[#0B1B30] p-4">
+                    <label className="flex items-start gap-3 text-xs leading-relaxed text-[#D6DEEA] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#C5A880]"
+                      />
+                      <span>
+                        I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="font-bold text-[#C5A880] underline underline-offset-2">Terms</a> and <a href="/privacy" target="_blank" rel="noreferrer" className="font-bold text-[#C5A880] underline underline-offset-2">Privacy Policy</a>.
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-3 text-xs leading-relaxed text-[#D6DEEA] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        required
+                        checked={acceptedRisk}
+                        onChange={(e) => setAcceptedRisk(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[#C5A880]"
+                      />
+                      <span>
+                        I understand that capital is at risk and target returns are not guaranteed. Read the <a href="/risk-warning" target="_blank" rel="noreferrer" className="font-bold text-[#C5A880] underline underline-offset-2">Risk Warning</a>.
+                      </span>
+                    </label>
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all"
+                    disabled={loading || !acceptedTerms || !acceptedRisk}
+                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     {loading ? (
                       <>
@@ -682,7 +706,7 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                   <div className="w-14 h-14 rounded-2xl bg-[#0B1B30] border border-[#1D3860] text-[#C5A880] flex items-center justify-center mx-auto shadow-md">
                     <Mail className="w-7 h-7" />
                   </div>
-                  <h3 className="text-xl font-black text-white">Verify Your Email</h3>
+                  <h3 className="text-xl font-black text-white">Check your email to confirm your account</h3>
                   <div className="p-4 bg-[#0B1B30] rounded-2xl border border-[#1D3860] text-xs text-[#8EA7C7] leading-relaxed text-left space-y-2">
                     <p>
                       We have dispatched a verification link to <strong className="text-white">{email}</strong>.
@@ -692,11 +716,14 @@ export const AuthPages: React.FC<AuthPageProps> = ({
                     </p>
                   </div>
                   <button
-                    onClick={() => switchMode('login')}
-                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer"
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={loading || resendCooldown > 0}
+                    className="bg-[#C5A880] hover:bg-[#B39369] text-[#1A1A1A] font-black w-full text-xs py-3.5 rounded-xl shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Proceed to Sign In
+                    {loading ? 'Resending...' : resendCooldown > 0 ? `Resend email in ${resendCooldown}s` : 'Resend email'}
                   </button>
+                  <p className="text-[11px] text-[#8EA7C7]">You must confirm your email before you can sign in.</p>
                 </div>
               )}
             </div>
