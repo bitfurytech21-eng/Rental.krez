@@ -12,6 +12,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret } from './middleware';
 import { logger } from './logger';
+import { requireLatestLegalConsent } from './legalConsent';
 import { issueEmailOtp, verifyEmailOtp, cancelEmailOtp, issueDashboardActionOtp, verifyDashboardActionOtp, consumeDashboardActionGrant } from './emailOtp';
 import {
   manualPaymentRouter,
@@ -4580,7 +4581,7 @@ router.get('/treasury/balances', requireAuth, async (req: AuthenticatedRequest, 
   });
 });
 
-router.post('/treasury/convert', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/treasury/convert', requireAuth, requireLatestLegalConsent, async (req: AuthenticatedRequest, res: Response) => {
   const { fromCurrency, toCurrency, amount, quoteId } = req.body || {};
   const from = String(fromCurrency || '').toUpperCase();
   const to = String(toCurrency || '').toUpperCase();
@@ -4785,7 +4786,7 @@ router.get('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Resp
 /**
  * POST /api/v1/deposits
  */
-router.post('/deposits', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.depositsEnabled) {
     return res.status(403).json({
       success: false,
@@ -4989,7 +4990,7 @@ router.get('/withdrawals', requireAuth, async (req: AuthenticatedRequest, res: R
 /**
  * POST /api/v1/withdrawals
  */
-router.post('/withdrawals', requireAuth, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/withdrawals', requireAuth, requireLatestLegalConsent, requireActionEmailVerification('investor.withdrawal.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.withdrawalsEnabled) {
     return res.status(403).json({
       success: false,
@@ -5285,7 +5286,7 @@ router.post('/withdrawals', requireAuth, requireActionEmailVerification('investo
  * POST /api/v1/investments
  * Execute fractional asset investment with idempotency protection
  */
-router.post('/investments', requireAuth, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/investments', requireAuth, requireLatestLegalConsent, requireActionEmailVerification('investor.investment.create'), async (req: AuthenticatedRequest, res: Response) => {
   if (!platformConfig.tradingEnabled) {
     return res.status(403).json({
       success: false,
