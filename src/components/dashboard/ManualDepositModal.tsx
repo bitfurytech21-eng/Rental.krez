@@ -209,7 +209,7 @@ export const ManualDepositModal: React.FC<Props> = ({
             <legend className="sr-only">Choose payment method</legend>
             {methods.map(item => <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-[#121A1F] p-4 ${method === item.method ? 'border-[#6FD8B0] bg-[#0F1A18]' : 'border-[#1F2C33]'}`}>
               <input type="radio" name="deposit-method" value={item.method} checked={method === item.method} onChange={() => setMethod(item.method)} className="size-5 accent-[#6FD8B0]" />
-              <span className="min-w-0 flex-1 text-sm font-semibold">{methodLabel(item.method)}</span>
+              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{methodLabel(item.method)}</span><span className="mt-0.5 block text-xs text-[#8FA1A8]">{money(item.minimum_amount)} minimum · {item.maximum_amount == null ? 'No maximum listed' : `${money(item.maximum_amount)} maximum`}</span></span>
             </label>)}
           </fieldset>
         )}
