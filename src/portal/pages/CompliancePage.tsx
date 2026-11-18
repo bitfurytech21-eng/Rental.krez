@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, Clock3, Eye, FileCheck2, FileText, ShieldCheck, UploadCloud, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
@@ -77,7 +78,7 @@ export const CompliancePage: React.FC = () => {
   useEffect(() => {
     let alive = true;
     setLoadingKyc(true);
-    refreshKyc().catch((e: any) => alive && setLoadError(e?.message || 'Unable to load compliance records.')).finally(() => alive && setLoadingKyc(false));
+    refreshKyc().catch((e: any) => alive && setLoadError(safeErrorMessage(e, 'Unable to load compliance records.'))).finally(() => alive && setLoadingKyc(false));
     if (!user?.id || sampleDataEnabled) return () => { alive = false; };
     const channel = supabase.channel('investor-kyc-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'kyc_submissions', filter: `user_id=eq.${user.id}` }, () => { void refreshKyc(); })
@@ -164,14 +165,14 @@ export const CompliancePage: React.FC = () => {
         try { await insertSubmission(path, activeStep); }
         catch (error: any) {
           setInsertRetry({ path, docType: activeStep });
-          throw new Error(`Your file uploaded securely, but the submission record could not be saved: ${error?.message || 'database error'}. Select “Retry submission” to finish without uploading the file again.`);
+          throw new Error('Your file uploaded securely, but the submission record could not be saved. Select “Retry submission” to finish without uploading the file again.');
         }
       }
       await refreshKyc();
       closeSheet();
       toast.success('Submitted. Your information is securely received and awaiting review.');
     } catch (error: any) {
-      setFileError(error?.message || 'Unable to submit your document. Please retry.');
+      setFileError(safeErrorMessage(error, 'Unable to submit your document. Please retry.'));
     } finally { setUploading(false); }
   };
 
@@ -193,7 +194,7 @@ export const CompliancePage: React.FC = () => {
       });
       if (error) throw error;
       await refreshKyc(); closeSheet(); toast.success('Submitted. We’ll review it shortly.');
-    } catch (error: any) { setAnswerErrors({ form: error?.message || 'Unable to submit questionnaire. Please retry.' }); }
+    } catch (error: any) { setAnswerErrors({ form: safeErrorMessage(error, 'Unable to submit questionnaire. Please retry.') }); }
     finally { setQuestionSubmitting(false); }
   };
 
@@ -203,7 +204,7 @@ export const CompliancePage: React.FC = () => {
       const { data, error } = await supabase.storage.from('kyc').createSignedUrl(row.file_path, 60);
       if (error || !data?.signedUrl) throw error || new Error('Unable to create a secure preview.');
       window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-    } catch (error: any) { toast.error(error?.message || 'Unable to open secure document preview.'); }
+    } catch (error: any) { toast.error(safeErrorMessage(error, 'Unable to open secure document preview.')); }
   };
 
   const setAnswer = (key: keyof Answers, value: string | boolean) => {
@@ -241,7 +242,7 @@ export const CompliancePage: React.FC = () => {
       </section>
 
       {sampleDataEnabled && <div className="rounded-xl border border-amber-300/30 bg-[#121A1F] p-3 text-sm text-amber-200">Sample data is active. Switch to live account data to submit real compliance information.</div>}
-      {loadError && <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-400/30 p-3 text-sm text-rose-200"><AlertCircle className="h-4 w-4" />{loadError}<button className="ml-auto min-h-[44px] px-2 underline" onClick={() => { setLoadingKyc(true); refreshKyc().catch((e: any) => setLoadError(e.message)).finally(() => setLoadingKyc(false)); }}>Retry</button></div>}
+      {loadError && <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-400/30 p-3 text-sm text-rose-200"><AlertCircle className="h-4 w-4" />{loadError}<button className="ml-auto min-h-[44px] px-2 underline" onClick={() => { setLoadingKyc(true); refreshKyc().catch((e: any) => setLoadError(safeErrorMessage(e, 'Unable to load compliance records.'))).finally(() => setLoadingKyc(false)); }}>Retry</button></div>}
 
       <section className="space-y-3" aria-label="Verification steps">
         {STEPS.map((step, index) => {
@@ -275,7 +276,6 @@ export const CompliancePage: React.FC = () => {
             <div className="rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3"><p className="text-sm font-semibold text-[#E5ECE9]">Before you upload</p><ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed text-[#AAB8BC]"><li>All four corners must be visible.</li><li>Text and details must be clear and readable.</li><li>The document must not be expired.</li><li>Do not edit, crop, alter or obscure the document.</li></ul></div>
             {activeStep === 'proof_of_address' && <p className="text-xs text-[#AAB8BC]">Your utility bill or bank statement must be dated within the last 3 months.</p>}
             {!selectedFile ? <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#36504B] bg-[#0B0F10] p-5 text-center hover:border-[#6FD8B0]"><UploadCloud className="h-6 w-6 text-[#6FD8B0]" /><span className="text-sm font-medium">Choose a file or take a photo</span><span className="text-xs text-[#8FA1A8]">JPG, PNG or PDF · Maximum 10 MB</span><input ref={fileInputRef} type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" capture="environment" className="sr-only" onChange={(e) => chooseFile(e.target.files?.[0])} /></label> : <div className="flex items-center gap-3 rounded-xl border border-[#1F2C33] bg-[#0B0F10] p-3">{previewUrl ? <img src={previewUrl} alt="Selected document preview" className="h-20 w-20 rounded-lg object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[#121A1F]"><FileText className="h-8 w-8 text-[#6FD8B0]" /></div>}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{selectedFile.name}</p><p className="text-xs text-[#8FA1A8]">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p></div><button type="button" disabled={uploading} onClick={() => { setSelectedFile(null); setFileError(null); fileInputRef.current?.click(); }} className="min-h-[44px] rounded-lg border border-[#1F2C33] px-3 text-xs font-semibold text-[#6FD8B0]">Replace</button></div>}
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" capture="environment" className="hidden" onChange={(e) => chooseFile(e.target.files?.[0])} />
             {activeStep === 'proof_of_address' && <label className="flex items-start gap-2 text-xs text-[#AAB8BC]"><input type="checkbox" checked={addressConfirmed} onChange={(e) => setAddressConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#6FD8B0]" />I confirm this document is dated within the last 3 months.</label>}
             {fileError && <p role="alert" className="rounded-lg border border-rose-400/30 bg-rose-400/10 p-3 text-xs leading-relaxed text-rose-200">{fileError}</p>}
             {uploading && <div><div className="mb-1 flex justify-between text-xs text-[#AAB8BC]"><span>Uploading securely…</span><span>{uploadProgress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-[#0B0F10]"><div className="h-full bg-[#6FD8B0] transition-all" style={{ width: `${uploadProgress}%` }} /></div></div>}
