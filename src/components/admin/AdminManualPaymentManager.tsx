@@ -178,7 +178,7 @@ export const AdminManualPaymentManager: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">{deposit.reference} · {deposit.payment_method} · {deposit.status}</p>
           <p className="text-xs mt-2">Sender: {deposit.sender_name || '—'} · Payment ID: {deposit.manual_transaction_id || '—'} · Date: {deposit.payment_date || '—'}</p>
           <div className="flex flex-wrap gap-2 mt-3">
-            <button type="button" onClick={()=>openProof(deposit)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">Load proof link</button>
+            {deposit.proof_storage_path && <button type="button" onClick={()=>openProof(deposit)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">Load proof link</button>}
             {proofUrls[deposit.id] && (
               <a
                 href={proofUrls[deposit.id]}
