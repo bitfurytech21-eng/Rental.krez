@@ -52,6 +52,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { isPassGateUnlocked, subscribePassGate } from './lib/passGate';
 import { InitialPlatformLoader } from './components/visuals/InitialPlatformLoader';
 import { OfflineIndicator } from './components/pwa/OfflineIndicator';
+import { LegalReacceptanceGate } from './components/legal/LegalReacceptanceGate';
 
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
@@ -678,6 +679,7 @@ function MainApp() {
         <CookieConsentBanner onNavigatePrivacy={() => navigateTo('/privacy')} />
       )}
 
+      <LegalReacceptanceGate />
       <InitialPlatformLoader />
 
       <ViewportDesktopMonitor />
