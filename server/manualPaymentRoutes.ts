@@ -11,6 +11,7 @@ import {
 import { consumeDashboardActionGrant } from './emailOtp';
 import { sendEmail } from './emailService';
 import { logger } from './logger';
+import { requireLatestLegalConsent } from './legalConsent';
 
 export const manualPaymentRouter = Router();
 const submitLimiter = rateLimiter({
@@ -337,7 +338,7 @@ manualPaymentRouter.get('/methods', async (req: AuthenticatedRequest, res: Respo
   }
 });
 
-manualPaymentRouter.post('/deposits', requireAuth, submitLimiter, async (req: AuthenticatedRequest, res: Response) => {
+manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, submitLimiter, async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured() && process.env.NODE_ENV === 'production') {
     return res.status(503).json({ success: false, error: 'Persistent payment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   }
