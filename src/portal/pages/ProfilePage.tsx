@@ -352,7 +352,31 @@ export const ProfilePage: React.FC = () => {
                   placeholder="000000"
                   className="portal-input font-mono tracking-[0.3em]"
                 />
-                <p className="text-xs text-[#8FA1A8]">Enter the 6-digit code to authorize this bank-account change. Submit Save again to confirm.</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-[#8FA1A8]">Enter the 6-digit code to authorize this bank-account change. Submit Save again to confirm.</p>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        const verification = await portalApi.requestActionVerification('investor.profile.bank.update');
+                        setBankMaskedEmail(verification.maskedEmail || profile?.email || '');
+                        setBankSecurityCode('');
+                        setBankCodeError(null);
+                        toast.info('A new bank-change security code has been requested.');
+                      } catch (err: any) {
+                        setBankCodeError(err?.message || 'Unable to resend the security code.');
+                        toast.error(err?.message || 'Unable to resend the security code.');
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    className="text-xs font-semibold text-[#6FD8B0] hover:underline disabled:opacity-50"
+                  >
+                    Resend code
+                  </button>
+                </div>
                 {bankCodeError && <p role="alert" className="text-xs text-[#FB7185]">{bankCodeError}</p>}
               </div>
             )}
