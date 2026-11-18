@@ -1155,7 +1155,7 @@ export interface PaymentGateRecord {
   source: 'payment_gates' | 'manual_payment_methods';
 }
 
-export async function fetchSettingsRows(): Promise<{ limits: any; email_templates: any }> {
+export async function fetchSettingsRows(): Promise<{ limits: any; email_templates: any; usdt: { eur_per_usdt: string | null } }> {
   const defaultLimits = {
     min_deposit_eur: 100,
     max_deposit_eur: 500000,
@@ -1185,13 +1185,15 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
       const { data, error } = await supabase
         .from('settings')
         .select('key, value')
-        .in('key', ['limits', 'email_templates']);
+        .in('key', ['limits', 'email_templates', 'usdt']);
       if (!error && Array.isArray(data)) {
         const limitsRow = (data as any[]).find((r) => r.key === 'limits');
         const templatesRow = (data as any[]).find((r) => r.key === 'email_templates');
+        const usdtRow = (data as any[]).find((r) => r.key === 'usdt');
         return {
           limits: { ...defaultLimits, ...(limitsRow?.value || {}) },
           email_templates: templatesRow?.value ?? defaultTemplates,
+          usdt: { eur_per_usdt: usdtRow?.value?.eur_per_usdt == null ? null : String(usdtRow.value.eur_per_usdt) },
         };
       }
     } catch {
@@ -1210,18 +1212,22 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
         ...(cfg.limits || {}),
       },
       email_templates: cfg.email_templates || defaultTemplates,
+      usdt: { eur_per_usdt: null },
     };
   } catch {
-    return { limits: defaultLimits, email_templates: defaultTemplates };
+    return { limits: defaultLimits, email_templates: defaultTemplates, usdt: { eur_per_usdt: null } };
   }
 }
 
-export async function saveSettingsRow(key: 'limits' | 'email_templates', value: any): Promise<void> {
+export async function saveSettingsRow(key: 'limits' | 'email_templates' | 'usdt', value: any): Promise<void> {
   if (await hasLiveSupabaseSession()) {
     const { error } = await supabase
       .from('settings')
       .upsert({ key, value }, { onConflict: 'key' });
     if (!error) return;
+  }
+  if (key === 'usdt') {
+    throw new Error('USDT rate settings require an authenticated live Supabase session.');
   }
   await apiFetchJson('/admin/settings', {
     method: 'PUT',
