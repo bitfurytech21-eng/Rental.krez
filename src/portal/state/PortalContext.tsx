@@ -348,16 +348,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setLoading(true);
     setError(null);
     try {
-      const [
-        summaryRes,
-        portfolioRes,
-        walletRes,
-        propsRes,
-        txRes,
-        notifRes,
-        profileRes,
-        configRes,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         portalApi.getDashboardSummary(),
         portalApi.getPortfolio(),
         portalApi.getWalletBalance(),
@@ -367,21 +358,58 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         portalApi.getProfile(),
         portalApi.getPaymentConfig().catch(() => PORTAL_PLACEHOLDER_CONFIG),
       ]);
-      setSummary(summaryRes);
-      setPortfolio(portfolioRes);
-      setBalance(walletRes.balance);
-      setBalanceCents(walletRes.balanceCents);
-      setAvailableBalance(walletRes.availableBalance);
-      setAvailableCents(walletRes.availableCents);
-      setAssignedBankAccount(walletRes.assignedBankAccount || profileRes.assignedBankAccount || null);
-      setSubBalances(walletRes.subBalances);
-      setProperties(propsRes);
-      setTransactions(txRes);
-      setNotifications(notifRes.items);
-      setUnreadCount(notifRes.unreadCount);
-      setProfile(profileRes);
-      setPortalConfig(configRes);
-      setLastSyncedAt(new Date());
+
+      const [
+        summaryResult,
+        portfolioResult,
+        walletResult,
+        propsResult,
+        txResult,
+        notifResult,
+        profileResult,
+        configResult,
+      ] = results;
+
+      if (summaryResult.status === 'fulfilled') setSummary(summaryResult.value);
+      if (portfolioResult.status === 'fulfilled') setPortfolio(portfolioResult.value);
+      if (walletResult.status === 'fulfilled') {
+        setBalance(walletResult.value.balance);
+        setBalanceCents(walletResult.value.balanceCents);
+        setAvailableBalance(walletResult.value.availableBalance);
+        setAvailableCents(walletResult.value.availableCents);
+        setSubBalances(walletResult.value.subBalances);
+      }
+      if (profileResult.status === 'fulfilled') {
+        setProfile(profileResult.value);
+      }
+      if (walletResult.status === 'fulfilled' || profileResult.status === 'fulfilled') {
+        const walletGate = walletResult.status === 'fulfilled' ? walletResult.value.assignedBankAccount : null;
+        const profileGate = profileResult.status === 'fulfilled' ? profileResult.value.assignedBankAccount : null;
+        setAssignedBankAccount(walletGate || profileGate || null);
+      }
+      if (propsResult.status === 'fulfilled') setProperties(propsResult.value);
+      if (txResult.status === 'fulfilled') setTransactions(txResult.value);
+      if (notifResult.status === 'fulfilled') {
+        setNotifications(notifResult.value.items);
+        setUnreadCount(notifResult.value.unreadCount);
+      }
+      if (configResult.status === 'fulfilled') setPortalConfig(configResult.value);
+
+      const firstRejected = [
+        summaryResult,
+        portfolioResult,
+        walletResult,
+        propsResult,
+        txResult,
+        notifResult,
+        profileResult,
+      ].find((r): r is PromiseRejectedResult => r.status === 'rejected');
+
+      if (firstRejected) {
+        setError(safeErrorMessage(firstRejected.reason, 'Unable to synchronize your investor portal with the server.'));
+      } else {
+        setLastSyncedAt(new Date());
+      }
     } catch (err: any) {
       setError(safeErrorMessage(err, 'Unable to synchronize your investor portal with the server.'));
     } finally {

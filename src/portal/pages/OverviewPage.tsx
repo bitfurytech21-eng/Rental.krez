@@ -14,7 +14,7 @@ import { usePortal } from '../state/PortalContext';
 import { formatEuro, formatNumber, formatTime } from '../utils/format';
 import { PropertyCard } from '../components/PropertyCard';
 import { EmptyState } from '../components/EmptyState';
-import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 
 const DISMISS_STORAGE_KEY = 'portal_action_banner_dismissed';
 
@@ -22,7 +22,6 @@ export const OverviewPage: React.FC = () => {
   const toast = useToast();
   const {
     loading,
-    error,
     lastSyncedAt,
     portalConfig,
     summary,
@@ -128,7 +127,6 @@ export const OverviewPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {error && !sampleDataEnabled && <ErrorBanner message={error} onRetry={refreshAll} />}
 
       {/* Greeting + Sync status */}
       <div className="flex flex-wrap items-center justify-between gap-3">

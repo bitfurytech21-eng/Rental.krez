@@ -4,18 +4,16 @@ import { usePortal } from '../state/PortalContext';
 import { FilterChips } from '../components/FilterChips';
 import { TransactionRow } from '../components/TransactionRow';
 import { EmptyState } from '../components/EmptyState';
-import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 
 export const LedgerPage: React.FC = () => {
   const {
     loading,
-    error,
     transactions,
     sampleDataEnabled,
     ledgerFilter,
     setLedgerFilter,
     navigatePortal,
-    refreshAll,
   } = usePortal();
 
   const [query, setQuery] = useState('');
@@ -71,7 +69,6 @@ export const LedgerPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {error && <ErrorBanner message={error} onRetry={refreshAll} />}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

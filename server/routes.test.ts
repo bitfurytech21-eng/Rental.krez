@@ -13,6 +13,7 @@ import http from 'http';
 import v1Routes, { __testSetCustomerFinancialState } from './routes';
 import { correlationAndTimingMiddleware, authenticateToken, errorHandler, normalizeStaffRole } from './middleware';
 import { setDevAssignedGateId } from './manualPaymentRoutes';
+import { toApiProperty } from './supabaseDatabase';
 import { isValidIBAN } from '../src/lib/validation';
 import {
   formatEmailCodeSendError,
@@ -818,6 +819,35 @@ async function runApiTests() {
         normalizeStaffRole('admin') === 'super_admin' &&
         normalizeStaffRole('investor') === null,
       'normalizeStaffRole maps valid staff roles to canonical RBAC roles and rejects non-staff roles'
+    );
+
+    const mappedProp = toApiProperty({
+      id: 'prop-paris-01',
+      name: 'Hôtel Particulier Trocadéro',
+      city: 'Paris',
+      type: 'Residential',
+      share_price_cents: 50000,
+      funding_target_cents: 200000000,
+      funded_pct: 65,
+      target_yield: 7.4,
+      target_irr: 11.8,
+      term: '48 months',
+      photos: ['https://example.com/p1.jpg'],
+      status: 'open',
+    });
+    assert(
+      mappedProp.id === 'prop-paris-01' &&
+        mappedProp.title === 'Hôtel Particulier Trocadéro' &&
+        mappedProp.city === 'Paris' &&
+        mappedProp.tokenPrice === 500 &&
+        mappedProp.targetAmount === 2000000 &&
+        mappedProp.fundedAmount === 1300000 &&
+        mappedProp.projectedYield === 7.4 &&
+        mappedProp.financials?.totalIrr === 11.8 &&
+        mappedProp.holdingPeriodMonths === 48 &&
+        mappedProp.images[0] === 'https://example.com/p1.jpg' &&
+        mappedProp.status === 'open',
+      'toApiProperty maps Supabase properties table columns accurately'
     );
 
     console.log(`\nAPI Smoke & Contract Test Summary: ${passed} passed, ${failed} failed.`);

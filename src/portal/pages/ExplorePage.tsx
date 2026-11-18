@@ -4,7 +4,7 @@ import { usePortal } from '../state/PortalContext';
 import { PropertyCard } from '../components/PropertyCard';
 import { FilterChips } from '../components/FilterChips';
 import { EmptyState } from '../components/EmptyState';
-import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 
 function classifyPropertySegment(type: string): 'Residential' | 'Commercial' {
   const t = String(type || '').toLowerCase();
@@ -26,7 +26,6 @@ function classifyPropertySegment(type: string): 'Residential' | 'Commercial' {
 export const ExplorePage: React.FC = () => {
   const {
     loading,
-    error,
     properties,
     sampleDataEnabled,
     exploreFilter,
@@ -34,7 +33,6 @@ export const ExplorePage: React.FC = () => {
     exploreSearch,
     setExploreSearch,
     navigatePortal,
-    refreshAll,
   } = usePortal();
 
   const filterOptions = ['All', 'Residential', 'Commercial'];
@@ -66,7 +64,6 @@ export const ExplorePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {error && <ErrorBanner message={error} onRetry={refreshAll} />}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

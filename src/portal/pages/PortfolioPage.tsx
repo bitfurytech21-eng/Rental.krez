@@ -4,10 +4,10 @@ import { usePortal } from '../state/PortalContext';
 import { formatEuro, formatNumber, formatShortDate } from '../utils/format';
 import { StatTile } from '../components/StatTile';
 import { EmptyState } from '../components/EmptyState';
-import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
+import { LoadingSkeleton } from '../components/LoadingSkeleton';
 
 export const PortfolioPage: React.FC = () => {
-  const { loading, error, portfolio, sampleDataEnabled, navigatePortal, refreshAll } = usePortal();
+  const { loading, portfolio, sampleDataEnabled, navigatePortal } = usePortal();
 
   if (loading && !sampleDataEnabled && !portfolio) {
     return <LoadingSkeleton rows={4} />;
@@ -38,7 +38,6 @@ export const PortfolioPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {error && <ErrorBanner message={error} onRetry={refreshAll} />}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

@@ -113,7 +113,7 @@ const PortalLayout: React.FC = () => {
               <LoadingSkeleton rows={5} />
             ) : (
               <>
-                {error && <ErrorBanner message={error} onRetry={() => void refreshAll()} />}
+                {error && !sampleDataEnabled && <ErrorBanner message={error} onRetry={() => void refreshAll()} />}
                 {renderRoute()}
               </>
             )}

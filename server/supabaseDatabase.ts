@@ -229,12 +229,17 @@ export async function databaseHealth() {
     };
   }
   const client = getSupabaseAdmin();
-  const [{ count: users, error: usersError }, { count: properties, error: propertiesError }, { count: transactions, error: transactionsError }] = await Promise.all([
+  const [usersRes, plansRes, propsRes, transactionsRes] = await Promise.all([
     client.from('user_profiles').select('id', { count: 'exact', head: true }),
     client.from('investment_plans').select('id', { count: 'exact', head: true }),
+    client.from('properties').select('id', { count: 'exact', head: true }),
     client.from('payment_transactions').select('id', { count: 'exact', head: true })
   ]);
-  const error = usersError || propertiesError || transactionsError;
+  const users = usersRes.count;
+  const listingsCount = !propsRes.error ? propsRes.count : plansRes.count;
+  const listingsError = propsRes.error && plansRes.error ? propsRes.error : null;
+  const transactions = transactionsRes.count;
+  const error = usersRes.error || listingsError || transactionsRes.error;
   if (error && process.env.NODE_ENV !== 'production' && isMissingSchemaError(error)) {
     markSupabaseSchemaMissingInDev();
     return {
@@ -250,7 +255,7 @@ export async function databaseHealth() {
     configured: true,
     status: error ? 'degraded' : 'healthy',
     usersCount: users ?? null,
-    listingsCount: properties ?? null,
+    listingsCount: listingsCount ?? null,
     transactionsCount: transactions ?? null,
     error: error?.message
   };
@@ -422,52 +427,139 @@ export function toApiTransaction(row: any) {
 }
 
 export function toApiProperty(row: any) {
+  const tokenPrice = row.token_price !== undefined && row.token_price !== null
+    ? Number(row.token_price)
+    : row.token_price_cents !== undefined && row.token_price_cents !== null
+    ? Math.round(Number(row.token_price_cents)) / 100
+    : Math.round(Number(row.share_price_cents || 0)) / 100;
+  const targetAmount = row.target_amount !== undefined && row.target_amount !== null
+    ? Number(row.target_amount)
+    : Math.round(Number(row.funding_target_cents || 0)) / 100;
+  const fundedAmount = row.funded_amount !== undefined && row.funded_amount !== null
+    ? Number(row.funded_amount)
+    : Number((((Number(row.funded_pct || 0)) / 100) * targetAmount).toFixed(2));
+  const totalTokens = row.total_tokens !== undefined && row.total_tokens !== null
+    ? Number(row.total_tokens)
+    : (tokenPrice > 0 && targetAmount > 0 ? Math.max(1, Math.round(targetAmount / tokenPrice)) : 0);
+  const availableTokens = row.available_tokens !== undefined && row.available_tokens !== null
+    ? Number(row.available_tokens)
+    : Math.max(0, totalTokens - (tokenPrice > 0 ? Math.round(fundedAmount / tokenPrice) : 0));
+  const estimatedAnnualYield = Number(row.estimated_annual_yield ?? row.target_yield ?? 0);
+  const targetIrr = Number(row.target_irr ?? row.financials?.totalIrr ?? estimatedAnnualYield);
+  const holdingPeriodMonths = Number(
+    row.duration_months ?? (parseInt(String(row.term || ''), 10) || 36)
+  );
+  const city = String(row.city || '');
+  const country = String(row.country || 'France');
+  const location = String(row.location || [city, country].filter(Boolean).join(', ') || 'Europe');
+  const title = String(row.title || row.name || '');
+  const images = Array.isArray(row.images)
+    ? row.images
+    : (Array.isArray(row.photos) ? row.photos : []);
+  const financials = {
+    ...(row.financials && typeof row.financials === 'object' ? row.financials : {}),
+    totalIrr: targetIrr,
+    netYield: Number(row.financials?.netYield ?? estimatedAnnualYield),
+  };
+
   return {
-    id: row.id,
-    slug: row.slug,
-    title: row.title,
-    location: row.location,
-    type: row.type,
-    status: row.status,
-    fundedAmount: Number(row.funded_amount || 0),
-    targetAmount: Number(row.target_amount || 0),
-    tokenPrice: Number(row.token_price || 0),
-    totalTokens: Number(row.total_tokens || 0),
-    availableTokens: Number(row.available_tokens || 0),
-    monthlyTargetRate: Number(row.monthly_target_rate || 0),
-    projectedYield: Number(row.estimated_annual_yield || 0),
-    estimatedAnnualYield: Number(row.estimated_annual_yield || 0),
+    id: String(row.id),
+    slug: String(row.slug || row.id),
+    title,
+    location,
+    type: String(row.type || 'Residential'),
+    status: String(row.status || 'open'),
+    fundedAmount,
+    targetAmount,
+    tokenPrice,
+    totalTokens,
+    availableTokens,
+    monthlyTargetRate: Number(row.monthly_target_rate ?? (estimatedAnnualYield > 0 ? Number((estimatedAnnualYield / 12).toFixed(2)) : 0)),
+    projectedYield: estimatedAnnualYield,
+    estimatedAnnualYield,
     capitalAppreciation: Number(row.financials?.capitalAppreciation || 0),
-    minimumInvestment: Number(row.minimum_investment || 0),
-    holdingPeriodMonths: Number(row.duration_months || 0),
-    images: Array.isArray(row.images) ? row.images : [],
+    minimumInvestment: Number(row.minimum_investment || tokenPrice || 1000),
+    holdingPeriodMonths,
+    description: typeof row.description === 'string' ? row.description : undefined,
+    images,
     specs: row.specs || {},
-    financials: row.financials || {},
-    city: row.city,
-    country: row.country,
-    updatedAt: row.updated_at
+    financials,
+    city,
+    country,
+    updatedAt: row.updated_at || row.created_at
   };
 }
 
+function filterMappedProperties(list: any[], options: { status?: string; search?: string; type?: string }) {
+  let out = list;
+  if (options.status && options.status !== 'all') {
+    const st = String(options.status).toLowerCase();
+    out = out.filter((p) => String(p.status || '').toLowerCase() === st);
+  } else {
+    out = out.filter((p) => String(p.status || '').toLowerCase() !== 'hidden');
+  }
+  if (options.type && options.type !== 'all') {
+    const t = String(options.type).toLowerCase();
+    out = out.filter((p) => String(p.type || '').toLowerCase() === t);
+  }
+  if (options.search) {
+    const q = String(options.search).toLowerCase().trim();
+    if (q) {
+      out = out.filter((p) =>
+        `${p.title} ${p.location} ${p.city} ${p.type}`.toLowerCase().includes(q)
+      );
+    }
+  }
+  return out;
+}
+
+async function queryCatalogueTable(tableName: 'properties' | 'investment_plans') {
+  const admin = getSupabaseAdmin();
+  let res = await admin.from(tableName).select('*').order('created_at', { ascending: false });
+  if (res.error && /column .*created_at.* does not exist/i.test(String(res.error.message || ''))) {
+    res = await admin.from(tableName).select('*');
+  }
+  return res;
+}
+
 export async function listInvestmentPlans(options: { status?: string; search?: string; type?: string } = {}) {
-  let query = getSupabaseAdmin().from('investment_plans').select('*').order('created_at', { ascending: false });
-  if (options.status && options.status !== 'all') query = query.eq('status', options.status);
-  else query = query.neq('status', 'hidden');
-  if (options.type && options.type !== 'all') query = query.ilike('type', options.type);
-  if (options.search) query = query.or(`title.ilike.%${options.search.replace(/[,%()]/g, '')}%,location.ilike.%${options.search.replace(/[,%()]/g, '')}%`);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data || []).map(toApiProperty);
+  const propsRes = await queryCatalogueTable('properties');
+  if (!propsRes.error && Array.isArray(propsRes.data) && propsRes.data.length > 0) {
+    return filterMappedProperties(propsRes.data.map(toApiProperty), options);
+  }
+
+  const plansRes = await queryCatalogueTable('investment_plans');
+  if (!plansRes.error && Array.isArray(plansRes.data)) {
+    return filterMappedProperties(plansRes.data.map(toApiProperty), options);
+  }
+
+  // If properties succeeded cleanly with an empty catalogue while investment_plans errored, return [].
+  if (!propsRes.error && Array.isArray(propsRes.data)) {
+    return filterMappedProperties(propsRes.data.map(toApiProperty), options);
+  }
+
+  throw plansRes.error || propsRes.error;
 }
 
 export async function getInvestmentPlan(identifier: string) {
   const client = getSupabaseAdmin();
-  const byId = await client.from('investment_plans').select('*').eq('id', identifier).maybeSingle();
-  if (byId.error) throw byId.error;
-  if (byId.data) return toApiProperty(byId.data);
-  const bySlug = await client.from('investment_plans').select('*').eq('slug', identifier).maybeSingle();
-  if (bySlug.error) throw bySlug.error;
-  return bySlug.data ? toApiProperty(bySlug.data) : null;
+
+  const propById = await client.from('properties').select('*').eq('id', identifier).maybeSingle();
+  if (!propById.error && propById.data) return toApiProperty(propById.data);
+
+  const planById = await client.from('investment_plans').select('*').eq('id', identifier).maybeSingle();
+  if (!planById.error && planById.data) return toApiProperty(planById.data);
+
+  const planBySlug = await client.from('investment_plans').select('*').eq('slug', identifier).maybeSingle();
+  if (!planBySlug.error && planBySlug.data) return toApiProperty(planBySlug.data);
+
+  if (propById.error && planById.error) {
+    throw planById.error;
+  }
+  if (planBySlug.error && propById.error) {
+    throw planBySlug.error;
+  }
+  return null;
 }
 
 export async function listUserInvestments(userId: string) {
@@ -792,21 +884,24 @@ export async function getPersistentDashboardSummary(userId: string) {
 
 export async function getPersistentAdminDashboard() {
   const client = getSupabaseAdmin();
-  const [users, plans, transactions, pendingKyc, pendingWithdrawals, invested, dividends] = await Promise.all([
+  const [users, plans, props, transactions, pendingKyc, pendingWithdrawals, invested, dividends] = await Promise.all([
     client.from('user_profiles').select('id', { count: 'exact', head: true }),
     client.from('investment_plans').select('id', { count: 'exact', head: true }),
+    client.from('properties').select('id', { count: 'exact', head: true }),
     client.from('payment_transactions').select('id', { count: 'exact', head: true }),
     client.from('user_profiles').select('id', { count: 'exact', head: true }).in('kyc_status', ['pending','unverified']),
     client.from('payment_transactions').select('id', { count: 'exact', head: true }).eq('type','withdrawal').eq('status','pending'),
     client.from('user_profiles').select('invested_balance'),
     client.from('user_profiles').select('total_dividends_earned')
   ]);
-  const error = users.error || plans.error || transactions.error || pendingKyc.error || pendingWithdrawals.error || invested.error || dividends.error;
+  const catalogueCount = !props.error ? (props.count || 0) : (plans.count || 0);
+  const catalogueError = props.error && plans.error ? props.error : null;
+  const error = users.error || catalogueError || transactions.error || pendingKyc.error || pendingWithdrawals.error || invested.error || dividends.error;
   if (error) throw error;
   const totalAssetsUnderManagement = (invested.data || []).reduce((sum: number, row: any) => sum + Number(row.invested_balance || 0), 0);
   return {
     totalUsers: users.count || 0,
-    totalProperties: plans.count || 0,
+    totalProperties: catalogueCount,
     totalTransactions: transactions.count || 0,
     totalAssetsUnderManagement,
     totalDividendsPaid: (dividends.data || []).reduce((sum: number, row: any) => sum + Number(row.total_dividends_earned || 0), 0),

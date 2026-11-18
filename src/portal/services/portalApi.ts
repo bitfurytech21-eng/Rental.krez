@@ -1,4 +1,5 @@
 import { api, apiRequest, createIdempotencyKey, getBaseUrl } from '../../lib/api';
+import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
 import { eurToCents } from './money';
 import {
@@ -22,6 +23,66 @@ function unwrap<T>(res: any): T {
     return res.data as T;
   }
   return res as T;
+}
+
+function mapSupabasePropertyRow(row: any): PortalProperty {
+  const tokenPrice =
+    row.token_price !== undefined && row.token_price !== null
+      ? Number(row.token_price)
+      : Math.round(Number(row.share_price_cents ?? row.token_price_cents ?? 0)) / 100;
+  const targetAmount =
+    row.target_amount !== undefined && row.target_amount !== null
+      ? Number(row.target_amount)
+      : Math.round(Number(row.funding_target_cents || 0)) / 100;
+  const fundedAmount =
+    row.funded_amount !== undefined && row.funded_amount !== null
+      ? Number(row.funded_amount)
+      : Number((((Number(row.funded_pct || 0)) / 100) * targetAmount).toFixed(2));
+  const totalTokens =
+    row.total_tokens !== undefined && row.total_tokens !== null
+      ? Number(row.total_tokens)
+      : tokenPrice > 0 && targetAmount > 0
+      ? Math.max(1, Math.round(targetAmount / tokenPrice))
+      : 0;
+  const availableTokens =
+    row.available_tokens !== undefined && row.available_tokens !== null
+      ? Number(row.available_tokens)
+      : Math.max(0, totalTokens - (tokenPrice > 0 ? Math.round(fundedAmount / tokenPrice) : 0));
+  const projectedYield = Number(row.estimated_annual_yield ?? row.target_yield ?? 0);
+  const targetIrr = Number(row.target_irr ?? row.financials?.totalIrr ?? projectedYield);
+  const holdingPeriodMonths = Number(
+    row.duration_months ?? (parseInt(String(row.term || ''), 10) || 36)
+  );
+  const city = String(row.city || '');
+  const country = String(row.country || 'France');
+  const location = String(row.location || [city, country].filter(Boolean).join(', ') || 'Europe');
+
+  return {
+    id: String(row.id),
+    slug: String(row.slug || row.id),
+    title: String(row.title || row.name || ''),
+    location,
+    city,
+    country,
+    type: String(row.type || 'Residential'),
+    status: String(row.status || 'open'),
+    fundedAmount,
+    targetAmount,
+    tokenPrice,
+    totalTokens,
+    availableTokens,
+    projectedYield,
+    capitalAppreciation: Number(row.financials?.capitalAppreciation || 0),
+    minimumInvestment: Number(row.minimum_investment || tokenPrice || 1000),
+    holdingPeriodMonths,
+    description: typeof row.description === 'string' ? row.description : undefined,
+    images: Array.isArray(row.images) ? row.images : Array.isArray(row.photos) ? row.photos : [],
+    financials: {
+      ...(row.financials && typeof row.financials === 'object' ? row.financials : {}),
+      totalIrr: targetIrr,
+      netYield: Number(row.financials?.netYield ?? projectedYield),
+    },
+  };
 }
 
 export const portalApi = {
@@ -133,14 +194,39 @@ export const portalApi = {
   },
 
   async getProperties(params?: { search?: string; status?: string; type?: string }): Promise<PortalProperty[]> {
-    const res = await api.get<any>('/marketplace/listings', { params });
-    const list = unwrap<any[]>(res);
-    return Array.isArray(list) ? list : [];
+    try {
+      const res = await api.get<any>('/marketplace/listings', { params });
+      const list = unwrap<any[]>(res);
+      if (Array.isArray(list)) return list;
+    } catch (err) {
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase.from('properties').select('*');
+        if (!error && Array.isArray(data)) {
+          return data.map(mapSupabasePropertyRow);
+        }
+      }
+      throw err;
+    }
+    return [];
   },
 
   async getPropertyDetail(idOrSlug: string): Promise<PortalProperty> {
-    const res = await api.get<any>(`/marketplace/listings/${encodeURIComponent(idOrSlug)}`);
-    return unwrap<PortalProperty>(res);
+    try {
+      const res = await api.get<any>(`/marketplace/listings/${encodeURIComponent(idOrSlug)}`);
+      return unwrap<PortalProperty>(res);
+    } catch (err) {
+      if (isSupabaseConfigured()) {
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('id', idOrSlug)
+          .maybeSingle();
+        if (!error && data) {
+          return mapSupabasePropertyRow(data);
+        }
+      }
+      throw err;
+    }
   },
 
   async getTransactions(params?: { limit?: number; offset?: number }): Promise<PortalTransaction[]> {
