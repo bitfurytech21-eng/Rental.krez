@@ -378,6 +378,42 @@ manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedReques
   }
 });
 
+manualPaymentRouter.post('/deposits/:id/proof', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.id;
+  const depositId = String(req.params.id || '');
+  const storagePath = String(req.body?.path || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(depositId) ||
+      !storagePath.startsWith(`${userId}/${depositId}/`) || storagePath.length > 500) {
+    return res.status(400).json({ success: false, error: 'Invalid proof upload reference.', code: 'INVALID_PROOF_REFERENCE', requestId: req.id });
+  }
+  if (!isSupabaseServerConfigured()) {
+    return res.status(503).json({ success: false, error: 'Private proof storage is unavailable in sandbox mode.', code: 'PROOF_STORAGE_UNAVAILABLE', requestId: req.id });
+  }
+  const client = getSupabaseAdmin();
+  try {
+    const { data: proof, error: proofError } = await client.storage.from('proofs').download(storagePath);
+    if (proofError || !proof) {
+      return res.status(400).json({ success: false, error: 'The uploaded proof could not be found in private storage.', code: 'PROOF_NOT_FOUND', requestId: req.id });
+    }
+    const { data: row, error: updateError } = await client.from('manual_deposit_submissions')
+      .update({ proof_storage_path: storagePath })
+      .eq('id', depositId)
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
+    if (updateError) throw updateError;
+    if (!row) {
+      await client.storage.from('proofs').remove([storagePath]);
+      return res.status(409).json({ success: false, error: 'This deposit is no longer pending or does not belong to your account.', code: 'DEPOSIT_NOT_PENDING_OR_NOT_OWNED', requestId: req.id });
+    }
+    return res.json({ success: true, data: { id: row.id }, message: 'Payment proof attached securely.', requestId: req.id });
+  } catch {
+    await client.storage.from('proofs').remove([storagePath]).catch(() => undefined);
+    return res.status(503).json({ success: false, error: 'The payment proof could not be attached. Please retry.', code: 'PROOF_ATTACH_FAILED', requestId: req.id });
+  }
+});
+
 manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, submitLimiter, async (req: AuthenticatedRequest, res: Response) => {
   if (!isSupabaseServerConfigured() && process.env.NODE_ENV === 'production') {
     return res.status(503).json({ success: false, error: 'Persistent payment storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
