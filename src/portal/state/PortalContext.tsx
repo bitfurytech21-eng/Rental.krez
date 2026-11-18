@@ -188,6 +188,13 @@ interface PortalContextValue {
   notifications: PortalNotification[];
   unreadCount: number;
   profile: PortalProfile | null;
+  legalReacceptanceRequired: boolean;
+  legalReacceptanceLoading: boolean;
+  legalReacceptanceCheckFailed: boolean;
+  legalReacceptanceError: string | null;
+  legalReacceptanceSubmitting: boolean;
+  refreshLegalReacceptance: () => Promise<boolean>;
+  acceptLatestLegalTerms: () => Promise<void>;
 
   // Sample data mode toggle (default OFF so real/empty states render cleanly)
   sampleDataEnabled: boolean;
@@ -241,6 +248,11 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [notifications, setNotifications] = useState<PortalNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [profile, setProfile] = useState<PortalProfile | null>(null);
+  const [legalReacceptanceRequired, setLegalReacceptanceRequired] = useState(true);
+  const [legalReacceptanceLoading, setLegalReacceptanceLoading] = useState(true);
+  const [legalReacceptanceCheckFailed, setLegalReacceptanceCheckFailed] = useState(false);
+  const [legalReacceptanceError, setLegalReacceptanceError] = useState<string | null>(null);
+  const [legalReacceptanceSubmitting, setLegalReacceptanceSubmitting] = useState(false);
 
   const [sampleDataEnabled, setSampleDataState] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -330,6 +342,80 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
+  const refreshLegalReacceptance = useCallback(async (): Promise<boolean> => {
+    if (!user?.id) {
+      setLegalReacceptanceRequired(false);
+      setLegalReacceptanceLoading(false);
+      setLegalReacceptanceCheckFailed(false);
+      setLegalReacceptanceError(null);
+      return false;
+    }
+
+    setLegalReacceptanceLoading(true);
+    setLegalReacceptanceError(null);
+    try {
+      if (!isSupabaseConfigured()) {
+        throw new Error('Authentication is not configured, so current legal acceptance cannot be verified.');
+      }
+      const [profileResult, settingsResult] = await Promise.all([
+        supabase.from('profiles')
+          .select('terms_version,risk_version')
+          .eq('id', user.id)
+          .maybeSingle(),
+        supabase.from('settings')
+          .select('value')
+          .eq('key', 'legal')
+          .maybeSingle(),
+      ]);
+
+      if (profileResult.error) throw profileResult.error;
+      if (settingsResult.error) throw settingsResult.error;
+      if (!profileResult.data) throw new Error('Profile not found');
+
+      const legal = settingsResult.data?.value as
+        | { terms_version?: string; risk_version?: string }
+        | null
+        | undefined;
+      if (!legal?.terms_version || !legal?.risk_version) {
+        throw new Error('Legal versions are not configured');
+      }
+
+      const required =
+        profileResult.data.terms_version !== legal.terms_version ||
+        profileResult.data.risk_version !== legal.risk_version;
+      setLegalReacceptanceRequired(required);
+      setLegalReacceptanceCheckFailed(false);
+      return required;
+    } catch (error: any) {
+      setLegalReacceptanceRequired(true);
+      setLegalReacceptanceCheckFailed(true);
+      setLegalReacceptanceError(error?.message || 'Unable to verify current legal acceptance.');
+      return true;
+    } finally {
+      setLegalReacceptanceLoading(false);
+    }
+  }, [user?.id]);
+
+  const acceptLatestLegalTerms = useCallback(async (): Promise<void> => {
+    if (legalReacceptanceSubmitting) return;
+    setLegalReacceptanceSubmitting(true);
+    setLegalReacceptanceError(null);
+    try {
+      const { error } = await supabase.rpc('accept_latest_terms');
+      if (error) throw error;
+      const stillRequired = await refreshLegalReacceptance();
+      if (stillRequired) {
+        throw new Error('Your acceptance could not be verified. Please try again.');
+      }
+    } catch (error: any) {
+      const message = error?.message || 'Unable to save your legal acceptance.';
+      setLegalReacceptanceError(message);
+      throw error instanceof Error ? error : new Error(message);
+    } finally {
+      setLegalReacceptanceSubmitting(false);
+    }
+  }, [legalReacceptanceSubmitting, refreshLegalReacceptance]);
+
   const refreshAll = useCallback(async () => {
     if (!user) {
       setLoading(false);
@@ -338,6 +424,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setLoading(true);
     setError(null);
     try {
+      await refreshLegalReacceptance();
       const [
         summaryRes,
         portfolioRes,
@@ -373,7 +460,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, refreshLegalReacceptance]);
 
   const refreshNotifications = useCallback(async () => {
     if (!user) return;
@@ -436,6 +523,11 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setNotifications([]);
     setUnreadCount(0);
     setProfile(null);
+    setLegalReacceptanceRequired(false);
+    setLegalReacceptanceLoading(false);
+    setLegalReacceptanceCheckFailed(false);
+    setLegalReacceptanceError(null);
+    setLegalReacceptanceSubmitting(false);
     setLastSyncedAt(null);
     setError(null);
     setLoading(false);
@@ -603,6 +695,13 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         notifications: sampleDataset ? sampleDataset.notifications : notifications,
         unreadCount: sampleDataset ? sampleDataset.unreadCount : unreadCount,
         profile: effectiveProfile,
+        legalReacceptanceRequired,
+        legalReacceptanceLoading,
+        legalReacceptanceCheckFailed,
+        legalReacceptanceError,
+        legalReacceptanceSubmitting,
+        refreshLegalReacceptance,
+        acceptLatestLegalTerms,
         sampleDataEnabled,
         setSampleDataEnabled,
         sampleDataset,
