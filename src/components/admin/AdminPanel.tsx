@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
 import { ledger } from '../../lib/ledger';
-import { formatCurrency } from '../../lib/utils';
 import { Property } from '../../types/property';
 import { AccountType, User as PlatformUser, UserRole } from '../../types/user';
 import { getApiUrl, getAuthToken } from '../../lib/api';
+import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { LagenceLogo } from '../common/LagenceLogo';
 import {
   ADMIN_NAV_ITEMS,
@@ -40,9 +40,11 @@ import {
   AdminWithdrawalsSection,
 } from './AdminSettingsAndTreasurySections';
 import { AdminFinanceSection, FinanceTabId } from './AdminFinanceSection';
+import { AdminActionDialog, useDialogFocus } from './AdminActionDialog';
 import {
   AdminStatsSummary,
   AuditLogRow,
+  InvestmentRequestRow,
   InvestorDocumentRow,
   KycSubmissionRow,
   PastDistributionRow,
@@ -52,6 +54,7 @@ import {
   fetchAdminNotificationsTable,
   fetchAdminStats,
   fetchAuditLogRows,
+  fetchInvestmentRequestsQueue,
   fetchInvestorDocumentsTable,
   fetchKycSubmissionsQueue,
   fetchPastDistributions,
@@ -60,6 +63,8 @@ import {
   fetchSupabaseProperties,
   fetchWalletBalancesMap,
   formatCentsEur,
+  parseStrictEurToCents,
+  recordManualDepositRpc,
 } from './adminSupabaseGateway';
 import {
   AlertCircle,
@@ -80,6 +85,7 @@ import {
   Menu,
   Receipt,
   RefreshCw,
+  RotateCcw,
   Settings,
   Shield,
   UserCheck,
@@ -208,13 +214,16 @@ export const AdminPanel: React.FC = () => {
   // Core Data States
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string>('');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [undoHint, setUndoHint] = useState<{ summary: string } | null>(null);
 
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [manualDeposits, setManualDeposits] = useState<any[]>([]);
   const [investments, setInvestments] = useState<any[]>([]);
+  const [investmentRequests, setInvestmentRequests] = useState<InvestmentRequestRow[]>([]);
   const [properties, setProperties] = useState<Property[]>(() => ledger.getProperties());
   const [kycSubmissions, setKycSubmissions] = useState<KycSubmissionRow[]>([]);
   const [documents, setDocuments] = useState<InvestorDocumentRow[]>([]);
@@ -237,18 +246,33 @@ export const AdminPanel: React.FC = () => {
   // Manual Credit Modal
   const [creditModalOpen, setCreditModalOpen] = useState(false);
   const [creditConfirmStep, setCreditConfirmStep] = useState(false);
+  const [creditUserSearch, setCreditUserSearch] = useState('');
   const [creditUserId, setCreditUserId] = useState('');
-  const [creditAmount, setCreditAmount] = useState<number>(1000);
+  const [creditAmount, setCreditAmount] = useState<string>('1000');
   const [creditCurrency, setCreditCurrency] = useState('EUR');
   const [creditMethod, setCreditMethod] = useState('Direct SEPA Wire Received');
   const [creditReference, setCreditReference] = useState('');
   const [creditNotes, setCreditNotes] = useState('Cleared in treasury settlement account.');
-  const [submittingCredit, setSubmittingCredit] = useState(false);
-  const creditLockRef = useRef<boolean>(false);
+  const [creditFormError, setCreditFormError] = useState<string | null>(null);
+  const creditModalRef = useDialogFocus<HTMLFormElement>(
+    creditModalOpen && !creditConfirmStep,
+    () => {
+      setCreditModalOpen(false);
+      setCreditConfirmStep(false);
+      setCreditFormError(null);
+    }
+  );
 
   const showToastSuccess = useCallback((msg: string) => {
     setActionError(null);
     setActionSuccess(msg);
+    if (
+      /approve_deposit|approve_withdrawal|admin_credit_deposit|approve_investment_request|record_investment|pay_distribution|\bapproved\b|\bcredited\b/i.test(
+        msg
+      )
+    ) {
+      setUndoHint({ summary: msg });
+    }
     setTimeout(() => setActionSuccess((prev) => (prev === msg ? null : prev)), 4500);
   }, []);
 
@@ -302,7 +326,12 @@ export const AdminPanel: React.FC = () => {
         fetchPastDistributions(),
         fetchAdminNotificationsTable(),
         fetchAuditLogRows(),
-        fetchSettingsRows().catch(() => null),
+        fetchSettingsRows().catch((err: any) => {
+          if (isSupabaseConfigured()) {
+            showToastError(err?.message || 'Unable to load platform settings.');
+          }
+          return null;
+        }),
       ]);
       if (settingsRes?.limits) {
         setPlatformLimits(settingsRes.limits);
@@ -405,14 +434,16 @@ export const AdminPanel: React.FC = () => {
           }))
         : [];
 
-      const [kycRows, invDocs, gates] = await Promise.all([
+      const [kycRows, invDocs, gates, invReqRows] = await Promise.all([
         fetchKycSubmissionsQueue(fallbackDocs),
         fetchInvestorDocumentsTable(fallbackDocs),
         fetchPaymentGatesWithCounts(nextUsers),
+        fetchInvestmentRequestsQueue(),
       ]);
       setKycSubmissions(kycRows);
       setDocuments(invDocs);
       setPaymentGates(gates);
+      setInvestmentRequests(invReqRows);
       setPastDistributions(pastDists);
       setAuditLogs(logs);
 
@@ -422,9 +453,9 @@ export const AdminPanel: React.FC = () => {
       if (sbProps && sbProps.length > 0) {
         const mappedSb: Property[] = sbProps.map((sp) => {
           const existing = localById.get(sp.id);
-          const targetEur = sp.funding_target_cents / 100;
-          const shareEur = sp.share_price_cents / 100;
-          const fundedEur = Math.round((targetEur * sp.funded_pct) / 100);
+          const targetEur = centsToEur(sp.funding_target_cents);
+          const shareEur = centsToEur(sp.share_price_cents);
+          const fundedEur = centsToEur(Math.round((sp.funding_target_cents * sp.funded_pct) / 100));
           return {
             ...(existing || {}),
             id: sp.id,
@@ -551,6 +582,7 @@ export const AdminPanel: React.FC = () => {
         kycQueueCount: pendingKycCount,
       });
       setAdminStats(computedStats);
+      setLastSyncedAt(new Date().toISOString());
     } catch (err: any) {
       showToastError(err?.message || 'Unable to synchronize back-office data.');
     } finally {
@@ -565,79 +597,99 @@ export const AdminPanel: React.FC = () => {
     }
   }, [effectiveRole, loadData]);
 
-  const pendingDeposits = useMemo(
-    () => transactions.filter((t) => t.type === 'deposit' && t.status === 'pending'),
+  // Realtime subscription + 30-second background poll for live pending queue counts
+  useEffect(() => {
+    if (!effectiveRole) return;
+    const pollInterval = window.setInterval(() => {
+      loadData(false);
+    }, 30_000);
+
+    let channel: any = null;
+    let debounceTimer: number | null = null;
+    if (isSupabaseConfigured()) {
+      const scheduleRefresh = () => {
+        if (debounceTimer) window.clearTimeout(debounceTimer);
+        debounceTimer = window.setTimeout(() => {
+          loadData(false);
+        }, 600);
+      };
+      try {
+        channel = supabase
+          .channel('admin-queue-counts')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRefresh)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'kyc_submissions' }, scheduleRefresh)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'investment_requests' }, scheduleRefresh)
+          .subscribe();
+      } catch {
+        // Fallback 30s polling remains active
+      }
+    }
+
+    return () => {
+      window.clearInterval(pollInterval);
+      if (debounceTimer) window.clearTimeout(debounceTimer);
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
+    };
+  }, [effectiveRole, loadData]);
+
+  const pendingDepositsCount = useMemo(() => {
+    const manualPending = manualDeposits.filter(
+      (m) => String(m.status || 'pending').toLowerCase() === 'pending'
+    );
+    const manualRefs = new Set(
+      manualDeposits.map((m) => String(m.reference || m.transactionId || m.id))
+    );
+    const txPending = transactions.filter(
+      (t) =>
+        t.type === 'deposit' &&
+        t.status === 'pending' &&
+        !manualRefs.has(String(t.reference || ''))
+    );
+    return manualPending.length + txPending.length;
+  }, [transactions, manualDeposits]);
+
+  const pendingWithdrawalsCount = useMemo(
+    () => transactions.filter((t) => t.type === 'withdrawal' && t.status === 'pending').length,
     [transactions]
   );
-  const pendingWithdrawals = useMemo(
-    () => transactions.filter((t) => t.type === 'withdrawal' && t.status === 'pending'),
-    [transactions]
-  );
+
   const pendingKycCount = useMemo(
     () => kycSubmissions.filter((k) => k.status === 'pending').length,
     [kycSubmissions]
   );
 
+  const pendingInvestmentRequestsCount = useMemo(
+    () => investmentRequests.filter((r) => r.status === 'pending').length,
+    [investmentRequests]
+  );
+
+  const totalPendingCount =
+    pendingDepositsCount +
+    pendingWithdrawalsCount +
+    pendingKycCount +
+    pendingInvestmentRequestsCount;
+
   const navBadgeCount = (id: AdminSectionId): number | undefined => {
-    if (id === 'finance' && (pendingDeposits.length + pendingWithdrawals.length) > 0) {
-      return pendingDeposits.length + pendingWithdrawals.length;
-    }
-    if (id === 'deposits' && pendingDeposits.length > 0) return pendingDeposits.length;
-    if (id === 'withdrawals' && pendingWithdrawals.length > 0) return pendingWithdrawals.length;
-    if (id === 'kyc' && pendingKycCount > 0) return pendingKycCount;
+    if (id === 'dashboard') return totalPendingCount;
+    if (id === 'finance') return pendingDepositsCount + pendingWithdrawalsCount + pendingInvestmentRequestsCount;
+    if (id === 'deposits') return pendingDepositsCount;
+    if (id === 'withdrawals') return pendingWithdrawalsCount;
+    if (id === 'investments') return pendingInvestmentRequestsCount;
+    if (id === 'kyc') return pendingKycCount;
     return undefined;
   };
 
-  const handleExecuteManualCredit = async (e: React.FormEvent) => {
+  const handleOpenManualCreditConfirm = (e: React.FormEvent) => {
     e.preventDefault();
-    if (creditLockRef.current || submittingCredit) return;
-    const amtCents = eurToCents(creditAmount);
-    if (!creditUserId || !Number.isFinite(amtCents) || amtCents <= 0) {
-      showToastError('Select an investor and enter a positive amount.');
+    const amtCents = parseStrictEurToCents(creditAmount);
+    if (!creditUserId || amtCents === null || amtCents <= 0) {
+      setCreditFormError('Select an investor and enter a positive amount in euros.');
       return;
     }
-    if (!creditConfirmStep) {
-      setCreditConfirmStep(true);
-      return;
-    }
-    const cleanEur = centsToEur(amtCents);
-    creditLockRef.current = true;
-    setSubmittingCredit(true);
-    try {
-      const token = getAuthToken();
-      const res = await fetch(getApiUrl(`/admin/users/${encodeURIComponent(creditUserId)}/credit`), {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          amount: cleanEur,
-          amountCents: amtCents,
-          currency: creditCurrency,
-          method: creditMethod,
-          reference: creditReference.trim() || undefined,
-          notes: creditNotes.trim() || undefined,
-        }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = body?.error || body?.message || 'Wallet credit failed.';
-        const details = body?.details ? ` — ${body.details}` : '';
-        throw new Error(`${msg}${details}`);
-      }
-      setCreditModalOpen(false);
-      setCreditConfirmStep(false);
-      setCreditReference('');
-      await loadData(false);
-      showToastSuccess(`Credited ${formatCentsEur(amtCents)} (${creditCurrency}) to investor wallet.`);
-    } catch (err: any) {
-      showToastError(err?.message || 'Unable to execute wallet credit.');
-    } finally {
-      setSubmittingCredit(false);
-      creditLockRef.current = false;
-    }
+    setCreditFormError(null);
+    setCreditConfirmStep(true);
   };
 
   if (!user || !effectiveRole) {
@@ -700,7 +752,7 @@ export const AdminPanel: React.FC = () => {
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectSection(item.id)}
-                      className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                      className={`min-h-[44px] w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
                         active
                           ? 'bg-[#6FD8B0] text-[#0B0F10]'
                           : 'text-[#B6C4C9] hover:text-[#F2F5F4] hover:bg-[#162026]'
@@ -715,7 +767,9 @@ export const AdminPanel: React.FC = () => {
                           className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums ${
                             active
                               ? 'bg-[#0B0F10]/20 text-[#0B0F10]'
-                              : 'bg-[#0B0F10] text-[#6FD8B0] border border-[#1F2C33]'
+                              : count > 0
+                              ? 'bg-[#0B0F10] text-[#6FD8B0] border border-[#1F2C33]'
+                              : 'bg-[#0B0F10] text-[#8FA1A8] border border-[#1F2C33]'
                           }`}
                         >
                           {count}
@@ -733,7 +787,7 @@ export const AdminPanel: React.FC = () => {
           <button
             type="button"
             onClick={() => navigateTo('/dashboard')}
-            className="w-full px-3 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center justify-between cursor-pointer transition-colors"
+            className="min-h-[44px] w-full px-3 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center justify-between cursor-pointer transition-colors"
           >
             <span>Investor App</span>
             <ExternalLink className="w-3.5 h-3.5 text-[#6FD8B0]" />
@@ -744,7 +798,7 @@ export const AdminPanel: React.FC = () => {
               logout();
               navigateTo('/login');
             }}
-            className="w-full px-3 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] hover:border-rose-500/40 text-xs font-semibold text-rose-300 flex items-center justify-between cursor-pointer transition-colors"
+            className="min-h-[44px] w-full px-3 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] hover:border-rose-500/40 text-xs font-semibold text-rose-300 flex items-center justify-between cursor-pointer transition-colors"
           >
             <span>Sign Out</span>
             <LogOut className="w-3.5 h-3.5" />
@@ -776,7 +830,7 @@ export const AdminPanel: React.FC = () => {
             <button
               type="button"
               onClick={() => loadData(false)}
-              className="p-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] cursor-pointer"
               aria-label="Refresh back office"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -784,7 +838,7 @@ export const AdminPanel: React.FC = () => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen((v) => !v)}
-              className="p-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#F2F5F4] cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg bg-[#0B0F10] border border-[#1F2C33] text-[#F2F5F4] cursor-pointer"
               aria-label="Toggle staff navigation menu"
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -804,7 +858,7 @@ export const AdminPanel: React.FC = () => {
                     key={item.id}
                     type="button"
                     onClick={() => handleSelectSection(item.id)}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between cursor-pointer ${
+                    className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between cursor-pointer ${
                       active
                         ? 'bg-[#6FD8B0] text-[#0B0F10]'
                         : 'bg-[#0B0F10] border border-[#1F2C33] text-[#B6C4C9]'
@@ -823,7 +877,7 @@ export const AdminPanel: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigateTo('/dashboard')}
-                className="flex-1 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#F2F5F4] cursor-pointer"
+                className="min-h-[44px] flex-1 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#F2F5F4] cursor-pointer"
               >
                 Investor App
               </button>
@@ -833,7 +887,7 @@ export const AdminPanel: React.FC = () => {
                   logout();
                   navigateTo('/login');
                 }}
-                className="flex-1 py-2 rounded-xl bg-[#0B0F10] border border-rose-500/30 text-xs font-semibold text-rose-300 cursor-pointer"
+                className="min-h-[44px] flex-1 py-2 rounded-xl bg-[#0B0F10] border border-rose-500/30 text-xs font-semibold text-rose-300 cursor-pointer"
               >
                 Sign Out
               </button>
@@ -862,7 +916,7 @@ export const AdminPanel: React.FC = () => {
                   setCreditConfirmStep(false);
                   setCreditModalOpen(true);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer transition-colors"
               >
                 <Wallet className="w-3.5 h-3.5 text-[#6FD8B0]" />
                 <span>Credit Investor</span>
@@ -872,7 +926,7 @@ export const AdminPanel: React.FC = () => {
               type="button"
               onClick={() => loadData(false)}
               disabled={refreshing}
-              className="px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-[#121A1F] border border-[#1F2C33] hover:border-[#6FD8B0] text-xs font-semibold text-[#F2F5F4] flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#6FD8B0] ${refreshing ? 'animate-spin' : ''}`} />
               <span>Sync Data</span>
@@ -887,28 +941,140 @@ export const AdminPanel: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-[#6FD8B0] shrink-0" />
                 <span>{actionSuccess}</span>
               </span>
-              <button type="button" onClick={() => setActionSuccess(null)} className="text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
-                <X className="w-3.5 h-3.5" />
+              <button type="button" onClick={() => setActionSuccess(null)} aria-label="Dismiss success notification" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
+                <X className="w-4 h-4" />
               </button>
+            </div>
+          )}
+
+          {undoHint && (
+            <div
+              role="status"
+              className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div className="flex items-start gap-2">
+                <RotateCcw className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-amber-300">Undo hint:</span>{' '}
+                  Approved entries are permanent and never deleted. To undo or correct this action, record a transaction reversal via{' '}
+                  <span className="font-mono text-[#F2F5F4]">reverse_transaction</span>.
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {canAccessSection(effectiveRole, 'finance') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinanceTab('payments');
+                      setActiveSection('finance');
+                      setUndoHint(null);
+                      if (typeof window !== 'undefined') {
+                        window.location.hash = 'finance/payments';
+                      }
+                    }}
+                    className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-amber-500/40 text-amber-200 hover:border-[#6FD8B0] hover:text-[#6FD8B0] text-xs font-bold cursor-pointer"
+                  >
+                    Open Reversal Tool
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setUndoHint(null)}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer"
+                  aria-label="Dismiss undo hint"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
 
           {actionError && (
-            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center justify-between gap-2">
+            <div role="alert" className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                 <span>{actionError}</span>
               </span>
-              <button type="button" onClick={() => setActionError(null)} className="text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
-                <X className="w-3.5 h-3.5" />
+              <button type="button" onClick={() => setActionError(null)} aria-label="Dismiss error alert" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
+                <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
-          {loading ? (
-            <div className="py-20 flex flex-col items-center justify-center text-xs text-[#8FA1A8]">
-              <div className="w-8 h-8 border-2 border-[#6FD8B0] border-t-transparent rounded-full animate-spin mb-3" />
-              <span>Synchronizing back-office telemetry...</span>
+          {/* Queue & Workspace Sections render their own loading skeletons */}
+          {activeSection === 'finance' && canAccessSection(effectiveRole, 'finance') ? (
+            <AdminFinanceSection
+              loading={loading}
+              initialTab={financeTab}
+              onTabChange={(nextTab) => {
+                setFinanceTab(nextTab);
+                if (typeof window !== 'undefined') {
+                  window.location.hash = `finance/${nextTab}`;
+                }
+              }}
+              stats={adminStats}
+              limits={platformLimits}
+              users={users}
+              transactions={transactions}
+              manualDeposits={manualDeposits}
+              investments={investments}
+              investmentRequests={investmentRequests}
+              properties={properties}
+              pastDistributions={pastDistributions}
+              paymentGates={paymentGates}
+              onRefresh={() => loadData(false)}
+              onSuccess={showToastSuccess}
+              onError={showToastError}
+            />
+          ) : activeSection === 'kyc' && canAccessSection(effectiveRole, 'kyc') ? (
+            <AdminKycSection
+              loading={loading}
+              users={users}
+              submissions={kycSubmissions}
+              onRefresh={() => loadData(false)}
+              onSuccess={showToastSuccess}
+              onError={showToastError}
+            />
+          ) : activeSection === 'deposits' && canAccessSection(effectiveRole, 'deposits') ? (
+            <AdminDepositsSection
+              loading={loading}
+              users={users}
+              transactions={transactions}
+              manualDeposits={manualDeposits}
+              paymentGates={paymentGates}
+              onRefresh={() => loadData(false)}
+              onSuccess={showToastSuccess}
+              onError={showToastError}
+            />
+          ) : activeSection === 'withdrawals' && canAccessSection(effectiveRole, 'withdrawals') ? (
+            <AdminWithdrawalsSection
+              loading={loading}
+              limits={platformLimits}
+              users={users}
+              transactions={transactions}
+              onRefresh={() => loadData(false)}
+              onSuccess={showToastSuccess}
+              onError={showToastError}
+            />
+          ) : activeSection === 'investments' && canAccessSection(effectiveRole, 'investments') ? (
+            <AdminInvestmentsSection
+              loading={loading}
+              investments={investments}
+              investmentRequests={investmentRequests}
+              users={users}
+              properties={properties}
+              onRefresh={() => loadData(false)}
+              onSuccess={showToastSuccess}
+              onError={showToastError}
+            />
+          ) : loading ? (
+            <div className="space-y-4" role="status" aria-label="Loading back-office workspace">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }, (_, idx) => (
+                  <div key={idx} className="h-24 rounded-2xl bg-[#121A1F] border border-[#1F2C33] animate-pulse" />
+                ))}
+              </div>
+              <div className="h-64 rounded-2xl bg-[#121A1F] border border-[#1F2C33] animate-pulse" />
             </div>
           ) : (
             <>
@@ -918,6 +1084,8 @@ export const AdminPanel: React.FC = () => {
                   stats={adminStats}
                   users={users}
                   transactions={transactions}
+                  pendingInvestmentRequestsCount={pendingInvestmentRequestsCount}
+                  lastSyncedAt={lastSyncedAt}
                   effectiveRole={effectiveRole}
                   onNavigateSection={handleSelectSection}
                 />
@@ -945,81 +1113,9 @@ export const AdminPanel: React.FC = () => {
                 />
               )}
 
-              {/* 2B. UNIFIED 7-TAB FINANCE WORKSPACE */}
-              {activeSection === 'finance' && canAccessSection(effectiveRole, 'finance') && (
-                <AdminFinanceSection
-                  initialTab={financeTab}
-                  onTabChange={(nextTab) => {
-                    setFinanceTab(nextTab);
-                    if (typeof window !== 'undefined') {
-                      window.location.hash = `finance/${nextTab}`;
-                    }
-                  }}
-                  stats={adminStats}
-                  limits={platformLimits}
-                  users={users}
-                  transactions={transactions}
-                  manualDeposits={manualDeposits}
-                  investments={investments}
-                  properties={properties}
-                  pastDistributions={pastDistributions}
-                  paymentGates={paymentGates}
-                  onRefresh={() => loadData(false)}
-                  onSuccess={showToastSuccess}
-                  onError={showToastError}
-                />
-              )}
-
-              {/* 3. KYC */}
-              {activeSection === 'kyc' && canAccessSection(effectiveRole, 'kyc') && (
-                <AdminKycSection
-                  users={users}
-                  submissions={kycSubmissions}
-                  onRefresh={() => loadData(false)}
-                  onSuccess={showToastSuccess}
-                  onError={showToastError}
-                />
-              )}
-
-              {/* 4. DEPOSITS */}
-              {activeSection === 'deposits' && canAccessSection(effectiveRole, 'deposits') && (
-                <AdminDepositsSection
-                  users={users}
-                  transactions={transactions}
-                  manualDeposits={manualDeposits}
-                  paymentGates={paymentGates}
-                  onRefresh={() => loadData(false)}
-                  onSuccess={showToastSuccess}
-                  onError={showToastError}
-                />
-              )}
-
-              {/* 5. WITHDRAWALS */}
-              {activeSection === 'withdrawals' && canAccessSection(effectiveRole, 'withdrawals') && (
-                <AdminWithdrawalsSection
-                  users={users}
-                  transactions={transactions}
-                  onRefresh={() => loadData(false)}
-                  onSuccess={showToastSuccess}
-                  onError={showToastError}
-                />
-              )}
-
               {/* 6. PROPERTIES */}
               {activeSection === 'properties' && canAccessSection(effectiveRole, 'properties') && (
                 <AdminPropertiesSection
-                  properties={properties}
-                  onRefresh={() => loadData(false)}
-                  onSuccess={showToastSuccess}
-                  onError={showToastError}
-                />
-              )}
-
-              {/* 7. INVESTMENTS */}
-              {activeSection === 'investments' && canAccessSection(effectiveRole, 'investments') && (
-                <AdminInvestmentsSection
-                  investments={investments}
-                  users={users}
                   properties={properties}
                   onRefresh={() => loadData(false)}
                   onSuccess={showToastSuccess}
@@ -1119,153 +1215,221 @@ export const AdminPanel: React.FC = () => {
         </main>
       </div>
 
-      {/* Manual Wallet Credit Modal */}
+      {/* Manual Wallet Credit Modal Step 1 (Input Form) + Step 2 (AdminActionDialog) */}
       {creditModalOpen && (effectiveRole === 'super_admin' || effectiveRole === 'finance') && (() => {
         const creditTarget = users.find((u) => u.id === creditUserId) || users[0];
-        const amtCents = eurToCents(creditAmount);
+        const parsedCents = parseStrictEurToCents(creditAmount);
+        const amtCents = parsedCents !== null && parsedCents > 0 ? parsedCents : 0;
         const curCents = eurToCents(creditTarget?.walletBalance ?? 0);
         const projCents = curCents + amtCents;
+        const noteParts = [
+          creditMethod.trim(),
+          creditReference.trim() ? `Ref: ${creditReference.trim()}` : '',
+          creditNotes.trim(),
+        ].filter(Boolean);
         return (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-            <form onSubmit={handleExecuteManualCredit} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1F2C33]">
-                <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-[#6FD8B0]" />
-                  <span>{creditConfirmStep ? 'Confirm Investor Wallet Credit' : 'Credit Investor Treasury Wallet'}</span>
-                </h3>
-                <button
-                  type="button"
-                  disabled={submittingCredit}
-                  onClick={() => {
-                    setCreditModalOpen(false);
-                    setCreditConfirmStep(false);
-                  }}
-                  className="text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer disabled:opacity-50"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {!creditConfirmStep ? (
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <label className="block text-[#B6C4C9] font-semibold mb-1">Target Investor</label>
-                    <select
-                      value={creditUserId}
-                      onChange={(e) => setCreditUserId(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+          <>
+            {!creditConfirmStep && (
+              <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+                <form ref={creditModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Credit Investor Treasury Wallet" onSubmit={handleOpenManualCreditConfirm} noValidate className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-md w-full p-6 space-y-4 focus:outline-none">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#1F2C33]">
+                    <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-[#6FD8B0]" />
+                      <span>Credit Investor Treasury Wallet</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreditModalOpen(false);
+                        setCreditConfirmStep(false);
+                        setCreditFormError(null);
+                      }}
+                      aria-label="Close credit wallet dialog"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer"
                     >
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.fullName || u.email} ({u.email}) — {formatCurrency(u.walletBalance)}
-                        </option>
-                      ))}
-                    </select>
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+
+                  <div className="space-y-3 text-xs">
                     <div>
-                      <label className="block text-[#B6C4C9] font-semibold mb-1">Amount</label>
+                      <label htmlFor="admin-credit-user-search" className="block text-[#B6C4C9] font-semibold mb-1">Target Investor</label>
                       <input
-                        type="number"
-                        min={0.01}
-                        step="0.01"
-                        required
-                        value={creditAmount}
-                        onChange={(e) => setCreditAmount(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                        id="admin-credit-user-search"
+                        type="text"
+                        value={creditUserSearch}
+                        onChange={(e) => {
+                          const nextSearch = e.target.value;
+                          setCreditUserSearch(nextSearch);
+                          const q = nextSearch.trim().toLowerCase();
+                          const matched = q
+                            ? users.filter((u) => `${u.fullName || ''} ${u.email || ''} ${u.id}`.toLowerCase().includes(q))
+                            : users;
+                          if (matched.length > 0 && !matched.some((u) => u.id === creditUserId)) {
+                            setCreditUserId(matched[0].id);
+                          }
+                        }}
+                        placeholder="Search investor by name or email..."
+                        className="min-h-[44px] w-full px-3 py-2 mb-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                      />
+                      <select
+                        id="admin-credit-user-select"
+                        aria-label="Select target investor"
+                        value={creditUserId}
+                        onChange={(e) => setCreditUserId(e.target.value)}
+                        className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                      >
+                        {(() => {
+                          const q = creditUserSearch.trim().toLowerCase();
+                          const filtered = q
+                            ? users.filter((u) => `${u.fullName || ''} ${u.email || ''} ${u.id}`.toLowerCase().includes(q))
+                            : users;
+                          return filtered.length === 0 ? (
+                            <option value="">No investors match &ldquo;{creditUserSearch}&rdquo;</option>
+                          ) : (
+                            filtered.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.fullName || u.email} ({u.email}) — {formatCentsEur(eurToCents(u.walletBalance))}
+                              </option>
+                            ))
+                          );
+                        })()}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="admin-credit-amount" className="block text-[#B6C4C9] font-semibold mb-1">Amount (EUR)</label>
+                        <input
+                          id="admin-credit-amount"
+                          type="number"
+                          min={0.01}
+                          step="0.01"
+                          value={creditAmount}
+                          onChange={(e) => setCreditAmount(e.target.value)}
+                          className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="admin-credit-currency" className="block text-[#B6C4C9] font-semibold mb-1">Currency</label>
+                        <select
+                          id="admin-credit-currency"
+                          value={creditCurrency}
+                          onChange={(e) => setCreditCurrency(e.target.value)}
+                          className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                        >
+                          <option value="EUR">EUR</option>
+                          <option value="USD">USD</option>
+                          <option value="GBP">GBP</option>
+                          <option value="CHF">CHF</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="admin-credit-method" className="block text-[#B6C4C9] font-semibold mb-1">Settlement Method</label>
+                      <input
+                        id="admin-credit-method"
+                        type="text"
+                        value={creditMethod}
+                        onChange={(e) => setCreditMethod(e.target.value)}
+                        className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
                       />
                     </div>
                     <div>
-                      <label className="block text-[#B6C4C9] font-semibold mb-1">Currency</label>
-                      <select
-                        value={creditCurrency}
-                        onChange={(e) => setCreditCurrency(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-                      >
-                        <option value="EUR">EUR</option>
-                        <option value="USD">USD</option>
-                        <option value="GBP">GBP</option>
-                        <option value="CHF">CHF</option>
-                      </select>
+                      <label htmlFor="admin-credit-ref" className="block text-[#B6C4C9] font-semibold mb-1">Bank / Settlement Reference</label>
+                      <input
+                        id="admin-credit-ref"
+                        type="text"
+                        value={creditReference}
+                        onChange={(e) => setCreditReference(e.target.value)}
+                        placeholder="Optional wire reference"
+                        className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="admin-credit-notes" className="block text-[#B6C4C9] font-semibold mb-1">Audit Notes</label>
+                      <input
+                        id="admin-credit-notes"
+                        type="text"
+                        value={creditNotes}
+                        onChange={(e) => setCreditNotes(e.target.value)}
+                        className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-[#B6C4C9] font-semibold mb-1">Settlement Method</label>
-                    <input
-                      type="text"
-                      value={creditMethod}
-                      onChange={(e) => setCreditMethod(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#B6C4C9] font-semibold mb-1">Bank / Settlement Reference</label>
-                    <input
-                      type="text"
-                      value={creditReference}
-                      onChange={(e) => setCreditReference(e.target.value)}
-                      placeholder="Optional wire reference"
-                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl font-mono text-[#F2F5F4]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[#B6C4C9] font-semibold mb-1">Audit Notes</label>
-                    <input
-                      type="text"
-                      value={creditNotes}
-                      onChange={(e) => setCreditNotes(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl p-3.5 text-xs text-[#B6C4C9] space-y-1.5 tabular-nums">
-                  <div>Action: <strong className="text-[#6FD8B0]">Credit Investor Wallet (admin_credit_deposit)</strong></div>
-                  <div>Investor: <strong className="text-[#F2F5F4]">{creditTarget?.fullName || creditTarget?.email || creditUserId}</strong></div>
-                  <div>Amount: <strong className="text-[#6FD8B0]">{formatCentsEur(amtCents)} ({creditCurrency})</strong></div>
-                  <div>Current Balance: <strong>{formatCentsEur(curCents)}</strong></div>
-                  <div>Projected Balance: <strong className="text-[#F2F5F4]">{formatCentsEur(projCents)}</strong></div>
-                  <div>Method: <span className="text-[#F2F5F4]">{creditMethod}</span></div>
-                  {creditReference.trim() && (
-                    <div>Reference: <span className="font-mono text-[#F2F5F4]">{creditReference.trim()}</span></div>
-                  )}
-                  <div>Notes: <span className="text-[#F2F5F4]">{creditNotes.trim() || '—'}</span></div>
-                </div>
-              )}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-[#1F2C33]">
-                {creditConfirmStep ? (
-                  <button
-                    type="button"
-                    disabled={submittingCredit}
-                    onClick={() => setCreditConfirmStep(false)}
-                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
-                  >
-                    Back
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={submittingCredit}
-                    onClick={() => {
-                      setCreditModalOpen(false);
-                      setCreditConfirmStep(false);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={submittingCredit || amtCents <= 0}
-                  className="px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer disabled:opacity-50"
-                >
-                  {submittingCredit ? 'Crediting...' : creditConfirmStep ? 'Confirm & Execute Credit' : 'Review Credit'}
-                </button>
+                  {creditFormError && (
+                    <div role="alert" className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      <span>{creditFormError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-[#1F2C33]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreditModalOpen(false);
+                        setCreditConfirmStep(false);
+                        setCreditFormError(null);
+                      }}
+                      className="min-h-[44px] px-4 py-2 rounded-xl bg-[#0B0F10] border border-[#1F2C33] text-xs font-semibold text-[#B6C4C9] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="min-h-[44px] px-4 py-2 rounded-xl bg-[#6FD8B0] text-[#0B0F10] text-xs font-bold cursor-pointer"
+                    >
+                      Review Credit
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
+            )}
+
+            <AdminActionDialog
+              open={creditConfirmStep}
+              actionName="Credit deposit"
+              confirmLabel="Credit deposit"
+              investorName={creditTarget?.fullName || 'Investor'}
+              investorEmail={creditTarget?.email || creditUserId}
+              amountCents={amtCents}
+              reference={creditReference.trim() || `MANUAL-${creditUserId.slice(0, 8)}`}
+              extraDetails={[
+                { label: 'Currency', value: creditCurrency },
+                { label: 'Current Balance', value: formatCentsEur(curCents) },
+                { label: 'Projected Balance', value: formatCentsEur(projCents), tone: 'accent' },
+                { label: 'Note', value: noteParts.join(' · ') || '—' },
+              ]}
+              validate={() => {
+                const c = parseStrictEurToCents(creditAmount);
+                if (!creditUserId || c === null || c <= 0) {
+                  return 'Select an investor and enter a positive amount in euros.';
+                }
+                return null;
+              }}
+              onConfirm={async () => {
+                const c = parseStrictEurToCents(creditAmount);
+                if (!creditUserId || c === null || c <= 0) {
+                  throw new Error('Select an investor and enter a positive amount in euros.');
+                }
+                await recordManualDepositRpc({
+                  userId: creditUserId,
+                  amountEur: centsToEur(c),
+                  note: noteParts.join(' · ') || undefined,
+                });
+                setCreditReference('');
+                return `Credited ${formatCentsEur(c)} to investor wallet via admin_credit_deposit.`;
+              }}
+              onRefresh={() => loadData(false)}
+              onRefreshError={showToastError}
+              onSuccess={showToastSuccess}
+              onClose={() => {
+                setCreditConfirmStep(false);
+                setCreditModalOpen(false);
+              }}
+            />
+          </>
         );
       })()}
     </div>

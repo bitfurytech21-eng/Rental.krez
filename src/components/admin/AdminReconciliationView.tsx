@@ -65,7 +65,7 @@ export const AdminReconciliationView: React.FC<AdminReconciliationViewProps> = (
           type="button"
           disabled={refreshing}
           onClick={() => void handleRefresh()}
-          className="px-3.5 py-2 bg-[#121A1F] border border-[#1F2C33] rounded-xl text-xs font-semibold text-[#F2F5F4] hover:border-[#6FD8B0]/50 flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
+          className="min-h-[44px] px-3.5 py-2 bg-[#121A1F] border border-[#1F2C33] rounded-xl text-xs font-semibold text-[#F2F5F4] hover:border-[#6FD8B0]/50 flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 text-[#6FD8B0] ${refreshing ? 'animate-spin' : ''}`} />
           <span>{refreshing ? 'Refreshing...' : 'Refresh Ledger'}</span>

@@ -4,10 +4,27 @@ import { getApiUrl, getAuthToken } from '../../lib/api';
 // ============================================================================
 // INTEGER CENTS ARITHMETIC & EUR FORMATTING
 // ============================================================================
+export function parseStrictEurToCents(eur: unknown): number | null {
+  if (eur === null || eur === undefined) return null;
+  if (typeof eur === 'string') {
+    const trimmed = eur.trim().replace(/\s+/g, '').replace(',', '.');
+    if (!trimmed || !/^-?\d+(\.\d+)?$/.test(trimmed)) return null;
+    const num = Number(trimmed);
+    if (!Number.isFinite(num)) return null;
+    const shifted = Number(`${num.toFixed(6)}e2`);
+    const rounded = Math.round(shifted);
+    return Number.isSafeInteger(rounded) ? rounded : null;
+  }
+  const n = Number(eur);
+  if (!Number.isFinite(n)) return null;
+  const shifted = Number(`${n.toFixed(6)}e2`);
+  const rounded = Math.round(shifted);
+  return Number.isSafeInteger(rounded) ? rounded : null;
+}
+
 export function eurToCents(eur: unknown): number {
-  const n = Number(eur ?? 0);
-  if (!Number.isFinite(n)) return 0;
-  return Math.round(n * 100);
+  const parsed = parseStrictEurToCents(eur);
+  return parsed === null ? 0 : parsed;
 }
 
 export function centsToEur(cents: number): number {
@@ -23,6 +40,18 @@ export function formatCentsEur(cents: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+export function computeDefaultWithdrawalFeeCents(
+  withdrawalAmountCents: number,
+  limits?: Record<string, any> | null
+): number {
+  const pct = Number(limits?.withdrawal_fee_pct ?? 0);
+  if (Number.isFinite(pct) && pct > 0 && withdrawalAmountCents > 0) {
+    return Math.max(0, Math.round((withdrawalAmountCents * pct) / 100));
+  }
+  const flatCents = parseStrictEurToCents(limits?.withdrawal_fee_eur ?? 0);
+  return flatCents !== null && flatCents > 0 ? flatCents : 0;
 }
 
 export function allocateProportionalCents(
@@ -63,17 +92,60 @@ export function isMissingRpcOrSignatureError(error: any): boolean {
   );
 }
 
+export function formatPlainDatabaseError(
+  error: any,
+  fallback = 'The database rejected this action.'
+): { message: string; alreadyProcessed: boolean } {
+  const rawSource =
+    typeof error === 'string'
+      ? error
+      : error?.message || error?.error || error?.details || error?.hint || fallback;
+  let clean = String(rawSource || fallback)
+    .replace(/^\[[A-Z0-9_]+\]\s*/i, '')
+    .replace(/^ERROR:\s*/i, '')
+    .trim();
+  if (!clean) clean = fallback;
+
+  const lower = clean.toLowerCase();
+  const alreadyProcessed =
+    lower.includes('already processed') ||
+    lower.includes('already handled') ||
+    lower.includes('already reviewed') ||
+    lower.includes('already approved') ||
+    lower.includes('already rejected') ||
+    lower.includes('already settled') ||
+    lower.includes('already reversed') ||
+    lower.includes('not found');
+
+  if (alreadyProcessed) {
+    return {
+      message: `${clean}. Someone else may have already handled this item — the list has been refreshed.`,
+      alreadyProcessed: true,
+    };
+  }
+
+  const code = String(error?.code || '').trim();
+  if (lower.includes('admin only') || lower.includes('permission denied') || code === '42501') {
+    return {
+      message: lower.includes('admin only') ? clean : 'Admin only — your account does not have permission for this action.',
+      alreadyProcessed: false,
+    };
+  }
+
+  return { message: clean, alreadyProcessed: false };
+}
+
 export function extractDbRefusalMessage(error: any, fallback = 'Database rejected the operation.'): string {
   if (!error) return fallback;
-  const msg = String(error?.message || error?.error || '').trim();
+  const raw = String(error?.message || error?.error || '').trim();
   const details = String(error?.details || '').trim();
   const hint = String(error?.hint || '').trim();
-  const code = String(error?.code || '').trim();
-  if (!msg) return fallback;
-  let full = code && !msg.includes(code) ? `[${code}] ${msg}` : msg;
-  if (details && !full.includes(details)) full = `${full} — ${details}`;
-  if (hint && !full.includes(hint)) full = `${full} (${hint})`;
-  return full;
+  if (!raw) return details || hint || fallback;
+  const clean = raw.replace(/^ERROR:\s*/i, '').trim();
+  if (details && !clean.includes(details) && !details.toLowerCase().includes('pl/pgsql')) {
+    return `${clean} — ${details}`;
+  }
+  return clean;
 }
 
 export function maskIban(raw?: string | null): string {
@@ -112,6 +184,17 @@ async function apiFetchJson(endpoint: string, init: RequestInit = {}): Promise<a
   return json;
 }
 
+async function requireRpcSuccess<T = unknown>(functionName: string, args: Record<string, any>): Promise<T> {
+  if (!(await hasLiveSupabaseSession())) {
+    throw new Error('A signed-in Supabase session is required for this administrative action.');
+  }
+  const { data, error } = await supabase.rpc(functionName, args);
+  if (error) {
+    throw new Error(extractDbRefusalMessage(error, `Database function ${functionName} refused the request.`));
+  }
+  return data as T;
+}
+
 // ============================================================================
 // 1. DASHBOARD: admin_stats()
 // ============================================================================
@@ -140,34 +223,33 @@ export async function fetchAdminStats(fallback: {
   kycQueueCount?: number;
 }): Promise<AdminStatsSummary> {
   if (await hasLiveSupabaseSession()) {
-    try {
-      const { data, error } = await supabase.rpc('admin_stats');
-      if (!error && data) {
-        const raw: any = Array.isArray(data) ? data[0] : data;
-        if (raw && typeof raw === 'object') {
-          return {
-            pendingDepositsCount: Number(raw.pending_deposits_count ?? raw.pendingDepositsCount ?? 0),
-            pendingDepositsTotalEur: centsOrEurToEur(
-              raw.pending_deposits_cents ?? raw.pending_deposits_total_cents,
-              raw.pending_deposits_total ?? raw.pending_deposits_eur ?? raw.pendingDepositsTotal ?? 0
-            ),
-            pendingWithdrawalsCount: Number(raw.pending_withdrawals_count ?? raw.pendingWithdrawalsCount ?? 0),
-            pendingWithdrawalsTotalEur: centsOrEurToEur(
-              raw.pending_withdrawals_cents ?? raw.pending_withdrawals_total_cents,
-              raw.pending_withdrawals_total ?? raw.pending_withdrawals_eur ?? raw.pendingWithdrawalsTotal ?? 0
-            ),
-            kycQueueCount: Number(raw.kyc_queue_count ?? raw.pending_kyc_count ?? raw.kycQueueCount ?? 0),
-            investorsCount: Number(raw.investors_count ?? raw.total_investors ?? raw.investorsCount ?? 0),
-            totalAumAtCostEur: centsOrEurToEur(
-              raw.total_aum_cents ?? raw.aum_cents ?? raw.total_aum_at_cost_cents,
-              raw.total_aum_at_cost ?? raw.total_aum ?? raw.aum_eur ?? raw.totalAssetsUnderManagement ?? 0
-            ),
-            source: 'rpc',
-          };
-        }
+    const { data, error } = await supabase.rpc('admin_stats');
+    if (error && !isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Failed to load admin statistics.'));
+    }
+    if (!error && data) {
+      const raw: any = Array.isArray(data) ? data[0] : data;
+      if (raw && typeof raw === 'object') {
+        return {
+          pendingDepositsCount: Number(raw.pending_deposits_count ?? raw.pendingDepositsCount ?? 0),
+          pendingDepositsTotalEur: centsOrEurToEur(
+            raw.pending_deposits_cents ?? raw.pending_deposits_total_cents,
+            raw.pending_deposits_total ?? raw.pending_deposits_eur ?? raw.pendingDepositsTotal ?? 0
+          ),
+          pendingWithdrawalsCount: Number(raw.pending_withdrawals_count ?? raw.pendingWithdrawalsCount ?? 0),
+          pendingWithdrawalsTotalEur: centsOrEurToEur(
+            raw.pending_withdrawals_cents ?? raw.pending_withdrawals_total_cents,
+            raw.pending_withdrawals_total ?? raw.pending_withdrawals_eur ?? raw.pendingWithdrawalsTotal ?? 0
+          ),
+          kycQueueCount: Number(raw.kyc_queue_count ?? raw.pending_kyc_count ?? raw.kycQueueCount ?? 0),
+          investorsCount: Number(raw.investors_count ?? raw.total_investors ?? raw.investorsCount ?? 0),
+          totalAumAtCostEur: centsOrEurToEur(
+            raw.total_aum_cents ?? raw.aum_cents ?? raw.total_aum_at_cost_cents,
+            raw.total_aum_at_cost ?? raw.total_aum ?? raw.aum_eur ?? raw.totalAssetsUnderManagement ?? 0
+          ),
+          source: 'rpc',
+        };
       }
-    } catch {
-      // Fall back cleanly if RPC is unavailable in local dev mode
     }
   }
 
@@ -219,7 +301,7 @@ function normalizeSummaryBuckets(rawMap: any): Record<string, FinanceSummaryBuck
     if (!item || typeof item !== 'object') continue;
     out[String(key)] = {
       count: Number(item.count || 0),
-      totalEur: Number(item.totalEur ?? item.total ?? 0),
+      totalEur: centsOrEurToEur(item.total_cents ?? item.totalCents, item.totalEur ?? item.total ?? 0),
     };
   }
   return out;
@@ -234,28 +316,36 @@ export async function fetchFinanceSummary(
   const toIso = to ? new Date(`${to}T23:59:59.999Z`).toISOString() : null;
 
   if (await hasLiveSupabaseSession()) {
-    try {
-      const { data, error } = await supabase.rpc('finance_summary', {
-        p_from: fromIso,
-        p_to: toIso,
-      });
-      if (!error && data && typeof data === 'object') {
-        const raw: any = Array.isArray(data) ? data[0] : data;
-        return {
-          walletLiabilitiesEur: Number(raw.wallet_liabilities ?? raw.walletLiabilitiesEur ?? 0),
-          pendingDepositsCount: Number(raw.pending_deposits_count ?? 0),
-          pendingDepositsTotalEur: Number(raw.pending_deposits_total ?? 0),
-          pendingWithdrawalsCount: Number(raw.pending_withdrawals_count ?? 0),
-          pendingWithdrawalsTotalEur: Number(raw.pending_withdrawals_total ?? 0),
-          totalsByKind: normalizeSummaryBuckets(raw.totals_by_kind),
-          totalsByStatus: normalizeSummaryBuckets(raw.totals_by_status),
-          from: raw.from ?? fromIso,
-          to: raw.to ?? toIso,
-          source: 'rpc',
-        };
-      }
-    } catch {
-      // Fall back to API endpoint
+    const { data, error } = await supabase.rpc('finance_summary', {
+      p_from: fromIso,
+      p_to: toIso,
+    });
+    if (error && !isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Failed to load finance summary.'));
+    }
+    if (!error && data && typeof data === 'object') {
+      const raw: any = Array.isArray(data) ? data[0] : data;
+      return {
+        walletLiabilitiesEur: centsOrEurToEur(
+          raw.wallet_liabilities_cents ?? raw.walletLiabilitiesCents,
+          raw.wallet_liabilities ?? raw.walletLiabilitiesEur ?? 0
+        ),
+        pendingDepositsCount: Number(raw.pending_deposits_count ?? 0),
+        pendingDepositsTotalEur: centsOrEurToEur(
+          raw.pending_deposits_cents ?? raw.pending_deposits_total_cents,
+          raw.pending_deposits_total ?? 0
+        ),
+        pendingWithdrawalsCount: Number(raw.pending_withdrawals_count ?? 0),
+        pendingWithdrawalsTotalEur: centsOrEurToEur(
+          raw.pending_withdrawals_cents ?? raw.pending_withdrawals_total_cents,
+          raw.pending_withdrawals_total ?? 0
+        ),
+        totalsByKind: normalizeSummaryBuckets(raw.totals_by_kind),
+        totalsByStatus: normalizeSummaryBuckets(raw.totals_by_status),
+        from: raw.from ?? fromIso,
+        to: raw.to ?? toIso,
+        source: 'rpc',
+      };
     }
   }
 
@@ -268,11 +358,20 @@ export async function fetchFinanceSummary(
     const d = json?.data;
     if (d && typeof d === 'object') {
       return {
-        walletLiabilitiesEur: Number(d.wallet_liabilities ?? d.walletLiabilitiesEur ?? 0),
+        walletLiabilitiesEur: centsOrEurToEur(
+          d.wallet_liabilities_cents ?? d.walletLiabilitiesCents,
+          d.wallet_liabilities ?? d.walletLiabilitiesEur ?? 0
+        ),
         pendingDepositsCount: Number(d.pending_deposits_count ?? 0),
-        pendingDepositsTotalEur: Number(d.pending_deposits_total ?? 0),
+        pendingDepositsTotalEur: centsOrEurToEur(
+          d.pending_deposits_cents ?? d.pending_deposits_total_cents,
+          d.pending_deposits_total ?? 0
+        ),
         pendingWithdrawalsCount: Number(d.pending_withdrawals_count ?? 0),
-        pendingWithdrawalsTotalEur: Number(d.pending_withdrawals_total ?? 0),
+        pendingWithdrawalsTotalEur: centsOrEurToEur(
+          d.pending_withdrawals_cents ?? d.pending_withdrawals_total_cents,
+          d.pending_withdrawals_total ?? 0
+        ),
         totalsByKind: normalizeSummaryBuckets(d.totals_by_kind),
         totalsByStatus: normalizeSummaryBuckets(d.totals_by_status),
         from: d.from ?? fromIso,
@@ -331,57 +430,31 @@ export async function fetchFinanceSummary(
 export async function fetchWalletBalancesMap(): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   if (!(await hasLiveSupabaseSession())) return map;
-  try {
-    const { data, error } = await supabase.from('wallet_balances').select('*');
-    if (!error && Array.isArray(data)) {
-      for (const row of data as any[]) {
-        const uid = String(row.user_id || row.id || '');
-        if (!uid) continue;
-        const eur =
-          row.balance_cents !== undefined
-            ? Number(row.balance_cents) / 100
-            : row.available_cents !== undefined
-            ? Number(row.available_cents) / 100
-            : Number(row.balance ?? row.wallet_balance ?? row.available_balance ?? 0);
-        map.set(uid, eur);
-      }
+  const { data, error } = await supabase.from('wallet_balances').select('*');
+  if (error && !isMissingRpcOrSignatureError(error)) {
+    throw new Error(extractDbRefusalMessage(error, 'Failed to load wallet balances.'));
+  }
+  if (!error && Array.isArray(data)) {
+    for (const row of data as any[]) {
+      const uid = String(row.user_id || row.id || '');
+      if (!uid) continue;
+      const eur = centsOrEurToEur(
+        row.balance_cents ?? row.available_cents,
+        row.balance ?? row.wallet_balance ?? row.available_balance ?? 0
+      );
+      map.set(uid, eur);
     }
-  } catch {
-    // View optional when using profiles.wallet_balance
   }
   return map;
 }
 
-export async function assignPaymentGateToInvestor(userIds: string[], method: 'bank' | 'usdt', gateId: string | null): Promise<void> {
-  if (!userIds.length) throw new Error('Select at least one investor.');
-  const params = gateId
-    ? { p_users: userIds, p_gate: gateId }
-    : { p_users: userIds, p_method: method };
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc(gateId ? 'assign_gate' : 'clear_gate', params);
-    if (!error) return;
-  }
-  await apiFetchJson('/admin/users/assign-gate', {
-    method: 'POST',
-    body: JSON.stringify({ userIds, method, gateId }),
-  });
+export async function assignPaymentGateToInvestor(userId: string, gateId: string | null, _gateName?: string): Promise<void> {
+  await requireRpcSuccess('assign_gate', { p_users: [userId], p_gate: gateId });
 }
 
-export async function setInvestorFrozenState(userId: string, frozen: boolean, reason?: string): Promise<void> {
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('set_frozen', { p_user: userId, p_frozen: frozen });
-    if (!error) return;
-  }
-  await apiFetchJson(`/admin/users/${encodeURIComponent(userId)}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      status: frozen ? 'suspended' : 'active',
-      frozen,
-      reason: reason || (frozen ? 'Account frozen by staff compliance' : 'Account unfrozen by staff'),
-    }),
-  });
+export async function setInvestorFrozenState(userId: string, frozen: boolean, _reason?: string): Promise<void> {
+  await requireRpcSuccess('set_frozen', { p_user: userId, p_frozen: frozen });
 }
-
 // ============================================================================
 // 3. KYC: kyc_submissions + signed URL + review_kyc
 // ============================================================================
@@ -392,6 +465,8 @@ export interface KycSubmissionRow {
   filePath: string;
   status: 'pending' | 'approved' | 'rejected';
   reason?: string;
+  processedBy?: string;
+  processedAt?: string;
   reviewedAt?: string;
   createdAt: string;
   inlineUrl?: string;
@@ -399,25 +474,26 @@ export interface KycSubmissionRow {
 
 export async function fetchKycSubmissionsQueue(fallbackDocs: any[] = []): Promise<KycSubmissionRow[]> {
   if (await hasLiveSupabaseSession()) {
-    try {
-      const { data, error } = await supabase
-        .from('kyc_submissions')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (!error && Array.isArray(data)) {
-        return (data as any[]).map((r) => ({
-          id: String(r.id),
-          userId: String(r.user_id),
-          docType: String(r.doc_type || 'Identity Document'),
-          filePath: String(r.file_path || ''),
-          status: r.status === 'approved' || r.status === 'verified' ? 'approved' : r.status === 'rejected' ? 'rejected' : 'pending',
-          reason: r.reason || undefined,
-          reviewedAt: r.reviewed_at || undefined,
-          createdAt: String(r.created_at || new Date().toISOString()),
-        }));
-      }
-    } catch {
-      // Fallback below
+    const { data, error } = await supabase
+      .from('kyc_submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error && !isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Failed to load KYC submissions queue.'));
+    }
+    if (!error && Array.isArray(data)) {
+      return (data as any[]).map((r) => ({
+        id: String(r.id),
+        userId: String(r.user_id),
+        docType: String(r.doc_type || 'Identity Document'),
+        filePath: String(r.file_path || ''),
+        status: r.status === 'approved' || r.status === 'verified' ? 'approved' : r.status === 'rejected' ? 'rejected' : 'pending',
+        reason: r.reason || undefined,
+        processedBy: r.processed_by || r.reviewed_by || undefined,
+        processedAt: r.processed_at || r.reviewed_at || undefined,
+        reviewedAt: r.reviewed_at || r.processed_at || undefined,
+        createdAt: String(r.created_at || new Date().toISOString()),
+      }));
     }
   }
   return fallbackDocs
@@ -445,12 +521,19 @@ export async function createPrivateBucketSignedUrl(
   if (!filePath) return null;
   if (/^https?:\/\//i.test(filePath) || filePath.startsWith('data:')) return filePath;
   if (await hasLiveSupabaseSession()) {
+    const cleanPath = filePath.replace(/^\/+/, '');
     for (const bucket of bucketCandidates) {
-      try {
-        const { data, error } = await supabase.storage.from(bucket).createSignedUrl(filePath, 120);
-        if (!error && data?.signedUrl) return data.signedUrl;
-      } catch {
-        // Try next bucket
+      const pathVariants = cleanPath.startsWith(`${bucket}/`)
+        ? [cleanPath, cleanPath.slice(bucket.length + 1)]
+        : [cleanPath];
+      for (const candidatePath of pathVariants) {
+        if (!candidatePath) continue;
+        try {
+          const { data, error } = await supabase.storage.from(bucket).createSignedUrl(candidatePath, 120);
+          if (!error && data?.signedUrl) return data.signedUrl;
+        } catch {
+          // Try next path/bucket
+        }
       }
     }
   }
@@ -461,91 +544,55 @@ export async function reviewKycSubmission(
   submissionId: string,
   approve: boolean,
   reason: string | undefined,
-  userIdForFallback: string
-): Promise<void> {
+  _userIdForFallback: string
+): Promise<string | undefined> {
   if (!approve && (!reason || !reason.trim())) {
     throw new Error('A rejection reason is required.');
   }
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('review_kyc', {
-      p_sub: submissionId,
-      p_approve: approve,
-      p_reason: reason?.trim() || null,
-    });
-    if (!error) return;
-    // If the submission ID is not a UUID (fallback doc), fall through to API update
-  }
-  await apiFetchJson(`/admin/users/${encodeURIComponent(userIdForFallback)}/kyc`, {
-    method: 'POST',
-    body: JSON.stringify({ kycStatus: approve ? 'approved' : 'rejected', notes: reason?.trim() || undefined }),
+  const res = await requireRpcSuccess<any>('review_kyc', {
+    p_sub: submissionId,
+    p_approve: approve,
+    p_reason: reason?.trim() || null,
   });
+  if (typeof res === 'string' && res.trim()) return res.trim();
+  if (res && typeof res === 'object') {
+    const candidate = res.kyc_status ?? res.overall_status ?? res.status ?? res.investor_kyc_status;
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  }
+  return undefined;
 }
-
 // ============================================================================
 // 4. DEPOSITS: approve_deposit, reject_deposit, admin_credit_deposit
 // ============================================================================
 export async function approveDepositSubmission(
   depositId: string,
-  actualAmountEur: number,
-  isManualSubmission = false
+  actualAmountEur?: number,
+  _isManualSubmission = false
 ): Promise<void> {
-  const cents = eurToCents(actualAmountEur);
-  if (!Number.isFinite(cents) || cents <= 0) {
-    throw new Error('Amount actually received must be greater than zero.');
-  }
-  const cleanEur = centsToEur(cents);
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<{ fn: string; args: Record<string, any> }> = [
-      { fn: 'approve_deposit', args: { p_deposit_id: depositId, p_received_amount: cleanEur } },
-      { fn: 'approve_deposit', args: { p_id: depositId, p_amount_cents: cents } },
-      { fn: 'approve_deposit', args: { p_deposit: depositId, p_amount_cents: cents } },
-      { fn: 'approve_deposit', args: { p_deposit_id: depositId, p_amount: cleanEur } },
-    ];
-    for (const attempt of rpcAttempts) {
-      const { error } = await supabase.rpc(attempt.fn, attempt.args);
-      if (!error) return;
-      if (!isMissingRpcOrSignatureError(error)) {
-        throw new Error(extractDbRefusalMessage(error, 'Deposit approval was rejected by the database.'));
-      }
+  let receivedCents: number | undefined;
+  if (actualAmountEur !== undefined) {
+    receivedCents = eurToCents(actualAmountEur);
+    if (!Number.isSafeInteger(receivedCents) || receivedCents <= 0) {
+      throw new Error('Amount actually received must be greater than zero.');
     }
   }
-  const endpoint = isManualSubmission
-    ? `/admin/manual-deposits/${encodeURIComponent(depositId)}/approve`
-    : `/admin/deposits/${encodeURIComponent(depositId)}/approve`;
-  await apiFetchJson(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({ amount: cleanEur, amountCents: cents }),
-  });
+  const payload: Record<string, any> = { tx_id: depositId };
+  if (receivedCents !== undefined) {
+    payload.received_cents = receivedCents;
+  }
+  await requireRpcSuccess('approve_deposit', payload);
 }
 
 export async function rejectDepositSubmission(
   depositId: string,
   reason: string,
-  isManualSubmission = false
+  _isManualSubmission = false
 ): Promise<void> {
-  if (!reason.trim()) {
-    throw new Error('A rejection reason is required.');
-  }
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<{ fn: string; args: Record<string, any> }> = [
-      { fn: 'reject_deposit', args: { p_deposit_id: depositId, p_reason: reason.trim() } },
-      { fn: 'reject_deposit', args: { p_id: depositId, p_reason: reason.trim() } },
-      { fn: 'reject_deposit', args: { p_deposit: depositId, p_reason: reason.trim() } },
-    ];
-    for (const attempt of rpcAttempts) {
-      const { error } = await supabase.rpc(attempt.fn, attempt.args);
-      if (!error) return;
-      if (!isMissingRpcOrSignatureError(error)) {
-        throw new Error(extractDbRefusalMessage(error, 'Deposit rejection was refused by the database.'));
-      }
-    }
-  }
-  const endpoint = isManualSubmission
-    ? `/admin/manual-deposits/${encodeURIComponent(depositId)}/reject`
-    : `/admin/deposits/${encodeURIComponent(depositId)}/reject`;
-  await apiFetchJson(endpoint, {
-    method: 'POST',
-    body: JSON.stringify({ reason: reason.trim() }),
+  const cleanReason = reason.trim();
+  if (!cleanReason) throw new Error('A rejection reason is required.');
+  await requireRpcSuccess('reject_deposit', {
+    tx_id: depositId,
+    reason: cleanReason,
   });
 }
 
@@ -555,122 +602,62 @@ export async function recordManualDepositRpc(params: {
   note?: string;
 }): Promise<void> {
   const amountCents = eurToCents(params.amountEur);
-  if (!params.userId || !Number.isFinite(amountCents) || amountCents <= 0) {
-    throw new Error('Select an investor and enter a positive deposit amount.');
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    throw new Error('Manual deposit amount must be greater than zero.');
   }
-  const cleanEur = centsToEur(amountCents);
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('admin_credit_deposit', {
-      p_user_id: params.userId,
-      p_amount: cleanEur,
-      p_note: params.note?.trim() || null,
-    });
-    if (!error) return;
-    if (!isMissingRpcOrSignatureError(error)) {
-      throw new Error(extractDbRefusalMessage(error, 'Manual deposit was refused by the database.'));
-    }
-  }
-  await apiFetchJson('/admin/finance/manual-deposit', {
-    method: 'POST',
-    body: JSON.stringify({
-      userId: params.userId,
-      amount: cleanEur,
-      amountCents,
-      note: params.note?.trim() || undefined,
-    }),
+  await requireRpcSuccess('admin_credit_deposit', {
+    p_user: params.userId,
+    p_amount: amountCents,
+    p_note: params.note?.trim() || null,
   });
 }
 
 // ============================================================================
-// 5. WITHDRAWALS: approve_withdrawal(tx, payout_ref, fee) & reject_withdrawal
+// 5. WITHDRAWALS & CORRECTIONS: approve_withdrawal, reject_withdrawal,
+//    admin_charge_fee, admin_adjust, reverse_transaction
 // ============================================================================
 export async function approveWithdrawalRequest(
   withdrawalId: string,
   payoutRef: string,
-  feeEur: number
+  feeEur: number = 0
 ): Promise<void> {
   const cleanRef = String(payoutRef || '').trim();
-  if (!cleanRef || cleanRef.length < 2) {
-    throw new Error('Payout reference (bank transfer ID) is required.');
+  if (!cleanRef) {
+    throw new Error('Payout reference is required.');
   }
   const feeCents = Math.max(0, eurToCents(feeEur));
-  const cleanFee = centsToEur(feeCents);
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<Record<string, any>> = [
-      { p_withdrawal_id: withdrawalId, p_payout_ref: cleanRef, p_fee: cleanFee },
-      { p_tx: withdrawalId, p_payout_ref: cleanRef, p_fee: cleanFee },
-      { p_id: withdrawalId },
-    ];
-    for (const args of rpcAttempts) {
-      const { error } = await supabase.rpc('approve_withdrawal', args);
-      if (!error) return;
-      if (!isMissingRpcOrSignatureError(error)) {
-        throw new Error(extractDbRefusalMessage(error, 'Withdrawal approval was refused by the database.'));
-      }
-    }
+  if (!Number.isSafeInteger(feeCents)) {
+    throw new Error('Withdrawal fee must be a valid integer number of cents.');
   }
-  await apiFetchJson(`/admin/withdrawals/${encodeURIComponent(withdrawalId)}/approve`, {
-    method: 'POST',
-    body: JSON.stringify({ payoutReference: cleanRef, fee: cleanFee, feeCents }),
+  await requireRpcSuccess('approve_withdrawal', {
+    p_tx: withdrawalId,
+    p_payout_ref: cleanRef,
+    p_fee_cents: feeCents,
   });
 }
 
 export async function rejectWithdrawalRequest(withdrawalId: string, reason: string): Promise<void> {
-  if (!reason.trim()) {
-    throw new Error('A rejection reason is required.');
-  }
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<Record<string, any>> = [
-      { p_withdrawal_id: withdrawalId, p_reason: reason.trim() },
-      { p_id: withdrawalId, p_reason: reason.trim() },
-      { p_withdrawal: withdrawalId, p_reason: reason.trim() },
-    ];
-    for (const args of rpcAttempts) {
-      const { error } = await supabase.rpc('reject_withdrawal', args);
-      if (!error) return;
-      if (!isMissingRpcOrSignatureError(error)) {
-        throw new Error(extractDbRefusalMessage(error, 'Withdrawal rejection was refused by the database.'));
-      }
-    }
-  }
-  await apiFetchJson(`/admin/withdrawals/${encodeURIComponent(withdrawalId)}/reject`, {
-    method: 'POST',
-    body: JSON.stringify({ reason: reason.trim() }),
+  const cleanReason = reason.trim();
+  if (!cleanReason) throw new Error('A rejection reason is required.');
+  await requireRpcSuccess('reject_withdrawal', {
+    p_tx: withdrawalId,
+    p_reason: cleanReason,
   });
 }
 
-// ============================================================================
-// 5B. PAYMENTS & CORRECTIONS: admin_charge_fee, admin_adjust, reverse_transaction
-// ============================================================================
 export async function adminChargeFeeRpc(params: {
   userId: string;
   amountEur: number;
   reason?: string;
 }): Promise<void> {
   const amountCents = eurToCents(params.amountEur);
-  if (!params.userId || !Number.isFinite(amountCents) || amountCents <= 0) {
-    throw new Error('Select an investor and enter a positive fee amount.');
+  if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+    throw new Error('Fee amount must be greater than zero.');
   }
-  const cleanEur = centsToEur(amountCents);
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('admin_charge_fee', {
-      p_user_id: params.userId,
-      p_amount: cleanEur,
-      p_reason: params.reason?.trim() || null,
-    });
-    if (!error) return;
-    if (!isMissingRpcOrSignatureError(error)) {
-      throw new Error(extractDbRefusalMessage(error, 'Fee charge was refused by the database.'));
-    }
-  }
-  await apiFetchJson('/admin/finance/charge-fee', {
-    method: 'POST',
-    body: JSON.stringify({
-      userId: params.userId,
-      amount: cleanEur,
-      amountCents,
-      reason: params.reason?.trim() || undefined,
-    }),
+  await requireRpcSuccess('admin_charge_fee', {
+    p_user: params.userId,
+    p_amount: amountCents,
+    p_reason: params.reason?.trim() || null,
   });
 }
 
@@ -679,33 +666,18 @@ export async function adminAdjustBalanceRpc(params: {
   deltaEur: number;
   reason: string;
 }): Promise<void> {
-  const deltaCents = eurToCents(params.deltaEur);
-  if (!params.userId || !Number.isFinite(deltaCents) || deltaCents === 0) {
-    throw new Error('Select an investor and enter a non-zero adjustment amount.');
+  const amountCents = eurToCents(params.deltaEur);
+  if (!Number.isSafeInteger(amountCents) || amountCents === 0) {
+    throw new Error('Adjustment amount must be a non-zero integer number of cents.');
   }
-  if (!params.reason || params.reason.trim().length < 3) {
-    throw new Error('A clear reason (min 3 characters) is required for balance adjustments.');
+  const cleanReason = params.reason.trim();
+  if (!cleanReason) {
+    throw new Error('An adjustment reason is required.');
   }
-  const cleanDelta = centsToEur(deltaCents);
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('admin_adjust', {
-      p_user_id: params.userId,
-      p_delta: cleanDelta,
-      p_reason: params.reason.trim(),
-    });
-    if (!error) return;
-    if (!isMissingRpcOrSignatureError(error)) {
-      throw new Error(extractDbRefusalMessage(error, 'Balance adjustment was refused by the database.'));
-    }
-  }
-  await apiFetchJson('/admin/finance/adjust', {
-    method: 'POST',
-    body: JSON.stringify({
-      userId: params.userId,
-      delta: cleanDelta,
-      deltaCents,
-      reason: params.reason.trim(),
-    }),
+  await requireRpcSuccess('admin_adjust', {
+    p_user: params.userId,
+    p_amount: amountCents,
+    p_reason: cleanReason,
   });
 }
 
@@ -713,32 +685,15 @@ export async function reverseTransactionRpc(params: {
   transactionId: string;
   reason: string;
 }): Promise<void> {
-  if (!params.transactionId) {
-    throw new Error('Select a completed transaction to reverse.');
+  const cleanReason = params.reason.trim();
+  if (!cleanReason) {
+    throw new Error('A reversal reason is required.');
   }
-  if (!params.reason || params.reason.trim().length < 3) {
-    throw new Error('A clear reason (min 3 characters) is required to reverse a transaction.');
-  }
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('reverse_transaction', {
-      p_transaction_id: params.transactionId,
-      p_reason: params.reason.trim(),
-    });
-    if (!error) return;
-    if (!isMissingRpcOrSignatureError(error)) {
-      throw new Error(extractDbRefusalMessage(error, 'Transaction reversal was refused by the database.'));
-    }
-  }
-  await apiFetchJson('/admin/finance/reverse', {
-    method: 'POST',
-    body: JSON.stringify({
-      transactionId: params.transactionId,
-      reason: params.reason.trim(),
-    }),
+  await requireRpcSuccess('reverse_transaction', {
+    p_tx: params.transactionId,
+    p_reason: cleanReason,
   });
-}
-
-// ============================================================================
+}// ============================================================================
 // 6. PROPERTIES: Supabase properties table + photo storage upload
 // ============================================================================
 export interface SupabasePropertyRow {
@@ -843,43 +798,92 @@ export async function upsertSupabaseProperty(
 }
 
 // ============================================================================
-// 7. INVESTMENTS: record_investment
+// 7. INVESTMENTS & INVESTMENT REQUESTS: record_investment, approve_investment_request, reject_investment_request
 // ============================================================================
+export interface InvestmentRequestRow {
+  id: string;
+  userId: string;
+  propertyId: string;
+  shares: number;
+  amountCents: number;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  processedBy?: string;
+  processedAt?: string;
+  createdAt: string;
+  reviewedAt?: string;
+}
+
+export async function fetchInvestmentRequestsQueue(): Promise<InvestmentRequestRow[]> {
+  if (!(await hasLiveSupabaseSession())) return [];
+  const { data, error } = await supabase
+    .from('investment_requests')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error && !isMissingRpcOrSignatureError(error)) {
+    throw new Error(extractDbRefusalMessage(error, 'Failed to load investment requests queue.'));
+  }
+  if (error || !Array.isArray(data)) return [];
+  return (data as any[]).map((r) => {
+    const rawStatus = String(r.status || 'pending').toLowerCase();
+    const status: 'pending' | 'approved' | 'rejected' =
+      rawStatus === 'approved' || rawStatus === 'completed'
+        ? 'approved'
+        : rawStatus === 'rejected' || rawStatus === 'declined'
+        ? 'rejected'
+        : 'pending';
+    const amountCents =
+      r.amount_cents !== undefined && r.amount_cents !== null
+        ? Math.round(Number(r.amount_cents))
+        : r.total_cents !== undefined && r.total_cents !== null
+        ? Math.round(Number(r.total_cents))
+        : eurToCents(r.amount_eur ?? r.amount ?? 0);
+    return {
+      id: String(r.id),
+      userId: String(r.user_id || r.userId || ''),
+      propertyId: String(r.property_id || r.propertyId || ''),
+      shares: Number(r.shares ?? r.tokens ?? r.tokens_requested ?? 0),
+      amountCents,
+      status,
+      reason: r.reason || r.rejection_reason || undefined,
+      processedBy: r.processed_by || r.reviewed_by || undefined,
+      processedAt: r.processed_at || r.reviewed_at || undefined,
+      createdAt: String(r.created_at || new Date().toISOString()),
+      reviewedAt: r.reviewed_at || r.processed_at || undefined,
+    };
+  });
+}
+
+export async function approveInvestmentRequestRpc(requestId: string): Promise<void> {
+  await requireRpcSuccess('approve_investment_request', { p_req: requestId });
+}
+
+export async function rejectInvestmentRequestRpc(requestId: string, reason: string): Promise<void> {
+  const cleanReason = reason.trim();
+  if (!cleanReason) {
+    throw new Error('A rejection reason is required.');
+  }
+  await requireRpcSuccess('reject_investment_request', {
+    p_req: requestId,
+    p_reason: cleanReason,
+  });
+}
+
 export async function recordInvestmentRpc(params: {
   userId: string;
   propertyId: string;
   shares: number;
   sharePriceEur: number;
 }): Promise<void> {
-  const sharesInt = Math.floor(Number(params.shares || 0));
-  const sharePriceCents = eurToCents(params.sharePriceEur);
-  if (!params.userId || !params.propertyId || sharesInt <= 0) {
-    throw new Error('Investor, property, and positive share count are required.');
+  if (!Number.isSafeInteger(params.shares) || params.shares <= 0) {
+    throw new Error('Share quantity must be a positive integer.');
   }
-  if (await hasLiveSupabaseSession()) {
-    const attempts: Array<Record<string, any>> = [
-      { p_user_id: params.userId, p_property_id: params.propertyId, p_shares: sharesInt },
-      { p_user: params.userId, p_property: params.propertyId, p_shares: sharesInt },
-    ];
-    for (const args of attempts) {
-      const { error } = await supabase.rpc('record_investment', args);
-      if (!error) return;
-      if (!isMissingRpcOrSignatureError(error)) {
-        throw new Error(extractDbRefusalMessage(error, 'Investment recording was refused by the database.'));
-      }
-    }
-  }
-  await apiFetchJson('/admin/investments', {
-    method: 'POST',
-    body: JSON.stringify({
-      ...params,
-      shares: sharesInt,
-      sharePriceEur: centsToEur(sharePriceCents),
-      sharePriceCents,
-    }),
+  await requireRpcSuccess('record_investment', {
+    p_user: params.userId,
+    p_property: params.propertyId,
+    p_shares: params.shares,
   });
 }
-
 // ============================================================================
 // 8. DISTRIBUTIONS: pay_distribution & distributions list
 // ============================================================================
@@ -894,24 +898,23 @@ export interface PastDistributionRow {
 
 export async function fetchPastDistributions(): Promise<PastDistributionRow[]> {
   if (await hasLiveSupabaseSession()) {
-    try {
-      const { data, error } = await supabase
-        .from('distributions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      if (!error && Array.isArray(data)) {
-        return (data as any[]).map((r) => ({
-          id: String(r.id),
-          propertyId: String(r.property_id || ''),
-          totalEur: centsToEur(Number(r.total_cents || 0)),
-          note: r.note || undefined,
-          createdBy: r.created_by || undefined,
-          createdAt: String(r.created_at || new Date().toISOString()),
-        }));
-      }
-    } catch {
-      // Fallback below
+    const { data, error } = await supabase
+      .from('distributions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error && !isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Failed to load past distributions.'));
+    }
+    if (!error && Array.isArray(data)) {
+      return (data as any[]).map((r) => ({
+        id: String(r.id),
+        propertyId: String(r.property_id || ''),
+        totalEur: centsToEur(Math.round(Number(r.total_cents || 0))),
+        note: r.note || undefined,
+        createdBy: r.created_by || undefined,
+        createdAt: String(r.created_at || new Date().toISOString()),
+      }));
     }
   }
   return [];
@@ -922,53 +925,24 @@ export async function executePayDistribution(params: {
   totalAmountEur: number;
   note?: string;
 }): Promise<{ paidCount: number; totalAmountEur: number; message: string }> {
-  const totalCents = eurToCents(params.totalAmountEur);
-  if (!params.propertyId || !Number.isFinite(totalCents) || totalCents <= 0) {
-    throw new Error('Property and positive EUR distribution total are required.');
+  const totalCents = parseStrictEurToCents(params.totalAmountEur);
+  if (totalCents === null || !Number.isSafeInteger(totalCents) || totalCents <= 0) {
+    throw new Error('Distribution amount must be a positive integer number of cents.');
   }
-  const cleanTotalEur = centsToEur(totalCents);
-  if (await hasLiveSupabaseSession()) {
-    const rpcAttempts: Array<Record<string, any>> = [
-      { p_property_id: params.propertyId, p_total_amount: cleanTotalEur, p_note: params.note?.trim() || null },
-      { p_property: params.propertyId, p_total: totalCents, p_note: params.note?.trim() || null },
-    ];
-    for (const args of rpcAttempts) {
-      const { data, error } = await supabase.rpc('pay_distribution', args);
-      if (!error) {
-        const paidCount = Number(
-          (data as any)?.recipients_paid ??
-            (data as any)?.paid_count ??
-            (data as any)?.investors_paid ??
-            (data as any)?.count ??
-            (typeof data === 'number' ? data : 0)
-        );
-        return {
-          paidCount,
-          totalAmountEur: cleanTotalEur,
-          message: `Distribution executed: ${paidCount} investor${paidCount === 1 ? '' : 's'} paid.`,
-        };
-      }
-      if (!isMissingRpcOrSignatureError(error)) {
-        throw new Error(extractDbRefusalMessage(error, 'Distribution execution was refused by the database.'));
-      }
-    }
-  }
-  const json = await apiFetchJson('/admin/distributions/pay', {
-    method: 'POST',
-    body: JSON.stringify({
-      propertyId: params.propertyId,
-      totalAmountEur: cleanTotalEur,
-      totalAmountCents: totalCents,
-      note: params.note?.trim() || undefined,
-    }),
+  const data = await requireRpcSuccess<any>('pay_distribution', {
+    p_property: params.propertyId,
+    p_total: totalCents,
+    p_note: params.note?.trim() || null,
   });
+  const paidCount = Number(
+    data?.paid_count ?? data?.investors_paid ?? data?.count ?? (typeof data === 'number' ? data : 0)
+  );
   return {
-    paidCount: Number(json.paidCount ?? json.data?.paidCount ?? 0),
-    totalAmountEur: cleanTotalEur,
-    message: json.message || `Paid ${Number(json.paidCount ?? 0)} investors.`,
+    paidCount,
+    totalAmountEur: centsToEur(totalCents),
+    message: `Distribution executed: ${paidCount} investor${paidCount === 1 ? '' : 's'} paid.`,
   };
 }
-
 // ============================================================================
 // 10. DOCUMENTS: private "documents" bucket + documents table
 // ============================================================================
@@ -983,23 +957,22 @@ export interface InvestorDocumentRow {
 
 export async function fetchInvestorDocumentsTable(fallbackDocs: any[] = []): Promise<InvestorDocumentRow[]> {
   if (await hasLiveSupabaseSession()) {
-    try {
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (!error && Array.isArray(data)) {
-        return (data as any[]).map((r) => ({
-          id: String(r.id),
-          userId: String(r.user_id || ''),
-          title: String(r.title || 'Investor Document'),
-          filePath: String(r.file_path || r.file_name || ''),
-          createdAt: String(r.created_at || r.uploaded_at || new Date().toISOString()),
-          inlineUrl: r.file_data_url || undefined,
-        }));
-      }
-    } catch {
-      // Fallback below
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error && !isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Failed to load investor documents.'));
+    }
+    if (!error && Array.isArray(data)) {
+      return (data as any[]).map((r) => ({
+        id: String(r.id),
+        userId: String(r.user_id || ''),
+        title: String(r.title || 'Investor Document'),
+        filePath: String(r.file_path || r.file_name || ''),
+        createdAt: String(r.created_at || r.uploaded_at || new Date().toISOString()),
+        inlineUrl: r.file_data_url || undefined,
+      }));
     }
   }
   return fallbackDocs.map((d) => ({
@@ -1121,19 +1094,8 @@ export async function fetchAdminNotificationsTable(): Promise<any[] | null> {
 // 13. STAFF & ROLES: set_staff_role
 // ============================================================================
 export async function assignStaffRoleRpc(userId: string, role: string | null): Promise<void> {
-  if (await hasLiveSupabaseSession()) {
-    const { error } = await supabase.rpc('set_staff_role', {
-      p_user: userId,
-      p_role: role ?? '',
-    });
-    if (!error) return;
-  }
-  await apiFetchJson('/admin/staff-role', {
-    method: 'POST',
-    body: JSON.stringify({ userId, role }),
-  });
+  await requireRpcSuccess('set_staff_role', { p_user: userId, p_role: role ?? '' });
 }
-
 // ============================================================================
 // 14. SETTINGS ("limits", "email_templates") & PAYMENT GATES
 // ============================================================================
@@ -1162,6 +1124,7 @@ export async function fetchSettingsRows(): Promise<{ limits: any; email_template
     min_withdrawal_eur: 250,
     max_withdrawal_eur: 250000,
     min_investment_eur: 500,
+    withdrawal_fee_pct: 0,
     withdrawal_fee_eur: 0,
     require_kyc_for_withdrawal: true,
   };
@@ -1322,25 +1285,24 @@ export interface AuditLogRow {
 
 export async function fetchAuditLogRows(): Promise<AuditLogRow[]> {
   if (await hasLiveSupabaseSession()) {
-    try {
-      const { data, error } = await supabase
-        .from('audit_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(300);
-      if (!error && Array.isArray(data)) {
-        return (data as any[]).map((r) => ({
-          id: String(r.id),
-          actor: String(r.actor || r.actor_email || r.actor_id || 'System'),
-          action: String(r.action || 'ACTION'),
-          entity: String(r.entity || r.entity_type || 'system'),
-          entityId: String(r.entity_id || '—'),
-          details: r.details ?? {},
-          createdAt: String(r.created_at || new Date().toISOString()),
-        }));
-      }
-    } catch {
-      // Fallback below
+    const { data, error } = await supabase
+      .from('audit_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(300);
+    if (error && !isMissingRpcOrSignatureError(error)) {
+      throw new Error(extractDbRefusalMessage(error, 'Failed to load audit logs.'));
+    }
+    if (!error && Array.isArray(data)) {
+      return (data as any[]).map((r) => ({
+        id: String(r.id),
+        actor: String(r.actor || r.actor_email || r.actor_id || 'System'),
+        action: String(r.action || 'ACTION'),
+        entity: String(r.entity || r.entity_type || 'system'),
+        entityId: String(r.entity_id || '—'),
+        details: r.details ?? {},
+        createdAt: String(r.created_at || new Date().toISOString()),
+      }));
     }
   }
   try {
