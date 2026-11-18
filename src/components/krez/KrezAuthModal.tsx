@@ -18,7 +18,7 @@ export function openKrezAuthModal(mode: KrezAuthMode = 'login', redirectTo?: str
 }
 
 export const KrezAuthModal: React.FC = () => {
-  const { login, register, sendPasswordReset } = useAuth();
+  const { login, sendPasswordReset } = useAuth();
   const { navigateTo } = useNavigation();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +40,11 @@ export const KrezAuthModal: React.FC = () => {
   useEffect(() => {
     const handleOpen = (ev: Event) => {
       const custom = ev as CustomEvent<{ mode?: KrezAuthMode; redirectTo?: string }>;
+      if (custom.detail?.mode === 'register') {
+        setIsOpen(false);
+        navigateTo('/register');
+        return;
+      }
       setMode(custom.detail?.mode || 'login');
       setRedirectTo(custom.detail?.redirectTo);
       setError(null);
@@ -53,7 +58,7 @@ export const KrezAuthModal: React.FC = () => {
     };
     window.addEventListener(OPEN_AUTH_EVENT, handleOpen);
     return () => window.removeEventListener(OPEN_AUTH_EVENT, handleOpen);
-  }, []);
+  }, [navigateTo]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -69,6 +74,11 @@ export const KrezAuthModal: React.FC = () => {
   if (!isOpen) return null;
 
   const switchMode = (nextMode: KrezAuthMode) => {
+    if (nextMode === 'register') {
+      setIsOpen(false);
+      navigateTo('/register');
+      return;
+    }
     setMode(nextMode);
     setError(null);
     setOfferRegister(false);
@@ -82,6 +92,11 @@ export const KrezAuthModal: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    if (mode === 'register') {
+      setIsOpen(false);
+      navigateTo('/register');
+      return;
+    }
     setError(null);
     setOfferRegister(false);
     setOfferLogin(false);
@@ -120,20 +135,8 @@ export const KrezAuthModal: React.FC = () => {
           navigateTo(redirectTo);
         }
       } else if (mode === 'register') {
-        const cleanName = fullName.trim();
-        const res = await register(cleanEmail, password, cleanName, 'investor', 'individual_investor');
-        if (res.requiresVerification) {
-          setNotice('Account created. Check your inbox to confirm your email address, or sign in once verified.');
-          setMode('login');
-        } else {
-          setIsOpen(false);
-          setPassword('');
-          if (redirectTo) {
-            navigateTo(redirectTo);
-          } else {
-            navigateTo('/portfolio');
-          }
-        }
+        setIsOpen(false);
+        navigateTo('/register');
       } else {
         await sendPasswordReset(cleanEmail);
         setNotice('If an account exists for that email, password reset instructions have been sent.');
