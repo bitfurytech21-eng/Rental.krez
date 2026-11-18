@@ -147,7 +147,6 @@ export const AdminFinanceSection: React.FC<AdminFinanceSectionProps> = ({
   // Shared lookup maps
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
-  const gateById = useMemo(() => new Map(paymentGates.map((g) => [g.id, g.name])), [paymentGates]);
   const investorsOnly = useMemo(
     () => users.filter((u) => !u.isAdmin && !u.staffRole),
     [users]
