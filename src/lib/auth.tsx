@@ -39,6 +39,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<void>;
   updateUserEmail: (newEmail: string) => Promise<void>;
   updateUserPassword: (newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   verifyMfaCode: (factorId: string, challengeId: string, code: string) => Promise<boolean>;
   quickDemoSession: (role: 'investor' | 'admin', accountType?: AccountType) => Promise<User>;
   syncAdminSession: (newToken: string, updatedFields: { email: string; fullName?: string }) => void;
@@ -593,11 +594,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       } catch (e) {}
 
-      if (error.message.toLowerCase().includes('email not confirmed')) {
-        throw new Error('Email not verified yet. Please check your inbox and verify your email before signing in.');
-      }
-      if (error.message.toLowerCase().includes('invalid login credentials')) {
-        throw new Error('Invalid email or password. Please verify your credentials and try again.');
+      if (
+        error.message.toLowerCase().includes('email not confirmed') ||
+        error.message.toLowerCase().includes('invalid login credentials')
+      ) {
+        const credentialError: any = new Error('Email or password is incorrect');
+        credentialError.code = 'INVALID_CREDENTIALS';
+        throw credentialError;
       }
       throw new Error(error.message);
     }
@@ -767,40 +770,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Send password reset email via Supabase recovery flow with server fallback
+  // Supabase Auth intentionally returns the same result for existing and unknown email addresses.
   const sendPasswordReset = async (email: string): Promise<boolean> => {
     const clean = email.trim().toLowerCase();
     if (!isConfigured) {
-      return true;
+      throw new Error('Password recovery is temporarily unavailable.');
     }
 
     const redirectUrl = getAuthRedirectUrl('/#reset-password');
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(clean, {
-        redirectTo: redirectUrl,
-      });
-
-      if (error) {
-        if (
-          error.message.toLowerCase().includes('email') ||
-          error.message.toLowerCase().includes('sending') ||
-          error.message.toLowerCase().includes('rate limit')
-        ) {
-          try {
-            await authApi.sendPasswordReset(clean);
-            return true;
-          } catch {}
-        }
-        throw new Error(error.message);
-      }
-      return true;
-    } catch (err: any) {
-      try {
-        await authApi.sendPasswordReset(clean);
-        return true;
-      } catch {}
-      throw err;
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(clean, {
+      redirectTo: redirectUrl,
+    });
+    if (error) throw new Error(error.message);
+    return true;
   };
 
   // Complete password reset when user clicks the recovery link
@@ -863,6 +845,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (error) {
       throw new Error(error.message);
     }
+  };
+
+  // Investor password changes require the current password to be verified by Supabase Auth.
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!currentPassword) throw new Error('Enter your current password.');
+    if (!newPassword || newPassword.length < 12) {
+      throw new Error('New password must be at least 12 characters long.');
+    }
+    if (!isConfigured) {
+      throw new Error('Password changes are unavailable until secure authentication is configured.');
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+      current_password: currentPassword,
+    });
+    if (error) throw new Error(error.message);
   };
 
   // MFA Challenge & Verification Step
@@ -1186,6 +1185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatePassword,
         updateUserEmail,
         updateUserPassword,
+        changePassword,
         verifyMfaCode,
         quickDemoSession,
         syncAdminSession,
