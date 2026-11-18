@@ -26,6 +26,9 @@ function clearLegacyBuffer(): void {
   try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
 }
 
+// Purge pre-redaction diagnostics as soon as this module loads in the browser.
+clearLegacyBuffer();
+
 export function getFrontendErrors(): FrontendErrorEntry[] {
   if (typeof window === 'undefined') return [];
   clearLegacyBuffer();
