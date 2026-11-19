@@ -5023,7 +5023,7 @@ router.post('/compliance/kyc-submissions', requireAuth, async (req: Authenticate
       if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
         markSupabaseSchemaMissingInDev();
       } else {
-        return res.status(503).json({ success: false, error: err?.message || 'Unable to save compliance submission.', code: 'KYC_SUBMISSION_FAILED', requestId: req.id });
+        return res.status(503).json({ success: false, error: err?.message || 'Unable to save compliance submission.', code: 'KYC_SUBMISSION_FAILED', details: err?.uploadedFilePath ? { uploadedFilePath: err.uploadedFilePath } : undefined, requestId: req.id });
       }
     }
   }
