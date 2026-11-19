@@ -5,6 +5,7 @@ import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfigProvider } from './context/ConfigContext';
 import { ledger } from './lib/ledger';
+import { api } from './lib/api';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
@@ -65,6 +66,44 @@ function MainApp() {
   const [pendingInvestmentProperty, setPendingInvestmentProperty] = useState<Property | null>(null);
   const [returnDestination, setReturnDestination] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>(ledger.getProperties());
+
+  // PUBLIC_PROPERTY_LISTINGS_REFRESH: fetch live approved catalogue while on Properties.
+  useEffect(() => {
+    const cleanPath = currentPath.split('#')[0].split('?')[0].replace(/\/$/, '') || '/';
+    if (cleanPath !== '/properties') return;
+
+    let cancelled = false;
+    const refreshPublicListings = async () => {
+      try {
+        const response = await api.get<any>('/marketplace/listings');
+        const rows = Array.isArray(response) ? response : response?.data;
+        if (!Array.isArray(rows) || rows.length === 0 || cancelled) return;
+        const approved = rows.filter((p: any) =>
+          p && p.status !== 'hidden' && p.status !== 'draft' &&
+          p.status !== 'pending_approval' && p.approvedForFrontend !== false
+        );
+        if (approved.length) setProperties(approved as Property[]);
+      } catch {
+        // Keep the existing ledger catalogue visible if the live API is unavailable.
+      }
+    };
+
+    void refreshPublicListings();
+    const interval = window.setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void refreshPublicListings();
+      }
+    }, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPublicListings();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [currentPath]);
   const [, setPassGateUnlocked] = useState(isPassGateUnlocked);
 
   useEffect(() => {
