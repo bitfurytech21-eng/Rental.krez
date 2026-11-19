@@ -19,7 +19,7 @@ We collect only the personal data strictly necessary to operate the Platform, ve
 - **KYC / AML Compliance Data:** Government-issued passport or national identity document, proof of residential address, corporate registry extracts (such as Kbis or Nota Simple), Ultimate Beneficial Owner (UBO) declarations, and source-of-funds / source-of-wealth documentation where required.
 - **Financial & Settlement Data:** Double-entry ledger records, subscription history, deposit confirmations and uploaded payment receipts, SEPA IBAN details for withdrawals, and transaction identifiers linked to Platform-assigned payment methods.
 - **Blockchain Public Key Data:** Public Solana wallet addresses connected or whitelisted by you (we never collect, view, or store your private keys or recovery seed phrases).
-- **Communications & Support Records:** Inquiries submitted via our contact forms, investor support desk, or Smartsupp live chat (when enabled with your consent).
+- **Communications & Support Records:** Inquiries submitted via our contact forms, investor support desk, or built-in live support messenger.
 - **Technical & Security Data:** Authentication session tokens, device/browser metadata, IP-based rate-limiting and brute-force protection logs, and audit trails for sensitive account or legal-acceptance actions.
 
 ---
@@ -31,7 +31,7 @@ Under Article 6 of the GDPR, we process your personal data strictly on the follo
 1. **Performance of a Contract (Article 6(1)(b)):** Creating and administering your investor account, granting data-room access, executing SPV Investment Agreements, crediting verified deposits, calculating rental distributions, and processing withdrawals.
 2. **Compliance with Legal Obligations (Article 6(1)(c)):** Conducting mandatory Customer Due Diligence (CDD), Politically Exposed Person (PEP) and sanctions screening under EU AMLD5/AMLD6, maintaining statutory financial and tax accounting records, and responding to lawful requests from financial or supervisory authorities.
 3. **Legitimate Interests (Article 6(1)(f)):** Protecting the Platform against fraud, unauthorized access, bot abuse, and payment tampering; maintaining system security and audit logs; and improving platform reliability.
-4. **Your Prior Consent (Article 6(1)(a)):** Deploying non-essential cookies, performance analytics, embedded third-party media, and optional live-chat widgets (such as Smartsupp), as well as sending optional investor updates where you opt in.
+4. **Your Prior Consent (Article 6(1)(a)):** Deploying non-essential cookies, performance analytics, embedded third-party media, and optional live-chat session preferences, as well as sending optional investor updates where you opt in.
 
 ---
 
@@ -42,7 +42,7 @@ We do not sell, rent, or trade your personal data. We share data strictly on a n
 - **Core Infrastructure & Database Providers:** Cloud hosting, edge security (such as Cloudflare), authenticated database/storage infrastructure, and transactional email delivery providers bound by Data Processing Agreements (DPAs).
 - **Banking, Payment & SPV Partners:** Financial institutions, payment settlement counterparties, notaries, corporate registrars, and SPV administrators strictly as required to reconcile transfers, execute property closings, and process distributions.
 - **Compliance & Legal Advisors:** External legal counsel, chartered accountants, statutory auditors, and regulatory or law enforcement authorities where required by EU, French, or Spanish law.
-- **Optional Consent-Based Providers:** Live-chat support (Smartsupp) and embedded media players, which activate only when you grant the corresponding consent in our [Cookie Settings](/cookies).
+- **Optional Consent-Based Providers:** Embedded media players and optional third-party integrations, which activate only when you grant the corresponding consent in our [Cookie Settings](/cookies). First-party live support conversations are handled directly on our encrypted WebSocket infrastructure.
 
 ---
 

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { safeErrorMessage } from '../../lib/safeErrorMessage';
-import { CheckCircle2, HelpCircle, Send } from 'lucide-react';
+import { CheckCircle2, HelpCircle, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { useToast } from '../../context/ToastContext';
 import { usePortal } from '../state/PortalContext';
 import { portalApi } from '../services/portalApi';
 import { ErrorBanner } from '../components/LoadingSkeleton';
 import { StatusBadge } from '../components/StatusBadge';
+import { LiveSupportConversationPanel } from '../../components/support/LiveSupportMessenger';
 
 const SUPPORT_TOPICS = [
   'Portfolio & SPV Dossiers',
@@ -28,6 +29,7 @@ export const SupportPage: React.FC = () => {
   const toast = useToast();
   const { profile, sampleDataEnabled, navigatePortal } = usePortal();
 
+  const [mode, setMode] = useState<'live' | 'ticket'>('live');
   const [fullName, setFullName] = useState(profile?.fullName || user?.fullName || '');
   const [email, setEmail] = useState(profile?.email || user?.email || '');
   const [topic, setTopic] = useState(SUPPORT_TOPICS[0]);
@@ -89,168 +91,208 @@ export const SupportPage: React.FC = () => {
     }
   };
 
-  if (ticketId) {
-    return (
-      <div className="max-w-xl portal-card space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="w-11 h-11 rounded-[14px] bg-[#6FD8B0]/12 border border-[#6FD8B0]/35 text-[#6FD8B0] flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-          <StatusBadge status="completed" />
-        </div>
+  return (
+    <div className="max-w-3xl space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-heading font-bold text-[#F2F5F4]">Inquiry received</h2>
-          <p className="text-sm text-[#8FA1A8] mt-1 leading-relaxed">
-            Our investor relations team has logged your request under reference{' '}
-            <span className="text-[#F2F5F4] font-semibold portal-tabular">{ticketId}</span> and will respond via{' '}
-            <span className="text-[#F2F5F4]">{email}</span>.
+          <h2 className="text-xl font-heading font-bold text-[#F2F5F4]">Investor Support</h2>
+          <p className="text-xs text-[#8FA1A8] mt-0.5">
+            Real-time messenger or formal email inquiry with our Investor Relations Desk.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3 pt-2">
+
+        <div className="inline-flex rounded-[14px] border border-[#1F2C33] bg-[#121A1F] p-1 gap-1">
           <button
             type="button"
-            onClick={() => setTicketId(null)}
-            className="portal-btn-primary"
+            onClick={() => setMode('live')}
+            className={`min-h-[40px] px-3.5 rounded-[10px] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+              mode === 'live'
+                ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                : 'text-[#8FA1A8] hover:text-[#F2F5F4]'
+            }`}
           >
-            Send another inquiry
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>Live Messenger</span>
           </button>
           <button
             type="button"
-            onClick={() => navigatePortal('overview')}
-            className="portal-btn-secondary"
+            onClick={() => setMode('ticket')}
+            className={`min-h-[40px] px-3.5 rounded-[10px] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+              mode === 'ticket'
+                ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                : 'text-[#8FA1A8] hover:text-[#F2F5F4]'
+            }`}
           >
-            Back to overview
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>Email Ticket</span>
           </button>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="max-w-2xl space-y-6">
-      {error && <ErrorBanner message={error} />}
-
-      <div className="portal-card space-y-5">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-[14px] bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center shrink-0">
-            <HelpCircle className="w-5 h-5" />
+      {mode === 'live' ? (
+        <div className="rounded-[18px] border border-[#1F2C33] overflow-hidden h-[540px] bg-[#0B0F10]">
+          <LiveSupportConversationPanel />
+        </div>
+      ) : ticketId ? (
+        <div className="max-w-xl portal-card space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="w-11 h-11 rounded-[14px] bg-[#6FD8B0]/12 border border-[#6FD8B0]/35 text-[#6FD8B0] flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <StatusBadge status="completed" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-[#F2F5F4]">Investor Relations Desk</h2>
-            <p className="text-xs text-[#8FA1A8] mt-0.5 leading-relaxed">
-              Direct private client support for capital transfers, SPV legal documentation, and compliance reviews.
+            <h3 className="text-lg font-heading font-bold text-[#F2F5F4]">Inquiry received</h3>
+            <p className="text-sm text-[#8FA1A8] mt-1 leading-relaxed">
+              Our investor relations team has logged your request under reference{' '}
+              <span className="text-[#F2F5F4] font-semibold portal-tabular">{ticketId}</span> and will respond via{' '}
+              <span className="text-[#F2F5F4]">{email}</span>.
             </p>
           </div>
-        </div>
-
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="support-name" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-                Full name
-              </label>
-              <input
-                id="support-name"
-                type="text"
-                value={fullName}
-                onChange={(e) => {
-                  setFullName(e.target.value);
-                  if (fieldErrors.fullName) setFieldErrors((p) => ({ ...p, fullName: undefined }));
-                }}
-                aria-invalid={Boolean(fieldErrors.fullName)}
-                aria-describedby={fieldErrors.fullName ? 'support-name-error' : undefined}
-                className={`portal-input ${fieldErrors.fullName ? '!border-[#FB7185]' : ''}`}
-                placeholder="Investor full name"
-              />
-              {fieldErrors.fullName && (
-                <p id="support-name-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
-                  {fieldErrors.fullName}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="support-email" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-                Reply email
-              </label>
-              <input
-                id="support-email"
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
-                }}
-                aria-invalid={Boolean(fieldErrors.email)}
-                aria-describedby={fieldErrors.email ? 'support-email-error' : undefined}
-                className={`portal-input ${fieldErrors.email ? '!border-[#FB7185]' : ''}`}
-                placeholder="investor@domain.com"
-              />
-              {fieldErrors.email && (
-                <p id="support-email-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
-                  {fieldErrors.email}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="support-topic" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-              Subject
-            </label>
-            <select
-              id="support-topic"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              className="portal-input"
-            >
-              {SUPPORT_TOPICS.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="support-message" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
-              Message
-            </label>
-            <textarea
-              id="support-message"
-              rows={5}
-              value={message}
-              onChange={(e) => {
-                setMessage(e.target.value);
-                if (fieldErrors.message) setFieldErrors((p) => ({ ...p, message: undefined }));
-              }}
-              aria-invalid={Boolean(fieldErrors.message)}
-              aria-describedby={fieldErrors.message ? 'support-message-error' : undefined}
-              className={`portal-input min-h-[130px] resize-y ${fieldErrors.message ? '!border-[#FB7185]' : ''}`}
-              placeholder="Include transfer references, SPV property names, or compliance details if applicable."
-            />
-            {fieldErrors.message && (
-              <p id="support-message-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
-                {fieldErrors.message}
-              </p>
-            )}
-          </div>
-
-          <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs text-[#8FA1A8]">
-              Average desk response within 1 business day
-            </span>
+          <div className="flex flex-wrap gap-3 pt-2">
             <button
-              type="submit"
-              disabled={submitting}
+              type="button"
+              onClick={() => setTicketId(null)}
               className="portal-btn-primary"
             >
-              <Send className="w-4 h-4" />
-              <span>{submitting ? 'Sending...' : 'Submit inquiry'}</span>
+              Send another inquiry
+            </button>
+            <button
+              type="button"
+              onClick={() => navigatePortal('overview')}
+              className="portal-btn-secondary"
+            >
+              Back to overview
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {error && <ErrorBanner message={error} onRetry={() => setError(null)} />}
+
+          <div className="portal-card space-y-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-[14px] bg-[#0B0F10] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center shrink-0">
+                <HelpCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-[#F2F5F4]">Investor Relations Email Desk</h3>
+                <p className="text-xs text-[#8FA1A8] mt-0.5 leading-relaxed">
+                  Direct private client support for capital transfers, SPV legal documentation, and compliance reviews.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="support-name" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
+                    Full name
+                  </label>
+                  <input
+                    id="support-name"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      if (fieldErrors.fullName) setFieldErrors((p) => ({ ...p, fullName: undefined }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.fullName)}
+                    aria-describedby={fieldErrors.fullName ? 'support-name-error' : undefined}
+                    className={`portal-input ${fieldErrors.fullName ? '!border-[#FB7185]' : ''}`}
+                    placeholder="Investor full name"
+                  />
+                  {fieldErrors.fullName && (
+                    <p id="support-name-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
+                      {fieldErrors.fullName}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="support-email" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
+                    Reply email
+                  </label>
+                  <input
+                    id="support-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? 'support-email-error' : undefined}
+                    className={`portal-input ${fieldErrors.email ? '!border-[#FB7185]' : ''}`}
+                    placeholder="investor@domain.com"
+                  />
+                  {fieldErrors.email && (
+                    <p id="support-email-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
+                      {fieldErrors.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="support-topic" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
+                  Subject
+                </label>
+                <select
+                  id="support-topic"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  className="portal-input"
+                >
+                  {SUPPORT_TOPICS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="support-message" className="block text-sm font-medium text-[#F2F5F4] mb-1.5">
+                  Message
+                </label>
+                <textarea
+                  id="support-message"
+                  rows={5}
+                  value={message}
+                  onChange={(e) => {
+                    setMessage(e.target.value);
+                    if (fieldErrors.message) setFieldErrors((p) => ({ ...p, message: undefined }));
+                  }}
+                  aria-invalid={Boolean(fieldErrors.message)}
+                  aria-describedby={fieldErrors.message ? 'support-message-error' : undefined}
+                  className={`portal-input min-h-[130px] resize-y ${fieldErrors.message ? '!border-[#FB7185]' : ''}`}
+                  placeholder="Include transfer references, SPV property names, or compliance details if applicable."
+                />
+                {fieldErrors.message && (
+                  <p id="support-message-error" role="alert" className="text-xs text-[#FB7185] mt-1.5">
+                    {fieldErrors.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs text-[#8FA1A8]">
+                  Average desk response within 1 business day
+                </span>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="portal-btn-primary"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{submitting ? 'Sending...' : 'Submit inquiry'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

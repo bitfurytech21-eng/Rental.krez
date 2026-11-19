@@ -1103,25 +1103,90 @@ export async function getPersistentPerformance(userId: string) {
   };
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function listUserNotifications(userId: string, limit = 100) {
-  const { data, error } = await getSupabaseAdmin().from('notifications').select('*')
-    .or(`user_id.eq.${userId},user_id.is.null`).order('created_at', { ascending: false }).limit(Math.min(Math.max(limit, 1), 250));
-  if (error) throw error;
-  return data || [];
+  if (!UUID_PATTERN.test(String(userId || '').trim())) return [];
+  const admin = getSupabaseAdmin();
+  const capped = Math.min(Math.max(limit, 1), 250);
+  const { data, error } = await admin
+    .from('notifications')
+    .select('*')
+    .or(`user_id.eq.${userId},user_id.is.null`)
+    .order('created_at', { ascending: false })
+    .limit(capped);
+  if (!error) return data || [];
+
+  const fallback = await admin
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(capped);
+  if (fallback.error) throw fallback.error;
+  return fallback.data || [];
 }
 
 export async function markUserNotificationRead(userId: string, notificationId: string) {
-  const { data, error } = await getSupabaseAdmin().from('notifications')
-    .update({ read: true }).eq('id', notificationId).or(`user_id.eq.${userId},user_id.is.null`).select('*').maybeSingle();
-  if (error) throw error;
-  return data;
+  const cleanUserId = String(userId || '').trim();
+  const cleanNotifId = String(notificationId || '').trim();
+  if (!UUID_PATTERN.test(cleanUserId) || !UUID_PATTERN.test(cleanNotifId)) {
+    return null;
+  }
+
+  const admin = getSupabaseAdmin();
+  const ownResult = await admin
+    .from('notifications')
+    .update({ read: true })
+    .eq('id', cleanNotifId)
+    .eq('user_id', cleanUserId)
+    .select('*')
+    .maybeSingle();
+
+  if (ownResult.error) throw ownResult.error;
+  if (ownResult.data) return ownResult.data;
+
+  const broadcastResult = await admin
+    .from('notifications')
+    .update({ read: true })
+    .eq('id', cleanNotifId)
+    .is('user_id', null)
+    .select('*')
+    .maybeSingle();
+
+  if (broadcastResult.error) {
+    if (isMissingSchemaError(broadcastResult.error)) throw broadcastResult.error;
+    return null;
+  }
+  return broadcastResult.data;
 }
 
 export async function markAllUserNotificationsRead(userId: string) {
-  const { data, error } = await getSupabaseAdmin().from('notifications')
-    .update({ read: true }).or(`user_id.eq.${userId},user_id.is.null`).eq('read', false).select('id');
-  if (error) throw error;
-  return data?.length || 0;
+  const cleanUserId = String(userId || '').trim();
+  if (!UUID_PATTERN.test(cleanUserId)) return 0;
+
+  const admin = getSupabaseAdmin();
+  const ownResult = await admin
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', cleanUserId)
+    .eq('read', false)
+    .select('id');
+
+  if (ownResult.error) throw ownResult.error;
+  let totalMarked = ownResult.data?.length || 0;
+
+  const broadcastResult = await admin
+    .from('notifications')
+    .update({ read: true })
+    .is('user_id', null)
+    .eq('read', false)
+    .select('id');
+
+  if (!broadcastResult.error && Array.isArray(broadcastResult.data)) {
+    totalMarked += broadcastResult.data.length;
+  }
+  return totalMarked;
 }
 
 export async function createUserNotification(
@@ -1808,3 +1873,436 @@ export async function getAdminIdentityByEmail(email: string): Promise<VerifiedSu
     suspendedReason: data.suspended_reason || undefined
   };
 }
+
+export type KycSubmissionDocType = 'identity' | 'proof_of_address' | 'questionnaire';
+
+export interface KycSubmissionRecord {
+  id: string;
+  userId: string;
+  docType: KycSubmissionDocType;
+  filePath: string | null;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  answers?: Record<string, unknown> | null;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string | null;
+  processedBy?: string;
+  processedAt?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  inlineUrl?: string;
+  userEmail?: string;
+  userName?: string;
+}
+
+export function normalizeKycDocType(raw: unknown): KycSubmissionDocType {
+  const val = String(raw || '').trim().toLowerCase();
+  if (val === 'proof_of_address' || val === 'address' || val === 'utility_bill') return 'proof_of_address';
+  if (val === 'questionnaire' || val === 'accredited_proof' || val === 'suitability') return 'questionnaire';
+  return 'identity';
+}
+
+function kycDocTypeToComplianceStep(docType: KycSubmissionDocType): ComplianceStepKey {
+  if (docType === 'proof_of_address') return 'proof_of_address';
+  if (docType === 'questionnaire') return 'accredited_proof';
+  return 'kyc_identity';
+}
+
+function mapKycSubmissionRow(row: any): KycSubmissionRecord {
+  const rawStatus = String(row?.status || 'pending').trim().toLowerCase();
+  const status: 'pending' | 'approved' | 'rejected' =
+    rawStatus === 'approved' || rawStatus === 'verified'
+      ? 'approved'
+      : rawStatus === 'rejected'
+      ? 'rejected'
+      : 'pending';
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    docType: normalizeKycDocType(row.doc_type || row.category || row.document_type),
+    filePath: row.file_path || row.storage_path || null,
+    fileName: row.file_name || undefined,
+    mimeType: row.mime_type || undefined,
+    fileSize: row.file_size !== undefined && row.file_size !== null ? Number(row.file_size) : undefined,
+    answers: row.answers && typeof row.answers === 'object' ? row.answers : null,
+    status,
+    reason: row.reason || row.rejection_reason || null,
+    processedBy: row.processed_by || row.reviewed_by || undefined,
+    processedAt: row.processed_at || row.reviewed_at || undefined,
+    reviewedAt: row.reviewed_at || row.processed_at || undefined,
+    createdAt: String(row.created_at || row.uploaded_at || new Date().toISOString()),
+    inlineUrl: row.file_data_url || undefined,
+    userEmail: row.user_profiles?.email || row.profiles?.email || row.userEmail || undefined,
+    userName: row.user_profiles?.full_name || row.profiles?.full_name || row.userName || undefined,
+  };
+}
+
+export function computeOverallKycStatus(rows: Array<{ docType: KycSubmissionDocType; status: string; createdAt?: string }>): 'verified' | 'pending' | 'rejected' | 'not_started' {
+  const sorted = [...rows].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const latestByType = new Map<KycSubmissionDocType, string>();
+  for (const r of sorted) {
+    if (!latestByType.has(r.docType)) {
+      latestByType.set(r.docType, String(r.status || 'pending').toLowerCase());
+    }
+  }
+  if (latestByType.size === 0) return 'not_started';
+  const statuses = Array.from(latestByType.values());
+  if (statuses.some((s) => s === 'rejected')) return 'rejected';
+  const allThreePresent = (['identity', 'proof_of_address', 'questionnaire'] as KycSubmissionDocType[])
+    .every((t) => {
+      const s = latestByType.get(t);
+      return s === 'approved' || s === 'verified';
+    });
+  if (allThreePresent) return 'verified';
+  return 'pending';
+}
+
+async function syncInvestorKycStatusColumns(userId: string, overallStatus: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const nowIso = new Date().toISOString();
+  await admin
+    .from('user_profiles')
+    .update({ kyc_status: overallStatus, updated_at: nowIso })
+    .eq('id', userId)
+    .then(() => {}, () => {});
+  await admin
+    .from('profiles')
+    .update({ kyc_status: overallStatus, updated_at: nowIso })
+    .eq('id', userId)
+    .then(() => {}, () => {});
+}
+
+export async function listUserKycSubmissions(userId: string): Promise<{
+  overallStatus: string;
+  submissions: KycSubmissionRecord[];
+}> {
+  const admin = getSupabaseAdmin();
+  const [userProfileRes, profileRes, subRes] = await Promise.all([
+    admin.from('user_profiles').select('kyc_status').eq('id', userId).maybeSingle(),
+    admin.from('profiles').select('kyc_status').eq('id', userId).maybeSingle(),
+    admin.from('kyc_submissions').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+  ]);
+
+  if (subRes.error && isMissingSchemaError(subRes.error)) {
+    throw subRes.error;
+  }
+
+  const submissions = Array.isArray(subRes.data) ? subRes.data.map(mapKycSubmissionRow) : [];
+  const rawProfileKyc = String(
+    profileRes.data?.kyc_status || userProfileRes.data?.kyc_status || ''
+  ).trim().toLowerCase();
+  const normalizedProfileKyc =
+    rawProfileKyc === 'approved' || rawProfileKyc === 'verified'
+      ? 'verified'
+      : rawProfileKyc === 'rejected'
+      ? 'rejected'
+      : rawProfileKyc === 'in_review' || rawProfileKyc === 'pending'
+      ? rawProfileKyc
+      : rawProfileKyc === 'unverified' || rawProfileKyc === 'not_started'
+      ? 'not_started'
+      : computeOverallKycStatus(submissions);
+
+  return {
+    overallStatus: normalizedProfileKyc || 'not_started',
+    submissions,
+  };
+}
+
+export async function createUserKycSubmission(params: {
+  userId: string;
+  docType: KycSubmissionDocType;
+  filePath?: string | null;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  fileDataUrl?: string;
+  answers?: Record<string, unknown> | null;
+}): Promise<{ submission: KycSubmissionRecord; overallStatus: string }> {
+  const admin = getSupabaseAdmin();
+  const nowIso = new Date().toISOString();
+  let resolvedPath = params.filePath ? String(params.filePath).trim() : null;
+
+  if (!resolvedPath && params.fileDataUrl && params.docType !== 'questionnaire') {
+    const bytes = decodeBase64DocumentData(params.fileDataUrl);
+    if (!bytes) {
+      throw new Error('Uploaded file data could not be decoded.');
+    }
+    if (bytes.length > 15 * 1024 * 1024) {
+      throw new Error('Document size must be 15 MB or smaller.');
+    }
+    const safeName = params.fileName || `${params.docType}.pdf`;
+    resolvedPath =
+      (await uploadDocumentBufferToBucket(params.userId, safeName, bytes, params.mimeType || 'application/pdf', 'kyc')) ||
+      (await uploadDocumentBufferToBucket(params.userId, safeName, bytes, params.mimeType || 'application/pdf', 'kyc-documents')) ||
+      (await uploadDocumentBufferToBucket(params.userId, safeName, bytes, params.mimeType || 'application/pdf', 'documents'));
+  }
+
+  // Primary schema: (user_id, doc_type, file_path, answers, status)
+  const primaryPayload: Record<string, any> = {
+    user_id: params.userId,
+    doc_type: params.docType,
+    file_path: resolvedPath,
+    answers: params.answers || null,
+    status: 'pending',
+  };
+
+  let res = await admin.from('kyc_submissions').insert(primaryPayload).select('*').single();
+
+  if (res.error) {
+    const msg = String(res.error.message || '').toLowerCase();
+    const isAltSchema = /doc_type|file_path|answers|category|storage_path/.test(msg);
+    if (isAltSchema) {
+      const altCategory = kycDocTypeToComplianceStep(params.docType);
+      const altTitle =
+        params.docType === 'identity'
+          ? 'Identity Verification'
+          : params.docType === 'proof_of_address'
+          ? 'Proof of Address'
+          : 'Investor Questionnaire';
+      const altPayload: Record<string, any> = {
+        user_id: params.userId,
+        category: altCategory,
+        document_type: params.docType,
+        title: altTitle,
+        file_name: params.fileName || (params.docType === 'questionnaire' ? 'questionnaire.json' : 'document.pdf'),
+        storage_path: resolvedPath || '',
+        mime_type: params.mimeType || 'application/pdf',
+        file_size: Number(params.fileSize || 0),
+        status: 'pending',
+      };
+      if (params.answers) {
+        altPayload.notes = JSON.stringify(params.answers);
+      }
+      res = await admin.from('kyc_submissions').insert(altPayload).select('*').single();
+    }
+  }
+
+  if (res.error) throw res.error;
+
+  const submission = mapKycSubmissionRow(res.data);
+  const currentState = await listUserKycSubmissions(params.userId).catch(() => ({ overallStatus: 'not_started', submissions: [submission] }));
+  const nextOverall = currentState.overallStatus === 'verified' ? 'verified' : 'pending';
+  if (currentState.overallStatus !== 'verified') {
+    await syncInvestorKycStatusColumns(params.userId, 'pending');
+  }
+  await upsertComplianceStep(params.userId, kycDocTypeToComplianceStep(params.docType), 'in_review').catch(() => {});
+
+  // Keep timestamp fresh for compliance_steps
+  void nowIso;
+  return { submission, overallStatus: nextOverall };
+}
+
+export async function listAdminKycSubmissions(limit = 300): Promise<KycSubmissionRecord[]> {
+  const admin = getSupabaseAdmin();
+  let res = await admin
+    .from('kyc_submissions')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(Math.min(Math.max(limit, 1), 500));
+
+  if (res.error && /column .*created_at.* does not exist/i.test(String(res.error.message || ''))) {
+    res = await admin.from('kyc_submissions').select('*').limit(Math.min(Math.max(limit, 1), 500));
+  }
+  if (res.error) {
+    if (isMissingSchemaError(res.error)) throw res.error;
+    return [];
+  }
+
+  const rows = Array.isArray(res.data) ? res.data : [];
+  const userIds = Array.from(new Set(rows.map((r: any) => String(r.user_id)).filter(Boolean)));
+  const profileById = new Map<string, { email?: string; full_name?: string }>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await admin
+      .from('user_profiles')
+      .select('id,email,full_name')
+      .in('id', userIds);
+    if (Array.isArray(profiles)) {
+      for (const p of profiles) {
+        profileById.set(String((p as any).id), {
+          email: (p as any).email,
+          full_name: (p as any).full_name,
+        });
+      }
+    }
+  }
+
+  return rows.map((row: any) => {
+    const mapped = mapKycSubmissionRow(row);
+    const prof = profileById.get(mapped.userId);
+    if (prof) {
+      mapped.userEmail = mapped.userEmail || prof.email;
+      mapped.userName = mapped.userName || prof.full_name;
+    }
+    return mapped;
+  });
+}
+
+export async function getAdminKycSignedUrl(submissionId: string): Promise<{ url: string; fileName: string; mimeType?: string; expiresInSeconds: number } | null> {
+  const admin = getSupabaseAdmin();
+  const { data: subRow } = await admin.from('kyc_submissions').select('*').eq('id', submissionId).maybeSingle();
+  if (subRow) {
+    const storagePath = (subRow as any).file_path || (subRow as any).storage_path;
+    const fileName = String((subRow as any).file_name || String(storagePath || '').split('/').pop() || 'kyc-document');
+    const mimeType = String((subRow as any).mime_type || 'application/octet-stream');
+    if (storagePath && typeof storagePath === 'string') {
+      const url = await resolveStorageSignedUrl(storagePath);
+      if (url) return { url, fileName, mimeType, expiresInSeconds: 120 };
+    }
+    if ((subRow as any).file_data_url && typeof (subRow as any).file_data_url === 'string') {
+      return { url: (subRow as any).file_data_url, fileName, mimeType, expiresInSeconds: 120 };
+    }
+  }
+  return getAdminSignedDocumentUrl(submissionId);
+}
+
+export async function reviewAdminKycSubmission(params: {
+  submissionId: string;
+  adminId: string;
+  approve: boolean;
+  reason?: string | null;
+}): Promise<{
+  submission: KycSubmissionRecord | null;
+  userId: string | null;
+  overallStatus: 'verified' | 'pending' | 'rejected' | 'not_started';
+}> {
+  const admin = getSupabaseAdmin();
+  const cleanReason = params.reason ? String(params.reason).trim() : null;
+
+  const { data: existingRow, error: lookupErr } = await admin
+    .from('kyc_submissions')
+    .select('*')
+    .eq('id', params.submissionId)
+    .maybeSingle();
+
+  if (lookupErr && isMissingSchemaError(lookupErr)) {
+    throw lookupErr;
+  }
+
+  let rpcOverallStatus: string | null = null;
+  let rpcHandled = false;
+
+  // 1) Try live review_kyc RPC signature: (p_sub, p_approve, p_reason)
+  const rpc1 = await admin.rpc('review_kyc', {
+    p_sub: params.submissionId,
+    p_approve: params.approve,
+    p_reason: cleanReason,
+  });
+  if (!rpc1.error) {
+    rpcHandled = true;
+    const d: any = rpc1.data;
+    if (typeof d === 'string' && d.trim()) rpcOverallStatus = d.trim();
+    else if (d && typeof d === 'object') {
+      rpcOverallStatus = String(d.kyc_status ?? d.overall_status ?? d.status ?? '').trim() || null;
+    }
+  } else if (!isMissingSchemaError(rpc1.error)) {
+    // 2) Try alternate review_kyc RPC signature: (p_submission_id, p_decision, p_reason, p_admin_id)
+    const rpc2 = await admin.rpc('review_kyc', {
+      p_submission_id: params.submissionId,
+      p_decision: params.approve ? 'approved' : 'rejected',
+      p_reason: cleanReason,
+      p_admin_id: params.adminId,
+    });
+    if (!rpc2.error) {
+      rpcHandled = true;
+      const d: any = rpc2.data;
+      if (d && typeof d === 'object') {
+        rpcOverallStatus = String(d.kyc_status ?? d.overall_status ?? '').trim() || null;
+      }
+    }
+  }
+
+  const nextSubStatus = params.approve ? 'approved' : 'rejected';
+  const nowIso = new Date().toISOString();
+
+  if (!rpcHandled && existingRow) {
+    const primaryUpdate: Record<string, any> = {
+      status: nextSubStatus,
+      reason: params.approve ? null : cleanReason,
+      processed_by: params.adminId,
+      processed_at: nowIso,
+    };
+    let upd = await admin
+      .from('kyc_submissions')
+      .update(primaryUpdate)
+      .eq('id', params.submissionId)
+      .select('*')
+      .maybeSingle();
+
+    if (upd.error) {
+      const msg = String(upd.error.message || '').toLowerCase();
+      if (/processed_by|processed_at|reason/.test(msg)) {
+        upd = await admin
+          .from('kyc_submissions')
+          .update({
+            status: nextSubStatus,
+            rejection_reason: params.approve ? null : cleanReason,
+            reviewed_by: params.adminId,
+            reviewed_at: nowIso,
+          })
+          .eq('id', params.submissionId)
+          .select('*')
+          .maybeSingle();
+      }
+      if (upd.error) {
+        upd = await admin
+          .from('kyc_submissions')
+          .update({ status: nextSubStatus })
+          .eq('id', params.submissionId)
+          .select('*')
+          .maybeSingle();
+      }
+    }
+    if (upd.error) throw upd.error;
+  }
+
+  const { data: updatedRow } = await admin
+    .from('kyc_submissions')
+    .select('*')
+    .eq('id', params.submissionId)
+    .maybeSingle();
+
+  const mappedSub = updatedRow ? mapKycSubmissionRow(updatedRow) : existingRow ? mapKycSubmissionRow({ ...existingRow, status: nextSubStatus, reason: cleanReason }) : null;
+  const userId = mappedSub?.userId || (existingRow?.user_id ? String(existingRow.user_id) : null);
+
+  let overallStatus: 'verified' | 'pending' | 'rejected' | 'not_started' = 'pending';
+  if (userId) {
+    const { data: allUserRows } = await admin
+      .from('kyc_submissions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    const mappedAll = Array.isArray(allUserRows) ? allUserRows.map(mapKycSubmissionRow) : (mappedSub ? [mappedSub] : []);
+    overallStatus = computeOverallKycStatus(mappedAll);
+    if (rpcOverallStatus) {
+      const normRpc = rpcOverallStatus.toLowerCase();
+      if (normRpc === 'approved' || normRpc === 'verified') overallStatus = 'verified';
+      else if (normRpc === 'rejected') overallStatus = 'rejected';
+    }
+    await syncInvestorKycStatusColumns(userId, overallStatus);
+    if (mappedSub) {
+      await upsertComplianceStep(
+        userId,
+        kycDocTypeToComplianceStep(mappedSub.docType),
+        params.approve ? 'verified' : 'rejected',
+        cleanReason || undefined
+      ).catch(() => {});
+    }
+    await admin.from('audit_logs').insert({
+      actor_id: params.adminId,
+      action: params.approve ? 'KYC_SUBMISSION_APPROVED' : 'KYC_SUBMISSION_REJECTED',
+      entity_type: 'kyc_submissions',
+      entity_id: params.submissionId,
+      metadata: {
+        user_id: userId,
+        doc_type: mappedSub?.docType,
+        overall_kyc_status: overallStatus,
+        reason: cleanReason,
+      },
+      created_at: nowIso,
+    }).then(() => {}, () => {});
+  }
+
+  return { submission: mappedSub, userId, overallStatus };
+}
+

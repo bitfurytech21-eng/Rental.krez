@@ -29,12 +29,15 @@ export const MorePage: React.FC = () => {
     exitToPublicSite,
   } = usePortal();
 
+  const normKyc = String(profile?.kycStatus || 'not_started').toLowerCase();
   const kycBadgeLabel =
-    profile?.kycStatus === 'verified'
+    normKyc === 'verified' || normKyc === 'approved'
       ? 'Verified'
-      : profile?.kycStatus === 'rejected'
+      : normKyc === 'rejected'
       ? 'Rejected'
-      : 'In review';
+      : normKyc === 'pending' || normKyc === 'in_review'
+      ? 'In review'
+      : 'Not started';
 
   const mainItems: Array<{
     route: PortalRoute;

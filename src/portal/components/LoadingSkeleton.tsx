@@ -28,9 +28,10 @@ export const LoadingSkeleton: React.FC<{ rows?: number }> = ({ rows = 3 }) => {
 };
 
 export const ErrorBanner: React.FC<{
+  title?: string;
   message: string;
   onRetry?: () => void;
-}> = ({ message, onRetry }) => {
+}> = ({ title = 'Unable to load latest data', message, onRetry }) => {
   return (
     <div
       role="alert"
@@ -39,7 +40,7 @@ export const ErrorBanner: React.FC<{
       <div className="flex items-start gap-3">
         <AlertCircle className="w-5 h-5 text-[#FB7185] shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-[#F2F5F4]">Unable to load latest data</p>
+          <p className="text-sm font-semibold text-[#F2F5F4]">{title}</p>
           <p className="text-xs text-[#8FA1A8] mt-0.5">{message}</p>
         </div>
       </div>

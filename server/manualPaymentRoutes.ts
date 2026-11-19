@@ -327,12 +327,15 @@ const GATE_META_ROWS = '__bank_detail_rows';
 const RESERVED_GATE_KEYS = new Set([GATE_META_METHOD, GATE_META_NETWORK, GATE_META_WALLET, GATE_META_ROWS]);
 
 function normalizeDetailRows(body: any, existing?: any): { detail_rows: GateDetailRow[]; account_details: Record<string, string> } {
-  const source = body?.detailRows ?? body?.detail_rows;
+  const source = body?.detailRows ?? body?.detail_rows ?? existing?.detail_rows ?? existing?.detailRows;
   const stored = existing?.account_details && typeof existing.account_details === 'object' ? existing.account_details : {};
-  const raw = Array.isArray(source) ? source : Array.isArray(stored[GATE_META_ROWS]) ? stored[GATE_META_ROWS] :
-    Object.entries(body?.accountDetails && typeof body.accountDetails === 'object' ? body.accountDetails : stored)
-      .filter(([label]) => !RESERVED_GATE_KEYS.has(label))
-      .map(([label, value]) => ({ label, value: String(value ?? '') }));
+  const raw = Array.isArray(source) && source.length > 0
+    ? source
+    : Array.isArray(stored[GATE_META_ROWS]) && stored[GATE_META_ROWS].length > 0
+    ? stored[GATE_META_ROWS]
+    : Object.entries(body?.accountDetails && typeof body.accountDetails === 'object' ? body.accountDetails : stored)
+        .filter(([label]) => !RESERVED_GATE_KEYS.has(label))
+        .map(([label, value]) => ({ label, value: String(value ?? '') }));
   const detail_rows = raw.map((item: any) => ({
     label: String(item?.label || '').trim().slice(0, 80),
     value: String(item?.value || '').trim().slice(0, 500),
@@ -415,17 +418,34 @@ function decorateGateRow(row: any, assignedCount = 0) {
   const stored = row.account_details && typeof row.account_details === 'object' ? row.account_details : {};
   const { detail_rows, account_details } = normalizeDetailRows({}, row);
   const methodValue = String(row.method || stored[GATE_META_METHOD] || 'bank').toLowerCase();
-  const method = ['sepa', 'wire', 'bank_wire'].includes(methodValue) ? 'bank' : methodValue;
+  const method = ['sepa', 'wire', 'bank_wire', 'bank'].includes(methodValue)
+    ? 'bank'
+    : ['usdt', 'usdc', 'crypto'].includes(methodValue)
+    ? 'usdt'
+    : methodValue;
+  const network = String(
+    stored[GATE_META_NETWORK] || row.network || stored.network || stored.Network || ''
+  ).trim();
+  const walletAddress = String(
+    stored[GATE_META_WALLET] ||
+      row.wallet_address ||
+      row.walletAddress ||
+      stored.wallet_address ||
+      stored.walletAddress ||
+      stored['Wallet address'] ||
+      stored.address ||
+      ''
+  ).trim();
   const active = row.enabled !== false;
   return {
     ...row,
     method,
-    network: String(stored[GATE_META_NETWORK] || ''),
-    wallet_address: String(stored[GATE_META_WALLET] || ''),
+    network,
+    wallet_address: walletAddress,
     detail_rows,
     detailRows: detail_rows,
     account_details: method === 'usdt'
-      ? { Network: String(stored[GATE_META_NETWORK] || ''), 'Wallet address': String(stored[GATE_META_WALLET] || '') }
+      ? { Network: network, 'Wallet address': walletAddress }
       : account_details,
     active,
     enabled: active,

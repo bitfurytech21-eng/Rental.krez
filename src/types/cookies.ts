@@ -81,7 +81,7 @@ export const COOKIE_CATEGORIES: CookieCategoryDefinition[] = [
   {
     id: 'marketing',
     name: 'Marketing & Media',
-    description: 'Supports optional embedded media and the Smartsupp live-chat service, including its conversation-session cookies.',
+    description: 'Supports optional embedded media and first-party live support messenger session continuity.',
     required: false,
     cookies: [
       {
@@ -91,10 +91,10 @@ export const COOKIE_CATEGORIES: CookieCategoryDefinition[] = [
         provider: 'YouTube / Google',
       },
       {
-        name: 'smartsupp_*',
-        purpose: 'Customer advisory live desk chat support and session continuity.',
-        duration: 'Session',
-        provider: 'Smartsupp Live Desk',
+        name: 'lagence_live_support_v1',
+        purpose: 'First-party WebSocket live support messenger thread & visitor continuity token.',
+        duration: 'Browser Storage',
+        provider: "L'Agence Platform First-Party",
       },
     ],
   },

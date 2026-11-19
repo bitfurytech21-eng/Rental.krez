@@ -14,7 +14,7 @@ const DONUT_PALETTE = ['#6FD8B0', '#FCD34D', '#60A5FA', '#A78BFA', '#FB7185', '#
 
 export const AnalyticsPage: React.FC = () => {
   const toast = useToast();
-  const { portfolio, summary, balance, transactions, sampleDataEnabled, sampleDataset, navigatePortal } = usePortal();
+  const { portfolio, summary, balance, transactions, sampleDataEnabled, sampleDataset, lastSyncedAt, navigatePortal } = usePortal();
   const [performance, setPerformance] = useState<PortalPerformanceData | null>(null);
   const [distributions, setDistributions] = useState<{
     totalPaymentsReceivedEUR?: number;
@@ -26,7 +26,7 @@ export const AnalyticsPage: React.FC = () => {
   const [selectedPointIdx, setSelectedPointIdx] = useState<number | null>(null);
 
   const loadAnalytics = useCallback(
-    async (notify = false) => {
+    async (notify = false, silent = false) => {
       if (sampleDataEnabled) {
         setLoading(false);
         setError(null);
@@ -35,7 +35,7 @@ export const AnalyticsPage: React.FC = () => {
         }
         return;
       }
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       try {
         const [perfRes, distRes] = await Promise.all([
@@ -48,7 +48,9 @@ export const AnalyticsPage: React.FC = () => {
           toast.success('Analytics refreshed.');
         }
       } catch (err: any) {
-        setError(safeErrorMessage(err, 'Unable to load portfolio analytics.'));
+        if (!silent) {
+          setError(safeErrorMessage(err, 'Unable to load portfolio analytics.'));
+        }
       } finally {
         setLoading(false);
       }
@@ -57,8 +59,8 @@ export const AnalyticsPage: React.FC = () => {
   );
 
   useEffect(() => {
-    void loadAnalytics(false);
-  }, [loadAnalytics]);
+    void loadAnalytics(false, Boolean(performance || distributions));
+  }, [loadAnalytics, lastSyncedAt]);
 
   const effectivePerformance =
     sampleDataEnabled && sampleDataset ? sampleDataset.performance : performance;
@@ -251,7 +253,7 @@ export const AnalyticsPage: React.FC = () => {
         </button>
       </div>
 
-      {loading && !sampleDataEnabled ? (
+      {loading && !sampleDataEnabled && !effectivePerformance ? (
         <LoadingSkeleton rows={4} />
       ) : (
         <>

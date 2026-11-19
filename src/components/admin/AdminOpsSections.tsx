@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   XCircle,
@@ -20,11 +20,14 @@ import {
   ClipboardList,
   CheckCircle2,
   Edit3,
+  MessageCircle,
+  Clock,
+  CheckCheck,
 } from 'lucide-react';
 import { Property, PropertyStatus, PropertyType } from '../../types/property';
 import { User as PlatformUser } from '../../types/user';
 import { ledger } from '../../lib/ledger';
-import { adminApi } from '../../lib/api';
+import { adminApi, apiRequest, getAuthToken } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
 import { PropertyDocumentsHub } from '../documents/PropertyDocumentsHub';
 import {
@@ -1817,7 +1820,9 @@ export const AdminKycSection: React.FC<{
   const [handledFilter, setHandledFilter] = useState<'all' | 'completed' | 'failed'>('all');
   const [search, setSearch] = useState('');
   const [previewDoc, setPreviewDoc] = useState<{ title: string; url: string | null; loading?: boolean } | null>(null);
+  const [previewAnswers, setPreviewAnswers] = useState<{ title: string; submittedAt?: string; answers: Record<string, any> } | null>(null);
   const kycPreviewModalRef = useDialogFocus<HTMLDivElement>(Boolean(previewDoc), () => setPreviewDoc(null));
+  const kycAnswersModalRef = useDialogFocus<HTMLDivElement>(Boolean(previewAnswers), () => setPreviewAnswers(null));
   const [approveTarget, setApproveTarget] = useState<KycSubmissionRow | null>(null);
   const [rejectTarget, setRejectTarget] = useState<KycSubmissionRow | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -1878,14 +1883,33 @@ export const AdminKycSection: React.FC<{
     );
   }, [submissions, queueTab, handledFilter, search, userById]);
 
+  const formatKycDocLabel = (raw?: string): string => {
+    const clean = String(raw || '').toLowerCase().trim();
+    if (clean === 'identity') return 'Identity verification';
+    if (clean === 'proof_of_address') return 'Proof of address';
+    if (clean === 'questionnaire') return 'Investor questionnaire';
+    return raw || 'KYC Submission';
+  };
+
   const handleOpenSignedDoc = async (sub: KycSubmissionRow) => {
-    const docTitle = `${sub.docType} (${userById.get(sub.userId)?.fullName || sub.userId})`;
+    const inv = userById.get(sub.userId);
+    const label = formatKycDocLabel(sub.docType);
+    const docTitle = `${label} (${inv?.fullName || sub.userName || sub.userEmail || sub.userId})`;
+    if (!sub.filePath && sub.answers) {
+      setPreviewAnswers({
+        title: docTitle,
+        submittedAt: sub.createdAt,
+        answers: sub.answers,
+      });
+      return;
+    }
     setPreviewDoc({ title: docTitle, url: null, loading: true });
     try {
       const url = await createPrivateBucketSignedUrl(
         sub.filePath,
-        ['kyc', 'kyc-submissions', 'documents', 'manual-payment-proofs'],
-        sub.inlineUrl
+        ['kyc', 'kyc-documents', 'kyc-submissions', 'documents', 'manual-payment-proofs'],
+        sub.inlineUrl,
+        sub.id
       );
       setPreviewDoc({ title: docTitle, url, loading: false });
     } catch (err: any) {
@@ -2040,30 +2064,40 @@ export const AdminKycSection: React.FC<{
               <div className="px-5 py-3.5 bg-[#0B0F10] border-b border-[#1F2C33] flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="font-bold text-sm text-[#F2F5F4]">
-                    {grp.investor?.fullName || 'Investor Account'}
+                    {grp.investor?.fullName || grp.items[0]?.userName || 'Investor Account'}
                   </div>
                   <div className="text-[11px] text-[#8FA1A8]">
-                    {grp.investor?.email || grp.investorId} · {grp.items.length} submission{grp.items.length === 1 ? '' : 's'}
+                    {grp.investor?.email || grp.items[0]?.userEmail || grp.investorId} · {grp.items.length} submission{grp.items.length === 1 ? '' : 's'}
                   </div>
                 </div>
-                <span className={`text-[11px] uppercase font-bold ${
-                  grp.investor?.kycStatus === 'verified'
-                    ? 'text-[#6FD8B0]'
-                    : grp.investor?.kycStatus === 'rejected'
-                    ? 'text-rose-400'
-                    : 'text-amber-300'
-                }`}>
-                  Overall KYC Status: {grp.investor?.kycStatus || 'pending'}
-                </span>
+                {(() => {
+                  const rawOverall = String(grp.investor?.kycStatus || 'pending').toLowerCase();
+                  const normalizedOverall =
+                    rawOverall === 'approved' || rawOverall === 'verified' ? 'verified' : rawOverall;
+                  return (
+                    <span className={`text-[11px] uppercase font-bold ${
+                      normalizedOverall === 'verified'
+                        ? 'text-[#6FD8B0]'
+                        : normalizedOverall === 'rejected'
+                        ? 'text-rose-400'
+                        : 'text-amber-300'
+                    }`}>
+                      Overall KYC Status: {normalizedOverall}
+                    </span>
+                  );
+                })()}
               </div>
 
               <div className="divide-y divide-[#1F2C33]">
-                {grp.items.map((sub) => (
+                {grp.items.map((sub) => {
+                  const hasQuestionnaireAnswers = Boolean(sub.answers && Object.keys(sub.answers).length > 0);
+                  const isQuestionnaireOnly = sub.docType.toLowerCase() === 'questionnaire' && !sub.filePath;
+                  return (
                   <div key={sub.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:bg-[#162026]">
                     <div className="space-y-1">
-                      <div className="font-semibold text-[#F2F5F4]">{sub.docType}</div>
+                      <div className="font-semibold text-[#F2F5F4]">{formatKycDocLabel(sub.docType)}</div>
                       <div className="text-[11px] text-[#8FA1A8] font-mono">
-                        Ref: {sub.id} · {sub.filePath} · Submitted {formatDate(sub.createdAt)}
+                        Ref: {sub.id} · {sub.filePath ? sub.filePath : 'Structured Questionnaire'} · Submitted {formatDate(sub.createdAt)}
                       </div>
                       {sub.status !== 'pending' && (
                         <div className="text-[11px] text-[#B6C4C9]">
@@ -2076,14 +2110,32 @@ export const AdminKycSection: React.FC<{
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenSignedDoc(sub)}
-                        className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Open Document</span>
-                      </button>
+                      {(hasQuestionnaireAnswers || isQuestionnaireOnly) && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewAnswers({
+                              title: `${formatKycDocLabel(sub.docType)} (${grp.investor?.fullName || sub.userName || sub.userId})`,
+                              submittedAt: sub.createdAt,
+                              answers: sub.answers || {},
+                            })
+                          }
+                          className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <ClipboardList className="w-3.5 h-3.5" />
+                          <span>View Responses</span>
+                        </button>
+                      )}
+                      {!isQuestionnaireOnly && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSignedDoc(sub)}
+                          className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#0B0F10] border border-[#1F2C33] hover:border-[#6FD8B0] text-[#6FD8B0] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Open Document</span>
+                        </button>
+                      )}
 
                       {sub.status === 'pending' ? (
                         <>
@@ -2112,7 +2164,8 @@ export const AdminKycSection: React.FC<{
                       )}
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             </div>
           ))}
@@ -2247,6 +2300,39 @@ export const AdminKycSection: React.FC<{
                 )
               ) : (
                 <p className="text-xs text-[#8FA1A8] py-8">Signed URL unavailable for this bucket object.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Investor Questionnaire Responses Viewer Modal */}
+      {previewAnswers && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div ref={kycAnswersModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={previewAnswers.title} className="bg-[#121A1F] border border-[#1F2C33] rounded-2xl max-w-xl w-full p-5 space-y-4 focus:outline-none">
+            <div className="flex items-center justify-between border-b border-[#1F2C33] pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#F2F5F4]">{previewAnswers.title}</h3>
+                <p className="text-[11px] text-[#8FA1A8]">
+                  Suitability &amp; Source of Funds Declaration{previewAnswers.submittedAt ? ` · Submitted ${formatDate(previewAnswers.submittedAt)}` : ''}
+                </p>
+              </div>
+              <button type="button" onClick={() => setPreviewAnswers(null)} aria-label="Close questionnaire responses" className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-[#8FA1A8] hover:text-[#F2F5F4] cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-[#0B0F10] border border-[#1F2C33] rounded-xl divide-y divide-[#1F2C33] max-h-[60vh] overflow-auto">
+              {Object.entries(previewAnswers.answers).length === 0 ? (
+                <p className="p-4 text-xs text-[#8FA1A8]">Suitability attestation recorded.</p>
+              ) : (
+                Object.entries(previewAnswers.answers).map(([key, value]) => (
+                  <div key={key} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <span className="text-[#8FA1A8] capitalize">{key.replace(/_/g, ' ')}</span>
+                    <span className="font-semibold text-[#F2F5F4]">
+                      {typeof value === 'boolean' ? (value ? 'Confirmed' : 'No') : String(value)}
+                    </span>
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -2505,8 +2591,34 @@ export const AdminDocumentsSection: React.FC<{
 };
 
 // ============================================================================
-// 11. NOTIFICATIONS: send to one investor or everyone (user_id null), list sent items
+// 11. NOTIFICATIONS & LIVE SUPPORT MESSENGER INBOX
 // ============================================================================
+interface AdminSupportThread {
+  id: string;
+  userId?: string;
+  visitorName: string;
+  visitorEmail: string;
+  topic: string;
+  status: 'open' | 'pending' | 'resolved';
+  unreadAdminCount: number;
+  unreadVisitorCount: number;
+  lastMessageAt: string;
+  lastMessagePreview: string;
+  createdAt: string;
+  updatedAt: string;
+  messagesCount?: number;
+}
+
+interface AdminSupportMessage {
+  id: string;
+  threadId: string;
+  senderType: 'visitor' | 'investor' | 'staff';
+  senderName: string;
+  senderId?: string;
+  body: string;
+  createdAt: string;
+}
+
 export const AdminNotificationsSection: React.FC<{
   users: PlatformUser[];
   notifications: AdminNotificationRecord[];
@@ -2514,12 +2626,198 @@ export const AdminNotificationsSection: React.FC<{
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
 }> = ({ users, notifications, onRefresh, onSuccess, onError }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'broadcasts' | 'support'>('broadcasts');
   const [targetUserId, setTargetUserId] = useState<string>('all');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Live Support Messenger Inbox state
+  const [threads, setThreads] = useState<AdminSupportThread[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [threadMessages, setThreadMessages] = useState<AdminSupportMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [threadSearch, setThreadSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'pending' | 'resolved'>('all');
+  const [wsConnected, setWsConnected] = useState(false);
+
+  const selectedThreadRef = useRef<string | null>(null);
+  selectedThreadRef.current = selectedThreadId;
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
   const userById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+
+  const loadThreads = useCallback(async (quiet = false) => {
+    if (!quiet) setThreadsLoading(true);
+    try {
+      const res: any = await apiRequest('/admin/support/threads');
+      const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      setThreads(rows);
+      if (!selectedThreadRef.current && rows.length > 0) {
+        setSelectedThreadId(rows[0].id);
+      }
+    } catch (err: any) {
+      if (!quiet) {
+        onError(err?.message || 'Unable to load live support conversations.');
+      }
+    } finally {
+      if (!quiet) setThreadsLoading(false);
+    }
+  }, [onError]);
+
+  const loadThreadMessages = useCallback(async (threadId: string) => {
+    setMessagesLoading(true);
+    try {
+      const res: any = await apiRequest(`/support/threads/${encodeURIComponent(threadId)}/messages`);
+      const msgs = res?.data?.messages || res?.messages || [];
+      setThreadMessages(Array.isArray(msgs) ? msgs : []);
+      const target = threads.find((t) => t.id === threadId);
+      if (!target || target.unreadAdminCount > 0) {
+        await apiRequest(`/admin/support/threads/${encodeURIComponent(threadId)}/read`, { method: 'POST' }).catch(() => {});
+        setThreads((prev) =>
+          prev.map((t) => (t.id === threadId ? { ...t, unreadAdminCount: 0 } : t))
+        );
+      }
+    } catch (err: any) {
+      onError(err?.message || 'Unable to load conversation messages.');
+    } finally {
+      setMessagesLoading(false);
+    }
+  }, [onError, threads]);
+
+  useEffect(() => {
+    void loadThreads(true);
+  }, [loadThreads]);
+
+  useEffect(() => {
+    if (selectedThreadId && activeSubTab === 'support') {
+      void loadThreadMessages(selectedThreadId);
+    }
+  }, [selectedThreadId, activeSubTab, loadThreadMessages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [threadMessages.length, selectedThreadId]);
+
+  // Real-time WebSocket connection for Admin Live Support Desk + 15s REST reconciliation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const token = getAuthToken();
+    if (!token) return;
+
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let closed = false;
+    let attempt = 0;
+
+    const connect = () => {
+      if (closed) return;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const url = `${protocol}//${window.location.host}/ws/support?role=admin&token=${encodeURIComponent(token)}`;
+      try {
+        ws = new WebSocket(url);
+      } catch {
+        setWsConnected(false);
+        return;
+      }
+
+      ws.onopen = () => {
+        attempt = 0;
+        setWsConnected(true);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(String(event.data));
+          if (payload?.type === 'admin:sync' && Array.isArray(payload.threads)) {
+            setThreads(payload.threads);
+            if (!selectedThreadRef.current && payload.threads.length > 0) {
+              setSelectedThreadId(payload.threads[0].id);
+            }
+          } else if (payload?.type === 'thread:created' && payload.thread) {
+            setThreads((prev) => {
+              const filtered = prev.filter((t) => t.id !== payload.thread.id);
+              return [payload.thread, ...filtered];
+            });
+          } else if (payload?.type === 'thread:updated' && payload.thread) {
+            setThreads((prev) => prev.map((t) => (t.id === payload.thread.id ? payload.thread : t)));
+          } else if (payload?.type === 'message:created' && payload.message && payload.thread) {
+            setThreads((prev) => {
+              const updatedThread =
+                payload.thread.id === selectedThreadRef.current
+                  ? { ...payload.thread, unreadAdminCount: 0 }
+                  : payload.thread;
+              const filtered = prev.filter((t) => t.id !== updatedThread.id);
+              return [updatedThread, ...filtered];
+            });
+            if (payload.threadId === selectedThreadRef.current) {
+              setThreadMessages((prev) =>
+                prev.some((m) => m.id === payload.message.id) ? prev : [...prev, payload.message]
+              );
+              if (payload.message.senderType !== 'staff') {
+                void apiRequest(`/admin/support/threads/${encodeURIComponent(payload.threadId)}/read`, {
+                  method: 'POST',
+                }).catch(() => {});
+              }
+            }
+          }
+        } catch {
+          // Ignore invalid socket frame
+        }
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        if (!closed) {
+          const delay = Math.min(15_000, 1500 * Math.pow(1.6, attempt));
+          attempt += 1;
+          reconnectTimer = setTimeout(connect, delay);
+        }
+      };
+
+      ws.onerror = () => {
+        setWsConnected(false);
+      };
+    };
+
+    connect();
+    const poll = window.setInterval(() => {
+      void loadThreads(true);
+    }, 15_000);
+
+    return () => {
+      closed = true;
+      window.clearInterval(poll);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      try {
+        ws?.close();
+      } catch {}
+    };
+  }, [loadThreads]);
+
+  const totalUnreadSupport = useMemo(
+    () => threads.reduce((acc, t) => acc + (Number(t.unreadAdminCount) || 0), 0),
+    [threads]
+  );
+
+  const filteredThreads = useMemo(() => {
+    const q = threadSearch.trim().toLowerCase();
+    return threads.filter((t) => {
+      if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+      if (!q) return true;
+      return `${t.visitorName} ${t.visitorEmail} ${t.topic} ${t.lastMessagePreview}`
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [threads, threadSearch, statusFilter]);
+
+  const selectedThread = useMemo(
+    () => threads.find((t) => t.id === selectedThreadId) || null,
+    [threads, selectedThreadId]
+  );
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2550,102 +2848,374 @@ export const AdminNotificationsSection: React.FC<{
     }
   };
 
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedThread || !replyText.trim() || sendingReply) return;
+    setSendingReply(true);
+    try {
+      const res: any = await apiRequest(
+        `/support/threads/${encodeURIComponent(selectedThread.id)}/messages`,
+        {
+          method: 'POST',
+          body: { body: replyText.trim() },
+        }
+      );
+      const savedMsg = res?.data?.message;
+      const savedThread = res?.data?.thread;
+      if (savedMsg) {
+        setThreadMessages((prev) =>
+          prev.some((m) => m.id === savedMsg.id) ? prev : [...prev, savedMsg]
+        );
+      }
+      if (savedThread) {
+        setThreads((prev) => {
+          const rest = prev.filter((t) => t.id !== savedThread.id);
+          return [{ ...savedThread, unreadAdminCount: 0 }, ...rest];
+        });
+      }
+      setReplyText('');
+    } catch (err: any) {
+      onError(err?.message || 'Unable to send support reply.');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const handleChangeThreadStatus = async (threadId: string, status: 'open' | 'pending' | 'resolved') => {
+    try {
+      const res: any = await apiRequest(`/admin/support/threads/${encodeURIComponent(threadId)}/status`, {
+        method: 'PATCH',
+        body: { status },
+      });
+      const updated = res?.data || null;
+      if (updated) {
+        setThreads((prev) => prev.map((t) => (t.id === threadId ? updated : t)));
+      }
+      onSuccess(`Conversation marked as ${status}.`);
+    } catch (err: any) {
+      onError(err?.message || 'Unable to update conversation status.');
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">Notifications</h2>
-        <p className="text-xs text-[#8FA1A8] mt-1">
-          Send a notification to one investor or to everyone (<span className="font-mono text-[#6FD8B0]">user_id = null</span>) and view sent history.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 id="admin-main-heading" data-admin-queue-focus tabIndex={-1} className="text-lg font-bold text-[#F2F5F4] tracking-tight focus:outline-none">
+            Notifications &amp; Live Support
+          </h2>
+          <p className="text-xs text-[#8FA1A8] mt-1">
+            Dispatch platform broadcasts or chat live in real time with visitors and investors.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('broadcasts')}
+            className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 cursor-pointer ${
+              activeSubTab === 'broadcasts'
+                ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
+            }`}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>Broadcasts &amp; Alerts</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('support')}
+            className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 cursor-pointer tabular-nums ${
+              activeSubTab === 'support'
+                ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
+            }`}
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>Live Support Messenger</span>
+            {totalUnreadSupport > 0 && (
+              <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                activeSubTab === 'support' ? 'bg-[#0B0F10] text-[#6FD8B0]' : 'bg-[#6FD8B0] text-[#0B0F10]'
+              }`}>
+                {totalUnreadSupport}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <form onSubmit={handleSend} className="lg:col-span-5 bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
-            <Bell className="w-4 h-4 text-[#6FD8B0]" />
-            <span>Send Notification</span>
-          </h3>
+      {activeSubTab === 'broadcasts' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <form onSubmit={handleSend} className="lg:col-span-5 bg-[#121A1F] border border-[#1F2C33] rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold text-[#F2F5F4] flex items-center gap-2">
+              <Bell className="w-4 h-4 text-[#6FD8B0]" />
+              <span>Send Notification</span>
+            </h3>
 
-          <div className="space-y-3 text-xs">
-            <div>
-              <label htmlFor="notif-recipient-select" className="block text-[#B6C4C9] font-semibold mb-1">Recipient</label>
-              <select
-                id="notif-recipient-select"
-                value={targetUserId}
-                onChange={(e) => setTargetUserId(e.target.value)}
-                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-              >
-                <option value="all">Everyone (user_id: null)</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName || u.email} ({u.email})
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label htmlFor="notif-recipient-select" className="block text-[#B6C4C9] font-semibold mb-1">Recipient</label>
+                <select
+                  id="notif-recipient-select"
+                  value={targetUserId}
+                  onChange={(e) => setTargetUserId(e.target.value)}
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                >
+                  <option value="all">Everyone (user_id: null)</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName || u.email} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="notif-title-input" className="block text-[#B6C4C9] font-semibold mb-1">Title</label>
+                <input
+                  id="notif-title-input"
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Quarterly distribution scheduled"
+                  className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                />
+              </div>
+              <div>
+                <label htmlFor="notif-message-input" className="block text-[#B6C4C9] font-semibold mb-1">Message</label>
+                <textarea
+                  id="notif-message-input"
+                  rows={4}
+                  required
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Message body..."
+                  className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="notif-title-input" className="block text-[#B6C4C9] font-semibold mb-1">Title</label>
-              <input
-                id="notif-title-input"
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Quarterly distribution scheduled"
-                className="min-h-[44px] w-full px-3 py-2 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-              />
-            </div>
-            <div>
-              <label htmlFor="notif-message-input" className="block text-[#B6C4C9] font-semibold mb-1">Message</label>
-              <textarea
-                id="notif-message-input"
-                rows={4}
-                required
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Message body..."
-                className="w-full p-3 bg-[#0B0F10] border border-[#1F2C33] rounded-xl text-[#F2F5F4]"
-              />
-            </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={sending}
-            className="min-h-[44px] w-full py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>{sending ? 'Sending...' : 'Send Notification'}</span>
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={sending}
+              className="min-h-[44px] w-full py-2.5 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>{sending ? 'Sending...' : 'Send Notification'}</span>
+            </button>
+          </form>
 
-        <div className="lg:col-span-7 bg-[#121A1F] border border-[#1F2C33] rounded-2xl overflow-hidden">
-          <div className="p-4 bg-[#0B0F10] border-b border-[#1F2C33] flex items-center justify-between">
-            <h3 className="text-sm font-bold text-[#F2F5F4]">Sent Notifications</h3>
-            <span className="text-xs text-[#8FA1A8] tabular-nums">{notifications.length} sent</span>
-          </div>
-          <div className="divide-y divide-[#1F2C33] max-h-[520px] overflow-y-auto">
-            {notifications.map((n) => {
-              const target = n.userId && n.userId !== 'all' ? userById.get(n.userId) : null;
-              return (
-                <div key={n.id} className="p-4 hover:bg-[#162026] space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-bold text-xs text-[#F2F5F4]">{n.title}</div>
-                    <span className="text-[10px] font-semibold text-[#6FD8B0]">
-                      {n.userId === 'all' || !n.userId ? 'Everyone' : target?.email || n.userEmail || n.userId}
-                    </span>
+          <div className="lg:col-span-7 bg-[#121A1F] border border-[#1F2C33] rounded-2xl overflow-hidden">
+            <div className="p-4 bg-[#0B0F10] border-b border-[#1F2C33] flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[#F2F5F4]">Sent Notifications</h3>
+              <span className="text-xs text-[#8FA1A8] tabular-nums">{notifications.length} sent</span>
+            </div>
+            <div className="divide-y divide-[#1F2C33] max-h-[520px] overflow-y-auto">
+              {notifications.map((n) => {
+                const target = n.userId && n.userId !== 'all' ? userById.get(n.userId) : null;
+                return (
+                  <div key={n.id} className="p-4 hover:bg-[#162026] space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-bold text-xs text-[#F2F5F4]">{n.title}</div>
+                      <span className="text-[10px] font-semibold text-[#6FD8B0]">
+                        {n.userId === 'all' || !n.userId ? 'Everyone' : target?.email || n.userEmail || n.userId}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#B6C4C9] leading-relaxed">{n.message}</p>
+                    <div className="text-[11px] text-[#8FA1A8]">{formatDate(n.createdAt)}</div>
                   </div>
-                  <p className="text-xs text-[#B6C4C9] leading-relaxed">{n.message}</p>
-                  <div className="text-[11px] text-[#8FA1A8]">{formatDate(n.createdAt)}</div>
+                );
+              })}
+              {notifications.length === 0 && (
+                <div className="py-12 text-center text-xs text-[#8FA1A8]">No sent notifications yet.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Left: Conversation List */}
+          <div className="lg:col-span-5 bg-[#121A1F] border border-[#1F2C33] rounded-2xl overflow-hidden flex flex-col max-h-[640px]">
+            <div className="p-4 bg-[#0B0F10] border-b border-[#1F2C33] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-[#6FD8B0]' : 'bg-amber-400'}`} />
+                  <span className="text-xs font-bold text-[#F2F5F4]">
+                    {wsConnected ? 'WebSocket Desk Live' : 'Live Sync Active'}
+                  </span>
                 </div>
-              );
-            })}
-            {notifications.length === 0 && (
-              <div className="py-12 text-center text-xs text-[#8FA1A8]">No sent notifications yet.</div>
+                <button
+                  type="button"
+                  onClick={() => void loadThreads(false)}
+                  className="min-h-[36px] px-2.5 rounded-lg border border-[#1F2C33] text-[11px] font-semibold text-[#B6C4C9] hover:text-[#F2F5F4] inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${threadsLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8FA1A8]" />
+                <input
+                  type="text"
+                  value={threadSearch}
+                  onChange={(e) => setThreadSearch(e.target.value)}
+                  placeholder="Search visitor, email, or topic..."
+                  className="min-h-[40px] w-full pl-8 pr-3 bg-[#121A1F] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(['all', 'open', 'pending', 'resolved'] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setStatusFilter(st)}
+                    className={`min-h-[34px] px-2.5 rounded-lg text-[11px] font-semibold capitalize cursor-pointer ${
+                      statusFilter === st
+                        ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                        : 'bg-[#121A1F] border border-[#1F2C33] text-[#8FA1A8]'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="divide-y divide-[#1F2C33] overflow-y-auto flex-1">
+              {filteredThreads.map((t) => {
+                const isSelected = t.id === selectedThreadId;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSelectedThreadId(t.id)}
+                    className={`w-full text-left p-4 space-y-1.5 transition-colors cursor-pointer ${
+                      isSelected ? 'bg-[#17242B]' : 'hover:bg-[#162026]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-xs text-[#F2F5F4] truncate">{t.visitorName}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {t.unreadAdminCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-[#6FD8B0] text-[#0B0F10] text-[10px] font-bold">
+                            {t.unreadAdminCount}
+                          </span>
+                        )}
+                        <span className={`text-[10px] uppercase font-bold ${
+                          t.status === 'resolved'
+                            ? 'text-[#6FD8B0]'
+                            : t.status === 'pending'
+                            ? 'text-amber-300'
+                            : 'text-[#60A5FA]'
+                        }`}>
+                          {t.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-[#8FA1A8] truncate">
+                      {t.visitorEmail} · {t.topic}
+                    </div>
+                    <div className="text-xs text-[#B6C4C9] truncate">{t.lastMessagePreview}</div>
+                  </button>
+                );
+              })}
+              {filteredThreads.length === 0 && (
+                <div className="py-12 px-4 text-center text-xs text-[#8FA1A8]">
+                  No live support conversations yet. New messages from the site or investor portal appear here instantly.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Active Conversation */}
+          <div className="lg:col-span-7 bg-[#121A1F] border border-[#1F2C33] rounded-2xl overflow-hidden flex flex-col h-[640px]">
+            {!selectedThread ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-2">
+                <MessageCircle className="w-8 h-8 text-[#6FD8B0]/60" />
+                <p className="text-sm font-semibold text-[#F2F5F4]">Select a support conversation</p>
+                <p className="text-xs text-[#8FA1A8] max-w-sm">
+                  Incoming messages from the floating messenger and Investor Relations portal sync here live over WebSockets.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="p-4 bg-[#0B0F10] border-b border-[#1F2C33] flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm text-[#F2F5F4] truncate">
+                      {selectedThread.visitorName}
+                    </div>
+                    <div className="text-[11px] text-[#8FA1A8] truncate">
+                      {selectedThread.visitorEmail} · {selectedThread.topic}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {(['open', 'pending', 'resolved'] as const).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => void handleChangeThreadStatus(selectedThread.id, st)}
+                        className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-semibold capitalize inline-flex items-center gap-1 cursor-pointer ${
+                          selectedThread.status === st
+                            ? 'bg-[#6FD8B0] text-[#0B0F10]'
+                            : 'bg-[#121A1F] border border-[#1F2C33] text-[#B6C4C9]'
+                        }`}
+                      >
+                        {st === 'resolved' ? <CheckCheck className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                        <span>{st}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0B0F10]/60">
+                  {messagesLoading && threadMessages.length === 0 ? (
+                    <div className="py-12 text-center text-xs text-[#8FA1A8]">Loading messages...</div>
+                  ) : (
+                    threadMessages.map((msg) => {
+                      const isStaff = msg.senderType === 'staff';
+                      return (
+                        <div key={msg.id} className={`flex flex-col ${isStaff ? 'items-end' : 'items-start'}`}>
+                          <div className="text-[10px] text-[#8FA1A8] mb-1 px-1">
+                            {msg.senderName} · {formatDate(msg.createdAt)}
+                          </div>
+                          <div
+                            className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap ${
+                              isStaff
+                                ? 'bg-[#6FD8B0] text-[#0B0F10] font-medium'
+                                : 'bg-[#172228] border border-[#1F2C33] text-[#F2F5F4]'
+                            }`}
+                          >
+                            {msg.body}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                <form onSubmit={handleSendReply} className="p-3 bg-[#0B0F10] border-t border-[#1F2C33] flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder={`Reply to ${selectedThread.visitorName}...`}
+                    className="min-h-[44px] flex-1 px-3.5 bg-[#121A1F] border border-[#1F2C33] rounded-xl text-xs text-[#F2F5F4]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sendingReply || !replyText.trim()}
+                    className="min-h-[44px] px-4 rounded-xl bg-[#6FD8B0] hover:bg-[#5ec8a0] text-[#0B0F10] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>{sendingReply ? 'Sending...' : 'Send'}</span>
+                  </button>
+                </form>
+              </>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

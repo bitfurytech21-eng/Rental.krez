@@ -213,7 +213,7 @@ interface PortalContextValue {
   setLedgerFilter: (val: string) => void;
 
   // Refreshers
-  refreshAll: () => Promise<void>;
+  refreshAll: (options?: { silent?: boolean }) => Promise<void>;
   refreshNotifications: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -239,6 +239,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const pathRef = useRef<string>(currentPath);
 
   const [loading, setLoading] = useState<boolean>(true);
+  const hasLoadedOnceRef = useRef<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [portalConfig, setPortalConfig] = useState<PortalConfig>(PORTAL_PLACEHOLDER_CONFIG);
@@ -346,12 +347,16 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  const refreshAll = useCallback(async () => {
+  const refreshAll = useCallback(async (options?: { silent?: boolean }) => {
     if (!user) {
+      hasLoadedOnceRef.current = false;
       setLoading(false);
       return;
     }
-    setLoading(true);
+    const isSilent = Boolean(options?.silent) || hasLoadedOnceRef.current;
+    if (!isSilent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const results = await Promise.allSettled([
@@ -421,16 +426,21 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ].find((r): r is PromiseRejectedResult => r.status === 'rejected');
 
       if (firstRejected) {
-        setError(safeErrorMessage(firstRejected.reason, 'Unable to synchronize your investor portal with the server.'));
+        if (!isSilent || !lastSyncedAt) {
+          setError(safeErrorMessage(firstRejected.reason, 'Unable to synchronize your investor portal with the server.'));
+        }
       } else {
         setLastSyncedAt(new Date());
       }
+      hasLoadedOnceRef.current = true;
     } catch (err: any) {
-      setError(safeErrorMessage(err, 'Unable to synchronize your investor portal with the server.'));
+      if (!isSilent || !lastSyncedAt) {
+        setError(safeErrorMessage(err, 'Unable to synchronize your investor portal with the server.'));
+      }
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, lastSyncedAt]);
 
   const refreshNotifications = useCallback(async () => {
     if (!user) return;
@@ -500,6 +510,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Drop user-scoped portal snapshots immediately when the authenticated user disappears or changes.
   useEffect(() => {
     if (user?.id) return;
+    hasLoadedOnceRef.current = false;
     setSummary(null);
     setPortfolio(null);
     setBalance(0);
@@ -522,7 +533,16 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     void refreshAll();
-  }, [refreshAll]);
+  }, [user?.id]);
+
+  // Trigger a silent live sync when leaving Sample Data preview mode
+  const prevSampleEnabledRef = useRef<boolean>(sampleDataEnabled);
+  useEffect(() => {
+    if (prevSampleEnabledRef.current && !sampleDataEnabled && user?.id) {
+      void refreshAll({ silent: true });
+    }
+    prevSampleEnabledRef.current = sampleDataEnabled;
+  }, [sampleDataEnabled, user?.id, refreshAll]);
 
   // Keep live portal data fresh when realtime events are missed or the user returns to the tab.
   useEffect(() => {
@@ -530,25 +550,32 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const refreshOnVisible = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-        void refreshAll();
+        void refreshAll({ silent: true });
       }
+    };
+    const refreshOnFocusOrOnline = () => {
+      void refreshAll({ silent: true });
     };
 
     const interval = window.setInterval(() => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-        void refreshAll();
+        void refreshAll({ silent: true });
       }
-    }, 60_000);
+    }, 45_000);
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', refreshOnVisible);
     }
+    window.addEventListener('focus', refreshOnFocusOrOnline);
+    window.addEventListener('online', refreshOnFocusOrOnline);
 
     return () => {
       window.clearInterval(interval);
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', refreshOnVisible);
       }
+      window.removeEventListener('focus', refreshOnFocusOrOnline);
+      window.removeEventListener('online', refreshOnFocusOrOnline);
     };
   }, [user?.id, sampleDataEnabled, refreshAll]);
 
@@ -568,8 +595,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   }, [user?.id, sampleDataEnabled]);
 
-  // One user-scoped channel keeps the portal, transaction list, holdings and bell in sync.
-  // Holdings are a view over investments, so listen to the underlying investments table.
+  // One user-scoped channel keeps the portal, transaction list, holdings, KYC and bell in sync.
   useEffect(() => {
     if (!user?.id || sampleDataEnabled || !isSupabaseConfigured()) return;
 
@@ -592,12 +618,40 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         filter: `user_id=eq.${user.id}`,
       }, () => schedule('financial', () => { void refreshFinancialData(); }))
       .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'ledger_entries',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'payment_transactions',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'wallets',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'withdrawal_requests',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'manual_deposit_submissions',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('financial', () => { void refreshFinancialData(); }))
+      .on('postgres_changes', {
         event: '*', schema: 'public', table: 'investments',
         filter: `user_id=eq.${user.id}`,
       }, () => schedule('financial', () => { void refreshFinancialData(); }))
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'profiles',
         filter: `id=eq.${user.id}`,
+      }, () => schedule('profile', () => { void refreshProfile(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'user_profiles',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('profile', () => { void refreshProfile(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'kyc_submissions',
+        filter: `user_id=eq.${user.id}`,
       }, () => schedule('profile', () => { void refreshProfile(); }))
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'notifications',
@@ -607,6 +661,16 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         event: '*', schema: 'public', table: 'notifications',
         filter: 'user_id=is.null',
       }, () => schedule('notifications', () => { void refreshNotifications(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'properties',
+      }, () => schedule('all', () => { void refreshAll({ silent: true }); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'manual_payment_methods',
+      }, () => schedule('profile', () => { void refreshProfile(); }))
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'documents',
+        filter: `user_id=eq.${user.id}`,
+      }, () => schedule('all', () => { void refreshAll({ silent: true }); }))
       .subscribe((status, err) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn('Investor live updates are temporarily unavailable.', err);
@@ -618,7 +682,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       pendingRefreshes.clear();
       void supabase.removeChannel(channel);
     };
-  }, [user?.id, sampleDataEnabled, refreshFinancialData, refreshProfile, refreshNotifications]);
+  }, [user?.id, sampleDataEnabled, refreshFinancialData, refreshProfile, refreshNotifications, refreshAll]);
 
   const navigatePortal = useCallback(
     (nextRoute: PortalRoute, options?: { propertySlug?: string }) => {

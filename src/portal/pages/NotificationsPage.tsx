@@ -76,7 +76,16 @@ export const NotificationsPage: React.FC = () => {
 
   return (
     <div className="space-y-5 max-w-3xl">
-      {error && <ErrorBanner message={error} onRetry={refreshNotifications} />}
+      {error && (
+        <ErrorBanner
+          title="Unable to update notification"
+          message={error}
+          onRetry={() => {
+            setError(null);
+            void refreshNotifications();
+          }}
+        />
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

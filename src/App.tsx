@@ -9,7 +9,8 @@ import { api } from './lib/api';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import { SmartsuppWidget } from './components/support/SmartsuppWidget';
+import { LiveSupportMessenger } from './components/support/LiveSupportMessenger';
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 // Krez Template Pages
 import { KrezHomePage } from './components/krez/KrezHomePage';
@@ -67,24 +68,79 @@ function MainApp() {
   const [returnDestination, setReturnDestination] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>(ledger.getProperties());
 
-  // PUBLIC_PROPERTY_LISTINGS_REFRESH: fetch live approved catalogue while on Properties.
+  // PUBLIC_PROPERTY_LISTINGS_REFRESH: keep public property catalogue live across home, listings, portfolio, and detail views.
   useEffect(() => {
     const cleanPath = currentPath.split('#')[0].split('?')[0].replace(/\/$/, '') || '/';
-    if (cleanPath !== '/properties') return;
+    const isPublicListingRoute =
+      cleanPath === '/' ||
+      cleanPath === '/home' ||
+      cleanPath === '/properties' ||
+      cleanPath.startsWith('/properties/') ||
+      cleanPath.startsWith('/property/') ||
+      cleanPath === '/portfolio';
+    if (!isPublicListingRoute) return;
 
     let cancelled = false;
+    const filterApproved = (rows: any[]) =>
+      rows.filter((p: any) =>
+        p &&
+        p.status !== 'hidden' &&
+        p.status !== 'draft' &&
+        p.status !== 'pending_approval' &&
+        p.approvedForFrontend !== false
+      );
+
     const refreshPublicListings = async () => {
       try {
         const response = await api.get<any>('/marketplace/listings');
         const rows = Array.isArray(response) ? response : response?.data;
-        if (!Array.isArray(rows) || rows.length === 0 || cancelled) return;
-        const approved = rows.filter((p: any) =>
-          p && p.status !== 'hidden' && p.status !== 'draft' &&
-          p.status !== 'pending_approval' && p.approvedForFrontend !== false
-        );
-        if (approved.length) setProperties(approved as Property[]);
+        if (Array.isArray(rows) && rows.length > 0 && !cancelled) {
+          const approved = filterApproved(rows);
+          if (approved.length > 0) {
+            setProperties(approved as Property[]);
+            return;
+          }
+        }
       } catch {
-        // Keep the existing ledger catalogue visible if the live API is unavailable.
+        // Fallback to direct Supabase query below when available
+      }
+
+      if (isSupabaseConfigured() && !cancelled) {
+        try {
+          const { data: sbRows, error: sbErr } = await supabase
+            .from('properties')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (!sbErr && Array.isArray(sbRows) && sbRows.length > 0 && !cancelled) {
+            const approved = filterApproved(
+              sbRows.map((row: any) => ({
+                id: row.id,
+                slug: row.slug || row.id,
+                title: row.title || row.name || 'SPV Asset',
+                location: row.location || row.city || '',
+                country: row.country || 'France',
+                type: row.property_type || row.type || 'residential',
+                status: row.status || 'funding',
+                targetAmount: Number(row.target_amount ?? row.valuation ?? 0),
+                fundedAmount: Number(row.funded_amount ?? 0),
+                tokenPrice: Number(row.token_price ?? 100),
+                totalTokens: Number(row.total_tokens ?? 1000),
+                availableTokens: Number(row.available_tokens ?? 1000),
+                estimatedAnnualYield: Number(row.estimated_annual_yield ?? row.annual_yield ?? 0),
+                minInvestment: Number(row.min_investment ?? 100),
+                images: Array.isArray(row.images) ? row.images : row.image_url ? [row.image_url] : [],
+                description: row.description || '',
+                approvedForFrontend: row.approved_for_frontend ?? true,
+                assignedFunction: row.assigned_function || 'invest',
+              }))
+            );
+            if (approved.length > 0) {
+              setProperties(approved as Property[]);
+            }
+          }
+        } catch {
+          // Keep existing ledger properties if direct fallback is unavailable
+        }
       }
     };
 
@@ -93,15 +149,22 @@ function MainApp() {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') {
         void refreshPublicListings();
       }
-    }, 60_000);
+    }, 45_000);
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refreshPublicListings();
     };
+    const onFocusOrOnline = () => {
+      void refreshPublicListings();
+    };
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocusOrOnline);
+    window.addEventListener('online', onFocusOrOnline);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocusOrOnline);
+      window.removeEventListener('online', onFocusOrOnline);
     };
   }, [currentPath]);
   const [, setPassGateUnlocked] = useState(isPassGateUnlocked);
@@ -727,7 +790,7 @@ function MainApp() {
 
       <SchemaJsonLd property={selectedProperty} />
       <OfflineIndicator />
-      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
+      {!isIsolatedAdminEnvironment && <LiveSupportMessenger />}
     </div>
   );
 }

@@ -3,18 +3,13 @@ import QRCode from 'qrcode';
 import { getApiUrl, getAuthToken } from '../../lib/api';
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient';
 import { portalApi } from '../../portal/services/portalApi';
+import {
+  buildFullDepositMethods,
+  formatDepositFeeSummary,
+  formatDepositMethodTitle,
+  NormalizedDepositMethod,
+} from '../../portal/utils/paymentMethods';
 
-type DepositMethod = {
-  id: string;
-  method: 'bank' | 'usdt';
-  minimum_amount: number | string;
-  maximum_amount: number | string | null;
-  name?: string;
-  instructions?: string;
-  network?: string;
-  wallet_address?: string;
-  detail_rows?: Array<{ label: string; value: string }>;
-};
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -41,14 +36,12 @@ const money = (value: string | number | bigint): string => {
   const numeric = typeof value === 'bigint' ? Number(value) / 100 : Number(value);
   return new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' }).format(numeric);
 };
-const methodLabel = (method: DepositMethod['method']) =>
-  method === 'usdt' ? 'USDT (crypto)' : 'Bank transfer (SEPA)';
 
 export const ManualDepositModal: React.FC<Props> = ({
   isOpen, onClose, onSuccess, onNavigateTransactions, onNavigateCompliance, isVerified = true
 }) => {
-  const [methods, setMethods] = useState<DepositMethod[]>([]);
-  const [method, setMethod] = useState<DepositMethod['method'] | ''>('');
+  const [methods, setMethods] = useState<NormalizedDepositMethod[]>([]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string>('');
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState(false);
@@ -64,7 +57,7 @@ export const ManualDepositModal: React.FC<Props> = ({
   const confirmationLock = useRef(false);
   const lockRef = useRef(false);
 
-  const selected = methods.find(item => item.method === method);
+  const selected = methods.find(item => item.id === selectedMethodId) ?? null;
   const amountCents = parseEurCents(amount);
 
   useEffect(() => {
@@ -74,17 +67,26 @@ export const ManualDepositModal: React.FC<Props> = ({
     setError('');
     setSubmitted(null);
     setAmount('');
-    setMethod('');
+    setSelectedMethodId('');
     setLoadingMethods(true);
-    portalApi
-      .getAssignedPaymentMethods()
-      .then((available) => {
+    Promise.all([
+      portalApi.getAssignedPaymentMethods().catch(() => []),
+      portalApi.getPaymentConfig().catch(() => null),
+      portalApi.getWalletBalance().catch(() => null),
+    ])
+      .then(([available, portalConfig, walletRes]) => {
         if (cancelled) return;
-        setMethods(available);
-        if (available.length === 1) setMethod(available[0].method);
+        const resolved = buildFullDepositMethods({
+          apiMethods: available,
+          assignedBankAccount: walletRes?.assignedBankAccount ?? null,
+          assignedUsdtAccount: walletRes?.assignedUsdtAccount ?? null,
+          portalConfig,
+        });
+        setMethods(resolved);
+        if (resolved.length === 1) setSelectedMethodId(resolved[0].id);
       })
       .catch((e) => {
-        if (!cancelled) setError(e?.message || 'Unable to load your assigned payment methods.');
+        if (!cancelled) setError(e?.message || 'Unable to load available payment methods.');
       })
       .finally(() => {
         if (!cancelled) setLoadingMethods(false);
@@ -122,7 +124,7 @@ export const ManualDepositModal: React.FC<Props> = ({
   const continueToReview = () => {
     setError('');
     if (!selected) {
-      setError('Select one of your available payment methods.');
+      setError('Select one of the available payment methods.');
       return;
     }
     const minimumCents = parseEurCents(selected.minimum_amount);
@@ -153,25 +155,39 @@ export const ManualDepositModal: React.FC<Props> = ({
       return;
     }
     if (!selected || amountCents === null || amountCents <= 0n) {
-      setError('Review a valid amount and an assigned payment method before confirming.');
+      setError('Review a valid amount and payment method before confirming.');
       return;
     }
     lockRef.current = true;
     setBusy(true);
     try {
       let submittedRecord: any = null;
-      if (await hasActiveSupabaseSession()) {
+      const shouldTrySupabaseRpc = (await hasActiveSupabaseSession()) && selected.isAssignedGate;
+      if (shouldTrySupabaseRpc) {
         const { data, error: rpcError } = await supabase.rpc('request_deposit', {
           p_amount: centsToDecimal(amountCents),
-          p_method: selected.method
+          p_method: selected.method,
         });
-        if (rpcError) throw rpcError;
-        submittedRecord = data;
+        if (rpcError) {
+          const msg = String(rpcError?.message || rpcError?.code || '');
+          if (msg.includes('PAYMENT_METHOD_NOT_ASSIGNED') || msg.includes('PAYMENT_METHOD_UNAVAILABLE')) {
+            submittedRecord = await portalApi.submitDeposit({
+              amount: Number(centsToDecimal(amountCents)),
+              currency: 'EUR',
+              method: selected.name || formatDepositMethodTitle(selected),
+              methodId: selected.id,
+            });
+          } else {
+            throw rpcError;
+          }
+        } else {
+          submittedRecord = data;
+        }
       } else {
         submittedRecord = await portalApi.submitDeposit({
           amount: Number(centsToDecimal(amountCents)),
           currency: 'EUR',
-          method: selected.name || (selected.method === 'usdt' ? 'USDT' : 'SEPA Bank Wire'),
+          method: selected.name || formatDepositMethodTitle(selected),
           methodId: selected.id,
         });
       }
@@ -185,7 +201,7 @@ export const ManualDepositModal: React.FC<Props> = ({
       const code = String(e?.message || e?.code || '');
       if (code.includes('PAYMENT_METHOD_NOT_ASSIGNED') || code.includes('PAYMENT_METHOD_UNAVAILABLE')) {
         setError('This payment option is not set up for your account yet. Please refresh or contact support.');
-      } else if (code.includes('AMOUNT_OUT_OF_RANGE')) {
+      } else if (code.includes('AMOUNT_OUT_OF_RANGE') || code.includes('INVALID_DEPOSIT_AMOUNT')) {
         setError('The amount is outside this payment method’s allowed limits.');
       } else if (code.includes('LEGAL') || code.includes('consent')) {
         setError('Please review and accept the latest legal terms before requesting a deposit.');
@@ -197,7 +213,6 @@ export const ManualDepositModal: React.FC<Props> = ({
       setBusy(false);
     }
   };
-
 
   const copyValue = async (value: string, label: string) => {
     try {
@@ -300,10 +315,12 @@ export const ManualDepositModal: React.FC<Props> = ({
     setConfirmationMessage('');
     setError('');
     setMethods([]);
-    setMethod('');
+    setSelectedMethodId('');
     setAmount('');
     onClose();
   };
+
+  const cryptoTokenLabel = selected?.token || 'USDT';
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
     <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-[22px] border border-[#1F2C33] bg-[#0B0F10] p-5 text-[#F2F5F4] shadow-2xl sm:p-6">
@@ -334,21 +351,53 @@ export const ManualDepositModal: React.FC<Props> = ({
           <input aria-label="Deposit amount in euros" inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="h-full min-w-0 flex-1 bg-transparent pl-3 text-4xl font-bold outline-none placeholder:text-[#8FA1A8]/40" />
         </label>
         <div className="grid grid-cols-4 gap-2">{[100,500,1000,5000].map(value => <button key={value} type="button" onClick={() => setAmount(String(value))} className="h-11 rounded-xl border border-[#1F2C33] bg-[#121A1F] text-xs font-semibold hover:border-[#6FD8B0]">{money(value).replace(/\.00$/, '')}</button>)}</div>
-        <p className="text-xs text-[#8FA1A8]">The minimum and maximum depend on your assigned payment method.</p>
+        <p className="text-xs text-[#8FA1A8]">The minimum and maximum depend on the selected payment method.</p>
         <button type="button" disabled={!isVerified || !amount || loadingMethods} onClick={continueToMethod} className="h-12 w-full rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:cursor-not-allowed disabled:opacity-40">{loadingMethods ? 'Loading payment methods…' : 'Continue'}</button>
       </section>}
 
       {step === 2 && <section className="space-y-4">
-        <div><h3 className="text-2xl font-bold">Payment method</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Choose an assigned payment method.</p></div>
+        <div><h3 className="text-2xl font-bold">Payment method</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Select your preferred payment method.</p></div>
         {methods.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#1F2C33] p-6 text-center text-sm text-[#8FA1A8]">Your payment details are being set up. We’ll notify you when they’re ready.</div>
         ) : (
           <fieldset className="space-y-3">
             <legend className="sr-only">Choose payment method</legend>
-            {methods.map(item => <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-[#121A1F] p-4 ${method === item.method ? 'border-[#6FD8B0] bg-[#0F1A18]' : 'border-[#1F2C33]'}`}>
-              <input type="radio" name="deposit-method" value={item.method} checked={method === item.method} onChange={() => setMethod(item.method)} className="size-5 accent-[#6FD8B0]" />
-              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{methodLabel(item.method)}</span><span className="mt-0.5 block text-xs text-[#8FA1A8]">{money(item.minimum_amount)} minimum · {item.maximum_amount == null ? 'No maximum listed' : `${money(item.maximum_amount)} maximum`}</span></span>
-            </label>)}
+            {methods.map(item => {
+              const feeSummary = formatDepositFeeSummary(item);
+              return (
+                <label key={item.id} className={`block cursor-pointer rounded-2xl border bg-[#121A1F] p-4 ${selectedMethodId === item.id ? 'border-[#6FD8B0] bg-[#0F1A18]' : 'border-[#1F2C33]'}`}>
+                  <div className="flex items-start gap-3">
+                    <input type="radio" name="deposit-method" value={item.id} checked={selectedMethodId === item.id} onChange={() => setSelectedMethodId(item.id)} className="mt-0.5 size-5 accent-[#6FD8B0]" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">
+                        {formatDepositMethodTitle(item)}
+                        {item.name ? ` · ${item.name}` : ''}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-[#8FA1A8]">
+                        {money(item.minimum_amount)} minimum · {item.maximum_amount == null ? 'No maximum listed' : `${money(item.maximum_amount)} maximum`}
+                        {feeSummary ? ` · ${feeSummary}` : ''}
+                      </span>
+                    </span>
+                  </div>
+                  {item.detail_rows.length > 0 && (
+                    <div className="mt-3 space-y-1.5 rounded-xl border border-[#1F2C33] bg-[#0B0F10]/70 p-3 text-xs">
+                      {item.detail_rows.map((detail, idx) => (
+                        <div key={`${detail.label}-${idx}`} className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-3">
+                          <span className="text-[#8FA1A8]">{detail.label}</span>
+                          <span className="break-all font-semibold text-[#F2F5F4] sm:text-right">{detail.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {item.instructions && (
+                    <div className="mt-2.5 rounded-xl border border-[#1F2C33] bg-[#0B0F10]/70 p-3 text-xs leading-relaxed">
+                      <span className="block mb-1 font-semibold text-[#8FA1A8]">Payment instructions</span>
+                      <span className="whitespace-pre-wrap text-[#C2CFD2]">{item.instructions}</span>
+                    </div>
+                  )}
+                </label>
+              );
+            })}
           </fieldset>
         )}
         <div className="grid grid-cols-2 gap-2">
@@ -358,21 +407,16 @@ export const ManualDepositModal: React.FC<Props> = ({
       </section>}
 
       {step === 3 && selected && amountCents !== null && <section className="space-y-4">
-        <div><h3 className="text-2xl font-bold">Review deposit</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Check the amount and payment method before confirming.</p></div>
+        <div><h3 className="text-2xl font-bold">Review deposit</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Check the amount, details, and instructions before confirming.</p></div>
         <dl className="divide-y divide-[#1F2C33] rounded-2xl border border-[#1F2C33] bg-[#121A1F] text-sm">
           <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Amount</dt><dd className="font-semibold">{money(amountCents)}</dd></div>
-          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Method</dt><dd className="text-right font-semibold">{selected.name || methodLabel(selected.method)}</dd></div>
-          {selected.method === 'usdt' && <>
-            <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Token</dt><dd className="font-semibold">USDT</dd></div>
-            <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Network</dt><dd className="text-right font-semibold">{selected.network || 'Network not specified'}</dd></div>
-            <div className="p-3.5"><dt className="mb-1 text-[#8FA1A8]">Wallet address</dt><dd className="break-all font-mono text-xs leading-5">{selected.wallet_address || 'Address not configured'}</dd></div>
-          </>}
-          {selected.detail_rows?.map((row, index) => <div key={index} className="flex flex-col gap-1 p-3.5"><dt className="text-[#8FA1A8]">{row.label}</dt><dd className="break-all font-semibold">{row.value}</dd></div>)}
-          {selected.instructions ? <div className="p-3.5"><dt className="mb-1 text-[#8FA1A8]">Instructions</dt><dd className="whitespace-pre-wrap text-xs leading-relaxed">{selected.instructions}</dd></div> : null}
+          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Method</dt><dd className="text-right font-semibold">{formatDepositMethodTitle(selected)}{selected.name ? ` · ${selected.name}` : ''}</dd></div>
+          {selected.detail_rows.map((row, index) => <div key={index} className="flex flex-col gap-1 p-3.5"><dt className="text-[#8FA1A8]">{row.label}</dt><dd className="break-all font-semibold">{row.value}</dd></div>)}
+          {selected.instructions ? <div className="p-3.5"><dt className="mb-1 text-[#8FA1A8]">Payment instructions</dt><dd className="whitespace-pre-wrap text-xs leading-relaxed">{selected.instructions}</dd></div> : null}
           <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Minimum</dt><dd className="font-semibold">{money(selected.minimum_amount)}</dd></div>
           <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Maximum</dt><dd className="font-semibold">{selected.maximum_amount == null ? 'No maximum listed' : money(selected.maximum_amount)}</dd></div>
         </dl>
-        {selected.method === 'usdt' && <p className="text-xs leading-relaxed text-[#8FA1A8]">You’ll send USDT and we’ll credit your wallet in EUR at the rate when your payment is confirmed. The final amount may differ from this estimate.</p>}
+        {selected.method === 'usdt' && <p className="text-xs leading-relaxed text-[#8FA1A8]">You’ll send {cryptoTokenLabel} and we’ll credit your wallet in EUR at the rate when your payment is confirmed. The final amount may differ from this estimate.</p>}
         <div className="grid grid-cols-2 gap-2">
           <button type="button" disabled={busy} onClick={() => setStep(2)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold disabled:opacity-40">Back</button>
           <button type="button" disabled={busy || !isVerified} onClick={confirmDeposit} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">{busy ? 'Submitting…' : 'Confirm deposit'}</button>
@@ -389,22 +433,37 @@ export const ManualDepositModal: React.FC<Props> = ({
         {selected?.method === 'usdt' ? (
           <div className="space-y-4">
             <div role="alert" className="rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-4 text-sm font-bold leading-relaxed text-amber-200">
-              Send only USDT on the {selected.network || 'assigned'} network. Funds sent on any other network or coin may be lost and cannot be recovered.
+              Send only {cryptoTokenLabel} on the {selected.network || 'assigned'} network. Funds sent on any other network or coin may be lost and cannot be recovered.
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-[#8FA1A8]">NETWORK</span>
               <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-200">{selected.network || 'Network not specified'}</span>
             </div>
             <div className="rounded-2xl border border-[#1F2C33] bg-[#121A1F] p-4">
-              <p className="mb-2 text-xs font-semibold text-[#8FA1A8]">USDT WALLET ADDRESS</p>
+              <p className="mb-2 text-xs font-semibold text-[#8FA1A8]">{cryptoTokenLabel} WALLET ADDRESS</p>
               <p className="break-all font-mono text-sm leading-7 text-white">{(selected.wallet_address || '').replace(/(.{4})/g, '$1 ').trim()}</p>
               <button type="button" onClick={() => copyValue(selected.wallet_address || '', 'Wallet address')} className="mt-3 h-11 w-full rounded-xl border border-[#6FD8B0]/50 font-semibold text-[#6FD8B0]">Copy wallet address</button>
             </div>
+            {selected.contract_address && (
+              <div className="flex items-start justify-between gap-3 rounded-xl border border-[#1F2C33] bg-[#121A1F] p-3 text-sm">
+                <div className="min-w-0">
+                  <span className="text-xs text-[#8FA1A8] block">Contract address</span>
+                  <span className="mt-1 block break-all font-mono text-xs text-[#F2F5F4]">{selected.contract_address}</span>
+                </div>
+                <button type="button" onClick={() => copyValue(selected.contract_address || '', 'Contract address')} className="h-10 shrink-0 rounded-lg border border-[#6FD8B0]/40 px-3 text-xs font-semibold text-[#6FD8B0]">Copy</button>
+              </div>
+            )}
             {qrCode && <div className="flex flex-col items-center rounded-2xl border border-[#1F2C33] bg-white p-4">
-              <img src={qrCode} alt="QR code for the USDT wallet address" className="size-52 max-w-full" />
+              <img src={qrCode} alt={`QR code for the ${cryptoTokenLabel} wallet address`} className="size-52 max-w-full" />
               <span className="mt-2 text-xs font-semibold text-slate-700">Scan to copy wallet address</span>
             </div>}
-            {submitted.estimated_usdt_amount != null && <div className="rounded-xl border border-[#1F2C33] p-3 text-sm"><span className="text-[#8FA1A8]">Estimated USDT amount</span><p className="mt-1 text-lg font-bold">{submitted.estimated_usdt_amount} USDT</p></div>}
+            {submitted.estimated_usdt_amount != null && <div className="rounded-xl border border-[#1F2C33] p-3 text-sm"><span className="text-[#8FA1A8]">Estimated {cryptoTokenLabel} amount</span><p className="mt-1 text-lg font-bold">{submitted.estimated_usdt_amount} {cryptoTokenLabel}</p></div>}
+            {selected.instructions && (
+              <div className="rounded-2xl border border-[#1F2C33] bg-[#121A1F] p-4 text-sm leading-relaxed text-[#C2CFD2]">
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[#8FA1A8]">Payment instructions</p>
+                <p className="whitespace-pre-wrap">{selected.instructions}</p>
+              </div>
+            )}
             <div className="rounded-xl border border-[#6FD8B0]/40 bg-[#6FD8B0]/5 p-3">
               <p className="text-xs text-[#8FA1A8]">PAYMENT REFERENCE</p>
               <p className="mt-1 break-all text-lg font-extrabold tracking-wide text-[#6FD8B0]">{submitted.reference}</p>
@@ -424,7 +483,12 @@ export const ManualDepositModal: React.FC<Props> = ({
               <span className="min-w-0 break-all text-right font-semibold">{detail.value}</span>
               <button type="button" aria-label={`Copy ${detail.label}`} onClick={() => copyValue(detail.value, detail.label)} className="h-11 shrink-0 rounded-lg border border-[#6FD8B0]/40 px-2 text-xs font-semibold text-[#6FD8B0]">Copy</button>
             </div>)}
-            {selected?.instructions && <div className="pt-2 text-sm leading-relaxed text-[#C2CFD2]"><p className="mb-1 font-semibold">Instructions</p>{selected.instructions}</div>}
+            {selected?.instructions && (
+              <div className="rounded-xl border border-[#1F2C33] bg-[#0B0F10]/70 p-3 text-sm leading-relaxed text-[#C2CFD2]">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#8FA1A8]">Payment instructions</p>
+                <p className="whitespace-pre-wrap">{selected.instructions}</p>
+              </div>
+            )}
             <div className="rounded-xl border-2 border-[#6FD8B0] bg-[#6FD8B0]/10 p-3">
               <p className="text-xs font-bold tracking-wide text-[#6FD8B0]">REQUIRED PAYMENT REFERENCE — INCLUDE THIS IN YOUR TRANSFER</p>
               <p className="mt-1 break-all text-lg font-extrabold text-white">{submitted.reference}</p>

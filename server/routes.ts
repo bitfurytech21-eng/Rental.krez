@@ -100,6 +100,8 @@ import {
   ComplianceStepKey, ComplianceStepRecord,
   listUserStatementDocuments, getSignedDocumentUrl, createAdminDocumentRecord, getAdminSignedDocumentUrl,
   getPersistentAccountStatement, getPersistentPerformance,
+  listUserKycSubmissions, createUserKycSubmission, listAdminKycSubmissions, getAdminKycSignedUrl,
+  reviewAdminKycSubmission, computeOverallKycStatus, normalizeKycDocType, KycSubmissionRecord,
   signInCustomer, registerCustomer, requestCustomerPasswordReset, updateCustomerPassword, signOutCustomer
 } from './supabaseDatabase';
 import {
@@ -112,6 +114,17 @@ import {
   createKycVerificationSession,
   verifyKycWebhookSignature
 } from './services/kycProvider';
+import {
+  createOrResumeSupportThread,
+  appendSupportMessage,
+  findThreadBundleById,
+  findThreadByUserId,
+  verifyThreadAccess,
+  listAdminSupportThreads,
+  updateSupportThreadStatus,
+  markSupportThreadReadByAdmin,
+  ensureSupportStoreHydrated,
+} from './supportMessenger';
 
 const router = Router();
 router.use(async (_req, _res, next) => {
@@ -169,6 +182,7 @@ const devComplianceDocsByUser = new Map<string, Array<{
   fileDataUrl?: string;
 }>>();
 const devComplianceStepsByUser = new Map<string, ComplianceStepRecord[]>();
+const devKycSubmissionsByUser = new Map<string, KycSubmissionRecord[]>();
 
 function normalizeAccountName(name: unknown): string {
   return String(name || '')
@@ -719,6 +733,11 @@ async function ensureDevStateHydrated(): Promise<void> {
           devComplianceStepsByUser.set(uid, steps);
         }
       }
+      for (const [uid, subs] of Object.entries(snap.kycSubmissions || {})) {
+        if (Array.isArray(subs) && !devKycSubmissionsByUser.has(uid)) {
+          devKycSubmissionsByUser.set(uid, subs);
+        }
+      }
       if (Array.isArray(snap.transactions) && mockTransactions.length === 0) {
         mockTransactions.push(...snap.transactions);
       }
@@ -778,6 +797,10 @@ async function persistDevState(): Promise<void> {
     preferences[uid] = prefs;
   }
   const gateState = exportDevPaymentGatesState();
+  const kycSubmissions: Record<string, any[]> = {};
+  for (const [uid, subs] of devKycSubmissionsByUser.entries()) {
+    kycSubmissions[uid] = subs.slice(0, 50);
+  }
   await saveDevAuthSnapshot({
     customers: Array.from(devCustomersById.values()),
     sessions: exportServerSessions(),
@@ -790,6 +813,7 @@ async function persistDevState(): Promise<void> {
     manualDeposits: exportManualPaymentDevDeposits().slice(0, 500),
     paymentGates: gateState.paymentGates,
     assignedGates: gateState.assignedGates,
+    kycSubmissions,
   });
 }
 
@@ -2337,6 +2361,173 @@ router.post('/contact', contactLimiter, (req: AuthenticatedRequest, res: Respons
     message: 'Your inquiry has been successfully received by the Kretz Investor Relations Desk.',
     requestId: req.id,
   });
+});
+
+/**
+ * Live Support Messenger Endpoints (/api/v1/support/* and /api/v1/admin/support/*)
+ */
+const SUPPORT_STAFF_ROLES = new Set([
+  'admin', 'super_admin', 'finance_admin', 'operations_admin', 'finance', 'compliance', 'property_manager', 'support', 'auditor'
+]);
+
+router.post('/support/threads', contactLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  const visitorName = String(req.body?.name || req.user?.fullName || '').trim();
+  const visitorEmail = String(req.body?.email || req.user?.email || '').trim().toLowerCase();
+  const topic = String(req.body?.topic || 'Investor Relations Live Desk').trim();
+  const initialMessage = typeof req.body?.initialMessage === 'string' ? req.body.initialMessage.trim() : '';
+
+  if (!req.user?.id && (!visitorName || !validateEmail(visitorEmail))) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter your name and a valid email address to start live chat.',
+      code: 'VALIDATION_ERROR',
+      requestId: req.id,
+    });
+  }
+
+  try {
+    const result = await createOrResumeSupportThread({
+      userId: req.user?.id,
+      visitorName: visitorName || req.user?.fullName || 'Investor',
+      visitorEmail: visitorEmail || req.user?.email || 'investor@lagence.local',
+      topic,
+      initialMessage,
+    });
+    return res.status(201).json({
+      success: true,
+      data: result,
+      requestId: req.id,
+    });
+  } catch (err: any) {
+    return res.status(503).json({
+      success: false,
+      error: err?.message || 'Unable to start live support conversation.',
+      code: 'SUPPORT_THREAD_FAILED',
+      requestId: req.id,
+    });
+  }
+});
+
+router.get('/support/threads/current', async (req: AuthenticatedRequest, res: Response) => {
+  await ensureSupportStoreHydrated();
+  const threadId = String(req.query?.threadId || req.headers['x-support-thread-id'] || '').trim();
+  const visitorToken = String(req.query?.visitorToken || req.headers['x-support-visitor-token'] || '').trim();
+
+  if (threadId) {
+    const bundle = findThreadBundleById(threadId);
+    const isStaff = Boolean(req.user?.role && SUPPORT_STAFF_ROLES.has(req.user.role));
+    if (bundle && verifyThreadAccess(bundle, { visitorToken, userId: req.user?.id, isStaff })) {
+      return res.json({
+        success: true,
+        data: { thread: bundle.thread, messages: bundle.messages, visitorToken: bundle.visitorToken },
+        requestId: req.id,
+      });
+    }
+  }
+
+  if (req.user?.id) {
+    const existing = findThreadByUserId(req.user.id);
+    if (existing) {
+      return res.json({
+        success: true,
+        data: { thread: existing.thread, messages: existing.messages, visitorToken: existing.visitorToken },
+        requestId: req.id,
+      });
+    }
+  }
+
+  return res.json({ success: true, data: null, requestId: req.id });
+});
+
+router.get('/support/threads/:threadId/messages', async (req: AuthenticatedRequest, res: Response) => {
+  await ensureSupportStoreHydrated();
+  const { threadId } = req.params;
+  const visitorToken = String(req.query?.visitorToken || req.headers['x-support-visitor-token'] || '').trim();
+  const bundle = findThreadBundleById(threadId);
+  if (!bundle) {
+    return res.status(404).json({ success: false, error: 'Support conversation not found.', code: 'THREAD_NOT_FOUND', requestId: req.id });
+  }
+  const isStaff = Boolean(req.user?.role && SUPPORT_STAFF_ROLES.has(req.user.role));
+  if (!verifyThreadAccess(bundle, { visitorToken, userId: req.user?.id, isStaff })) {
+    return res.status(403).json({ success: false, error: 'Access denied to this conversation.', code: 'FORBIDDEN', requestId: req.id });
+  }
+  return res.json({
+    success: true,
+    data: { thread: bundle.thread, messages: bundle.messages },
+    requestId: req.id,
+  });
+});
+
+router.post('/support/threads/:threadId/messages', async (req: AuthenticatedRequest, res: Response) => {
+  await ensureSupportStoreHydrated();
+  const { threadId } = req.params;
+  const visitorToken = String(req.body?.visitorToken || req.headers['x-support-visitor-token'] || '').trim();
+  const body = String(req.body?.body || '').trim();
+  if (!body) {
+    return res.status(400).json({ success: false, error: 'Message text cannot be empty.', code: 'VALIDATION_ERROR', requestId: req.id });
+  }
+
+  const bundle = findThreadBundleById(threadId);
+  if (!bundle) {
+    return res.status(404).json({ success: false, error: 'Support conversation not found.', code: 'THREAD_NOT_FOUND', requestId: req.id });
+  }
+
+  const isStaff = Boolean(req.user?.role && SUPPORT_STAFF_ROLES.has(req.user.role));
+  if (!verifyThreadAccess(bundle, { visitorToken, userId: req.user?.id, isStaff })) {
+    return res.status(403).json({ success: false, error: 'Access denied to this conversation.', code: 'FORBIDDEN', requestId: req.id });
+  }
+
+  const senderType = isStaff ? 'staff' : (bundle.thread.userId ? 'investor' : 'visitor');
+  const senderName = isStaff
+    ? (req.user?.fullName || req.user?.email || 'Investor Support Advisor')
+    : String(req.body?.senderName || bundle.thread.visitorName || 'Investor');
+
+  try {
+    const saved = await appendSupportMessage({
+      threadId,
+      senderType,
+      senderName,
+      senderId: req.user?.id,
+      body,
+    });
+    return res.status(201).json({
+      success: true,
+      data: saved,
+      requestId: req.id,
+    });
+  } catch (err: any) {
+    return res.status(400).json({
+      success: false,
+      error: err?.message || 'Unable to send message.',
+      code: 'MESSAGE_SEND_FAILED',
+      requestId: req.id,
+    });
+  }
+});
+
+router.get('/admin/support/threads', requireStaffSection('notifications', 'read'), async (req: AuthenticatedRequest, res: Response) => {
+  const threads = await listAdminSupportThreads();
+  return res.json({ success: true, data: threads, total: threads.length, requestId: req.id });
+});
+
+router.post('/admin/support/threads/:threadId/read', requireStaffSection('notifications', 'write'), async (req: AuthenticatedRequest, res: Response) => {
+  const updated = await markSupportThreadReadByAdmin(req.params.threadId);
+  if (!updated) {
+    return res.status(404).json({ success: false, error: 'Support thread not found.', code: 'THREAD_NOT_FOUND', requestId: req.id });
+  }
+  return res.json({ success: true, data: updated, requestId: req.id });
+});
+
+router.patch('/admin/support/threads/:threadId/status', requireStaffSection('notifications', 'write'), async (req: AuthenticatedRequest, res: Response) => {
+  const status = String(req.body?.status || '').trim().toLowerCase();
+  if (!['open', 'pending', 'resolved'].includes(status)) {
+    return res.status(400).json({ success: false, error: 'Invalid conversation status.', code: 'INVALID_STATUS', requestId: req.id });
+  }
+  const updated = await updateSupportThreadStatus(req.params.threadId, status as 'open' | 'pending' | 'resolved');
+  if (!updated) {
+    return res.status(404).json({ success: false, error: 'Support thread not found.', code: 'THREAD_NOT_FOUND', requestId: req.id });
+  }
+  return res.json({ success: true, data: updated, requestId: req.id });
 });
 
 /**
@@ -4326,7 +4517,45 @@ router.get('/transactions/:transactionId', requireAuth, async (req: Authenticate
  * GET /api/v1/notifications
  */
 router.get('/notifications', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (shouldUseSupabaseForCustomer(req)) { try { const rows = await listUserNotifications(req.user!.id); const data = rows.map((n: any) => ({ id: n.id, title: n.title, message: n.message || n.body || '', type: n.type || 'info', read: n.read, createdAt: n.created_at, metadata: n.metadata || null })); return res.json({ success: true, data, unreadCount: data.filter((n: any) => !n.read).length, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications are temporarily unavailable.', code: 'NOTIFICATION_DATABASE_UNAVAILABLE', requestId: req.id }); } }
+  if (shouldUseSupabaseForCustomer(req) && canUseLiveSupabaseData()) {
+    try {
+      const rows = await listUserNotifications(req.user!.id);
+      const data = rows.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        message: n.message || n.body || '',
+        type: n.type || 'info',
+        read: Boolean(n.read ?? n.is_read),
+        createdAt: n.created_at,
+        metadata: n.metadata || null,
+      }));
+      return res.json({
+        success: true,
+        data,
+        unreadCount: data.filter((n: any) => !n.read).length,
+        requestId: req.id,
+      });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        logger.log({
+          level: 'error',
+          category: 'database',
+          requestId: req.id || 'req-notifications-list',
+          eventType: 'NOTIFICATION_QUERY_FAILED',
+          outcome: 'failure',
+          message: err?.message || 'Failed to load notifications.',
+        });
+        return res.status(503).json({
+          success: false,
+          error: 'Notifications are temporarily unavailable.',
+          code: 'NOTIFICATION_DATABASE_UNAVAILABLE',
+          requestId: req.id,
+        });
+      }
+    }
+  }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   res.json({
@@ -4338,7 +4567,31 @@ router.get('/notifications', requireAuth, async (req: AuthenticatedRequest, res:
 });
 
 router.patch('/notifications/:id/read', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (shouldUseSupabaseForCustomer(req)) { try { const row = await markUserNotificationRead(req.user!.id, req.params.id); return res.json({ success: true, data: row, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notification could not be updated.', code: 'NOTIFICATION_UPDATE_FAILED', requestId: req.id }); } }
+  if (shouldUseSupabaseForCustomer(req) && canUseLiveSupabaseData()) {
+    try {
+      const row = await markUserNotificationRead(req.user!.id, req.params.id);
+      return res.json({ success: true, data: row, requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        logger.log({
+          level: 'error',
+          category: 'database',
+          requestId: req.id || 'req-notification-read',
+          eventType: 'NOTIFICATION_UPDATE_FAILED',
+          outcome: 'failure',
+          message: err?.message || 'Failed to mark notification read.',
+        });
+        return res.status(503).json({
+          success: false,
+          error: 'Notification could not be updated.',
+          code: 'NOTIFICATION_UPDATE_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
+  }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   const target = list.find(n => n.id === req.params.id);
@@ -4354,7 +4607,31 @@ router.patch('/notifications/:id/read', requireAuth, async (req: AuthenticatedRe
 });
 
 router.post('/notifications/read-all', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (shouldUseSupabaseForCustomer(req)) { try { const markedRead = await markAllUserNotificationsRead(req.user!.id); return res.json({ success: true, data: { markedRead }, requestId: req.id }); } catch { return res.status(503).json({ success: false, error: 'Notifications could not be updated.', code: 'NOTIFICATION_UPDATE_FAILED', requestId: req.id }); } }
+  if (shouldUseSupabaseForCustomer(req) && canUseLiveSupabaseData()) {
+    try {
+      const markedRead = await markAllUserNotificationsRead(req.user!.id);
+      return res.json({ success: true, data: { markedRead }, requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        logger.log({
+          level: 'error',
+          category: 'database',
+          requestId: req.id || 'req-notification-read-all',
+          eventType: 'NOTIFICATION_UPDATE_ALL_FAILED',
+          outcome: 'failure',
+          message: err?.message || 'Failed to mark all notifications read.',
+        });
+        return res.status(503).json({
+          success: false,
+          error: 'Notifications could not be updated.',
+          code: 'NOTIFICATION_UPDATE_FAILED',
+          requestId: req.id,
+        });
+      }
+    }
+  }
   if (process.env.NODE_ENV === 'production') return res.status(503).json({ success: false, error: 'Persistent notification storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
   const list = userNotificationsStore.get(req.user!.id) || [];
   list.forEach(n => { n.read = true; });
@@ -4666,6 +4943,145 @@ router.post(['/compliance/documents', '/documents'], requireAuth, async (req: Au
 
   await persistDevState();
   return res.status(201).json({ success: true, data: record, documents: nextDocs, steps: updatedSteps, message: 'Compliance document uploaded and queued for review.', requestId: req.id });
+});
+
+router.get('/compliance/kyc-submissions', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (shouldUseSupabaseForCustomer(req) && canUseLiveSupabaseData()) {
+    try {
+      const data = await listUserKycSubmissions(req.user!.id);
+      return res.json({ success: true, data, requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'Compliance submissions are temporarily unavailable.', code: 'COMPLIANCE_DATABASE_UNAVAILABLE', requestId: req.id });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent compliance storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const devCustomer = devCustomersById.get(req.user!.id);
+  const submissions = devKycSubmissionsByUser.get(req.user!.id) || [];
+  const overallStatus = devCustomer?.kycStatus || computeOverallKycStatus(submissions);
+  return res.json({ success: true, data: { overallStatus, submissions }, requestId: req.id });
+});
+
+router.post('/compliance/kyc-submissions', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const docType = normalizeKycDocType(req.body?.docType || req.body?.doc_type || req.body?.category);
+  const filePath = typeof (req.body?.filePath ?? req.body?.file_path) === 'string'
+    ? String(req.body?.filePath ?? req.body?.file_path).trim()
+    : null;
+  const fileName = typeof req.body?.fileName === 'string' ? req.body.fileName.trim() : undefined;
+  const mimeType = typeof req.body?.mimeType === 'string' ? req.body.mimeType.trim() : undefined;
+  const fileSize = req.body?.fileSize !== undefined ? Number(req.body.fileSize) : undefined;
+  const fileDataUrl = typeof req.body?.fileDataUrl === 'string' && req.body.fileDataUrl.length <= 20_500_000
+    ? req.body.fileDataUrl
+    : undefined;
+  const answers = req.body?.answers && typeof req.body.answers === 'object' ? req.body.answers : null;
+
+  if (docType !== 'questionnaire' && !filePath && !fileDataUrl) {
+    return res.status(400).json({ success: false, error: 'A verification document file or storage path is required.', code: 'VALIDATION_ERROR', requestId: req.id });
+  }
+  if (docType === 'questionnaire' && !answers) {
+    return res.status(400).json({ success: false, error: 'Investor questionnaire responses are required.', code: 'VALIDATION_ERROR', requestId: req.id });
+  }
+
+  const docTypeLabel =
+    docType === 'identity'
+      ? 'Identity Verification'
+      : docType === 'proof_of_address'
+      ? 'Proof of Address'
+      : 'Investor Questionnaire';
+
+  if (shouldUseSupabaseForCustomer(req) && canUseLiveSupabaseData()) {
+    try {
+      const created = await createUserKycSubmission({
+        userId: req.user!.id,
+        docType,
+        filePath,
+        fileName,
+        mimeType,
+        fileSize,
+        fileDataUrl,
+        answers,
+      });
+      await notifyInvestorEvent({
+        userId: req.user!.id,
+        email: req.user!.email,
+        title: `${docTypeLabel} received`,
+        message: `Your ${docTypeLabel.toLowerCase()} submission is securely stored in the Compliance Vault and queued for admin review.`,
+        type: 'info',
+      }).catch(() => {});
+      return res.status(201).json({
+        success: true,
+        data: created,
+        message: `${docTypeLabel} submitted for review.`,
+        requestId: req.id,
+      });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: err?.message || 'Unable to save compliance submission.', code: 'KYC_SUBMISSION_FAILED', requestId: req.id });
+      }
+    }
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent compliance storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+
+  const devCustomer = devCustomersById.get(req.user!.id);
+  const record: KycSubmissionRecord = {
+    id: `kyc-${crypto.randomUUID()}`,
+    userId: req.user!.id,
+    docType,
+    filePath: filePath || (docType !== 'questionnaire' ? `${req.user!.id}/${docType}-${Date.now()}.pdf` : null),
+    fileName,
+    mimeType,
+    fileSize,
+    answers,
+    status: 'pending',
+    reason: null,
+    createdAt: new Date().toISOString(),
+    inlineUrl: fileDataUrl,
+    userEmail: req.user!.email,
+    userName: devCustomer?.fullName || req.user!.fullName,
+  };
+  const existingSubs = devKycSubmissionsByUser.get(req.user!.id) || [];
+  const nextSubs = [record, ...existingSubs].slice(0, 50);
+  devKycSubmissionsByUser.set(req.user!.id, nextSubs);
+  if (devCustomer && devCustomer.kycStatus !== 'verified') {
+    devCustomer.kycStatus = 'pending';
+  }
+  const stepKey: ComplianceStepKey = docType === 'proof_of_address' ? 'proof_of_address' : docType === 'questionnaire' ? 'accredited_proof' : 'kyc_identity';
+  const currentSteps = buildDevComplianceSteps(req.user!.id, devCustomer?.kycStatus);
+  devComplianceStepsByUser.set(
+    req.user!.id,
+    currentSteps.map((st) =>
+      st.stepKey === stepKey
+        ? { ...st, status: 'in_review' as const, submittedAt: record.createdAt, updatedAt: record.createdAt }
+        : st
+    )
+  );
+  await notifyInvestorEvent({
+    userId: req.user!.id,
+    email: req.user!.email,
+    title: `${docTypeLabel} received`,
+    message: `Your ${docTypeLabel.toLowerCase()} submission is queued for admin review.`,
+    type: 'info',
+  });
+  await persistDevState();
+  return res.status(201).json({
+    success: true,
+    data: {
+      submission: record,
+      overallStatus: devCustomer?.kycStatus || 'pending',
+    },
+    message: `${docTypeLabel} submitted for review.`,
+    requestId: req.id,
+  });
 });
 
 /**
@@ -5097,6 +5513,215 @@ router.post('/admin/documents/:docId/review', requireStaffSection('kyc', 'write'
   });
   await persistDevState();
   return res.json({ success: true, data: matchedDoc, message: `Document ${nextStatus}.`, requestId: req.id });
+});
+
+router.get('/admin/kyc/submissions', requireStaffSection('kyc', 'read'), async (req: AuthenticatedRequest, res: Response) => {
+  if (canUseLiveSupabaseData()) {
+    try {
+      const subs = await listAdminKycSubmissions(300);
+      return res.json({ success: true, data: subs, total: subs.length, requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'KYC submissions queue is temporarily unavailable.', code: 'ADMIN_KYC_UNAVAILABLE', requestId: req.id });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent KYC database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const allSubs: KycSubmissionRecord[] = [];
+  for (const subs of devKycSubmissionsByUser.values()) {
+    for (const s of subs) {
+      const cust = devCustomersById.get(s.userId);
+      allSubs.push({
+        ...s,
+        userEmail: s.userEmail || cust?.email,
+        userName: s.userName || cust?.fullName,
+      });
+    }
+  }
+  allSubs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return res.json({ success: true, data: allSubs, total: allSubs.length, requestId: req.id });
+});
+
+router.get('/admin/kyc/:submissionId/signed-url', requireStaffSection('kyc', 'read'), async (req: AuthenticatedRequest, res: Response) => {
+  const { submissionId } = req.params;
+  if (canUseLiveSupabaseData()) {
+    try {
+      const signed = await getAdminKycSignedUrl(submissionId);
+      if (!signed) {
+        return res.status(404).json({ success: false, error: 'KYC document file was not found.', code: 'KYC_FILE_NOT_FOUND', requestId: req.id });
+      }
+      return res.json({ success: true, data: signed, requestId: req.id });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: 'Unable to generate secure KYC preview URL.', code: 'KYC_SIGNED_URL_FAILED', requestId: req.id });
+      }
+    }
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent KYC database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  for (const subs of devKycSubmissionsByUser.values()) {
+    const found = subs.find((s) => s.id === submissionId);
+    if (found) {
+      const url = found.inlineUrl || `data:${found.mimeType || 'application/pdf'};base64,${Buffer.from(`L'Agence KYC Submission: ${found.docType} (${found.id})`).toString('base64')}`;
+      return res.json({
+        success: true,
+        data: { url, fileName: found.fileName || `${found.docType}.pdf`, mimeType: found.mimeType || 'application/pdf', expiresInSeconds: 120 },
+        requestId: req.id,
+      });
+    }
+  }
+  return res.status(404).json({ success: false, error: 'KYC submission not found.', code: 'KYC_SUBMISSION_NOT_FOUND', requestId: req.id });
+});
+
+router.post('/admin/kyc/:submissionId/review', requireStaffSection('kyc', 'write'), async (req: AuthenticatedRequest, res: Response) => {
+  const { submissionId } = req.params;
+  const rawApprove = req.body?.approve;
+  const rawDecision = String(req.body?.decision || '').trim().toLowerCase();
+  const approve = typeof rawApprove === 'boolean' ? rawApprove : rawDecision !== 'rejected';
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : undefined;
+
+  if (!approve && (!reason || !reason.trim())) {
+    return res.status(400).json({ success: false, error: 'A rejection reason is required.', code: 'REASON_REQUIRED', requestId: req.id });
+  }
+
+  if (canUseLiveSupabaseData()) {
+    try {
+      const outcome = await reviewAdminKycSubmission({
+        submissionId,
+        adminId: req.user!.id,
+        approve,
+        reason: reason || null,
+      });
+      if (!outcome.userId && !outcome.submission) {
+        return res.status(404).json({ success: false, error: 'KYC submission not found.', code: 'KYC_SUBMISSION_NOT_FOUND', requestId: req.id });
+      }
+      if (outcome.userId) {
+        const prof = await getUserProfile(outcome.userId).catch(() => null);
+        const docLabel =
+          outcome.submission?.docType === 'proof_of_address'
+            ? 'Proof of address'
+            : outcome.submission?.docType === 'questionnaire'
+            ? 'Investor questionnaire'
+            : 'Identity verification';
+        await notifyInvestorEvent({
+          userId: outcome.userId,
+          email: prof?.email,
+          title: approve ? `${docLabel} approved` : `${docLabel} requires update`,
+          message: approve
+            ? outcome.overallStatus === 'verified'
+              ? 'All compliance checks are verified. Withdrawals and full investment access are now unlocked.'
+              : `Your ${docLabel.toLowerCase()} submission was approved by compliance.`
+            : reason || `Your ${docLabel.toLowerCase()} submission needs correction before approval.`,
+          type: approve ? 'success' : 'warning',
+          emailTemplate: approve ? 'kyc_approved' : 'kyc_rejected',
+          emailData: {
+            fullName: prof?.full_name || 'Valued Investor',
+            event_name: `KYC — ${docLabel}`,
+            status: approve ? (outcome.overallStatus === 'verified' ? 'Fully Verified' : 'Step Approved') : 'Action Required',
+            notes: reason || (approve ? 'Approved by Compliance.' : 'Please upload an updated document.'),
+          },
+          idempotencyKey: `idemp-kyc-sub-${submissionId}-${approve ? 'approve' : 'reject'}-${Date.now()}`,
+        }).catch(() => {});
+      }
+      return res.json({
+        success: true,
+        data: outcome,
+        overallStatus: outcome.overallStatus,
+        message: `KYC submission ${approve ? 'approved' : 'rejected'}.`,
+        requestId: req.id,
+      });
+    } catch (err: any) {
+      if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+        markSupabaseSchemaMissingInDev();
+      } else {
+        return res.status(503).json({ success: false, error: err?.message || 'Unable to review KYC submission.', code: 'KYC_REVIEW_FAILED', requestId: req.id });
+      }
+    }
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent KYC database is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+
+  let matched: KycSubmissionRecord | null = null;
+  let ownerId = '';
+  for (const [uid, subs] of devKycSubmissionsByUser.entries()) {
+    const found = subs.find((s) => s.id === submissionId);
+    if (found) {
+      found.status = approve ? 'approved' : 'rejected';
+      found.reason = approve ? null : (reason || null);
+      found.processedBy = req.user!.email || req.user!.id;
+      found.processedAt = new Date().toISOString();
+      found.reviewedAt = found.processedAt;
+      matched = found;
+      ownerId = uid;
+      break;
+    }
+  }
+
+  if (!matched) {
+    return res.status(404).json({ success: false, error: 'KYC submission not found.', code: 'KYC_SUBMISSION_NOT_FOUND', requestId: req.id });
+  }
+
+  const allSubs = devKycSubmissionsByUser.get(ownerId) || [matched];
+  const overallStatus = computeOverallKycStatus(allSubs);
+  const devCustomer = devCustomersById.get(ownerId);
+  if (devCustomer) {
+    devCustomer.kycStatus = overallStatus;
+  }
+
+  const stepKey: ComplianceStepKey = matched.docType === 'proof_of_address' ? 'proof_of_address' : matched.docType === 'questionnaire' ? 'accredited_proof' : 'kyc_identity';
+  const nowIso = new Date().toISOString();
+  const currentSteps = buildDevComplianceSteps(ownerId, devCustomer?.kycStatus);
+  devComplianceStepsByUser.set(
+    ownerId,
+    currentSteps.map((st) =>
+      st.stepKey === stepKey
+        ? { ...st, status: approve ? 'verified' : 'rejected', reviewedAt: nowIso, updatedAt: nowIso, notes: reason }
+        : st
+    )
+  );
+
+  const docLabel =
+    matched.docType === 'proof_of_address'
+      ? 'Proof of address'
+      : matched.docType === 'questionnaire'
+      ? 'Investor questionnaire'
+      : 'Identity verification';
+  await notifyInvestorEvent({
+    userId: ownerId,
+    email: devCustomer?.email,
+    title: approve ? `${docLabel} approved` : `${docLabel} requires update`,
+    message: approve
+      ? overallStatus === 'verified'
+        ? 'All compliance checks are verified. Withdrawals and full investment access are now unlocked.'
+        : `Your ${docLabel.toLowerCase()} submission was approved.`
+      : reason || `Your ${docLabel.toLowerCase()} submission needs correction before approval.`,
+    type: approve ? 'success' : 'warning',
+    emailTemplate: approve ? 'kyc_approved' : 'kyc_rejected',
+    emailData: {
+      fullName: devCustomer?.fullName || 'Valued Investor',
+      event_name: `KYC — ${docLabel}`,
+      status: approve ? (overallStatus === 'verified' ? 'Fully Verified' : 'Step Approved') : 'Action Required',
+      notes: reason || (approve ? 'Approved by Compliance.' : 'Please upload an updated document.'),
+    },
+  });
+  await persistDevState();
+
+  return res.json({
+    success: true,
+    data: { submission: matched, userId: ownerId, overallStatus },
+    overallStatus,
+    message: `KYC submission ${approve ? 'approved' : 'rejected'}.`,
+    requestId: req.id,
+  });
 });
 
 /**

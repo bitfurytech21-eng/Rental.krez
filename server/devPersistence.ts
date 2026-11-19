@@ -15,6 +15,7 @@ export interface DevAuthSnapshot {
   manualDeposits?: any[];
   paymentGates?: any[];
   assignedGates?: Record<string, { bankGateId: string | null; usdtGateId: string | null }>;
+  kycSubmissions?: Record<string, any[]>;
 }
 
 const EMPTY_SNAPSHOT: DevAuthSnapshot = {
@@ -29,6 +30,7 @@ const EMPTY_SNAPSHOT: DevAuthSnapshot = {
   manualDeposits: [],
   paymentGates: [],
   assignedGates: {},
+  kycSubmissions: {},
 };
 
 export function isLocalDevPersistenceEnabled(): boolean {
@@ -82,6 +84,10 @@ export async function loadDevAuthSnapshot(): Promise<DevAuthSnapshot> {
       assignedGates:
         parsed?.assignedGates && typeof parsed.assignedGates === 'object'
           ? parsed.assignedGates
+          : {},
+      kycSubmissions:
+        parsed?.kycSubmissions && typeof parsed.kycSubmissions === 'object'
+          ? parsed.kycSubmissions
           : {},
     };
   } catch {

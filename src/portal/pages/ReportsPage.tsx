@@ -13,7 +13,7 @@ import { LoadingSkeleton, ErrorBanner } from '../components/LoadingSkeleton';
 
 export const ReportsPage: React.FC = () => {
   const toast = useToast();
-  const { profile, transactions, sampleDataEnabled, sampleDataset, navigatePortal } = usePortal();
+  const { profile, transactions, sampleDataEnabled, sampleDataset, lastSyncedAt, navigatePortal } = usePortal();
 
   const [statement, setStatement] = useState<PortalAccountStatement | null>(null);
   const [uploadedDocs, setUploadedDocs] = useState<PortalUploadedDocument[]>([]);
@@ -21,13 +21,13 @@ export const ReportsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  const loadStatement = useCallback(async () => {
+  const loadStatement = useCallback(async (silent = false) => {
     if (sampleDataEnabled) {
       setLoading(false);
       setError(null);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [data, docs] = await Promise.all([
@@ -37,15 +37,17 @@ export const ReportsPage: React.FC = () => {
       setStatement(data);
       setUploadedDocs(docs);
     } catch (err: any) {
-      setError(safeErrorMessage(err, 'Unable to load statements and tax documents.'));
+      if (!silent) {
+        setError(safeErrorMessage(err, 'Unable to load statements and tax documents.'));
+      }
     } finally {
       setLoading(false);
     }
   }, [sampleDataEnabled]);
 
   useEffect(() => {
-    void loadStatement();
-  }, [loadStatement]);
+    void loadStatement(Boolean(statement));
+  }, [loadStatement, lastSyncedAt]);
 
   const effectiveStatement =
     sampleDataEnabled && sampleDataset ? sampleDataset.statement : statement;
@@ -205,7 +207,9 @@ export const ReportsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl space-y-6">
-      {error && !sampleDataEnabled && <ErrorBanner message={error} onRetry={loadStatement} />}
+      {error && !sampleDataEnabled && (
+        <ErrorBanner message={error} onRetry={() => void loadStatement(false)} />
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

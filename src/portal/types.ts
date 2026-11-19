@@ -47,6 +47,8 @@ export interface PortalAssignedBankAccount {
   iban: string;
   bic: string;
   reference?: string;
+  address?: string;
+  country?: string;
   instructions?: string;
   network?: string;
   walletAddress?: string;
@@ -59,9 +61,13 @@ export interface PortalAssignedPaymentMethod {
   minimum_amount: number | string;
   maximum_amount: number | string | null;
   name?: string;
+  token?: string;
   instructions?: string;
   network?: string;
   wallet_address?: string;
+  contract_address?: string;
+  fee_type?: 'none' | 'fixed' | 'percent';
+  fee_value?: number;
   detail_rows?: Array<{ label: string; value: string }>;
 }
 
@@ -211,6 +217,7 @@ export interface PortalAccountStatement {
   periodStart: string;
   periodEnd: string;
   totalDeposits: number;
+  totalWithdrawals?: number;
   totalInvested: number;
   totalDividendsReceived: number;
   currentBalance: number;
@@ -250,13 +257,23 @@ export interface PortalPaymentConfig {
     bic: string;
     address: string;
     country: string;
+    instructions?: string;
+    gateId?: string;
+    gateName?: string;
   };
   cryptoNetworks: Array<{
     id: string;
+    name?: string;
+    token?: string;
     network: string;
-    asset: string;
-    address: string;
+    asset?: string;
+    address?: string;
+    walletAddress?: string;
+    contractEnd?: string;
+    contractAddress?: string;
     memo?: string;
+    instructions?: string;
+    enabled?: boolean;
   }>;
 }
 

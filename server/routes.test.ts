@@ -10,9 +10,11 @@ process.env.NODE_ENV = 'test';
 
 import express from 'express';
 import http from 'http';
+import { WebSocket } from 'ws';
 import v1Routes, { __testSetCustomerFinancialState } from './routes';
 import { correlationAndTimingMiddleware, authenticateToken, errorHandler, normalizeStaffRole } from './middleware';
 import { setDevAssignedGateId } from './manualPaymentRoutes';
+import { attachSupportWebSocket } from './supportMessenger';
 import { toApiProperty } from './supabaseDatabase';
 import { isValidIBAN } from '../src/lib/validation';
 import {
@@ -23,6 +25,7 @@ import {
   getValidActionGrant,
   clearActionVerification,
 } from '../src/lib/actionVerificationSession';
+import { buildFullDepositMethods } from '../src/portal/utils/paymentMethods';
 
 let passed = 0;
 let failed = 0;
@@ -50,6 +53,7 @@ async function runApiTests() {
   app.use('/api', errorHandler);
 
   const server = http.createServer(app);
+  attachSupportWebSocket(server);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
   const address = server.address();
   const port = typeof address === 'object' && address ? address.port : 0;
@@ -879,6 +883,283 @@ async function runApiTests() {
         mappedProp.images[0] === 'https://example.com/p1.jpg' &&
         mappedProp.status === 'open',
       'toApiProperty maps Supabase properties table columns accurately'
+    );
+
+    const enrichedMethods = buildFullDepositMethods({
+      apiMethods: [
+        {
+          id: 'gate-unlimit-1',
+          method: 'bank',
+          minimum_amount: 100,
+          maximum_amount: null,
+          name: 'Bank Transfer (UNLIMIT)',
+          instructions: '',
+          detail_rows: [],
+        },
+      ],
+      portalConfig: {
+        isPlaceholder: false,
+        traditional: {
+          beneficiary: 'PREDRAG MIRKOVIC',
+          bankName: 'UNLIMIT',
+          iban: 'CY05 9020 0001 0000 0201 0908 5462',
+          bic: 'CARDCY2LXXX',
+          address: 'LIMASSOL 125 GEORGIOU GRIVA DIGENI',
+          country: 'CYPRUS',
+          instructions: 'Include your unique investor reference in the concept wire transfer.',
+        },
+        cryptoNetworks: [
+          {
+            id: 'net-usdc-bep20',
+            name: 'BNB Smart Chain (BEP20)',
+            token: 'USDC',
+            network: 'BNB Smart Chain',
+            walletAddress: '0x8336A3f49125bAD02101B405699ac87e40D473BB',
+            contractAddress: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+            enabled: true,
+          },
+        ],
+        limits: {
+          minDepositEur: 100,
+          maxDepositEur: 5000000,
+          minWithdrawalEur: 250,
+          minInvestmentEur: 1000,
+          maxInvestmentPerInvestorEur: 500000,
+        },
+        fees: {
+          sepaDepositFeeEur: 0,
+          cardDepositFeeEur: 0,
+          withdrawalFeeEur: 0,
+          investmentFeePercent: 0,
+          treasuryFxFeePercent: 0,
+        },
+        settlement: {
+          sepaDepositEta: '1 business day',
+          cardDepositEta: 'Instant',
+          withdrawalEta: '1-2 business days',
+        },
+      },
+    });
+    const bankOption = enrichedMethods.find((m) => m.method === 'bank');
+    const cryptoOption = enrichedMethods.find((m) => m.method === 'usdt');
+    assert(
+      enrichedMethods.length === 2 &&
+        Boolean(bankOption) &&
+        bankOption!.id === 'gate-unlimit-1' &&
+        bankOption!.detail_rows.some((r) => r.label === 'IBAN' && r.value.startsWith('CY05')) &&
+        bankOption!.instructions.includes('unique investor reference') &&
+        Boolean(cryptoOption) &&
+        cryptoOption!.token === 'USDC' &&
+        cryptoOption!.wallet_address === '0x8336A3f49125bAD02101B405699ac87e40D473BB' &&
+        cryptoOption!.instructions.length > 0,
+      'buildFullDepositMethods enriches missing bank coordinates/instructions and exposes full selectable bank & crypto methods'
+    );
+
+    // Deliverable 4: Notifications mark read & mark all read
+    const notifListBefore = await api('GET', '/notifications', undefined, customerToken);
+    const unreadNotif = Array.isArray(notifListBefore.json?.data)
+      ? notifListBefore.json.data.find((n: any) => !n.read)
+      : null;
+    if (unreadNotif) {
+      const markSingleRes = await api('PATCH', `/notifications/${encodeURIComponent(unreadNotif.id)}/read`, {}, customerToken);
+      assert(
+        markSingleRes.status === 200 && markSingleRes.json.success === true,
+        'PATCH /notifications/:id/read marks single notification as read cleanly'
+      );
+    }
+    const markAllRes = await api('POST', '/notifications/read-all', {}, customerToken);
+    const notifListAfter = await api('GET', '/notifications', undefined, customerToken);
+    assert(
+      markAllRes.status === 200 &&
+        markAllRes.json.success === true &&
+        Number(notifListAfter.json?.unreadCount ?? 0) === 0,
+      'POST /notifications/read-all clears unread notification count without errors'
+    );
+
+    // Deliverable 5: Investor KYC submission upload -> Admin KYC queue -> Signed URL -> Approve & Reject sync
+    __testSetCustomerFinancialState(customerId, { kycStatus: 'pending' });
+    const samplePdfDataUrl = `data:application/pdf;base64,${Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n').toString('base64')}`;
+    const kycIdSubmit = await api(
+      'POST',
+      '/compliance/kyc-submissions',
+      {
+        docType: 'identity',
+        fileName: 'passport.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 24,
+        fileDataUrl: samplePdfDataUrl,
+      },
+      customerToken
+    );
+    const kycPoaSubmit = await api(
+      'POST',
+      '/compliance/kyc-submissions',
+      {
+        docType: 'proof_of_address',
+        fileName: 'utility-bill.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 24,
+        fileDataUrl: samplePdfDataUrl,
+      },
+      customerToken
+    );
+    const kycQuestSubmit = await api(
+      'POST',
+      '/compliance/kyc-submissions',
+      {
+        docType: 'questionnaire',
+        answers: {
+          investment_experience: 'experienced',
+          annual_income_range: '€100,000–€250,000',
+          source_of_funds: 'Business income',
+          investment_goal: 'Income generation',
+          risk_tolerance: 'medium',
+          capital_at_risk_acknowledged: true,
+        },
+      },
+      customerToken
+    );
+    assert(
+      kycIdSubmit.status === 201 &&
+        kycPoaSubmit.status === 201 &&
+        kycQuestSubmit.status === 201 &&
+        kycQuestSubmit.json.data?.overallStatus === 'pending',
+      'POST /compliance/kyc-submissions persists Identity, Proof of Address, and Questionnaire submissions'
+    );
+
+    const kycListUser = await api('GET', '/compliance/kyc-submissions', undefined, customerToken);
+    assert(
+      kycListUser.status === 200 &&
+        Array.isArray(kycListUser.json.data?.submissions) &&
+        kycListUser.json.data.submissions.length >= 3,
+      'GET /compliance/kyc-submissions returns investor KYC submissions and normalized status'
+    );
+
+    const adminKycQueue = await api('GET', '/admin/kyc/submissions', undefined, adminToken);
+    const submittedIdRecId = String(kycIdSubmit.json.data?.submission?.id || '');
+    const submittedPoaRecId = String(kycPoaSubmit.json.data?.submission?.id || '');
+    const submittedQuestRecId = String(kycQuestSubmit.json.data?.submission?.id || '');
+    assert(
+      adminKycQueue.status === 200 &&
+        Array.isArray(adminKycQueue.json.data) &&
+        adminKycQueue.json.data.some((s: any) => s.id === submittedIdRecId) &&
+        adminKycQueue.json.data.some((s: any) => s.id === submittedQuestRecId && s.answers?.investment_experience === 'experienced'),
+      'GET /admin/kyc/submissions exposes uploaded KYC documents & questionnaire responses to admin'
+    );
+
+    const kycSignedUrl = await api(
+      'GET',
+      `/admin/kyc/${encodeURIComponent(submittedIdRecId)}/signed-url`,
+      undefined,
+      adminToken
+    );
+    assert(
+      kycSignedUrl.status === 200 && Boolean(kycSignedUrl.json.data?.url),
+      'GET /admin/kyc/:submissionId/signed-url returns previewable document URL'
+    );
+
+    const approveIdRes = await api(
+      'POST',
+      `/admin/kyc/${encodeURIComponent(submittedIdRecId)}/review`,
+      { approve: true },
+      adminToken
+    );
+    const approvePoaRes = await api(
+      'POST',
+      `/admin/kyc/${encodeURIComponent(submittedPoaRecId)}/review`,
+      { approve: true },
+      adminToken
+    );
+    const approveQuestRes = await api(
+      'POST',
+      `/admin/kyc/${encodeURIComponent(submittedQuestRecId)}/review`,
+      { approve: true },
+      adminToken
+    );
+    const profileAfterKycApprove = await api('GET', '/user/profile', undefined, customerToken);
+    assert(
+      approveIdRes.status === 200 &&
+        approvePoaRes.status === 200 &&
+        approveQuestRes.status === 200 &&
+        approveQuestRes.json.data?.overallStatus === 'verified' &&
+        profileAfterKycApprove.json.data?.kycStatus === 'verified',
+      'POST /admin/kyc/:submissionId/review approves all 3 steps and marks investor overall kycStatus verified'
+    );
+
+    // Deliverable 6: Live Support Messenger REST + WebSocket real-time delivery
+    const supportCreateRes = await api('POST', '/support/threads', {
+      name: 'Guest Prospect',
+      email: 'prospect@example.com',
+      topic: 'Portfolio & SPV Dossiers',
+      initialMessage: 'Hello, I have a question about Villa Riviera yield.',
+    });
+    const supportThreadId = String(supportCreateRes.json?.data?.thread?.id || '');
+    const supportVisitorToken = String(supportCreateRes.json?.data?.visitorToken || '');
+    assert(
+      supportCreateRes.status === 201 &&
+        Boolean(supportThreadId) &&
+        Boolean(supportVisitorToken) &&
+        Array.isArray(supportCreateRes.json?.data?.messages) &&
+        supportCreateRes.json.data.messages.length === 2,
+      'POST /support/threads opens live support thread and issues visitor access token'
+    );
+
+    const adminThreadsRes = await api('GET', '/admin/support/threads', undefined, adminToken);
+    assert(
+      adminThreadsRes.status === 200 &&
+        Array.isArray(adminThreadsRes.json.data) &&
+        adminThreadsRes.json.data.some((t: any) => t.id === supportThreadId && t.unreadAdminCount >= 1),
+      'GET /admin/support/threads lists active support conversations with unread count'
+    );
+
+    // Connect real WebSocket client for visitor and verify live staff reply is pushed over WebSocket
+    const wsReceivedReply = await new Promise<boolean>((resolve) => {
+      const ws = new WebSocket(
+        `ws://127.0.0.1:${port}/ws/support?threadId=${encodeURIComponent(supportThreadId)}&visitorToken=${encodeURIComponent(supportVisitorToken)}`
+      );
+      const timer = setTimeout(() => {
+        try { ws.close(); } catch {}
+        resolve(false);
+      }, 3000);
+
+      ws.on('message', async (raw) => {
+        const payload = JSON.parse(String(raw));
+        if (payload?.type === 'thread:sync') {
+          await api(
+            'POST',
+            `/support/threads/${encodeURIComponent(supportThreadId)}/messages`,
+            { body: 'Bonjour, target net yield is 7.4% paid quarterly.' },
+            adminToken
+          );
+        } else if (
+          payload?.type === 'message:created' &&
+          payload?.message?.senderType === 'staff' &&
+          String(payload?.message?.body || '').includes('7.4%')
+        ) {
+          clearTimeout(timer);
+          try { ws.close(); } catch {}
+          resolve(true);
+        }
+      });
+      ws.on('error', () => {
+        clearTimeout(timer);
+        resolve(false);
+      });
+    });
+    assert(
+      wsReceivedReply === true,
+      'WebSocket /ws/support streams live staff reply to connected visitor thread in real time'
+    );
+
+    const supportResolveRes = await api(
+      'PATCH',
+      `/admin/support/threads/${encodeURIComponent(supportThreadId)}/status`,
+      { status: 'resolved' },
+      adminToken
+    );
+    assert(
+      supportResolveRes.status === 200 && supportResolveRes.json?.data?.status === 'resolved',
+      'PATCH /admin/support/threads/:threadId/status updates conversation status cleanly'
     );
 
     console.log(`\nAPI Smoke & Contract Test Summary: ${passed} passed, ${failed} failed.`);

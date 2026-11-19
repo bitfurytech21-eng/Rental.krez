@@ -31,6 +31,7 @@ const PortalLayout: React.FC = () => {
     sampleDataEnabled,
     setSampleDataEnabled,
     loading,
+    lastSyncedAt,
     error,
     refreshAll,
   } = usePortal();
@@ -109,7 +110,7 @@ const PortalLayout: React.FC = () => {
                 </button>
               </div>
             )}
-            {loading && !sampleDataEnabled ? (
+            {loading && !sampleDataEnabled && !lastSyncedAt ? (
               <LoadingSkeleton rows={5} />
             ) : (
               <>

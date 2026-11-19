@@ -57,7 +57,8 @@ export const WithdrawPage: React.FC = () => {
     return <LoadingSkeleton rows={3} />;
   }
 
-  const isVerified = profile?.kycStatus === 'verified';
+  const normKyc = String(profile?.kycStatus || '').toLowerCase();
+  const isVerified = normKyc === 'verified' || normKyc === 'approved';
   const registeredIban = profile?.bankIban?.trim() || '';
   const hasBankAccount = Boolean(registeredIban);
 

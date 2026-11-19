@@ -234,7 +234,7 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
     statusBadge: 'ePrivacy & Consent Controls Active',
     implementationStatus: 'COMPLETED',
     summary:
-      'Details strictly necessary authentication and ledger storage, preference settings, optional analytics, and consent-gated Smartsupp live chat & embedded media cookies.',
+      'Details strictly necessary authentication and ledger storage, preference settings, optional analytics, and consent-gated embedded media & first-party live support messenger storage.',
     sections: [
       {
         heading: '1. Strictly Necessary Cookies & Local Storage',
@@ -255,7 +255,7 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
         bullets: [
           'Functional Preferences: kretz_pref_currency and kretz_pref_theme (1 year) to remember your currency display (EUR, USD, GBP) and interface preferences.',
           'Analytics & Performance: _kretz_analytics (90 days) and _perf_monitor (session) to measure anonymized page latency, Core Web Vitals, and navigation diagnostics.',
-          'Marketing, Media & Support Chat: Optional YouTube player embed cookies (VISITOR_INFO1_LIVE / YSC) and Smartsupp live-chat session identifiers (smartsupp_*) on non-administrative pages.',
+          'Marketing, Media & Support Chat: Optional YouTube player embed cookies (VISITOR_INFO1_LIVE / YSC) and first-party live support messenger continuity tokens (lagence_live_support_v1) on non-administrative pages.',
         ],
       },
     ],

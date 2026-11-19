@@ -41,12 +41,14 @@ async function runServer() {
     { default: v1Routes },
     { correlationAndTimingMiddleware, authenticateToken, validateCsrf, errorHandler },
     { logger },
-    { validateAdminEnvironment }
+    { validateAdminEnvironment },
+    { attachSupportWebSocket }
   ] = await Promise.all([
     import('./server/routes'),
     import('./server/middleware'),
     import('./server/logger'),
-    import('./server/adminAuth')
+    import('./server/adminAuth'),
+    import('./server/supportMessenger')
   ]);
 
   // Global resilience listeners to prevent unexpected dev server process exits
@@ -61,6 +63,7 @@ async function runServer() {
   async function startServer() {
     const app = express();
   const server = http.createServer(app);
+  attachSupportWebSocket(server);
 
   // Resolve port and environment for both AI Studio dev server and Cloud deployments (Cloud Run, etc.)
   const portArgIndex = process.argv.indexOf('--port');

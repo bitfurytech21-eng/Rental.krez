@@ -511,6 +511,7 @@ export interface KycSubmissionRow {
   userId: string;
   docType: string;
   filePath: string;
+  answers?: Record<string, any> | null;
   status: 'pending' | 'approved' | 'rejected';
   reason?: string;
   processedBy?: string;
@@ -518,7 +519,34 @@ export interface KycSubmissionRow {
   reviewedAt?: string;
   createdAt: string;
   inlineUrl?: string;
+  userEmail?: string;
+  userName?: string;
 }
+
+const mapRawKycSubmissionRow = (r: any): KycSubmissionRow => {
+  const rawStatus = String(r?.status || 'pending').trim().toLowerCase();
+  return {
+    id: String(r.id),
+    userId: String(r.user_id || r.userId || ''),
+    docType: String(r.doc_type || r.docType || r.category || r.document_type || 'Identity Document'),
+    filePath: String(r.file_path || r.filePath || r.storage_path || ''),
+    answers: r.answers && typeof r.answers === 'object' ? r.answers : null,
+    status:
+      rawStatus === 'approved' || rawStatus === 'verified'
+        ? 'approved'
+        : rawStatus === 'rejected'
+        ? 'rejected'
+        : 'pending',
+    reason: r.reason || r.rejection_reason || undefined,
+    processedBy: r.processed_by || r.processedBy || r.reviewed_by || undefined,
+    processedAt: r.processed_at || r.processedAt || r.reviewed_at || undefined,
+    reviewedAt: r.reviewed_at || r.reviewedAt || r.processed_at || undefined,
+    createdAt: String(r.created_at || r.createdAt || new Date().toISOString()),
+    inlineUrl: r.inlineUrl || r.file_data_url || undefined,
+    userEmail: r.userEmail || undefined,
+    userName: r.userName || undefined,
+  };
+};
 
 export async function fetchKycSubmissionsQueue(fallbackDocs: any[] = []): Promise<KycSubmissionRow[]> {
   if (await hasLiveSupabaseSession()) {
@@ -526,49 +554,53 @@ export async function fetchKycSubmissionsQueue(fallbackDocs: any[] = []): Promis
       .from('kyc_submissions')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error && !isMissingRpcOrSignatureError(error)) {
-      throw new Error(extractDbRefusalMessage(error, 'Failed to load KYC submissions queue.'));
-    }
     if (!error && Array.isArray(data)) {
-      return (data as any[]).map((r) => ({
-        id: String(r.id),
-        userId: String(r.user_id),
-        docType: String(r.doc_type || 'Identity Document'),
-        filePath: String(r.file_path || ''),
-        status: r.status === 'approved' || r.status === 'verified' ? 'approved' : r.status === 'rejected' ? 'rejected' : 'pending',
-        reason: r.reason || undefined,
-        processedBy: r.processed_by || r.reviewed_by || undefined,
-        processedAt: r.processed_at || r.reviewed_at || undefined,
-        reviewedAt: r.reviewed_at || r.processed_at || undefined,
-        createdAt: String(r.created_at || new Date().toISOString()),
-      }));
+      return (data as any[]).map(mapRawKycSubmissionRow);
+    }
+    if (error && !isMissingRpcOrSignatureError(error)) {
+      // Fall through to backend API before surfacing an error
     }
   }
+
+  try {
+    const apiRes = await apiFetchJson('/admin/kyc/submissions');
+    const apiRows = Array.isArray(apiRes?.data) ? apiRes.data : [];
+    if (apiRows.length > 0) {
+      return apiRows.map(mapRawKycSubmissionRow);
+    }
+  } catch {
+    // Fall through to fallbackDocs
+  }
+
   return fallbackDocs
     .filter((d) => d.category !== 'statement' && d.category !== 'tax')
     .map((d) => ({
       id: String(d.id),
       userId: String(d.userId || ''),
       docType: String(d.documentType || d.category || 'KYC Proof'),
-      filePath: String(d.fileName || d.id),
+      filePath: String(d.filePath || d.fileName || d.id),
+      answers: null,
       status: d.status === 'approved' || d.status === 'verified' ? 'approved' : d.status === 'rejected' ? 'rejected' : 'pending',
       reason: d.rejectionReason || undefined,
       createdAt: String(d.uploadedAt || new Date().toISOString()),
       inlineUrl: d.fileUrl || undefined,
+      userEmail: d.userEmail || undefined,
+      userName: d.userName || undefined,
     }));
 }
 
 export async function createPrivateBucketSignedUrl(
   filePath: string,
-  bucketCandidates: string[] = ['kyc', 'kyc-submissions', 'documents', 'manual-payment-proofs'],
-  fallbackUrl?: string
+  bucketCandidates: string[] = ['kyc', 'kyc-documents', 'kyc-submissions', 'documents', 'manual-payment-proofs'],
+  fallbackUrl?: string,
+  submissionId?: string
 ): Promise<string | null> {
   if (fallbackUrl && (fallbackUrl.startsWith('data:') || fallbackUrl.startsWith('http'))) {
     return fallbackUrl;
   }
-  if (!filePath) return null;
-  if (/^https?:\/\//i.test(filePath) || filePath.startsWith('data:')) return filePath;
-  if (await hasLiveSupabaseSession()) {
+  if (!filePath && !submissionId) return null;
+  if (filePath && (/^https?:\/\//i.test(filePath) || filePath.startsWith('data:'))) return filePath;
+  if (filePath && (await hasLiveSupabaseSession())) {
     const cleanPath = filePath.replace(/^\/+/, '');
     for (const bucket of bucketCandidates) {
       const pathVariants = cleanPath.startsWith(`${bucket}/`)
@@ -585,6 +617,14 @@ export async function createPrivateBucketSignedUrl(
       }
     }
   }
+  if (submissionId) {
+    try {
+      const res = await apiFetchJson(`/admin/kyc/${encodeURIComponent(submissionId)}/signed-url`);
+      if (res?.data?.url) return String(res.data.url);
+    } catch {
+      // Ignore fallback failure
+    }
+  }
   return null;
 }
 
@@ -597,17 +637,55 @@ export async function reviewKycSubmission(
   if (!approve && (!reason || !reason.trim())) {
     throw new Error('A rejection reason is required.');
   }
-  const res = await requireRpcSuccess<any>('review_kyc', {
-    p_sub: submissionId,
-    p_approve: approve,
-    p_reason: reason?.trim() || null,
-  });
-  if (typeof res === 'string' && res.trim()) return res.trim();
-  if (res && typeof res === 'object') {
-    const candidate = res.kyc_status ?? res.overall_status ?? res.status ?? res.investor_kyc_status;
-    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  const cleanReason = reason?.trim() || null;
+
+  if (await hasLiveSupabaseSession()) {
+    const first = await supabase.rpc('review_kyc', {
+      p_sub: submissionId,
+      p_approve: approve,
+      p_reason: cleanReason,
+    });
+    if (!first.error) {
+      const d: any = first.data;
+      const raw =
+        typeof d === 'string'
+          ? d.trim()
+          : d && typeof d === 'object'
+          ? String(d.kyc_status ?? d.overall_status ?? d.status ?? d.investor_kyc_status ?? '').trim()
+          : '';
+      if (raw) return raw.toLowerCase() === 'approved' ? 'verified' : raw;
+      return undefined;
+    }
+
+    if (isMissingRpcOrSignatureError(first.error)) {
+      const second = await supabase.rpc('review_kyc', {
+        p_submission_id: submissionId,
+        p_decision: approve ? 'approved' : 'rejected',
+        p_reason: cleanReason,
+      });
+      if (!second.error) {
+        const d: any = second.data;
+        const raw =
+          d && typeof d === 'object'
+            ? String(d.kyc_status ?? d.overall_status ?? d.status ?? '').trim()
+            : '';
+        if (raw) return raw.toLowerCase() === 'approved' ? 'verified' : raw;
+        return undefined;
+      }
+    }
   }
-  return undefined;
+
+  // Fallback / service-role authoritative backend endpoint (updates DB, audit log, & sends email/alert)
+  const apiRes = await apiFetchJson(`/admin/kyc/${encodeURIComponent(submissionId)}/review`, {
+    method: 'POST',
+    body: JSON.stringify({
+      approve,
+      decision: approve ? 'approved' : 'rejected',
+      reason: cleanReason,
+    }),
+  });
+  const status = apiRes?.overallStatus || apiRes?.data?.overallStatus;
+  return typeof status === 'string' && status.trim() ? status.trim() : undefined;
 }
 // ============================================================================
 // 4. DEPOSITS: approve_deposit, reject_deposit, admin_credit_deposit

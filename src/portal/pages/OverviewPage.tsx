@@ -46,11 +46,12 @@ export const OverviewPage: React.FC = () => {
   });
 
   const nextTask = useMemo(() => {
-    if (profile && profile.kycStatus !== 'verified') {
+    const normKyc = String(profile?.kycStatus || '').toLowerCase();
+    if (profile && normKyc !== 'verified' && normKyc !== 'approved') {
       return {
         key: 'verify-identity',
         title:
-          profile.kycStatus === 'rejected'
+          normKyc === 'rejected'
             ? 'Identity verification needs attention'
             : 'Verify your identity to unlock funding & payouts',
         description:

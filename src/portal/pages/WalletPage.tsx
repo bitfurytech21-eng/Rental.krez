@@ -138,7 +138,16 @@ export const WalletPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {requestError && <ErrorBanner message={requestError} onRetry={() => void refreshAll()} />}
+      {requestError && (
+        <ErrorBanner
+          title="Conversion could not be completed"
+          message={requestError}
+          onRetry={() => {
+            setRequestError(null);
+            void refreshAll({ silent: true });
+          }}
+        />
+      )}
       {/* Wallet Balance Hero */}
       <section className="portal-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">

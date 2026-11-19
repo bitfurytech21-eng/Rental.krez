@@ -558,7 +558,6 @@ export const AdminTemplateSectionView: React.FC<TemplateSectionProps> = ({
   const [legalEntity, setLegalEntity] = useState('Kretz Capital SAS - Paris, France');
   const [baseCurrency, setBaseCurrency] = useState('EUR');
   const [minInvestGlobal, setMinInvestGlobal] = useState('500');
-  const smartsuppConfigured = Boolean(import.meta.env.VITE_SMARTSUPP_KEY?.trim());
   const [gaMeasurementId, setGaMeasurementId] = useState('G-KRETZ202688');
   const [sentryDsn, setSentryDsn] = useState('https://kretz@sentry.io/450912');
   const [metaTitle, setMetaTitle] = useState('Kretz Real Estate | Luxury European SPV Tokenization');
@@ -1818,11 +1817,11 @@ export const AdminTemplateSectionView: React.FC<TemplateSectionProps> = ({
             <div className="space-y-3">
               <div className="p-3.5 rounded-xl bg-[#f9faf8] border border-[#e4e6e1] flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-gray-800">Smartsupp Live Concierge</span>
-                  <p className="text-gray-500 text-[11px]">Official visitor and investor live chat. Hidden on isolated admin routes.</p>
+                  <span className="font-bold text-gray-800">Built-in Live Support Messenger</span>
+                  <p className="text-gray-500 text-[11px]">First-party WebSocket live chat connecting visitors and investors directly to the Admin Notifications &amp; Support Inbox.</p>
                 </div>
-                <span className={`px-3 py-1 rounded-lg text-[11px] font-bold ${smartsuppConfigured ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                  {smartsuppConfigured ? 'Build key configured' : 'Build key not configured'}
+                <span className="px-3 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                  WebSocket Live Desk Active
                 </span>
               </div>
               <div className="p-3.5 rounded-xl bg-[#f9faf8] border border-[#e4e6e1] space-y-2">
