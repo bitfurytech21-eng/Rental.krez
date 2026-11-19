@@ -146,7 +146,7 @@ export const AdminManualPaymentManager: React.FC = () => {
   return <section className="space-y-6">
     <div className="rounded-2xl border border-[#e3e8e3] bg-white p-5 sm:p-7">
       <h2 className="text-xl font-bold text-[#18211f]">Manual payment methods</h2>
-      <p className="text-sm text-[#69736f] mt-1">Configure bank transfer and other offline payment instructions. Investor deposits stay pending until finance approval.</p>
+      <p className="text-sm text-[#69736f] mt-1">Configure bank transfer or USDT wallets (TRC20, ERC20, or BEP20). Investor deposits stay pending until finance approval.</p>
       <form onSubmit={save} className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
         <label className="text-xs font-semibold text-[#46534e]">Payment type<select value={method} onChange={e=>setMethod(e.target.value as 'bank' | 'usdt')} className="mt-1 w-full rounded-lg border p-2.5 text-sm"><option value="bank">Bank transfer</option><option value="usdt">USDT (crypto)</option></select></label>
         <label className="text-xs font-semibold text-[#46534e]">Method name<input required minLength={2} maxLength={100} value={name} onChange={e=>setName(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" placeholder="SEPA bank transfer" /></label>
@@ -166,7 +166,7 @@ export const AdminManualPaymentManager: React.FC = () => {
       </form>
       <div className="mt-6 space-y-2">
         {methods.map(method => <div key={method.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3">
-          <div><b className="text-sm">{method.name}</b><p className="text-xs text-gray-500">Min {formatCentsEur(eurToCents(method.minimum_amount))} · {method.maximum_amount ? `Max ${formatCentsEur(eurToCents(method.maximum_amount))}` : 'No maximum'} · {method.fee_type} fee</p></div>
+          <div><b className="text-sm">{method.name}</b><p className="text-xs text-gray-500">{method.method === 'usdt' ? `USDT · ${method.network || 'Network not set'}` : 'Bank transfer'} · Min {formatCentsEur(eurToCents(method.minimum_amount))} · {method.maximum_amount ? `Max ${formatCentsEur(eurToCents(method.maximum_amount))}` : 'No maximum'} · {method.fee_type} fee</p></div>
           <div className="flex gap-2"><button type="button" onClick={()=>{setEditing(method.id);setName(method.name);setMethod(method.method === 'usdt' ? 'usdt' : 'bank');setNetwork((method.network === 'ERC20' || method.network === 'BEP20' ? method.network : 'TRC20'));setWalletAddress(method.wallet_address || '');setInstructions(method.instructions);setAccountDetails(JSON.stringify(method.account_details || {},null,2));setMinimum(String(method.minimum_amount));setMaximum(method.maximum_amount ? String(method.maximum_amount) : '');setFeeType(method.fee_type);setFeeValue(String(method.fee_value));setLogoUrl(method.logo_url || '');setExtraFields(JSON.stringify(method.extra_fields || [],null,2));}} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">Edit</button><button type="button" disabled={busy} onClick={()=>toggle(method)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">{method.enabled ? 'Disable' : 'Enable'}</button></div>
         </div>)}
         {!methods.length && <p className="text-sm text-gray-500">No manual payment methods configured yet.</p>}
