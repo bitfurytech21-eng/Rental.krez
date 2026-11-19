@@ -6,11 +6,12 @@ The application already contains event-driven email templates and calls for regi
 
 ## 1. Choose and configure one provider
 
-Recommended: Resend.
+Recommended for this project now: SendGrid. Explicitly select it with `EMAIL_PROVIDER=sendgrid`.
 
 Set these server-side environment variables in the actual hosting platform (not in the browser):
 
-- `RESEND_API_KEY`: API key created in Resend.
+- `EMAIL_PROVIDER`: `sendgrid` to force SendGrid; `resend` to force Resend; `auto` for legacy priority detection.
+- `SENDGRID_API_KEY`: API key created in SendGrid (server-side secret).
 - `EMAIL_FROM`: `info@kretzdespain.com` (must be verified as a sender by the selected provider).
 - `EMAIL_SENDER_NAME`: `Kretz Real Estate`.
 - `EMAIL_REPLY_TO`: `info@kretzdespain.com` (ensure this mailbox is monitored).
@@ -18,7 +19,7 @@ Set these server-side environment variables in the actual hosting platform (not 
 - `PUBLIC_APP_URL`: canonical deployed website origin, with no trailing slash.
 - `EMAIL_TEST_MODE`: `false` for live delivery.
 
-Alternative SendGrid: set `SENDGRID_API_KEY` and the same sender variables.
+Resend is disabled for this configuration when `EMAIL_PROVIDER=sendgrid`, even if a Resend key remains set.
 
 **Cloudflare Worker limitation:** SMTP socket transport is not supported by this Worker implementation. Use Resend or SendGrid over HTTPS. The existing email service explicitly rejects SMTP mode in Workers; SMTP credentials in the environment will not make email delivery work.
 
@@ -59,9 +60,9 @@ The automation rules registry also defines welcome, verification, password reset
 
 ## 6. Production test checklist
 
-Before enabling live delivery, add the provider API key as a protected Cloudflare Worker secret. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
+Before enabling live delivery, add `SENDGRID_API_KEY` as a protected Cloudflare Worker secret and set `EMAIL_PROVIDER=sendgrid`. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
 
-1. Confirm the admin email-provider status reports a real provider, not sandbox.
+1. Confirm the admin email-provider status reports SendGrid, not sandbox.
 2. Send a test message to a mailbox controlled by the project owner.
 3. Verify receipt in the inbox and inspect spam placement, sender, reply-to, links and mobile rendering.
 4. Register a controlled test account and confirm the verification email arrives and its link resolves on the production domain.
