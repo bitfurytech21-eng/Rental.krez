@@ -1260,6 +1260,11 @@ export function getProviderConfig() {
 
   const preferredProvider = (process.env.EMAIL_PROVIDER || 'auto').trim().toLowerCase();
 
+  // Explicit sandbox selection disables all live-provider attempts.
+  if (preferredProvider === 'sandbox' || preferredProvider === 'preview' || preferredProvider === 'none') {
+    return { type: 'sandbox', name: 'Sandbox / Preview Mode (Live email disabled)', configured: false };
+  }
+
   // Explicit selection overrides auto-detection. If the selected provider's key
   // is missing, do not silently send through a different provider.
   if (preferredProvider === 'sendgrid') {
