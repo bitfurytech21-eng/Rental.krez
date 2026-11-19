@@ -7,7 +7,7 @@ import { useAuth } from '../../lib/auth';
 import { useNavigation } from '../../lib/navigation';
 import { useToast } from '../../context/ToastContext';
 import { ledger } from '../../lib/ledger';
-import { userApi } from '../../lib/api';
+import { userApi, marketplaceApi } from '../../lib/api';
 import { formatCurrency } from '../../lib/utils';
 import {
   Building2,
@@ -65,6 +65,60 @@ export const PropertiesPage: React.FC<PropertiesPageProps> = ({
 
   useEffect(() => {
     setProperties(initialProperties.filter(isFrontendEligible));
+  }, [initialProperties]);
+
+  // Fetch the approved marketplace catalogue from the server and keep it refreshed.
+  // Merge by ID/slug with the current catalogue so locally-held records are not lost.
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshPublicCatalogue = async () => {
+      try {
+        const response: any = await marketplaceApi.getListings();
+        const payload = response?.data?.data ?? response?.data ?? response;
+        if (!Array.isArray(payload) || cancelled) return;
+
+        const byKey = new Map<string, Property>();
+        [...initialProperties, ...ledger.getProperties()].forEach((property) => {
+          byKey.set(property.id, property);
+          if (property.slug) byKey.set(property.slug, property);
+        });
+
+        payload.forEach((record: any) => {
+          if (!record || typeof record !== 'object') return;
+          const id = String(record.id ?? record.propertyId ?? record.slug ?? '');
+          const slug = String(record.slug ?? record.id ?? record.propertyId ?? '');
+          if (!id || !slug) return;
+          const existing = byKey.get(id) || byKey.get(slug);
+          const merged = { ...(existing || {}), ...record, id, slug } as Property;
+          if (merged.status === 'hidden' || merged.status === 'pending_approval' || merged.approvedForFrontend === false || !merged.assignedFunction) return;
+          byKey.set(id, merged);
+          byKey.set(slug, merged);
+        });
+
+        const next = Array.from(new Map(
+          Array.from(byKey.values()).filter((p) => isFrontendEligible(p)).map((p) => [p.id, p])
+        ).values());
+        if (!cancelled && next.length) setProperties(next);
+      } catch {
+        // Keep the current catalogue visible when the server is temporarily unavailable.
+      }
+    };
+
+    void refreshPublicCatalogue();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshPublicCatalogue();
+    }, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPublicCatalogue();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [initialProperties]);
 
   // Subscribe to live ledger changes (investments, availability, favorites, P2P)
