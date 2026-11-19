@@ -10,7 +10,7 @@ import {
 import { AdminActionDialog } from './AdminActionDialog';
 
 type Method = {
-  id: string; name: string; instructions: string; account_details: Record<string, string>;
+  id: string; name: string; method: 'bank' | 'usdt'; network?: string; wallet_address?: string; instructions: string; account_details: Record<string, string>;
   minimum_amount: number; maximum_amount: number | null; fee_type: 'none' | 'fixed' | 'percent';
   fee_value: number; enabled: boolean; logo_url?: string | null; extra_fields?: Array<{key:string;label:string;required?:boolean}>;
 };
@@ -21,6 +21,9 @@ export const AdminManualPaymentManager: React.FC = () => {
   const [status, setStatus] = useState('pending');
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [method, setMethod] = useState<'bank' | 'usdt'>('bank');
+  const [network, setNetwork] = useState<'TRC20' | 'ERC20' | 'BEP20'>('TRC20');
+  const [walletAddress, setWalletAddress] = useState('');
   const [instructions, setInstructions] = useState('');
   const [accountDetails, setAccountDetails] = useState('{"Bank name":"","Account name":"","Account number":""}');
   const [minimum, setMinimum] = useState('100');
@@ -64,7 +67,7 @@ export const AdminManualPaymentManager: React.FC = () => {
   useEffect(() => { load().catch(e => setErrorMsg(e.message)); }, [load]);
 
   const reset = () => {
-    setEditing(null); setName(''); setInstructions('');
+    setEditing(null); setName(''); setMethod('bank'); setNetwork('TRC20'); setWalletAddress(''); setInstructions('');
     setAccountDetails('{"Bank name":"","Account name":"","Account number":""}');
     setMinimum('100'); setMaximum(''); setFeeType('none'); setFeeValue('0'); setLogoUrl(''); setExtraFields('[]');
   };
@@ -72,11 +75,12 @@ export const AdminManualPaymentManager: React.FC = () => {
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setMessage(''); setErrorMsg('');
     try {
-      const parsedDetails = JSON.parse(accountDetails);
+      const parsedDetails = method === 'bank' ? JSON.parse(accountDetails) : {};
       if (!parsedDetails || typeof parsedDetails !== 'object' || Array.isArray(parsedDetails)) throw new Error('Account details must be a JSON object.');
+      if (method === 'usdt' && !walletAddress.trim()) throw new Error('Enter the USDT receiving wallet address.');
       const parsedExtraFields = JSON.parse(extraFields);
       if (!Array.isArray(parsedExtraFields)) throw new Error('Extra required fields must be a JSON array.');
-      const body = { name, logoUrl, extraFields: parsedExtraFields, instructions, accountDetails: parsedDetails, minimumAmount: Number(minimum), maximumAmount: maximum ? Number(maximum) : null, feeType, feeValue: Number(feeValue), enabled: true };
+      const body = { name, method, ...(method === 'usdt' ? { network, walletAddress: walletAddress.trim() } : {}), logoUrl, extraFields: parsedExtraFields, instructions, accountDetails: parsedDetails, minimumAmount: Number(minimum), maximumAmount: maximum ? Number(maximum) : null, feeType, feeValue: Number(feeValue), enabled: true };
       const response = await fetch(getApiUrl(editing ? `/manual-payments/admin/methods/${editing}` : '/manual-payments/admin/methods'), {
         method: editing ? 'PATCH' : 'POST', headers: headers(), body: JSON.stringify(body)
       });
@@ -144,6 +148,7 @@ export const AdminManualPaymentManager: React.FC = () => {
       <h2 className="text-xl font-bold text-[#18211f]">Manual payment methods</h2>
       <p className="text-sm text-[#69736f] mt-1">Configure bank transfer and other offline payment instructions. Investor deposits stay pending until finance approval.</p>
       <form onSubmit={save} className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
+        <label className="text-xs font-semibold text-[#46534e]">Payment type<select value={method} onChange={e=>setMethod(e.target.value as 'bank' | 'usdt')} className="mt-1 w-full rounded-lg border p-2.5 text-sm"><option value="bank">Bank transfer</option><option value="usdt">USDT (crypto)</option></select></label>
         <label className="text-xs font-semibold text-[#46534e]">Method name<input required minLength={2} maxLength={100} value={name} onChange={e=>setName(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" placeholder="SEPA bank transfer" /></label>
         <label className="text-xs font-semibold text-[#46534e]">Minimum amount (EUR)<input required type="number" min="0.01" step="0.01" value={minimum} onChange={e=>setMinimum(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" /></label>
         <label className="text-xs font-semibold text-[#46534e]">Maximum amount (optional)<input type="number" min="0.01" step="0.01" value={maximum} onChange={e=>setMaximum(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" /></label>
@@ -151,14 +156,18 @@ export const AdminManualPaymentManager: React.FC = () => {
         <label className="text-xs font-semibold text-[#46534e]">Fee value<input type="number" min="0" step="0.01" value={feeValue} onChange={e=>setFeeValue(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" /></label>
         <label className="text-xs font-semibold text-[#46534e]">Logo URL (optional)<input value={logoUrl} onChange={e=>setLogoUrl(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" placeholder="https://..." /></label>
         <label className="text-xs font-semibold text-[#46534e] md:col-span-2">Extra required fields (JSON array)<textarea value={extraFields} onChange={e=>setExtraFields(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border p-2.5 font-mono text-xs" placeholder='[{"key":"reference","label":"Transfer reference","required":true}]' /></label>
-        <label className="text-xs font-semibold text-[#46534e] md:col-span-2">Account details (JSON object)<textarea value={accountDetails} onChange={e=>setAccountDetails(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border p-2.5 font-mono text-xs" /></label>
+        {method === 'bank' ? <label className="text-xs font-semibold text-[#46534e] md:col-span-2">Account details (JSON object)<textarea value={accountDetails} onChange={e=>setAccountDetails(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border p-2.5 font-mono text-xs" /></label> : <>
+          <label className="text-xs font-semibold text-[#46534e]">USDT network<select value={network} onChange={e=>setNetwork(e.target.value as 'TRC20' | 'ERC20' | 'BEP20')} className="mt-1 w-full rounded-lg border p-2.5 text-sm"><option value="TRC20">TRC20 (Tron)</option><option value="ERC20">ERC20 (Ethereum)</option><option value="BEP20">BEP20 (BNB Smart Chain)</option></select></label>
+          <label className="text-xs font-semibold text-[#46534e] md:col-span-2">USDT receiving wallet address<input required value={walletAddress} onChange={e=>setWalletAddress(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 font-mono text-sm" placeholder={network === 'TRC20' ? 'T…' : '0x…'} autoComplete="off" /></label>
+          <p className="md:col-span-2 text-xs text-amber-700">Only enter a wallet controlled by your organization. Investors must send USDT on this exact network.</p>
+        </>}
         <label className="text-xs font-semibold text-[#46534e] md:col-span-2">Payment instructions<textarea required value={instructions} onChange={e=>setInstructions(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border p-2.5 text-sm" /></label>
         <div className="md:col-span-2 flex gap-2"><button disabled={busy} className="rounded-lg bg-[#1e3a34] text-white px-4 py-2.5 text-sm font-bold disabled:opacity-50 cursor-pointer">{editing ? 'Update method' : 'Create method'}</button>{editing && <button type="button" onClick={reset} className="rounded-lg border px-4 py-2.5 text-sm cursor-pointer">Cancel edit</button>}</div>
       </form>
       <div className="mt-6 space-y-2">
         {methods.map(method => <div key={method.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border p-3">
           <div><b className="text-sm">{method.name}</b><p className="text-xs text-gray-500">Min {formatCentsEur(eurToCents(method.minimum_amount))} · {method.maximum_amount ? `Max ${formatCentsEur(eurToCents(method.maximum_amount))}` : 'No maximum'} · {method.fee_type} fee</p></div>
-          <div className="flex gap-2"><button type="button" onClick={()=>{setEditing(method.id);setName(method.name);setInstructions(method.instructions);setAccountDetails(JSON.stringify(method.account_details || {},null,2));setMinimum(String(method.minimum_amount));setMaximum(method.maximum_amount ? String(method.maximum_amount) : '');setFeeType(method.fee_type);setFeeValue(String(method.fee_value));setLogoUrl(method.logo_url || '');setExtraFields(JSON.stringify(method.extra_fields || [],null,2));}} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">Edit</button><button type="button" disabled={busy} onClick={()=>toggle(method)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">{method.enabled ? 'Disable' : 'Enable'}</button></div>
+          <div className="flex gap-2"><button type="button" onClick={()=>{setEditing(method.id);setName(method.name);setMethod(method.method === 'usdt' ? 'usdt' : 'bank');setNetwork((method.network === 'ERC20' || method.network === 'BEP20' ? method.network : 'TRC20'));setWalletAddress(method.wallet_address || '');setInstructions(method.instructions);setAccountDetails(JSON.stringify(method.account_details || {},null,2));setMinimum(String(method.minimum_amount));setMaximum(method.maximum_amount ? String(method.maximum_amount) : '');setFeeType(method.fee_type);setFeeValue(String(method.fee_value));setLogoUrl(method.logo_url || '');setExtraFields(JSON.stringify(method.extra_fields || [],null,2));}} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">Edit</button><button type="button" disabled={busy} onClick={()=>toggle(method)} className="rounded-lg border px-3 py-1.5 text-xs font-semibold cursor-pointer">{method.enabled ? 'Disable' : 'Enable'}</button></div>
         </div>)}
         {!methods.length && <p className="text-sm text-gray-500">No manual payment methods configured yet.</p>}
       </div>
