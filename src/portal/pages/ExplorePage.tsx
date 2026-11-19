@@ -33,6 +33,7 @@ export const ExplorePage: React.FC = () => {
     exploreSearch,
     setExploreSearch,
     navigatePortal,
+    refreshAll,
   } = usePortal();
 
   const filterOptions = ['All', 'Residential', 'Commercial'];
@@ -102,6 +103,7 @@ export const ExplorePage: React.FC = () => {
           onAction={() => {
             setExploreFilter('All');
             setExploreSearch('');
+            void refreshAll();
           }}
         />
       ) : (
