@@ -462,7 +462,7 @@ export const DepositPage: React.FC = () => {
                     <div className="w-10 h-10 rounded-[14px] bg-[#121A1F] border border-[#1F2C33] text-[#6FD8B0] flex items-center justify-center shrink-0">
                       <Building2 className="w-4 h-4" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="text-sm font-semibold text-white">
                         {methodLabel(item.method)}
                         {item.name ? ` · ${item.name}` : ''}
@@ -470,6 +470,28 @@ export const DepositPage: React.FC = () => {
                       <div className="text-xs text-[#A8C5BD] mt-1 portal-tabular font-medium">
                         {money(item.minimum_amount)} minimum {item.maximum_amount != null ? `· ${money(item.maximum_amount)} maximum` : ''}
                       </div>
+                      {item.method === 'bank' && item.detail_rows?.length > 0 && (
+                        <div className="mt-3 space-y-2 rounded-xl border border-[#1F2C33] bg-[#0B0F10]/60 p-3">
+                          {item.detail_rows.map((detail, index) => (
+                            <div key={`${detail.label}-${index}`} className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-3 text-xs">
+                              <span className="text-[#8FA1A8]">{detail.label}</span>
+                              <span className="break-all font-semibold text-[#F2F5F4] sm:text-right">{detail.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {item.method === 'usdt' && (
+                        <div className="mt-3 space-y-2 rounded-xl border border-[#1F2C33] bg-[#0B0F10]/60 p-3 text-xs">
+                          <div><span className="text-[#8FA1A8]">Network</span><p className="mt-1 font-semibold text-amber-200">{item.network || 'Network not specified'}</p></div>
+                          <div><span className="text-[#8FA1A8]">Wallet address</span><p className="mt-1 break-all font-mono text-[#F2F5F4]">{item.wallet_address || 'Address not configured'}</p></div>
+                        </div>
+                      )}
+                      {item.instructions && (
+                        <div className="mt-3 rounded-xl border border-[#1F2C33] bg-[#0B0F10]/60 p-3 text-xs leading-relaxed">
+                          <p className="mb-1 font-semibold text-[#8FA1A8]">Payment instructions</p>
+                          <p className="whitespace-pre-wrap text-[#C2CFD2]">{item.instructions}</p>
+                        </div>
+                      )}
                     </div>
                   </button>
                 );
