@@ -1457,8 +1457,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
       mode = 'sendgrid';
       try {
         // SendGrid's EU data-residency mode is enabled only when this provider is selected.
-        sgMail.setApiKey(provider.key);
-        sgMail.setDataResidency('eu');
+        sgMail.setApiKey(provider.key || '');
+        if (typeof (sgMail as any).setDataResidency === 'function') {
+          (sgMail as any).setDataResidency('eu');
+        }
         const [sgResponse] = await sgMail.send({
           to: recipient,
           from: { email: emailSettings.fromAddress, name: emailSettings.senderName },

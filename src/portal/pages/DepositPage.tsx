@@ -463,11 +463,11 @@ export const DepositPage: React.FC = () => {
                       <Building2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-[#F2F5F4]">
+                      <div className="text-sm font-semibold text-white">
                         {methodLabel(item.method)}
                         {item.name ? ` · ${item.name}` : ''}
                       </div>
-                      <div className="text-xs text-[#8FA1A8] mt-0.5 portal-tabular">
+                      <div className="text-xs text-[#A8C5BD] mt-1 portal-tabular font-medium">
                         {money(item.minimum_amount)} minimum {item.maximum_amount != null ? `· ${money(item.maximum_amount)} maximum` : ''}
                       </div>
                     </div>
