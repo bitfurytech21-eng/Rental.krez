@@ -2038,6 +2038,15 @@ export async function createUserKycSubmission(params: {
       (await uploadDocumentBufferToBucket(params.userId, safeName, bytes, params.mimeType || 'application/pdf', 'documents'));
   }
 
+  // Reuse an existing submission if a previous request saved successfully but the client lost its response.
+  if (resolvedPath) {
+    const existing = await admin.from('kyc_submissions').select('*').eq('user_id', params.userId).eq('file_path', resolvedPath).maybeSingle();
+    if (!existing.error && existing.data) {
+      const submission = mapKycSubmissionRow(existing.data);
+      const currentState = await listUserKycSubmissions(params.userId).catch(() => ({ overallStatus: 'not_started', submissions: [submission] }));
+      return { submission, overallStatus: currentState.overallStatus };
+    }
+  }
   // Primary schema: (user_id, doc_type, file_path, answers, status)
   const primaryPayload: Record<string, any> = {
     user_id: params.userId,
@@ -2078,7 +2087,11 @@ export async function createUserKycSubmission(params: {
     }
   }
 
-  if (res.error) throw res.error;
+  if (res.error) {
+    const submissionError: any = new Error(res.error.message || 'Unable to save compliance submission.');
+    submissionError.uploadedFilePath = resolvedPath;
+    throw submissionError;
+  }
 
   const submission = mapKycSubmissionRow(res.data);
   const currentState = await listUserKycSubmissions(params.userId).catch(() => ({ overallStatus: 'not_started', submissions: [submission] }));
