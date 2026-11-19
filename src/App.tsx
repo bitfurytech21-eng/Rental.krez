@@ -9,7 +9,7 @@ import { api } from './lib/api';
 import { Property } from './types/property';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import { LiveSupportMessenger } from './components/support/LiveSupportMessenger';
+import { SmartsuppWidget } from './components/support/SmartsuppWidget';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 // Krez Template Pages
@@ -790,7 +790,7 @@ function MainApp() {
 
       <SchemaJsonLd property={selectedProperty} />
       <OfflineIndicator />
-      {!isIsolatedAdminEnvironment && <LiveSupportMessenger />}
+      {!isIsolatedAdminEnvironment && <SmartsuppWidget />}
     </div>
   );
 }
