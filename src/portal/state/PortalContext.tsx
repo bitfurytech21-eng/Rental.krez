@@ -1,13 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { ledger } from '../../lib/ledger';
 import { safeErrorMessage } from '../../lib/safeErrorMessage';
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { useNavigation } from '../../context/NavigationContext';
-import { portalApi } from '../services/portalApi';
+import { mapFrontendPropertyToPortalProperty, portalApi } from '../services/portalApi';
 import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
 import { buildSamplePortalDataset, SamplePortalDataset } from '../config/samplePortalData';
 import {
   PortalAssignedBankAccount,
+  PortalAssignedPaymentMethod,
   PortalConfig,
   PortalDashboardSummary,
   PortalNotification,
@@ -188,6 +190,8 @@ interface PortalContextValue {
   availableBalance: number;
   availableCents: number;
   assignedBankAccount: PortalAssignedBankAccount | null;
+  assignedUsdtAccount: PortalAssignedBankAccount | null;
+  assignedPaymentMethods: PortalAssignedPaymentMethod[];
   subBalances: Record<string, number>;
   properties: PortalProperty[];
   transactions: PortalTransaction[];
@@ -245,6 +249,8 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [availableBalance, setAvailableBalance] = useState<number>(0);
   const [availableCents, setAvailableCents] = useState<number>(0);
   const [assignedBankAccount, setAssignedBankAccount] = useState<PortalAssignedBankAccount | null>(null);
+  const [assignedUsdtAccount, setAssignedUsdtAccount] = useState<PortalAssignedBankAccount | null>(null);
+  const [assignedPaymentMethods, setAssignedPaymentMethods] = useState<PortalAssignedPaymentMethod[]>([]);
   const [subBalances, setSubBalances] = useState<Record<string, number>>({ EUR: 0 });
   const [properties, setProperties] = useState<PortalProperty[]>([]);
   const [transactions, setTransactions] = useState<PortalTransaction[]>([]);
@@ -357,6 +363,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         portalApi.getNotifications(),
         portalApi.getProfile(),
         portalApi.getPaymentConfig().catch(() => PORTAL_PLACEHOLDER_CONFIG),
+        portalApi.getAssignedPaymentMethods().catch(() => [] as PortalAssignedPaymentMethod[]),
       ]);
 
       const [
@@ -368,6 +375,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         notifResult,
         profileResult,
         configResult,
+        methodsResult,
       ] = results;
 
       if (summaryResult.status === 'fulfilled') setSummary(summaryResult.value);
@@ -386,6 +394,13 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const walletGate = walletResult.status === 'fulfilled' ? walletResult.value.assignedBankAccount : null;
         const profileGate = profileResult.status === 'fulfilled' ? profileResult.value.assignedBankAccount : null;
         setAssignedBankAccount(walletGate || profileGate || null);
+
+        const walletUsdtGate = walletResult.status === 'fulfilled' ? walletResult.value.assignedUsdtAccount : null;
+        const profileUsdtGate = profileResult.status === 'fulfilled' ? profileResult.value.assignedUsdtAccount : null;
+        setAssignedUsdtAccount(walletUsdtGate || profileUsdtGate || null);
+      }
+      if (methodsResult.status === 'fulfilled') {
+        setAssignedPaymentMethods(methodsResult.value);
       }
       if (propsResult.status === 'fulfilled') setProperties(propsResult.value);
       if (txResult.status === 'fulfilled') setTransactions(txResult.value);
@@ -446,6 +461,9 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (walletRes.assignedBankAccount) {
         setAssignedBankAccount(walletRes.assignedBankAccount);
       }
+      if (walletRes.assignedUsdtAccount) {
+        setAssignedUsdtAccount(walletRes.assignedUsdtAccount);
+      }
       setSubBalances(walletRes.subBalances);
       setTransactions(txRes);
       setLastSyncedAt(new Date());
@@ -457,10 +475,11 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const refreshProfile = useCallback(async () => {
     if (!user) return;
     try {
-      const [p, walletRes, summaryRes] = await Promise.all([
+      const [p, walletRes, summaryRes, methodsRes] = await Promise.all([
         portalApi.getProfile(),
         portalApi.getWalletBalance(),
         portalApi.getDashboardSummary(),
+        portalApi.getAssignedPaymentMethods().catch(() => [] as PortalAssignedPaymentMethod[]),
       ]);
       setProfile(p);
       setBalance(walletRes.balance);
@@ -468,6 +487,8 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setAvailableBalance(walletRes.availableBalance);
       setAvailableCents(walletRes.availableCents);
       setAssignedBankAccount(walletRes.assignedBankAccount || p.assignedBankAccount || null);
+      setAssignedUsdtAccount(walletRes.assignedUsdtAccount || p.assignedUsdtAccount || null);
+      setAssignedPaymentMethods(methodsRes);
       setSubBalances(walletRes.subBalances);
       setSummary(summaryRes);
       setLastSyncedAt(new Date());
@@ -486,6 +507,8 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setAvailableBalance(0);
     setAvailableCents(0);
     setAssignedBankAccount(null);
+    setAssignedUsdtAccount(null);
+    setAssignedPaymentMethods([]);
     setSubBalances({ EUR: 0 });
     setProperties([]);
     setTransactions([]);
@@ -500,6 +523,22 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
+
+  // Keep dashboard listings synced with frontend home-page/public ledger updates
+  useEffect(() => {
+    if (!user?.id || sampleDataEnabled) return;
+    return ledger.subscribe(() => {
+      const frontendListings = ledger.getFrontendProperties().map(mapFrontendPropertyToPortalProperty);
+      setProperties((prev) => {
+        if (prev.length === 0) return frontendListings;
+        const prevById = new Map(prev.map((p) => [p.id, p]));
+        return frontendListings.map((fe) => {
+          const existing = prevById.get(fe.id);
+          return existing ? { ...existing, ...fe } : fe;
+        });
+      });
+    });
+  }, [user?.id, sampleDataEnabled]);
 
   // One user-scoped channel keeps the portal, transaction list, holdings and bell in sync.
   // Holdings are a view over investments, so listen to the underlying investments table.
@@ -661,6 +700,8 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         availableBalance: sampleDataset ? sampleDataset.balance : availableBalance,
         availableCents: sampleDataset ? Math.round(sampleDataset.balance * 100) : availableCents,
         assignedBankAccount: sampleDataset ? portalConfig.traditional : assignedBankAccount,
+        assignedUsdtAccount: sampleDataset ? null : assignedUsdtAccount,
+        assignedPaymentMethods: sampleDataset ? [] : assignedPaymentMethods,
         subBalances: sampleDataset ? sampleDataset.subBalances : subBalances,
         properties: sampleDataset ? sampleDataset.properties : properties,
         transactions: sampleDataset ? sampleDataset.transactions : transactions,

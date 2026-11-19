@@ -247,6 +247,8 @@ let devManualDeposits: DevManualDepositRecord[] = [];
 type DevHooks = {
   onDepositCreated?: (deposit: DevManualDepositRecord) => Promise<void> | void;
   onDepositReviewed?: (deposit: DevManualDepositRecord, approve: boolean, reason?: string) => Promise<void> | void;
+  onGateAssigned?: (userId: string, gateId: string | null, method: 'bank' | 'usdt', gateName?: string | null) => Promise<void> | void;
+  resolveCustomerGates?: (userId: string) => { bankGateId?: string | null; usdtGateId?: string | null } | null;
   persist?: () => Promise<void> | void;
 };
 
@@ -260,6 +262,49 @@ export function hydrateManualPaymentDevState(deposits?: DevManualDepositRecord[]
   if (Array.isArray(deposits) && devManualDeposits.length === 0) {
     devManualDeposits = deposits;
   }
+}
+
+export function hydrateDevPaymentGatesState(
+  gates?: PaymentGateRecord[],
+  assigned?: Record<string, { bankGateId: string | null; usdtGateId: string | null }>
+) {
+  if (Array.isArray(gates) && gates.length > 0) {
+    const existingIds = new Set(devPaymentGates.map((g) => g.id));
+    for (const g of gates) {
+      if (!g || !g.id) continue;
+      if (existingIds.has(g.id)) {
+        const idx = devPaymentGates.findIndex((item) => item.id === g.id);
+        if (idx !== -1) devPaymentGates[idx] = g;
+      } else {
+        devPaymentGates.push(g);
+        existingIds.add(g.id);
+      }
+    }
+  }
+  if (assigned && typeof assigned === 'object') {
+    for (const [uid, entry] of Object.entries(assigned)) {
+      if (!uid || !entry || typeof entry !== 'object') continue;
+      const cur = devAssignedGatesByUserId.get(uid) || { bankGateId: null, usdtGateId: null };
+      devAssignedGatesByUserId.set(uid, {
+        bankGateId: cur.bankGateId ?? entry.bankGateId ?? null,
+        usdtGateId: cur.usdtGateId ?? entry.usdtGateId ?? null,
+      });
+    }
+  }
+}
+
+export function exportDevPaymentGatesState(): {
+  paymentGates: PaymentGateRecord[];
+  assignedGates: Record<string, { bankGateId: string | null; usdtGateId: string | null }>;
+} {
+  const assignedGates: Record<string, { bankGateId: string | null; usdtGateId: string | null }> = {};
+  for (const [uid, entry] of devAssignedGatesByUserId.entries()) {
+    assignedGates[uid] = { bankGateId: entry.bankGateId ?? null, usdtGateId: entry.usdtGateId ?? null };
+  }
+  return {
+    paymentGates: devPaymentGates.map((g) => ({ ...g })),
+    assignedGates,
+  };
 }
 
 export function exportManualPaymentDevDeposits(): DevManualDepositRecord[] {
@@ -390,12 +435,18 @@ function decorateGateRow(row: any, assignedCount = 0) {
 }
 
 manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  if (!isSupabaseServerConfigured()) {
-    const assigned = getDevAssignedGates(req.user!.id);
+  const sendDevAssignedMethods = () => {
+    const devAssigned = getDevAssignedGates(req.user!.id);
+    const customerAssigned = registeredDevHooks.resolveCustomerGates?.(req.user!.id);
+    const bankGateId = devAssigned.bankGateId ?? customerAssigned?.bankGateId ?? null;
+    const usdtGateId = devAssigned.usdtGateId ?? customerAssigned?.usdtGateId ?? null;
     const active = listDevPaymentGatesWithCounts()
-      .filter((gate) => gate.active && (gate.id === assigned.bankGateId || gate.id === assigned.usdtGateId))
+      .filter((gate) => gate.active && (gate.id === bankGateId || gate.id === usdtGateId))
       .map((gate) => decorateGateRow(gate, gate.assigned_investors_count || 0));
     return res.json({ success: true, data: active, requestId: req.id });
+  };
+  if (!canUseLiveSupabaseData()) {
+    return sendDevAssignedMethods();
   }
   try {
     const client = getSupabaseAdmin();
@@ -420,8 +471,28 @@ manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedReques
     const expectedById = new Map(assigned.map((item) => [String(item.id), item.method]));
     const available = (data || []).map((row) => decorateGateRow(row))
       .filter((row) => row.method === expectedById.get(String(row.id)));
+
+    // If the admin assigned an inbuilt gate ID that is not yet mirrored in manual_payment_methods,
+    // resolve that specific assigned gate from the inbuilt registry without exposing unassigned gates.
+    const foundIds = new Set(available.map((row) => String(row.id)));
+    for (const item of assigned) {
+      const gid = String(item.id);
+      if (foundIds.has(gid)) continue;
+      const inbuilt = getDevGateById(gid);
+      if (inbuilt && inbuilt.enabled !== false && inbuilt.active !== false) {
+        const decorated = decorateGateRow(inbuilt);
+        if (decorated.method === item.method) {
+          available.push(decorated);
+          foundIds.add(gid);
+        }
+      }
+    }
     return res.json({ success: true, data: available, requestId: req.id });
-  } catch {
+  } catch (err: any) {
+    if (process.env.NODE_ENV !== 'production' && isMissingSchemaError(err)) {
+      markSupabaseSchemaMissingInDev();
+      return sendDevAssignedMethods();
+    }
     return res.status(503).json({ success: false, error: 'This payment option is not set up for your account yet. Please contact support if you need help.', code: 'MANUAL_METHODS_UNAVAILABLE', requestId: req.id });
   }
 });
@@ -486,11 +557,14 @@ manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, su
   if (!bytes.length || bytes.length > MAX_PROOF_BYTES) return res.status(413).json({ success: false, error: 'Proof files must be 5 MB or smaller.', code: 'PROOF_FILE_TOO_LARGE', requestId: req.id });
   if (!matchesFileSignature(bytes, mimeType)) return res.status(400).json({ success: false, error: 'The uploaded file content does not match its declared file type.', code: 'INVALID_PROOF_FILE', requestId: req.id });
   const userId = req.user!.id;
-  if (!isSupabaseServerConfigured()) {
+  const submitInDev = async () => {
     const method = devPaymentGates.find((item) => item.id === String(body.methodId) && item.enabled);
     if (!method) return res.status(404).json({ success: false, error: 'Selected payment method is unavailable.', code: 'PAYMENT_METHOD_NOT_FOUND', requestId: req.id });
     const devMethodType = ['sepa', 'wire', 'bank_wire'].includes(String(method.method).toLowerCase()) ? 'bank' : String(method.method).toLowerCase();
-    const expectedGateId = devMethodType === 'usdt' ? getDevAssignedGateId(userId, 'usdt') : getDevAssignedGateId(userId, 'bank');
+    const customerAssigned = registeredDevHooks.resolveCustomerGates?.(userId);
+    const expectedGateId = devMethodType === 'usdt'
+      ? (getDevAssignedGateId(userId, 'usdt') ?? customerAssigned?.usdtGateId ?? null)
+      : (getDevAssignedGateId(userId, 'bank') ?? customerAssigned?.bankGateId ?? null);
     if (!['bank', 'usdt'].includes(devMethodType) || expectedGateId !== method.id) {
       return res.status(403).json({ success: false, error: 'This payment method is not assigned to your account.', code: 'PAYMENT_METHOD_NOT_ASSIGNED', requestId: req.id });
     }
@@ -530,6 +604,9 @@ manualPaymentRouter.post('/deposits', requireAuth, requireLatestLegalConsent, su
     await registeredDevHooks.onDepositCreated?.(record);
     await registeredDevHooks.persist?.();
     return res.status(201).json({ success: true, data: record, message: 'Payment proof received. Your deposit remains pending until finance verification.', requestId: req.id });
+  };
+  if (!canUseLiveSupabaseData()) {
+    return submitInDev();
   }
   const client = getSupabaseAdmin();
   let uploadedPath: string | null = null;
@@ -619,7 +696,7 @@ manualPaymentRouter.get('/admin/methods', requireStaffSection('settings', 'read'
 });
 
 manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'write'), async (req: AuthenticatedRequest, res: Response) => {
-  const createInDev = () => {
+  const createInDev = async () => {
     try {
       const payload = safeMethodInput(req.body, req.user!.id);
       const now = new Date().toISOString();
@@ -634,6 +711,7 @@ manualPaymentRouter.post('/admin/methods', requireStaffSection('settings', 'writ
         updated_at: now,
       } as PaymentGateRecord;
       devPaymentGates.push(created);
+      await registeredDevHooks.persist?.();
       return res.status(201).json({ success: true, data: decorateGateRow(created, 0), requestId: req.id });
     } catch (error: any) {
       return res.status(400).json({ success: false, error: error?.message || 'Invalid payment gate configuration.', code: 'INVALID_MANUAL_METHOD', requestId: req.id });
@@ -689,7 +767,7 @@ manualPaymentRouter.post('/admin/issue-account', requireStaffSection('finance', 
 
   const normalizedMethod: 'bank' | 'usdt' = validatedPayload.account_details[GATE_META_METHOD] === 'usdt' ? 'usdt' : 'bank';
 
-  const issueInDev = () => {
+  const issueInDev = async () => {
     const now = new Date().toISOString();
     let gateRecord: PaymentGateRecord;
     const existingIdx = gateIdInput ? devPaymentGates.findIndex((g) => g.id === gateIdInput) : -1;
@@ -718,6 +796,8 @@ manualPaymentRouter.post('/admin/issue-account', requireStaffSection('finance', 
       devPaymentGates.push(gateRecord);
     }
     setDevAssignedGateId(userId, gateRecord.id, normalizedMethod);
+    await registeredDevHooks.onGateAssigned?.(userId, gateRecord.id, normalizedMethod, gateRecord.name);
+    await registeredDevHooks.persist?.();
     const assigned = getDevAssignedGates(userId);
     return res.status(existingIdx !== -1 ? 200 : 201).json({
       success: true,
@@ -825,7 +905,7 @@ manualPaymentRouter.post('/admin/issue-account', requireStaffSection('finance', 
 });
 
 manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 'write'), async (req: AuthenticatedRequest, res: Response) => {
-  const updateInDev = () => {
+  const updateInDev = async () => {
     const idx = devPaymentGates.findIndex((g) => g.id === req.params.id);
     if (idx === -1) return res.status(404).json({ success: false, error: 'Payment gate not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
     try {
@@ -844,6 +924,7 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
       for (const assigned of devAssignedGatesByUserId.values()) {
         if (assigned.bankGateId === updated.id || assigned.usdtGateId === updated.id) count += 1;
       }
+      await registeredDevHooks.persist?.();
       return res.json({ success: true, data: decorateGateRow(updated, count), requestId: req.id });
     } catch (err: any) {
       const msgMap: Record<string, string> = {
@@ -900,7 +981,7 @@ manualPaymentRouter.patch('/admin/methods/:id', requireStaffSection('settings', 
 
 manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings', 'write'), async (req: AuthenticatedRequest, res: Response) => {
   const gateId = req.params.id;
-  const deleteInDev = () => {
+  const deleteInDev = async () => {
     const idx = devPaymentGates.findIndex((g) => g.id === gateId);
     if (idx === -1) return res.status(404).json({ success: false, error: 'Payment gate not found.', code: 'MANUAL_METHOD_NOT_FOUND', requestId: req.id });
     let assignedCount = 0;
@@ -916,6 +997,7 @@ manualPaymentRouter.delete('/admin/methods/:id', requireStaffSection('settings',
       });
     }
     devPaymentGates.splice(idx, 1);
+    await registeredDevHooks.persist?.();
     return res.json({ success: true, message: 'Payment gate deleted.', requestId: req.id });
   };
   if (!canUseLiveSupabaseData()) {

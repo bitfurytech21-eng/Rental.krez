@@ -352,6 +352,8 @@ export const AdminPanel: React.FC = () => {
             staffRole: row.staffRole || null,
             assignedGateId: row.assignedGateId || null,
             assignedGateName: row.assignedGateName || null,
+            assignedUsdtGateId: row.assignedUsdtGateId || null,
+            assignedUsdtGateName: row.assignedUsdtGateName || null,
             accountType: row.accountType as AccountType,
             kycStatus: row.kycStatus === 'approved' ? 'verified' : (row.kycStatus || 'pending'),
             walletBalance: walletFromView !== undefined ? walletFromView : Number(row.balance || 0),

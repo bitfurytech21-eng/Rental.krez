@@ -19,6 +19,7 @@ export const WalletPage: React.FC = () => {
     balance,
     availableBalance,
     assignedBankAccount,
+    assignedUsdtAccount,
     subBalances,
     profile,
     portalConfig,
@@ -176,20 +177,32 @@ export const WalletPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className="portal-card space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[#F2F5F4]">Assigned bank account (Deposits)</h3>
+            <h3 className="text-sm font-semibold text-[#F2F5F4]">Assigned payment rail (Deposits)</h3>
             <StatusBadge
-              status={assignedBankAccount?.iban ? 'completed' : 'pending'}
-              label={assignedBankAccount?.iban ? 'Active' : 'Standard'}
+              status={assignedBankAccount?.iban || assignedUsdtAccount?.walletAddress ? 'completed' : 'pending'}
+              label={assignedBankAccount?.iban || assignedUsdtAccount?.walletAddress ? 'Active' : 'Standard'}
             />
           </div>
-          {assignedBankAccount?.iban ? (
-            <div className="text-xs text-[#8FA1A8] space-y-1">
-              <div className="text-[#F2F5F4] font-medium">
-                {assignedBankAccount.beneficiary} · {assignedBankAccount.bankName}
-              </div>
-              <div className="font-mono text-[#6FD8B0]">{assignedBankAccount.iban}</div>
-              {assignedBankAccount.bic && (
-                <div className="font-mono">BIC: {assignedBankAccount.bic}</div>
+          {assignedBankAccount?.iban || assignedUsdtAccount?.walletAddress ? (
+            <div className="text-xs text-[#8FA1A8] space-y-2.5">
+              {assignedBankAccount?.iban && (
+                <div className="space-y-1">
+                  <div className="text-[#F2F5F4] font-medium">
+                    {assignedBankAccount.beneficiary} · {assignedBankAccount.bankName}
+                  </div>
+                  <div className="font-mono text-[#6FD8B0]">{assignedBankAccount.iban}</div>
+                  {assignedBankAccount.bic && (
+                    <div className="font-mono">BIC: {assignedBankAccount.bic}</div>
+                  )}
+                </div>
+              )}
+              {assignedUsdtAccount?.walletAddress && (
+                <div className={assignedBankAccount?.iban ? 'pt-2 border-t border-[#1F2C33] space-y-1' : 'space-y-1'}>
+                  <div className="text-[#F2F5F4] font-medium">
+                    {assignedUsdtAccount.gateName || 'USDT Deposit Rail'} · {assignedUsdtAccount.network || 'USDT'}
+                  </div>
+                  <div className="font-mono text-[#6FD8B0] break-all">{assignedUsdtAccount.walletAddress}</div>
+                </div>
               )}
             </div>
           ) : (

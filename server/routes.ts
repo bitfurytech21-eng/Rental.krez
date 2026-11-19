@@ -10,6 +10,7 @@
  */
 
 import { Router, Response, NextFunction } from 'express';
+import { INITIAL_PROPERTIES } from '../src/data/properties';
 import { AuthenticatedRequest, rateLimiter, requireAuth, requireAdmin, requireAdminOrLogSecret, requireStaffSection } from './middleware';
 import { logger } from './logger';
 import { requireLatestLegalConsent } from './legalConsent';
@@ -19,6 +20,8 @@ import {
   registerManualPaymentDevHooks,
   hydrateManualPaymentDevState,
   exportManualPaymentDevDeposits,
+  hydrateDevPaymentGatesState,
+  exportDevPaymentGatesState,
   getDevAssignedGates,
   getDevAssignedGateId,
   setDevAssignedGateId,
@@ -735,6 +738,16 @@ async function ensureDevStateHydrated(): Promise<void> {
         }
       }
       hydrateManualPaymentDevState(snap.manualDeposits);
+      hydrateDevPaymentGatesState(snap.paymentGates, snap.assignedGates);
+      for (const c of snap.customers) {
+        if (!c || !c.id) continue;
+        if (c.assignedGateId && getDevGateById(c.assignedGateId)) {
+          try { setDevAssignedGateId(c.id, c.assignedGateId, 'bank'); } catch {}
+        }
+        if (c.assignedUsdtGateId && getDevGateById(c.assignedUsdtGateId)) {
+          try { setDevAssignedGateId(c.id, c.assignedUsdtGateId, 'usdt'); } catch {}
+        }
+      }
       hydrateServerSessions(snap.sessions);
       devStateHydrated = true;
     })();
@@ -764,6 +777,7 @@ async function persistDevState(): Promise<void> {
   for (const [uid, prefs] of userPreferencesStore.entries()) {
     preferences[uid] = prefs;
   }
+  const gateState = exportDevPaymentGatesState();
   await saveDevAuthSnapshot({
     customers: Array.from(devCustomersById.values()),
     sessions: exportServerSessions(),
@@ -774,6 +788,8 @@ async function persistDevState(): Promise<void> {
     subBalances,
     preferences,
     manualDeposits: exportManualPaymentDevDeposits().slice(0, 500),
+    paymentGates: gateState.paymentGates,
+    assignedGates: gateState.assignedGates,
   });
 }
 
@@ -833,6 +849,25 @@ registerManualPaymentDevHooks({
       });
     }
   },
+  onGateAssigned: async (userId: string, gateId: string | null, method: 'bank' | 'usdt', gateName?: string | null) => {
+    const cust = devCustomersById.get(userId);
+    if (!cust) return;
+    if (method === 'usdt') {
+      (cust as any).assignedUsdtGateId = gateId;
+      (cust as any).assignedUsdtGateName = gateId ? (gateName ?? getDevGateById(gateId)?.name ?? null) : null;
+    } else {
+      (cust as any).assignedGateId = gateId;
+      (cust as any).assignedGateName = gateId ? (gateName ?? getDevGateById(gateId)?.name ?? null) : null;
+    }
+  },
+  resolveCustomerGates: (userId: string) => {
+    const cust = devCustomersById.get(userId);
+    if (!cust) return null;
+    return {
+      bankGateId: (cust as any).assignedGateId ?? null,
+      usdtGateId: (cust as any).assignedUsdtGateId ?? null,
+    };
+  },
   persist: persistDevState,
 });
 
@@ -887,101 +922,64 @@ function shouldUseSupabaseForCustomer(req?: AuthenticatedRequest): boolean {
   return isSupabaseServerConfigured() && !isDevCustomerRequest(req);
 }
 
-let mockListings = [
-  {
-    id: 'prop-villa-mirador',
-    slug: 'villa-mirador-marbella',
-    title: 'Villa El Mirador',
-    location: 'La Zagaleta, Benahavís, Spain',
-    city: 'Benahavís',
-    country: 'Spain',
-    type: 'Luxury Villa',
-    status: 'open',
-    fundedAmount: 1840000,
-    targetAmount: 2450000,
-    tokenPrice: 364,
-    totalTokens: 6730,
-    availableTokens: 1675,
-    monthlyTargetRate: 6.10,
-    projectedYield: 73.2,
-    capitalAppreciation: 5.5,
-    minimumInvestment: 1000,
-    holdingPeriodMonths: 48,
-    images: [
-      'https://files.kretzrealestate.com/5534a64054a86115d0d81384cb413d7c.jpg',
-      'https://files.kretzrealestate.com/bf9614ca8f58bfccfdcc38b3f7f167e.jpg',
-      'https://files.kretzrealestate.com/3286f7373a9319f6adb33037462b9324.jpg',
-      'https://files.kretzrealestate.com/6bc1db91a5f1856684da4204fd49ddd.jpg',
-      'https://files.kretzrealestate.com/77505885976169785aa355b7b21d7abe.jpg',
-      'https://files.kretzrealestate.com/337717ee33c361d8662e538c0cf8088.jpg',
-      'https://files.kretzrealestate.com/413290f763843c687cca11f6bc94ca.jpg'
-    ],
-    specs: { bedrooms: 7, bathrooms: 9, builtAreaM2: 1280, plotAreaM2: 5200 },
-    financials: { grossRentAnnual: 220000, netYield: 73.2, totalIrr: 292.8 }
-  },
-  {
-    id: 'prop-palacio-pedralbes',
-    slug: 'palacio-pedralbes-barcelona',
-    title: 'Palacio de Pedralbes',
-    location: 'Pedralbes, Barcelona, Spain',
-    city: 'Barcelona',
-    country: 'Spain',
-    type: 'Modernist Mansion',
-    status: 'open',
-    fundedAmount: 980000,
-    targetAmount: 1650000,
-    tokenPrice: 364,
-    totalTokens: 4532,
-    availableTokens: 1840,
-    monthlyTargetRate: 6.30,
-    projectedYield: 75.6,
-    capitalAppreciation: 4.8,
-    minimumInvestment: 1000,
-    holdingPeriodMonths: 48,
-    images: [
-      'https://files.kretzrealestate.com/6ad7ec3c06057549d91484987949c8f.jpg',
-      'https://files.kretzrealestate.com/7cae7d2c3b9bbf8e9445a1b2cc78e81.jpg',
-      'https://files.kretzrealestate.com/e1d5efb0c63a5b291d5efb22df70cc39.jpg',
-      'https://files.kretzrealestate.com/9137bb174bd8652fb631cde092a6ec.jpg',
-      'https://files.kretzrealestate.com/8ea96ea88eac7013d9d6445c14583f8e.jpg',
-      'https://files.kretzrealestate.com/c55e327fcfeb5af6d71e727d9662616.jpg',
-      'https://files.kretzrealestate.com/27c1f069733648b4db1711cf1d1b.jpg'
-    ],
-    specs: { bedrooms: 6, bathrooms: 7, builtAreaM2: 950, plotAreaM2: 2400 },
-    financials: { grossRentAnnual: 145000, netYield: 75.6, totalIrr: 302.4 }
-  },
-  {
-    id: 'prop-finca-son-vida',
-    slug: 'finca-son-vida-mallorca',
-    title: 'Son Vida Private Estate',
-    location: 'Son Vida, Palma de Mallorca, Spain',
-    city: 'Palma de Mallorca',
-    country: 'Spain',
-    type: 'Island Finca',
-    status: 'open',
-    fundedAmount: 2600000,
-    targetAmount: 3100000,
-    tokenPrice: 364,
-    totalTokens: 8516,
-    availableTokens: 1373,
-    monthlyTargetRate: 6.50,
-    projectedYield: 78.0,
-    capitalAppreciation: 6.2,
-    minimumInvestment: 1000,
-    holdingPeriodMonths: 36,
-    images: [
-      'https://files.kretzrealestate.com/90c118757380841fab714e209b2d3984.jpg',
-      'https://files.kretzrealestate.com/b8d5f1e23efcd102b11bcb49831c99.jpg',
-      'https://files.kretzrealestate.com/31574c24ff15ac43bf531be459a515f9.jpg',
-      'https://files.kretzrealestate.com/a96543a914113694b2503fa450b344f7.jpg',
-      'https://files.kretzrealestate.com/2f11c8e882deea4e33221d31a6718a.jpg',
-      'https://files.kretzrealestate.com/3c62f78b3114e7f8f343dfcd6ca6dbf.jpg',
-      'https://files.kretzrealestate.com/57597262d0e282a1c34ff9e1a4a539d1.jpg'
-    ],
-    specs: { bedrooms: 8, bathrooms: 10, builtAreaM2: 1450, plotAreaM2: 8900 },
-    financials: { grossRentAnnual: 310000, netYield: 78.0, totalIrr: 234.0 }
+const GENERIC_TITLES = new Set([
+  'house',
+  'home',
+  'villa',
+  'apartment',
+  'duplex',
+  'loft',
+  'penthouse',
+  'mansion',
+  'private mansion',
+  'property',
+]);
+
+function formatFrontendListingTitle(title: string, city?: string, type?: string): string {
+  const decoded = String(title || '')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim();
+  if (!decoded) return [city, type].filter(Boolean).join(' — ') || 'Prime Property SPV';
+  if (GENERIC_TITLES.has(decoded.toLowerCase()) && city) {
+    return `${city} — ${decoded}`;
   }
-];
+  return decoded;
+}
+
+let mockListings: Array<Record<string, any>> = INITIAL_PROPERTIES.map((p) => ({
+  id: p.id,
+  slug: p.slug,
+  title: formatFrontendListingTitle(p.title, p.city, p.type),
+  location: p.location,
+  city: p.city,
+  country: p.country,
+  type: p.type,
+  status: p.status,
+  fundedAmount: p.fundedAmount,
+  targetAmount: p.targetAmount,
+  tokenPrice: p.tokenPrice,
+  totalTokens: p.totalTokens,
+  availableTokens: p.availableTokens,
+  monthlyTargetRate: p.monthlyTargetRate,
+  projectedYield: p.estimatedAnnualYield,
+  capitalAppreciation: p.capitalAppreciationYield ?? 0,
+  minimumInvestment: p.minimumInvestment,
+  holdingPeriodMonths: p.durationMonths,
+  description: p.description,
+  images: Array.isArray(p.images) ? p.images : [],
+  tokenTicker: p.tokenTicker,
+  spvName: p.spvEntityName,
+  distributionFrequency: p.distributionFrequency,
+  approvedForFrontend: p.approvedForFrontend !== false,
+  assignedFunction: p.assignedFunction,
+  specs: {},
+  financials: {
+    grossRentAnnual: p.financialBreakdown?.projectedAnnualGrossRent ?? 0,
+    netYield: p.estimatedAnnualYield,
+    totalIrr: p.totalEstimatedReturn,
+  },
+}));
 
 // Real transactions store initialized empty
 let mockTransactions: any[] = [];
@@ -3280,10 +3278,13 @@ router.patch('/admin/users/:id/status', requireStaffSection('investors', 'write'
 router.post('/admin/users/:id/status', requireStaffSection('investors', 'write'), requireActionEmailVerification('admin.user.status'), handleUserStatusUpdate);
 
 const handleGateAssignment = async (userIds: string[], method: 'bank' | 'usdt', gateId: string | null, gateName: string | null, req: AuthenticatedRequest, res: Response) => {
-  if (!userIds.length || userIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id)) || !['bank', 'usdt'].includes(method)) {
+  const isLive = canUseLiveSupabaseData();
+  const validUserId = (id: string) =>
+    isLive ? /^[0-9a-f-]{36}$/i.test(id) : /^[a-zA-Z0-9_-]{3,128}$/.test(id);
+  if (!userIds.length || userIds.some((id) => !validUserId(id)) || !['bank', 'usdt'].includes(method)) {
     return res.status(400).json({ success: false, error: 'Select valid investors and a gate type.', code: 'INVALID_GATE_ASSIGNMENT', requestId: req.id });
   }
-  if (canUseLiveSupabaseData()) {
+  if (isLive) {
     try {
       const admin = getSupabaseAdmin();
       const { data, error } = gateId
@@ -3314,19 +3315,27 @@ const handleGateAssignment = async (userIds: string[], method: 'bank' | 'usdt', 
   }
   const customers = userIds.map((id) => devCustomersById.get(id));
   if (customers.some((customer) => !customer)) return res.status(404).json({ success: false, error: 'One or more investors were not found.', code: 'USER_NOT_FOUND', requestId: req.id });
+  const gateRecord = gateId ? getDevGateById(gateId) : null;
+  if (gateId && !gateRecord) {
+    return res.status(404).json({ success: false, error: 'Selected payment gate was not found.', code: 'GATE_NOT_FOUND', requestId: req.id });
+  }
+  const resolvedMethod: 'bank' | 'usdt' = gateRecord
+    ? (String(gateRecord.method || '').toLowerCase() === 'usdt' ? 'usdt' : 'bank')
+    : method;
+  const resolvedName = gateRecord ? (gateName || gateRecord.name) : null;
   for (const customer of customers) {
     if (!customer) continue;
-    setDevAssignedGateId(customer.id, gateId, method);
-    if (method === 'bank') {
+    setDevAssignedGateId(customer.id, gateId, resolvedMethod);
+    if (resolvedMethod === 'bank') {
       (customer as any).assignedGateId = gateId;
-      (customer as any).assignedGateName = gateId ? gateName : null;
+      (customer as any).assignedGateName = resolvedName;
     } else {
       (customer as any).assignedUsdtGateId = gateId;
-      (customer as any).assignedUsdtGateName = gateId ? gateName : null;
+      (customer as any).assignedUsdtGateName = resolvedName;
     }
   }
   await persistDevState();
-  return res.json({ success: true, data: { success: true, method, assigned_count: userIds.length }, requestId: req.id });
+  return res.json({ success: true, data: { success: true, method: resolvedMethod, assigned_count: userIds.length }, message: gateId ? 'Payment gate assigned.' : 'Payment gate cleared.', requestId: req.id });
 };
 
 router.post('/admin/users/assign-gate', requireStaffSection('finance', 'write'), async (req: AuthenticatedRequest, res: Response) => {
@@ -3484,7 +3493,15 @@ router.get(['/marketplace/listings', '/properties', '/listings'], async (req: Au
       req.user.staffRole === 'super_admin' ||
       ['admin', 'super_admin', 'operations_admin', 'property_manager'].includes(req.user.role))
   );
-  if (!canViewUnpublished) items = items.filter(p => p.status !== 'hidden' && p.status !== 'draft');
+  if (!canViewUnpublished) {
+    items = items.filter(
+      (p) =>
+        p.status !== 'hidden' &&
+        p.status !== 'draft' &&
+        p.status !== 'pending_approval' &&
+        p.approvedForFrontend !== false
+    );
+  }
 
   if (search) {
     const s = String(search).toLowerCase().trim();
@@ -3824,10 +3841,12 @@ router.get('/user/profile', requireAuth, async (req: AuthenticatedRequest, res: 
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     const assignedGateId = profile.payment_gate_id ?? profile.assigned_gate_id;
     const assignedUsdtGateId = profile.usdt_payment_gate_id;
-    const [assignedBankAccount, assignedUsdtAccount] = await Promise.all([
+    const [dbBankAccount, dbUsdtAccount] = await Promise.all([
       assignedGateId ? getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : Promise.resolve(null),
       assignedUsdtGateId ? getAssignedPaymentGate(String(assignedUsdtGateId)).catch(() => null) : Promise.resolve(null),
     ]);
+    const assignedBankAccount = dbBankAccount || (assignedGateId ? toAssignedPaymentAccount(getDevGateById(String(assignedGateId))) : null);
+    const assignedUsdtAccount = dbUsdtAccount || (assignedUsdtGateId ? toAssignedPaymentAccount(getDevGateById(String(assignedUsdtGateId))) : null);
     const resolvedIban = profile.iban ?? profile.bank_iban ?? '';
     const resolvedHolder = profile.bank_holder ?? profile.bank_account_holder ?? profile.full_name ?? '';
     return res.json({ success: true, data: {
@@ -4106,10 +4125,12 @@ router.get(['/wallet/balance', '/user/wallet/balance', '/wallets', '/wallets/me'
       if (!wallet) return res.status(404).json({ success: false, error: 'Investor wallet profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
       const gateId = profile?.payment_gate_id ?? profile?.assigned_gate_id;
       const usdtGateId = profile?.usdt_payment_gate_id;
-      const [assignedBankAccount, assignedUsdtAccount] = await Promise.all([
+      const [dbBankAccount, dbUsdtAccount] = await Promise.all([
         gateId ? getAssignedPaymentGate(String(gateId)).catch(() => null) : Promise.resolve(null),
         usdtGateId ? getAssignedPaymentGate(String(usdtGateId)).catch(() => null) : Promise.resolve(null),
       ]);
+      const assignedBankAccount = dbBankAccount || (gateId ? toAssignedPaymentAccount(getDevGateById(String(gateId))) : null);
+      const assignedUsdtAccount = dbUsdtAccount || (usdtGateId ? toAssignedPaymentAccount(getDevGateById(String(usdtGateId))) : null);
       return res.json({
         success: true,
         data: {
@@ -5468,7 +5489,19 @@ router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: Aut
   const foundUser = await findUserRecordForRequest(req);
   const resolvedRecipient = foundUser?.email || req.user?.email || 'investor@kretz.com';
 
-  const depositTx = {
+  const devGates = getDevAssignedGates(req.user!.id);
+  const devBankGateId = (foundUser as any)?.assignedGateId ?? devGates.bankGateId;
+  const devUsdtGateId = (foundUser as any)?.assignedUsdtGateId ?? devGates.usdtGateId;
+  const assignedBankAccount = devBankGateId ? toAssignedPaymentAccount(getDevGateById(devBankGateId)) : null;
+  const assignedUsdtAccount = devUsdtGateId ? toAssignedPaymentAccount(getDevGateById(devUsdtGateId)) : null;
+  const selectedGateId = typeof req.body?.methodId === 'string' ? req.body.methodId.trim() : '';
+  const selectedGate = selectedGateId ? getDevGateById(selectedGateId) : null;
+  const isUsdtMethod =
+    String(method).toLowerCase().includes('usdt') ||
+    String(selectedGate?.method || '').toLowerCase() === 'usdt';
+  const emailBankCoords = assignedBankAccount || paymentConfig.traditional;
+
+  const depositTx: any = {
     id: `tx-dep-${Date.now()}`,
     userId: req.user!.id,
     userEmail: resolvedRecipient,
@@ -5476,21 +5509,25 @@ router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: Aut
     amount: numAmount,
     currency,
     status: 'pending',
-    method,
+    method: selectedGate?.name || method,
     reference: ref,
     txHash: txHash || undefined,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    metadata: {
+      ...(selectedGate?.id ? { methodId: selectedGate.id } : {}),
+      ...(isUsdtMethod && assignedUsdtAccount?.walletAddress ? { walletAddress: assignedUsdtAccount.walletAddress, network: assignedUsdtAccount.network } : {}),
+    },
   };
 
   mockTransactions.unshift(depositTx);
   pushUserNotification(req.user!.id, {
     title: 'Deposit request recorded',
-    message: `Your €${numAmount.toFixed(2)} ${method} deposit (${ref}) is pending verification.`,
+    message: `Your €${numAmount.toFixed(2)} ${depositTx.method} deposit (${ref}) is pending verification.`,
     type: 'info',
   });
   await persistDevState();
 
-  // Send branded deposit initiated email with escrow instructions
+  // Send branded deposit initiated email with assigned escrow instructions
   const userRecipient = resolvedRecipient;
   
   sendEmail({
@@ -5502,13 +5539,13 @@ router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: Aut
       amount: numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       currency,
       reference: ref,
-      method,
-      beneficiary: paymentConfig.traditional.beneficiary,
-      iban: paymentConfig.traditional.iban,
-      bic: paymentConfig.traditional.bic,
-      bankName: paymentConfig.traditional.bankName,
-      address: paymentConfig.traditional.address,
-      country: paymentConfig.traditional.country
+      method: depositTx.method,
+      beneficiary: emailBankCoords.beneficiary || paymentConfig.traditional.beneficiary,
+      iban: emailBankCoords.iban || paymentConfig.traditional.iban,
+      bic: emailBankCoords.bic || paymentConfig.traditional.bic,
+      bankName: emailBankCoords.bankName || paymentConfig.traditional.bankName,
+      address: (emailBankCoords as any).address || paymentConfig.traditional.address,
+      country: (emailBankCoords as any).country || paymentConfig.traditional.country
     }
   }).catch(err => {
     logger.log({
@@ -5559,8 +5596,8 @@ router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: Aut
     userRole: req.user?.role,
     eventType: 'DEPOSIT_INITIATED',
     outcome: 'pending',
-    message: `User ${req.user?.email} submitted deposit receipt for €${numAmount} via ${method}. Reference: ${ref}`,
-    metadata: { amount: numAmount, currency, method, reference: ref }
+    message: `User ${req.user?.email} submitted deposit receipt for €${numAmount} via ${depositTx.method}. Reference: ${ref}`,
+    metadata: { amount: numAmount, currency, method: depositTx.method, reference: ref }
   });
 
   res.status(201).json({
@@ -5569,6 +5606,64 @@ router.post('/deposits', requireAuth, requireLatestLegalConsent, async (req: Aut
     message: 'Deposit notification submitted. Your balance will be credited once verified in institutional escrow.',
     requestId: req.id
   });
+});
+
+/**
+ * POST /api/v1/deposits/:depositId/tx-hash (Dev/Inbuilt fallback for attaching USDT tx hash)
+ */
+router.post('/deposits/:depositId/tx-hash', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (shouldUseSupabaseForCustomer(req)) {
+    return res.status(400).json({ success: false, error: 'Use Supabase submit_tx_hash RPC for persistent deposits.', code: 'USE_SUPABASE_RPC', requestId: req.id });
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent deposit storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const hash = String(req.body?.txHash || req.body?.hash || '').trim();
+  if (!/^(0x)?[a-fA-F0-9]{64}$/.test(hash)) {
+    return res.status(400).json({ success: false, error: 'INVALID_TRANSACTION_HASH', code: 'INVALID_TRANSACTION_HASH', requestId: req.id });
+  }
+  const duplicate = mockTransactions.some((t) => t.id !== req.params.depositId && String(t.txHash || '').toLowerCase() === hash.toLowerCase());
+  if (duplicate) {
+    return res.status(409).json({ success: false, error: 'TRANSACTION_HASH_ALREADY_USED', code: 'TRANSACTION_HASH_ALREADY_USED', requestId: req.id });
+  }
+  const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.userId === req.user!.id && t.type === 'deposit' && t.status === 'pending');
+  if (!tx) {
+    return res.status(404).json({ success: false, error: 'DEPOSIT_NOT_PENDING_OR_NOT_OWNED', code: 'DEPOSIT_NOT_PENDING_OR_NOT_OWNED', requestId: req.id });
+  }
+  tx.txHash = hash;
+  tx.metadata = { ...(tx.metadata || {}), txHashSubmittedAt: new Date().toISOString() };
+  await persistDevState();
+  return res.json({ success: true, data: { id: tx.id, txHash: hash, transaction_id_submitted: true }, requestId: req.id });
+});
+
+/**
+ * POST /api/v1/deposits/:depositId/proof (Dev/Inbuilt attachment of payment proof)
+ */
+router.post('/deposits/:depositId/proof', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (shouldUseSupabaseForCustomer(req)) {
+    return res.status(400).json({ success: false, error: 'Use Supabase private proof storage.', code: 'USE_SUPABASE_STORAGE', requestId: req.id });
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ success: false, error: 'Persistent deposit storage is not configured.', code: 'DATABASE_NOT_CONFIGURED', requestId: req.id });
+  }
+  const fileName = String(req.body?.fileName || 'proof').slice(0, 160);
+  const mimeType = String(req.body?.mimeType || '').toLowerCase();
+  if (!['image/jpeg', 'image/png', 'application/pdf', 'image/webp'].includes(mimeType)) {
+    return res.status(400).json({ success: false, error: 'Choose a JPG, PNG, WEBP, or PDF proof file.', code: 'INVALID_PROOF_FILE', requestId: req.id });
+  }
+  const tx = mockTransactions.find((t) => t.id === req.params.depositId && t.userId === req.user!.id && t.type === 'deposit' && t.status === 'pending');
+  if (!tx) {
+    return res.status(409).json({ success: false, error: 'This deposit is no longer pending or does not belong to your account.', code: 'DEPOSIT_NOT_PENDING_OR_NOT_OWNED', requestId: req.id });
+  }
+  tx.metadata = {
+    ...(tx.metadata || {}),
+    proofAttached: true,
+    proofFileName: fileName,
+    proofMimeType: mimeType,
+    proofUploadedAt: new Date().toISOString(),
+  };
+  await persistDevState();
+  return res.json({ success: true, data: { id: tx.id, proofAttached: true }, message: 'Payment proof attached securely.', requestId: req.id });
 });
 
 /**
@@ -6442,13 +6537,72 @@ let paymentConfig = {
 };
 
 /**
- * GET /api/v1/payments/config (Public view of escrow instructions, limits, and fee schedule)
+ * GET /api/v1/payments/config (Escrow instructions, limits, and fee schedule — uses user's admin-assigned inbuilt gate when authenticated)
  */
-router.get('/payments/config', (req: AuthenticatedRequest, res: Response) => {
+router.get('/payments/config', async (req: AuthenticatedRequest, res: Response) => {
+  let assignedBankAccount: ReturnType<typeof toAssignedPaymentAccount> | Awaited<ReturnType<typeof getAssignedPaymentGate>> = null;
+  let assignedUsdtAccount: ReturnType<typeof toAssignedPaymentAccount> | Awaited<ReturnType<typeof getAssignedPaymentGate>> = null;
+
+  if (req.user?.id) {
+    if (shouldUseSupabaseForCustomer(req)) {
+      try {
+        const profile = await getUserProfile(req.user.id).catch(() => null);
+        const gateId = profile?.payment_gate_id ?? profile?.assigned_gate_id;
+        const usdtGateId = profile?.usdt_payment_gate_id;
+        const [bankGate, usdtGate] = await Promise.all([
+          gateId ? getAssignedPaymentGate(String(gateId)).catch(() => null) : Promise.resolve(null),
+          usdtGateId ? getAssignedPaymentGate(String(usdtGateId)).catch(() => null) : Promise.resolve(null),
+        ]);
+        assignedBankAccount = bankGate || (gateId ? toAssignedPaymentAccount(getDevGateById(String(gateId))) : null);
+        assignedUsdtAccount = usdtGate || (usdtGateId ? toAssignedPaymentAccount(getDevGateById(String(usdtGateId))) : null);
+      } catch {
+        // Keep base paymentConfig if profile lookup fails
+      }
+    } else if (process.env.NODE_ENV !== 'production') {
+      const devCustomer = devCustomersById.get(req.user.id);
+      const devGates = getDevAssignedGates(req.user.id);
+      const devBankGateId = (devCustomer as any)?.assignedGateId ?? devGates.bankGateId;
+      const devUsdtGateId = (devCustomer as any)?.assignedUsdtGateId ?? devGates.usdtGateId;
+      assignedBankAccount = devBankGateId ? toAssignedPaymentAccount(getDevGateById(devBankGateId)) : null;
+      assignedUsdtAccount = devUsdtGateId ? toAssignedPaymentAccount(getDevGateById(devUsdtGateId)) : null;
+    }
+  }
+
+  const effectiveTraditional = assignedBankAccount?.iban
+    ? {
+        ...paymentConfig.traditional,
+        beneficiary: assignedBankAccount.beneficiary || paymentConfig.traditional.beneficiary,
+        bankName: assignedBankAccount.bankName || assignedBankAccount.gateName || paymentConfig.traditional.bankName,
+        iban: assignedBankAccount.iban,
+        bic: assignedBankAccount.bic || paymentConfig.traditional.bic,
+        instructions: assignedBankAccount.instructions || paymentConfig.traditional.instructions,
+        gateId: assignedBankAccount.gateId,
+        gateName: assignedBankAccount.gateName,
+      }
+    : paymentConfig.traditional;
+
+  const effectiveCryptoNetworks = assignedUsdtAccount?.walletAddress
+    ? [
+        {
+          id: assignedUsdtAccount.gateId || 'assigned-usdt',
+          name: assignedUsdtAccount.gateName || `USDT (${assignedUsdtAccount.network || 'TRC20'})`,
+          token: 'USDT',
+          network: assignedUsdtAccount.network || 'TRC20',
+          walletAddress: assignedUsdtAccount.walletAddress,
+          enabled: true,
+        },
+        ...paymentConfig.cryptoNetworks.filter((n) => n.walletAddress !== assignedUsdtAccount?.walletAddress),
+      ]
+    : paymentConfig.cryptoNetworks;
+
   res.json({
     success: true,
     data: {
       ...paymentConfig,
+      traditional: effectiveTraditional,
+      cryptoNetworks: effectiveCryptoNetworks,
+      assignedBankAccount,
+      assignedUsdtAccount,
       limits: {
         minDepositEur: 100,
         maxDepositEur: 5000000,
@@ -6538,10 +6692,12 @@ router.get(['/auth/me', '/users/me'], requireAuth, async (req: AuthenticatedRequ
     if (!profile) return res.status(404).json({ success: false, error: 'User profile not found.', code: 'USER_NOT_FOUND', requestId: req.id });
     const assignedGateId = profile.payment_gate_id ?? profile.assigned_gate_id;
     const assignedUsdtGateId = profile.usdt_payment_gate_id;
-    const [assignedBankAccount, assignedUsdtAccount] = await Promise.all([
+    const [dbBankAccount, dbUsdtAccount] = await Promise.all([
       assignedGateId ? getAssignedPaymentGate(String(assignedGateId)).catch(() => null) : Promise.resolve(null),
       assignedUsdtGateId ? getAssignedPaymentGate(String(assignedUsdtGateId)).catch(() => null) : Promise.resolve(null),
     ]);
+    const assignedBankAccount = dbBankAccount || (assignedGateId ? toAssignedPaymentAccount(getDevGateById(String(assignedGateId))) : null);
+    const assignedUsdtAccount = dbUsdtAccount || (assignedUsdtGateId ? toAssignedPaymentAccount(getDevGateById(String(assignedUsdtGateId))) : null);
     const resolvedIban = profile.iban ?? profile.bank_iban ?? '';
     const resolvedHolder = profile.bank_holder ?? profile.bank_account_holder ?? profile.full_name ?? '';
     return res.json({ success: true, data: {

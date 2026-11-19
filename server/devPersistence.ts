@@ -13,6 +13,8 @@ export interface DevAuthSnapshot {
   subBalances?: Record<string, Record<string, number>>;
   preferences?: Record<string, Record<string, any>>;
   manualDeposits?: any[];
+  paymentGates?: any[];
+  assignedGates?: Record<string, { bankGateId: string | null; usdtGateId: string | null }>;
 }
 
 const EMPTY_SNAPSHOT: DevAuthSnapshot = {
@@ -25,6 +27,8 @@ const EMPTY_SNAPSHOT: DevAuthSnapshot = {
   subBalances: {},
   preferences: {},
   manualDeposits: [],
+  paymentGates: [],
+  assignedGates: {},
 };
 
 export function isLocalDevPersistenceEnabled(): boolean {
@@ -74,6 +78,11 @@ export async function loadDevAuthSnapshot(): Promise<DevAuthSnapshot> {
           ? parsed.preferences
           : {},
       manualDeposits: Array.isArray(parsed?.manualDeposits) ? parsed.manualDeposits : [],
+      paymentGates: Array.isArray(parsed?.paymentGates) ? parsed.paymentGates : [],
+      assignedGates:
+        parsed?.assignedGates && typeof parsed.assignedGates === 'object'
+          ? parsed.assignedGates
+          : {},
     };
   } catch {
     return EMPTY_SNAPSHOT;

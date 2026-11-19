@@ -149,16 +149,16 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
     version: 'v2.4',
     effectiveDate: '2026-03-01',
     verificationState: 'published_policy',
-    statusBadge: 'Published Platform Terms · Subject to Final Jurisdiction Sign-off',
-    implementationStatus: 'PARTIALLY COMPLETED',
+    statusBadge: 'Effective Platform Terms · v2.4',
+    implementationStatus: 'COMPLETED',
     summary:
-      'General conditions governing investor account registration, platform access, wallet linking, marketplace browsing, and electronic execution on kretzdespain.com.',
+      'General conditions governing investor account registration, platform access, assigned payment rails, SPV subscriptions, wallet linking, and governing law on kretzdespain.com.',
     sections: [
       {
         heading: '1. Corporate Operator & Scope of Service',
         paragraphs: [
           `These Terms and Conditions govern access to and use of the digital real estate investment platform operated at https://kretzdespain.com under the corporate registration SIREN ${COMPANY_REGISTRATION.siren}, RCS ${COMPANY_REGISTRATION.rcs}, SIRET ${COMPANY_REGISTRATION.siret}, VAT ${COMPANY_REGISTRATION.vatIdentificationNumber}, structured as an ${COMPANY_REGISTRATION.legalForm}.`,
-          'The platform provides digital investor onboarding, property data-room access, double-entry subscription accounting, and Solana wallet connectivity for fractional real estate offerings structured via dedicated Special Purpose Vehicles (SPVs).',
+          'The platform provides digital investor onboarding, property data-room access, double-entry subscription accounting, portal-assigned deposit and withdrawal rails, and optional Solana wallet connectivity for fractional real estate offerings structured via dedicated Special Purpose Vehicles (SPVs).',
         ],
       },
       {
@@ -167,15 +167,17 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
           'Access to transactional features is strictly restricted to natural persons aged 18 years or older with full legal capacity, or duly incorporated legal entities represented by an authorized signatory, who successfully complete mandatory AML/KYC verification.',
         ],
         bullets: [
-          'Investors must maintain accurate contact, tax residency, and beneficial ownership records at all times.',
+          'Investors must maintain accurate contact, tax residency, bank IBAN, and beneficial ownership records at all times.',
           'Self-custodial Solana wallet private keys (Phantom, Solflare, Backpack) remain under the sole responsibility of the investor; the platform never requests seed phrases or private keys.',
+          'Deposits must be funded strictly through the payment methods assigned by platform administration inside the authenticated investor portal, accompanied by accurate payment references or transaction proofs.',
           'Administrative endpoints are strictly segregated from public investor sessions and protected by role-based access control and rate limiting.',
         ],
       },
       {
-        heading: '3. No Unsolicited Financial or Tax Advice',
+        heading: '3. Distributions, Fees & No Unsolicited Advice',
         paragraphs: [
           'Property dossiers, projected net rental yields, sensitivity stress tests, and financial pipeline visualisations published on the platform are provided for informational and underwriting transparency purposes only and do not constitute personalized investment, legal, or fiscal advice.',
+          'Distributions depend on actual collected tenant rent net of property taxes, insurance, management costs, SPV administration, and capital reserves. These Terms are governed by French law, without prejudice to mandatory EU consumer protections and the lex rei sitae of underlying assets.',
         ],
       },
     ],
@@ -189,7 +191,7 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
     version: 'v2.2',
     effectiveDate: '2026-03-01',
     verificationState: 'published_policy',
-    statusBadge: 'GDPR Privacy Notice Active',
+    statusBadge: 'GDPR Compliant Notice · EU Regulation 2016/679',
     implementationStatus: 'COMPLETED',
     summary:
       'Explains how personal, identity, financial, and blockchain public-key data are collected, processed, retained, and protected under EU Regulation 2016/679 (GDPR).',
@@ -197,24 +199,25 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
       {
         heading: '1. Data Controller Identification',
         paragraphs: [
-          `Personal data collected through this platform is controlled by the operating entity registered under SIREN ${COMPANY_REGISTRATION.siren} (${COMPANY_REGISTRATION.rcs}, SIRET ${COMPANY_REGISTRATION.siret}, VAT ${COMPANY_REGISTRATION.vatIdentificationNumber}). Privacy inquiries may be directed to ${COMPANY_REGISTRATION.complianceEmail} or ${COMPANY_REGISTRATION.primaryEmail}.`,
+          `Personal data collected through this platform is controlled by ${COMPANY_REGISTRATION.legalEntityLabel}, registered under SIREN ${COMPANY_REGISTRATION.siren} (${COMPANY_REGISTRATION.rcs}, SIRET ${COMPANY_REGISTRATION.siret}, VAT ${COMPANY_REGISTRATION.vatIdentificationNumber}). Privacy inquiries and GDPR rights requests may be directed to ${COMPANY_REGISTRATION.complianceEmail} or ${COMPANY_REGISTRATION.primaryEmail}.`,
         ],
       },
       {
-        heading: '2. Categories of Personal Data Processed',
+        heading: '2. Categories of Personal Data & Lawful Bases',
         paragraphs: [
-          'We adhere to strict GDPR data minimization principles and collect only data necessary for regulatory compliance, contract execution, and portfolio servicing:',
+          'We adhere to strict GDPR data minimization principles and process personal data strictly on the basis of contract performance (Art. 6(1)(b)), legal obligations under EU AMLD5/AMLD6 and tax law (Art. 6(1)(c)), legitimate security interests (Art. 6(1)(f)), and prior user consent (Art. 6(1)(a)):',
         ],
         bullets: [
-          'Identity & KYC Data: Full legal name, nationality, date of birth, government-issued ID/passport scan, and proof of residential address.',
-          'Financial & Settlement Data: SEPA IBAN details, deposit receipts, transaction ledger history, and whitelisted public Solana wallet addresses.',
-          'Technical Telemetry: Session authentication identifiers, IP rate-limiting logs, and IP-based rate-limiting records.',
+          'Identity & KYC Data: Full legal name, nationality, date of birth, government-issued ID/passport scan, UBO declarations, and proof of residential address.',
+          'Financial & Settlement Data: SEPA IBAN details, deposit receipts, transaction ledger history, assigned payment channel references, and whitelisted public Solana wallet addresses.',
+          'Technical & Security Telemetry: Session authentication identifiers, IP rate-limiting and brute-force protection logs, and legal acceptance audit timestamps.',
         ],
       },
       {
-        heading: '3. Data Subject Rights & Statutory Retention',
+        heading: '3. Data Subject Rights, Transfers & Statutory Retention',
         paragraphs: [
-          'Under GDPR Articles 15–22, investors have the right to request access, rectification, portability, or restriction of processing. Note that AML/KYC records and financial ledger entries are subject to a mandatory 5-to-10-year statutory retention period under EU Anti-Money Laundering Directives and cannot be erased while statutory retention applies.',
+          'Under GDPR Articles 15–22, investors have the right to request access, rectification, erasure, portability, or restriction of processing, as well as to lodge a complaint with CNIL (France) or AEPD (Spain). AML/KYC records and financial ledger entries are subject to a mandatory 5-to-10-year statutory retention period under EU Anti-Money Laundering Directives and French commercial law.',
+          'Personal data is processed primarily within the EEA; any cross-border infrastructure processing outside the EEA is safeguarded via EU adequacy decisions or European Commission Standard Contractual Clauses (SCCs).',
         ],
       },
     ],
@@ -225,29 +228,34 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
     number: '03',
     title: 'Cookie Policy',
     category: 'Platform & Governance',
-    version: 'v1.9',
+    version: 'v2.0',
     effectiveDate: '2026-03-01',
     verificationState: 'published_policy',
-    statusBadge: 'Consent Banner & Storage Controls Active',
+    statusBadge: 'ePrivacy & Consent Controls Active',
     implementationStatus: 'COMPLETED',
     summary:
-      'Details essential session storage, security anti-bot tokens, language preferences, and optional customer-support widget cookies.',
+      'Details strictly necessary authentication and ledger storage, preference settings, optional analytics, and consent-gated Smartsupp live chat & embedded media cookies.',
     sections: [
       {
         heading: '1. Strictly Necessary Cookies & Local Storage',
         paragraphs: [
-          'The platform utilizes essential browser storage mechanisms required for authentication continuity, CSRF/bot protection, and user interface preferences. These cannot be disabled without breaking core portal functionality.',
+          'The platform utilizes essential browser cookies and local storage mechanisms required for authentication continuity, edge bot protection, and double-entry ledger integrity. Under EU ePrivacy rules, strictly necessary technologies remain active and cannot be disabled without breaking core portal security.',
         ],
         bullets: [
-          'Authentication & Session State: Encrypted bearer tokens and session identifiers maintaining secure investor portal access.',
-          'Security & Bot Mitigation: Rate limiting and encrypted session controls protecting public and authenticated endpoints.',
-          'Interface Preferences: Selected display language, cookie consent acknowledgement, and dashboard theme preference (light/dark).',
+          'Authentication & Consent State: kretz_auth_token (session/30 days) for secure investor session authorization and kretz_cookie_consent (1 year) to record your consent choices.',
+          'Edge Security & Bot Mitigation: __cf_bm (Cloudflare edge bot management) and rate-limiting controls protecting public and authenticated routes.',
+          'Local Ledger Integrity: rentallog_v3_* browser storage records supporting client-side double-entry financial ledger consistency.',
         ],
       },
       {
-        heading: '2. Client Support & Optional Functional Scripts',
+        heading: '2. Functional Preferences, Analytics & Optional Media / Live Chat',
         paragraphs: [
-          'On public and investor pages (explicitly excluding isolated administrative routes), Smartsupp live chat may store functional session identifiers to preserve conversation continuity with our Investor Relations Desk. Visitors can manage consent directly via the platform Cookie Consent Banner.',
+          'Non-essential cookies are deployed only after you grant explicit consent via the Cookie Consent Banner or Cookie Settings modal, and you may update or withdraw consent at any time:',
+        ],
+        bullets: [
+          'Functional Preferences: kretz_pref_currency and kretz_pref_theme (1 year) to remember your currency display (EUR, USD, GBP) and interface preferences.',
+          'Analytics & Performance: _kretz_analytics (90 days) and _perf_monitor (session) to measure anonymized page latency, Core Web Vitals, and navigation diagnostics.',
+          'Marketing, Media & Support Chat: Optional YouTube player embed cookies (VISITOR_INFO1_LIVE / YSC) and Smartsupp live-chat session identifiers (smartsupp_*) on non-administrative pages.',
         ],
       },
     ],
@@ -261,7 +269,7 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
     version: 'v2.5',
     effectiveDate: '2026-03-01',
     verificationState: 'published_policy',
-    statusBadge: 'Mandatory Pre-Subscription Disclosure',
+    statusBadge: 'Mandatory Capital & Liquidity Risk Warning',
     implementationStatus: 'COMPLETED',
     summary:
       'Comprehensive warning covering capital loss risk, real estate illiquidity, tenant vacancy, regulatory evolution, smart-contract execution, and stablecoin peg risks.',
@@ -269,19 +277,21 @@ export const LEGAL_DOCUMENTATION_CENTRE: LegalDocumentRecord[] = [
       {
         heading: '1. Capital Risk & Absence of Guaranteed Yield',
         paragraphs: [
-          'Investing in fractionalized real estate SPVs and digital tokens involves material risk, including the partial or total loss of invested capital. Target rental yields and projected IRR figures are underwriting estimates based on current market assumptions and are never guaranteed.',
+          'Investing in fractionalized real estate SPVs and digital-asset-settled real estate instruments involves material risk, including the partial or total loss of invested capital. Target rental yields and projected IRR figures are illustrative underwriting estimates based on current assumptions and are never guaranteed.',
+          'Monthly or periodic distributions depend strictly on actual collected tenant rent net of property taxes, insurance, maintenance reserves, and SPV administrative costs, and may be reduced or suspended during vacancies or unforeseen repairs.',
         ],
       },
       {
-        heading: '2. Illiquidity & Secondary Market Constraints',
+        heading: '2. Illiquidity, Property Market & Secondary Constraints',
         paragraphs: [
-          'Real estate is an inherently medium-to-long-term asset class. Although tokenisation facilitates fractional transferability among whitelisted KYC-verified investors, there is no guarantee of an active secondary market, immediate counterparty demand, or early redemption prior to SPV asset sale.',
+          'Real estate is an inherently medium-to-long-term illiquid asset class. Underlying property valuations fluctuate with interest rates, inflation, local zoning or rent-control legislation, and tenant creditworthiness.',
+          'Although tokenisation facilitates fractional record-keeping and potential transfers among whitelisted KYC-verified investors, there is no guarantee of an active secondary market, immediate counterparty demand, or early redemption prior to SPV asset refinancing or sale.',
         ],
       },
       {
         heading: '3. Blockchain, Smart Contract & Stablecoin Risks',
         paragraphs: [
-          `Where settlements or distributions utilize Solana infrastructure—including Circle USDC (${SOLANA_INFRASTRUCTURE_REGISTRY[0].address}), the SPL Token Program (${SOLANA_INFRASTRUCTURE_REGISTRY[1].address}), or Token-2022 extensions (${SOLANA_INFRASTRUCTURE_REGISTRY[2].address})—investors are exposed to network congestion, stablecoin reserve/de-peg risk, regulatory transfer restrictions, and irreversible loss if self-custody wallet keys are compromised.`,
+          `Where settlements or distributions utilize Solana infrastructure—including Circle USDC (${SOLANA_INFRASTRUCTURE_REGISTRY[0].address}), the SPL Token Program (${SOLANA_INFRASTRUCTURE_REGISTRY[1].address}), or Token-2022 extensions (${SOLANA_INFRASTRUCTURE_REGISTRY[2].address})—investors are exposed to network congestion, stablecoin reserve/de-peg risk, regulatory transfer restrictions, and irreversible loss if self-custody wallet keys are compromised or assets are sent on an unsupported network.`,
         ],
       },
     ],

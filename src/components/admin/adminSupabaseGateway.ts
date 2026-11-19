@@ -451,7 +451,8 @@ export async function fetchWalletBalancesMap(): Promise<Map<string, number>> {
 export async function assignPaymentGateToInvestor(
   userId: string,
   gateId: string | null,
-  gateName?: string
+  gateName?: string,
+  method?: 'bank' | 'usdt'
 ): Promise<void>;
 export async function assignPaymentGateToInvestor(
   userIds: string[],
@@ -461,30 +462,41 @@ export async function assignPaymentGateToInvestor(
 export async function assignPaymentGateToInvestor(
   userOrUsers: string | string[],
   gateOrMethod: string | null,
-  gateIdOrName?: string | null
+  gateIdOrName?: string | null,
+  singleMethod?: 'bank' | 'usdt'
 ): Promise<void> {
-  if (Array.isArray(userOrUsers)) {
-    const userIds = userOrUsers;
-    const method = gateOrMethod;
-    if (method !== 'bank' && method !== 'usdt') {
-      throw new Error('Choose Bank or USDT before assigning a payment gate.');
-    }
-    const gateId = gateIdOrName || null;
+  const userIds = Array.isArray(userOrUsers) ? userOrUsers : [userOrUsers];
+  const method: 'bank' | 'usdt' = Array.isArray(userOrUsers)
+    ? (gateOrMethod === 'usdt' ? 'usdt' : gateOrMethod === 'bank' ? 'bank' : (() => {
+        throw new Error('Choose Bank or USDT before assigning a payment gate.');
+      })())
+    : (singleMethod === 'usdt' ? 'usdt' : 'bank');
+  const gateId = Array.isArray(userOrUsers) ? (gateIdOrName || null) : (gateOrMethod || null);
+  const gateName = Array.isArray(userOrUsers) ? null : (gateIdOrName || null);
+
+  if (!(await hasLiveSupabaseSession())) {
+    await apiFetchJson('/admin/users/assign-gate', {
+      method: 'POST',
+      body: JSON.stringify({ userIds, method, gateId, gateName }),
+    });
+    return;
+  }
+
+  try {
     if (gateId) {
       await requireRpcSuccess('assign_gate', { p_users: userIds, p_gate: gateId });
     } else {
       await requireRpcSuccess('clear_gate', { p_users: userIds, p_method: method });
     }
-    return;
-  }
-
-  // Backwards-compatible single-investor bank assignment used by the legacy
-  // user-management screen.
-  const gateId = gateOrMethod || null;
-  if (gateId) {
-    await requireRpcSuccess('assign_gate', { p_users: [userOrUsers], p_gate: gateId });
-  } else {
-    await requireRpcSuccess('clear_gate', { p_users: [userOrUsers], p_method: 'bank' });
+  } catch (err: any) {
+    if (isMissingRpcOrSignatureError(err)) {
+      await apiFetchJson('/admin/users/assign-gate', {
+        method: 'POST',
+        body: JSON.stringify({ userIds, method, gateId, gateName }),
+      });
+      return;
+    }
+    throw err;
   }
 }
 

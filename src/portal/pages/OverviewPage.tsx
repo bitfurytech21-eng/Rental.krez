@@ -108,7 +108,7 @@ export const OverviewPage: React.FC = () => {
       : 0;
 
   const openProperties = properties
-    .filter((p) => String(p.status || '').toLowerCase() === 'open')
+    .filter((p) => ['open', 'funding', 'active'].includes(String(p.status || '').toLowerCase()))
     .slice(0, 2);
 
   const handleDismissBanner = (key: string) => {

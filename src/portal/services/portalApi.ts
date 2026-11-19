@@ -1,10 +1,13 @@
 import { api, apiRequest, createIdempotencyKey, getBaseUrl } from '../../lib/api';
+import { ledger } from '../../lib/ledger';
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
+import { Property } from '../../types/property';
 import { PORTAL_PLACEHOLDER_CONFIG } from '../config/portalConfig';
 import { eurToCents } from './money';
 import {
   PortalAccountStatement,
   PortalAssignedBankAccount,
+  PortalAssignedPaymentMethod,
   PortalComplianceDoc,
   PortalComplianceStep,
   PortalConfig,
@@ -85,6 +88,97 @@ function mapSupabasePropertyRow(row: any): PortalProperty {
   };
 }
 
+const GENERIC_FRONTEND_TITLES = new Set([
+  'house',
+  'home',
+  'villa',
+  'apartment',
+  'duplex',
+  'loft',
+  'penthouse',
+  'mansion',
+  'private mansion',
+  'property',
+]);
+
+function formatFrontendTitle(title: string, city?: string, type?: string): string {
+  const decoded = String(title || '')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim();
+  if (!decoded) return [city, type].filter(Boolean).join(' — ') || 'Prime Property SPV';
+  if (GENERIC_FRONTEND_TITLES.has(decoded.toLowerCase()) && city) {
+    return `${city} — ${decoded}`;
+  }
+  return decoded;
+}
+
+export function mapFrontendPropertyToPortalProperty(prop: Property): PortalProperty {
+  const projectedYield = Number(prop.estimatedAnnualYield ?? 0);
+  const targetIrr = Number(prop.totalEstimatedReturn ?? projectedYield);
+  const validImages = Array.isArray(prop.images)
+    ? prop.images.filter((url) => typeof url === 'string' && url.trim().length > 0)
+    : [];
+  const images =
+    validImages.length > 0
+      ? validImages
+      : prop.bannerImage
+      ? [prop.bannerImage]
+      : [];
+
+  return {
+    id: String(prop.id),
+    slug: String(prop.slug || prop.id),
+    title: formatFrontendTitle(prop.title, prop.city, prop.type),
+    location: String(prop.location || [prop.city, prop.country].filter(Boolean).join(', ') || 'Europe'),
+    city: prop.city,
+    country: prop.country,
+    type: String(prop.type || 'Residential'),
+    status: String(prop.status || 'funding'),
+    description: typeof prop.description === 'string' ? prop.description : undefined,
+    tokenPrice: Number(prop.tokenPrice || 0),
+    totalTokens: Number(prop.totalTokens || 0),
+    availableTokens: Number(prop.availableTokens || 0),
+    targetAmount: Number(prop.targetAmount || 0),
+    fundedAmount: Number(prop.fundedAmount || 0),
+    minimumInvestment: Number(prop.minimumInvestment || prop.tokenPrice || 1000),
+    projectedYield,
+    capitalAppreciation: Number(prop.capitalAppreciationYield ?? 0),
+    holdingPeriodMonths: Number(prop.durationMonths || 36),
+    images,
+    spvName: prop.spvEntityName,
+    distributionFrequency: prop.distributionFrequency,
+    financials: {
+      grossRentAnnual: prop.financialBreakdown?.projectedAnnualGrossRent,
+      netYield: projectedYield,
+      totalIrr: targetIrr,
+    },
+  };
+}
+
+function filterPortalProperties(
+  list: PortalProperty[],
+  params?: { search?: string; status?: string; type?: string }
+): PortalProperty[] {
+  if (!params) return list;
+  const search = params.search?.trim().toLowerCase();
+  const status = params.status?.trim().toLowerCase();
+  const type = params.type?.trim().toLowerCase();
+  return list.filter((item) => {
+    if (status && status !== 'all' && String(item.status || '').toLowerCase() !== status) {
+      return false;
+    }
+    if (type && type !== 'all' && String(item.type || '').toLowerCase() !== type) {
+      return false;
+    }
+    if (search) {
+      const hay = `${item.title} ${item.location} ${item.city || ''} ${item.type}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+}
+
 export const portalApi = {
   async getDashboardSummary(): Promise<PortalDashboardSummary> {
     const res = await api.get<any>('/dashboard/summary');
@@ -162,6 +256,7 @@ export const portalApi = {
     availableBalance: number;
     availableCents: number;
     assignedBankAccount: PortalAssignedBankAccount | null;
+    assignedUsdtAccount: PortalAssignedBankAccount | null;
     subBalances: Record<string, number>;
     currency: string;
   }> {
@@ -187,6 +282,7 @@ export const portalApi = {
       availableBalance,
       availableCents,
       assignedBankAccount: data.assignedBankAccount || null,
+      assignedUsdtAccount: data.assignedUsdtAccount || null,
       subBalances:
         data.subBalances && typeof data.subBalances === 'object' ? data.subBalances : { EUR: balance },
       currency: String(data.currency || 'EUR'),
@@ -194,27 +290,114 @@ export const portalApi = {
   },
 
   async getProperties(params?: { search?: string; status?: string; type?: string }): Promise<PortalProperty[]> {
+    const frontendListings = ledger.getFrontendProperties().map(mapFrontendPropertyToPortalProperty);
+    const frontendById = new Map(frontendListings.map((item) => [item.id, item]));
+    const frontendBySlug = new Map(frontendListings.map((item) => [item.slug, item]));
+
+    let remoteListings: PortalProperty[] = [];
     try {
       const res = await api.get<any>('/marketplace/listings', { params });
       const list = unwrap<any[]>(res);
-      if (Array.isArray(list)) return list;
-    } catch (err) {
+      if (Array.isArray(list)) {
+        remoteListings = list.map((item: any) => ({
+          ...item,
+          title: formatFrontendTitle(item.title, item.city, item.type),
+        }));
+      }
+    } catch {
       if (isSupabaseConfigured()) {
         const { data, error } = await supabase.from('properties').select('*');
         if (!error && Array.isArray(data)) {
-          return data.map(mapSupabasePropertyRow);
+          remoteListings = data.map(mapSupabasePropertyRow);
         }
       }
-      throw err;
     }
-    return [];
+
+    if (remoteListings.length === 0) {
+      return filterPortalProperties(frontendListings, params);
+    }
+
+    // Synchronize the dashboard catalogue with the frontend home-page listings:
+    // enrich remote records with frontend media/metadata and preserve any frontend-approved
+    // listings from the home page that aren't already in the remote response.
+    const remoteByKey = new Map<string, PortalProperty>();
+    for (const remote of remoteListings) {
+      if (remote.id) remoteByKey.set(remote.id, remote);
+      if (remote.slug) remoteByKey.set(remote.slug, remote);
+    }
+
+    const merged: PortalProperty[] = [];
+    const seenIds = new Set<string>();
+
+    for (const fe of frontendListings) {
+      const remote = remoteByKey.get(fe.id) || remoteByKey.get(fe.slug);
+      const combined: PortalProperty = remote
+        ? {
+            ...fe,
+            ...remote,
+            title: formatFrontendTitle(remote.title || fe.title, remote.city || fe.city, remote.type || fe.type),
+            images: Array.isArray(remote.images) && remote.images.length > 0 ? remote.images : fe.images,
+            description: remote.description || fe.description,
+            spvName: remote.spvName || fe.spvName,
+            distributionFrequency: remote.distributionFrequency || fe.distributionFrequency,
+          }
+        : fe;
+      merged.push(combined);
+      seenIds.add(combined.id);
+      if (combined.slug) seenIds.add(combined.slug);
+    }
+
+    for (const remote of remoteListings) {
+      if (!seenIds.has(remote.id) && (!remote.slug || !seenIds.has(remote.slug))) {
+        const feMatch = frontendById.get(remote.id) || (remote.slug ? frontendBySlug.get(remote.slug) : undefined);
+        merged.push(
+          feMatch
+            ? { ...feMatch, ...remote }
+            : remote
+        );
+      }
+    }
+
+    return filterPortalProperties(merged, params);
   },
 
   async getPropertyDetail(idOrSlug: string): Promise<PortalProperty> {
+    const frontendMatch = ledger
+      .getFrontendProperties()
+      .find((p) => p.id === idOrSlug || p.slug === idOrSlug);
+    const mappedFrontend = frontendMatch ? mapFrontendPropertyToPortalProperty(frontendMatch) : null;
+
     try {
       const res = await api.get<any>(`/marketplace/listings/${encodeURIComponent(idOrSlug)}`);
-      return unwrap<PortalProperty>(res);
+      const remote = unwrap<PortalProperty>(res);
+      if (remote && remote.id) {
+        if (!mappedFrontend) {
+          return {
+            ...remote,
+            title: formatFrontendTitle(remote.title, remote.city, remote.type),
+          };
+        }
+        return {
+          ...mappedFrontend,
+          ...remote,
+          title: formatFrontendTitle(
+            remote.title || mappedFrontend.title,
+            remote.city || mappedFrontend.city,
+            remote.type || mappedFrontend.type
+          ),
+          images:
+            Array.isArray(remote.images) && remote.images.length > 0
+              ? remote.images
+              : mappedFrontend.images,
+          description: remote.description || mappedFrontend.description,
+          spvName: remote.spvName || mappedFrontend.spvName,
+          distributionFrequency: remote.distributionFrequency || mappedFrontend.distributionFrequency,
+        };
+      }
     } catch (err) {
+      if (mappedFrontend) {
+        return mappedFrontend;
+      }
       if (isSupabaseConfigured()) {
         const { data, error } = await supabase
           .from('properties')
@@ -227,6 +410,11 @@ export const portalApi = {
       }
       throw err;
     }
+
+    if (mappedFrontend) {
+      return mappedFrontend;
+    }
+    throw new Error(`Property listing '${idOrSlug}' not found.`);
   },
 
   async getTransactions(params?: { limit?: number; offset?: number }): Promise<PortalTransaction[]> {
@@ -309,6 +497,7 @@ export const portalApi = {
       bankIban: String(d.bankIban || d.iban || ''),
       bankAccountHolder: String(d.bankAccountHolder || d.bank_holder || d.fullName || d.full_name || ''),
       assignedBankAccount: d.assignedBankAccount || null,
+      assignedUsdtAccount: d.assignedUsdtAccount || null,
       cryptoDepositAddress: String(d.cryptoDepositAddress || ''),
       taxId: String(d.taxId || ''),
       dateOfBirth: String(d.dateOfBirth || ''),
@@ -347,6 +536,7 @@ export const portalApi = {
       bankIban: String(d.bankIban || d.iban || ''),
       bankAccountHolder: String(d.bankAccountHolder || d.bank_holder || d.fullName || d.full_name || ''),
       assignedBankAccount: d.assignedBankAccount || null,
+      assignedUsdtAccount: d.assignedUsdtAccount || null,
       cryptoDepositAddress: String(d.cryptoDepositAddress || ''),
       taxId: String(d.taxId || ''),
       dateOfBirth: String(d.dateOfBirth || ''),
@@ -393,10 +583,30 @@ export const portalApi = {
     };
   },
 
+  async getAssignedPaymentMethods(): Promise<PortalAssignedPaymentMethod[]> {
+    const res = await api.get<any>('/manual-payments/methods');
+    const list = unwrap<any[]>(res);
+    if (!Array.isArray(list)) return [];
+    return list
+      .filter((item: any) => item?.method === 'bank' || item?.method === 'usdt')
+      .map((item: any) => ({
+        id: String(item.id),
+        method: item.method as 'bank' | 'usdt',
+        minimum_amount: item.minimum_amount ?? 100,
+        maximum_amount: item.maximum_amount ?? null,
+        name: String(item.name || ''),
+        instructions: String(item.instructions || ''),
+        network: String(item.network || ''),
+        wallet_address: String(item.wallet_address || ''),
+        detail_rows: Array.isArray(item.detail_rows) ? item.detail_rows : [],
+      }));
+  },
+
   async submitDeposit(payload: {
     amount: number;
     currency: string;
     method: string;
+    methodId?: string;
     txHash?: string;
     idempotencyKey?: string;
   }): Promise<PortalTransaction> {
@@ -405,6 +615,19 @@ export const portalApi = {
       idempotencyKey: payload.idempotencyKey || createIdempotencyKey(),
     });
     return unwrap<PortalTransaction>(res);
+  },
+
+  async submitDepositTxHash(depositId: string, txHash: string): Promise<{ id: string; txHash: string; transaction_id_submitted: boolean }> {
+    const res = await api.post<any>(`/deposits/${encodeURIComponent(depositId)}/tx-hash`, { txHash });
+    return unwrap<any>(res);
+  },
+
+  async uploadDepositProof(depositId: string, file: File): Promise<{ id: string; proofAttached: boolean }> {
+    const res = await api.post<any>(`/deposits/${encodeURIComponent(depositId)}/proof`, {
+      fileName: file.name,
+      mimeType: file.type,
+    });
+    return unwrap<any>(res);
   },
 
   async requestActionVerification(

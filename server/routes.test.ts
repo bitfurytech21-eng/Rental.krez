@@ -615,6 +615,37 @@ async function runApiTests() {
       'POST /manual-payments/deposits records pending manual deposit in dev/test mode'
     );
 
+    // Admin assigns inbuilt payment gate -> user dashboard endpoints all return it
+    const assignGateRes = await api(
+      'POST',
+      '/admin/users/assign-gate',
+      { userIds: [customerId], method: 'bank', gateId: '11111111-1111-4111-8111-111111111101' },
+      adminToken
+    );
+    assert(assignGateRes.status === 200 && assignGateRes.json.success === true, 'POST /admin/users/assign-gate assigns inbuilt gate to investor');
+
+    const [reassignedMethodsRes, reassignedWalletRes, reassignedProfileRes, reassignedConfigRes] = await Promise.all([
+      api('GET', '/manual-payments/methods', undefined, customerToken),
+      api('GET', '/wallet/balance', undefined, customerToken),
+      api('GET', '/user/profile', undefined, customerToken),
+      api('GET', '/payments/config', undefined, customerToken),
+    ]);
+    assert(
+      reassignedMethodsRes.status === 200 &&
+        reassignedMethodsRes.json.data?.[0]?.id === '11111111-1111-4111-8111-111111111101' &&
+        reassignedMethodsRes.json.data?.[0]?.name === 'BNP Paribas SEPA Desk',
+      'GET /manual-payments/methods returns the admin-assigned inbuilt payment gate'
+    );
+    assert(
+      reassignedWalletRes.status === 200 &&
+        reassignedWalletRes.json.data?.assignedBankAccount?.gateId === '11111111-1111-4111-8111-111111111101' &&
+        reassignedProfileRes.status === 200 &&
+        reassignedProfileRes.json.data?.assignedBankAccount?.gateId === '11111111-1111-4111-8111-111111111101' &&
+        reassignedConfigRes.status === 200 &&
+        reassignedConfigRes.json.data?.traditional?.iban === 'FR76 3000 4028 3700 0104 9281 942',
+      'Wallet, profile, and payment config reflect the admin-assigned inbuilt payment method'
+    );
+
     // User notification preferences persistence
     const prefUpdateRes = await api(
       'PUT',

@@ -162,7 +162,8 @@ export const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     setSavingGate(true);
     try {
       const gateObj = paymentGates.find((g) => g.id === gateId);
-      await assignPaymentGateToInvestor(selectedUser.id, gateId || null, gateObj?.name);
+      const resolvedMethod = gateObj?.method === 'usdt' ? 'usdt' : 'bank';
+      await assignPaymentGateToInvestor(selectedUser.id, gateId || null, gateObj?.name, resolvedMethod);
       onQuickSuccess(
         gateId
           ? `Assigned payment gate "${gateObj?.name || gateId}" to ${selectedUser.fullName}.`

@@ -441,13 +441,13 @@ function MainApp() {
         return <TrustCenterPage onNavigate={navigateTo} />;
 
       case '/terms':
-        return <PublicLegalDocumentPage document="terms" />;
+        return <PublicLegalDocumentPage document="terms" onNavigate={navigateTo} />;
 
       case '/privacy':
-        return <PublicLegalDocumentPage document="privacy" />;
+        return <PublicLegalDocumentPage document="privacy" onNavigate={navigateTo} />;
 
       case '/risk-warning':
-        return <PublicLegalDocumentPage document="risk-warning" />;
+        return <PublicLegalDocumentPage document="risk-warning" onNavigate={navigateTo} />;
 
       case '/legal':
       case '/compliance':

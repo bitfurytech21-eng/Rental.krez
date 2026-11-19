@@ -8,6 +8,8 @@ import { Stepper } from '../components/Stepper';
 import { StatusBadge } from '../components/StatusBadge';
 import { getApiUrl, getAuthToken } from '../../lib/api';
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient';
+import { portalApi } from '../services/portalApi';
+import { PortalAssignedBankAccount } from '../types';
 
 type DepositMethod = {
   id: string;
@@ -46,9 +48,55 @@ const money = (value: string | number | bigint): string => {
 const methodLabel = (method: DepositMethod['method']) =>
   method === 'usdt' ? 'USDT (crypto)' : 'Bank transfer (SEPA)';
 
+const mapAssignedAccountToMethod = (
+  account: PortalAssignedBankAccount | null | undefined,
+  fallbackMethod: 'bank' | 'usdt',
+  minDepositEur: number,
+  maxDepositEur: number
+): DepositMethod | null => {
+  if (!account) return null;
+  const resolvedMethod: 'bank' | 'usdt' = account.method === 'usdt' ? 'usdt' : fallbackMethod;
+  if (resolvedMethod === 'bank' && !account.iban && (!account.detailRows || account.detailRows.length === 0)) {
+    return null;
+  }
+  if (resolvedMethod === 'usdt' && !account.walletAddress) {
+    return null;
+  }
+  const detailRows =
+    Array.isArray(account.detailRows) && account.detailRows.length > 0
+      ? account.detailRows
+      : resolvedMethod === 'bank'
+      ? [
+          account.beneficiary ? { label: 'Beneficiary', value: account.beneficiary } : null,
+          account.bankName ? { label: 'Bank', value: account.bankName } : null,
+          account.iban ? { label: 'IBAN', value: account.iban } : null,
+          account.bic ? { label: 'BIC', value: account.bic } : null,
+          account.reference ? { label: 'Reference', value: account.reference } : null,
+        ].filter((row): row is { label: string; value: string } => Boolean(row))
+      : [];
+  return {
+    id: account.gateId || `assigned-${resolvedMethod}`,
+    method: resolvedMethod,
+    minimum_amount: minDepositEur,
+    maximum_amount: maxDepositEur || null,
+    name: account.gateName || account.bankName || (resolvedMethod === 'usdt' ? 'USDT Treasury' : 'SEPA Bank Transfer'),
+    instructions: account.instructions || '',
+    network: account.network || '',
+    wallet_address: account.walletAddress || '',
+    detail_rows: detailRows,
+  };
+};
+
 export const DepositPage: React.FC = () => {
   const toast = useToast();
-  const { profile, refreshAll, navigatePortal } = usePortal();
+  const {
+    assignedBankAccount,
+    assignedUsdtAccount,
+    assignedPaymentMethods,
+    portalConfig,
+    refreshAll,
+    navigatePortal,
+  } = usePortal();
 
   const [methods, setMethods] = useState<DepositMethod[]>([]);
   const [method, setMethod] = useState<DepositMethod['method'] | ''>('');
@@ -73,34 +121,57 @@ export const DepositPage: React.FC = () => {
   const amountCents = parseEurCents(amountInput);
 
   useEffect(() => {
+    let cancelled = false;
+    const minEur = portalConfig?.limits?.minDepositEur || 100;
+    const maxEur = portalConfig?.limits?.maxDepositEur || 5000000;
+
+    const buildFallbackFromAssigned = (): DepositMethod[] => {
+      if (assignedPaymentMethods.length > 0) {
+        return assignedPaymentMethods;
+      }
+      const derived: DepositMethod[] = [];
+      const bank = mapAssignedAccountToMethod(assignedBankAccount, 'bank', minEur, maxEur);
+      const usdt = mapAssignedAccountToMethod(assignedUsdtAccount, 'usdt', minEur, maxEur);
+      if (bank) derived.push(bank);
+      if (usdt) derived.push(usdt);
+      return derived;
+    };
+
     setLoadingMethods(true);
     setSubmitError(null);
-    const authToken = getAuthToken();
-    fetch(getApiUrl('/manual-payments/methods'), {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
-    })
-      .then(async response => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || 'Unable to load your assigned payment methods.');
-        const available = (Array.isArray(payload.data) ? payload.data : [])
-          .filter((item: any) => item?.method === 'bank' || item?.method === 'usdt')
-          .map((item: any) => ({
-            id: String(item.id),
-            method: item.method as DepositMethod['method'],
-            minimum_amount: item.minimum_amount,
-            maximum_amount: item.maximum_amount ?? null,
-            name: item.name || '',
-            instructions: item.instructions || '',
-            network: item.network || '',
-            wallet_address: item.wallet_address || '',
-            detail_rows: Array.isArray(item.detail_rows) ? item.detail_rows : []
-          }));
-        setMethods(available);
-        if (available.length === 1) setMethod(available[0].method);
+    portalApi
+      .getAssignedPaymentMethods()
+      .then((available) => {
+        if (cancelled) return;
+        const resolved = available.length > 0 ? available : buildFallbackFromAssigned();
+        setMethods(resolved);
+        setMethod((prev) => {
+          if (prev && resolved.some((item) => item.method === prev)) return prev;
+          return resolved.length === 1 ? resolved[0].method : '';
+        });
       })
-      .catch(e => setSubmitError(e?.message || 'Unable to load your assigned payment methods.'))
-      .finally(() => setLoadingMethods(false));
-  }, []);
+      .catch((e) => {
+        if (cancelled) return;
+        const fallback = buildFallbackFromAssigned();
+        if (fallback.length > 0) {
+          setMethods(fallback);
+          setMethod((prev) => {
+            if (prev && fallback.some((item) => item.method === prev)) return prev;
+            return fallback.length === 1 ? fallback[0].method : '';
+          });
+          setSubmitError(null);
+        } else {
+          setSubmitError(e?.message || 'Unable to load your assigned payment methods.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMethods(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assignedBankAccount, assignedUsdtAccount, assignedPaymentMethods, portalConfig?.limits?.maxDepositEur, portalConfig?.limits?.minDepositEur]);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +221,16 @@ export const DepositPage: React.FC = () => {
     setStep(2);
   };
 
+  const hasActiveSupabaseSession = async (): Promise<boolean> => {
+    if (!isSupabaseConfigured()) return false;
+    try {
+      const { data } = await supabase.auth.getSession();
+      return Boolean(data?.session?.access_token);
+    } catch {
+      return false;
+    }
+  };
+
   const handleConfirmAndSubmit = async () => {
     if (lockRef.current || submitting) return;
     setSubmitError(null);
@@ -157,19 +238,26 @@ export const DepositPage: React.FC = () => {
       setSubmitError('Review a valid amount and an assigned payment method before confirming.');
       return;
     }
-    if (!isSupabaseConfigured()) {
-      setSubmitError('Secure deposit requests are temporarily unavailable. Please try again later.');
-      return;
-    }
     lockRef.current = true;
     setSubmitting(true);
     try {
-      const { data, error: rpcError } = await supabase.rpc('request_deposit', {
-        p_amount: centsToDecimal(amountCents),
-        p_method: selected.method
-      });
-      if (rpcError) throw rpcError;
-      setSubmitted(data);
+      let submittedRecord: any = null;
+      if (await hasActiveSupabaseSession()) {
+        const { data, error: rpcError } = await supabase.rpc('request_deposit', {
+          p_amount: centsToDecimal(amountCents),
+          p_method: selected.method
+        });
+        if (rpcError) throw rpcError;
+        submittedRecord = data;
+      } else {
+        submittedRecord = await portalApi.submitDeposit({
+          amount: Number(centsToDecimal(amountCents)),
+          currency: 'EUR',
+          method: selected.name || (selected.method === 'usdt' ? 'USDT' : 'SEPA Bank Wire'),
+          methodId: selected.id,
+        });
+      }
+      setSubmitted(submittedRecord);
       setTransactionHash('');
       setProofFile(null);
       setConfirmationMessage('');
@@ -185,7 +273,7 @@ export const DepositPage: React.FC = () => {
       } else if (code.includes('LEGAL') || code.includes('consent')) {
         setSubmitError('Please review and accept the latest legal terms before requesting a deposit.');
       } else {
-        setSubmitError('Your deposit request could not be submitted. Please retry.');
+        setSubmitError(e?.message || 'Your deposit request could not be submitted. Please retry.');
       }
     } finally {
       lockRef.current = false;
@@ -205,11 +293,16 @@ export const DepositPage: React.FC = () => {
     setSubmitError(null);
     setConfirmationMessage('');
     try {
-      const { data, error: rpcError } = await supabase.rpc('submit_tx_hash', {
-        p_tx: submitted.id,
-        p_hash: hash
-      });
-      if (rpcError) throw rpcError;
+      const data = (await hasActiveSupabaseSession())
+        ? await (async () => {
+            const { data: rpcData, error: rpcError } = await supabase.rpc('submit_tx_hash', {
+              p_tx: submitted.id,
+              p_hash: hash
+            });
+            if (rpcError) throw rpcError;
+            return rpcData;
+          })()
+        : await portalApi.submitDepositTxHash(String(submitted.id), hash);
       setTransactionHash(hash);
       setConfirmationMessage(data?.transaction_id_submitted ? 'Transaction ID submitted for review.' : 'Transaction ID submitted.');
       toast.success('Transaction ID submitted.');
@@ -240,23 +333,28 @@ export const DepositPage: React.FC = () => {
     setConfirmationMessage('');
     let uploadedPath = '';
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user) throw userError || new Error('Please sign in again to upload proof.');
-      const extension = proofFile.type === 'application/pdf' ? 'pdf' : proofFile.type === 'image/png' ? 'png' : 'jpg';
-      uploadedPath = `${userData.user.id}/${submitted.id}/${crypto.randomUUID()}.${extension}`;
-      const { error: uploadError } = await supabase.storage.from('proofs').upload(uploadedPath, proofFile, {
-        contentType: proofFile.type,
-        upsert: false
-      });
-      if (uploadError) throw uploadError;
-      const token = getAuthToken();
-      const response = await fetch(getApiUrl(`/manual-payments/deposits/${submitted.id}/proof`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ path: uploadedPath })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'The proof file could not be attached to this deposit.');
+      if (await hasActiveSupabaseSession()) {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData.user) throw userError || new Error('Please sign in again to upload proof.');
+        const extension = proofFile.type === 'application/pdf' ? 'pdf' : proofFile.type === 'image/png' ? 'png' : 'jpg';
+        uploadedPath = `${userData.user.id}/${submitted.id}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from('proofs').upload(uploadedPath, proofFile, {
+          contentType: proofFile.type,
+          upsert: false
+        });
+        if (uploadError) throw uploadError;
+        const token = getAuthToken();
+        const response = await fetch(getApiUrl(`/manual-payments/deposits/${submitted.id}/proof`), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ path: uploadedPath })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'The proof file could not be attached to this deposit.');
+      } else {
+        await portalApi.uploadDepositProof(String(submitted.id), proofFile);
+      }
       setProofFile(null);
       setConfirmationMessage('Payment proof uploaded securely.');
       toast.success('Payment proof uploaded securely.');
@@ -365,7 +463,10 @@ export const DepositPage: React.FC = () => {
                       <Building2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-[#F2F5F4]">{methodLabel(item.method)}</div>
+                      <div className="text-sm font-medium text-[#F2F5F4]">
+                        {methodLabel(item.method)}
+                        {item.name ? ` · ${item.name}` : ''}
+                      </div>
                       <div className="text-xs text-[#8FA1A8] mt-0.5 portal-tabular">
                         {money(item.minimum_amount)} minimum {item.maximum_amount != null ? `· ${money(item.maximum_amount)} maximum` : ''}
                       </div>

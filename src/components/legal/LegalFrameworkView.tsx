@@ -487,7 +487,7 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
                 {COMPANY_REGISTRATION.operatingBrand}
               </span>
               <span className="text-[#52605C] block">
-                Legal form stated in supplied reference material: {COMPANY_REGISTRATION.legalForm}
+                Registered Legal Form: {COMPANY_REGISTRATION.legalForm}
               </span>
             </div>
 
@@ -646,9 +646,9 @@ export const LegalFrameworkView: React.FC<LegalFrameworkViewProps> = ({
       <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex items-start gap-3 text-xs text-amber-950">
         <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <strong>Regulatory &amp; Legal Notice:</strong> Corporate registration data (SIREN{' '}
+          <strong>Regulatory &amp; Legal Notice:</strong> Corporate registration identifiers (SIREN{' '}
           {COMPANY_REGISTRATION.siren} · {COMPANY_REGISTRATION.rcs} · SIRET {COMPANY_REGISTRATION.siret} · VAT{' '}
-          {COMPANY_REGISTRATION.vatIdentificationNumber}) reflects the supplied corporate reference documentation. Offering-specific SPV subscription agreements and public regulatory prospectuses remain subject to per-jurisdiction legal counsel sign-off prior to live external capital solicitation.
+          {COMPANY_REGISTRATION.vatIdentificationNumber}) identify the platform operator registered in France. Offering-specific SPV subscription agreements and offering memoranda are issued per property vehicle in accordance with applicable French, Spanish, and European Union regulations.
         </p>
       </div>
     </div>

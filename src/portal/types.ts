@@ -38,11 +38,31 @@ export interface PortalHolding {
 }
 
 export interface PortalAssignedBankAccount {
+  gateId?: string;
+  gateName?: string;
+  method?: 'bank' | 'usdt';
   beneficiary: string;
+  accountHolder?: string;
   bankName: string;
   iban: string;
   bic: string;
   reference?: string;
+  instructions?: string;
+  network?: string;
+  walletAddress?: string;
+  detailRows?: Array<{ label: string; value: string }>;
+}
+
+export interface PortalAssignedPaymentMethod {
+  id: string;
+  method: 'bank' | 'usdt';
+  minimum_amount: number | string;
+  maximum_amount: number | string | null;
+  name?: string;
+  instructions?: string;
+  network?: string;
+  wallet_address?: string;
+  detail_rows?: Array<{ label: string; value: string }>;
 }
 
 export interface PortalPortfolioData {
@@ -155,6 +175,7 @@ export interface PortalProfile {
   bankIban: string;
   bankAccountHolder?: string;
   assignedBankAccount?: PortalAssignedBankAccount | null;
+  assignedUsdtAccount?: PortalAssignedBankAccount | null;
   cryptoDepositAddress: string;
   taxId: string;
   dateOfBirth: string;

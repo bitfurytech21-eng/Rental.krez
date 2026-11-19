@@ -6,21 +6,12 @@ import { FilterChips } from '../components/FilterChips';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 
-function classifyPropertySegment(type: string): 'Residential' | 'Commercial' {
+const OPEN_STATUSES = new Set(['open', 'funding', 'active']);
+const HIDDEN_STATUSES = new Set(['hidden', 'draft', 'pending_approval']);
+
+function isVillaOrEstate(type: string): boolean {
   const t = String(type || '').toLowerCase();
-  if (
-    t.includes('commercial') ||
-    t.includes('office') ||
-    t.includes('retail') ||
-    t.includes('industrial') ||
-    t.includes('hospitality') ||
-    t.includes('hotel') ||
-    t.includes('logistics') ||
-    t.includes('mixed')
-  ) {
-    return 'Commercial';
-  }
-  return 'Residential';
+  return t.includes('villa') || t.includes('château') || t.includes('chateau') || t.includes('mansion') || t.includes('estate');
 }
 
 export const ExplorePage: React.FC = () => {
@@ -36,23 +27,30 @@ export const ExplorePage: React.FC = () => {
     refreshAll,
   } = usePortal();
 
-  const filterOptions = ['All', 'Residential', 'Commercial'];
+  const filterOptions = ['All', 'Open', 'Funded', 'Villas & Estates', 'Apartments & Houses'];
   const activeFilter = filterOptions.includes(exploreFilter) ? exploreFilter : 'All';
 
   const filtered = useMemo(() => {
     const q = exploreSearch.trim().toLowerCase();
     return properties.filter((p) => {
-      if (String(p.status || '').toLowerCase() !== 'open') {
+      const status = String(p.status || '').toLowerCase();
+      if (HIDDEN_STATUSES.has(status)) {
         return false;
       }
-      if (activeFilter === 'Residential' && classifyPropertySegment(p.type) !== 'Residential') {
+      if (activeFilter === 'Open' && !OPEN_STATUSES.has(status)) {
         return false;
       }
-      if (activeFilter === 'Commercial' && classifyPropertySegment(p.type) !== 'Commercial') {
+      if (activeFilter === 'Funded' && status !== 'funded' && status !== 'completed') {
+        return false;
+      }
+      if (activeFilter === 'Villas & Estates' && !isVillaOrEstate(p.type)) {
+        return false;
+      }
+      if (activeFilter === 'Apartments & Houses' && isVillaOrEstate(p.type)) {
         return false;
       }
       if (q) {
-        const hay = `${p.title} ${p.location} ${p.city || ''} ${p.type}`.toLowerCase();
+        const hay = `${p.title} ${p.location} ${p.city || ''} ${p.country || ''} ${p.type}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -70,7 +68,7 @@ export const ExplorePage: React.FC = () => {
         <div>
           <h2 className="text-xl font-heading font-bold text-[#F2F5F4]">Explore properties</h2>
           <p className="text-sm text-[#8FA1A8] mt-0.5">
-            Vetted residential and commercial property SPVs open for investment.
+            Curated European residential and prestige property SPVs from the public catalogue.
           </p>
         </div>
 
@@ -91,7 +89,7 @@ export const ExplorePage: React.FC = () => {
         options={filterOptions}
         value={activeFilter}
         onChange={setExploreFilter}
-        ariaLabel="Filter properties by asset class"
+        ariaLabel="Filter properties by status or asset class"
       />
 
       {filtered.length === 0 ? (
