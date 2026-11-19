@@ -361,9 +361,17 @@ export const ManualDepositModal: React.FC<Props> = ({
         <div><h3 className="text-2xl font-bold">Review deposit</h3><p className="mt-1 text-[13px] text-[#8FA1A8]">Check the amount and payment method before confirming.</p></div>
         <dl className="divide-y divide-[#1F2C33] rounded-2xl border border-[#1F2C33] bg-[#121A1F] text-sm">
           <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Amount</dt><dd className="font-semibold">{money(amountCents)}</dd></div>
-          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Method</dt><dd className="text-right font-semibold">{methodLabel(selected.method)}</dd></div>
-        </dl>
-        {selected.method === 'usdt' && <p className="text-xs leading-relaxed text-[#8FA1A8]">You’ll send USDT and we’ll credit your wallet in EUR at the rate when your payment is confirmed. The final amount may differ from this estimate.</p>}
+          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Method</dt><dd className="text-right font-semibold">{selected.name || methodLabel(selected.method)}</dd></div>
+          {selected.method === 'usdt' && <>
+            <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Token</dt><dd className="font-semibold">USDT</dd></div>
+            <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Network</dt><dd className="text-right font-semibold">{selected.network || 'Network not specified'}</dd></div>
+            <div className="p-3.5"><dt className="mb-1 text-[#8FA1A8]">Wallet address</dt><dd className="break-all font-mono text-xs leading-5">{selected.wallet_address || 'Address not configured'}</dd></div>
+          </>}
+          {selected.detail_rows?.map((row, index) => <div key={index} className="flex flex-col gap-1 p-3.5"><dt className="text-[#8FA1A8]">{row.label}</dt><dd className="break-all font-semibold">{row.value}</dd></div>)}
+          {selected.instructions ? <div className="p-3.5"><dt className="mb-1 text-[#8FA1A8]">Instructions</dt><dd className="whitespace-pre-wrap text-xs leading-relaxed">{selected.instructions}</dd></div> : null}
+          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Minimum</dt><dd className="font-semibold">{money(selected.minimum_amount)}</dd></div>
+          <div className="flex justify-between gap-3 p-3.5"><dt className="text-[#8FA1A8]">Maximum</dt><dd className="font-semibold">{selected.maximum_amount == null ? 'No maximum listed' : money(selected.maximum_amount)}</dd></div>
+        </dl>       {selected.method === 'usdt' && <p className="text-xs leading-relaxed text-[#8FA1A8]">You’ll send USDT and we’ll credit your wallet in EUR at the rate when your payment is confirmed. The final amount may differ from this estimate.</p>}
         <div className="grid grid-cols-2 gap-2">
           <button type="button" disabled={busy} onClick={() => setStep(2)} className="h-12 rounded-[14px] border border-[#1F2C33] font-semibold disabled:opacity-40">Back</button>
           <button type="button" disabled={busy || !isVerified} onClick={confirmDeposit} className="h-12 rounded-[14px] bg-[#6FD8B0] font-bold text-[#07231A] disabled:opacity-40">{busy ? 'Submitting…' : 'Confirm deposit'}</button>
