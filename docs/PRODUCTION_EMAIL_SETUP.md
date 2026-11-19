@@ -4,26 +4,21 @@ The application already contains event-driven email templates and calls for regi
 
 **Important:** email delivery is not live until a production provider is configured. Without credentials, development can use the sandbox transport; production intentionally fails instead of reporting a simulated send as successful.
 
-## 1. Choose and configure one provider
+## 1. Sandbox / preview mode (current configuration)
 
-Recommended for this project now: SendGrid. Explicitly select it with `EMAIL_PROVIDER=sendgrid`.
+The portal is configured to run without a transactional email API key. Set `EMAIL_PROVIDER=sandbox` to force preview-only mode. In this mode, live provider calls are disabled and the system must not report an email as delivered.
 
-Set these server-side environment variables in the actual hosting platform (not in the browser):
-
-- `EMAIL_PROVIDER`: `sendgrid` to force SendGrid; `resend` to force Resend; `auto` for legacy priority detection.
-- `SENDGRID_API_KEY`: API key created in SendGrid (server-side secret).
-- `EMAIL_FROM`: `info@kretzdespain.com` (must be verified as a sender by the selected provider).
+- `EMAIL_PROVIDER`: `sandbox` (current no-provider mode); `resend` or `sendgrid` only when deliberately enabled later.
+- `EMAIL_FROM`: `info@kretzdespain.com` (display/configuration only in sandbox mode).
 - `EMAIL_SENDER_NAME`: `Kretz Real Estate`.
-- `EMAIL_REPLY_TO`: `info@kretzdespain.com` (ensure this mailbox is monitored).
+- `EMAIL_REPLY_TO`: `info@kretzdespain.com`.
 - `EMAIL_SUPPORT`: `info@kretzdespain.com`.
 - `PUBLIC_APP_URL`: canonical deployed website origin, with no trailing slash.
-- `EMAIL_TEST_MODE`: `false` for live delivery.
+- `EMAIL_TEST_MODE`: `true` to force sandbox mode as well.
 
-Resend is disabled for this configuration when `EMAIL_PROVIDER=sendgrid`, even if a Resend key remains set.
+Sandbox/preview mode does not send real email. Live delivery can be enabled later by explicitly selecting a provider and securely configuring its server-side credentials.
 
-**Cloudflare Worker limitation:** SMTP socket transport is not supported by this Worker implementation. Use Resend or SendGrid over HTTPS. The existing email service explicitly rejects SMTP mode in Workers; SMTP credentials in the environment will not make email delivery work.
-
-Never put provider secrets in `VITE_*` variables, frontend source, GitHub commits, or chat messages. Add them as protected server runtime secrets and redeploy/restart the server.
+Never put provider secrets in `VITE_*` variables, frontend source, GitHub commits, or chat.
 
 ## 2. Verify the sending domain
 
@@ -31,7 +26,7 @@ Verify `kretzdespain.com` in the selected provider and add the exact SPF/DKIM (a
 
 In the provider dashboard, add the sending domain and publish the exact DNS records it supplies (typically SPF and DKIM; add DMARC for domain policy/reporting). Do not copy generic SPF/DKIM values from an example: use the provider-specific records and ensure there is only one valid SPF record for the domain. Wait for provider verification before testing delivery.
 
-## 3. Configure the Resend delivery webhook
+## 3. Optional: Configure the Resend delivery webhook (only if Resend is later enabled)
 
 After creating a webhook in Resend, subscribe to the delivery events you need and use this endpoint:
 
@@ -60,12 +55,12 @@ The automation rules registry also defines welcome, verification, password reset
 
 ## 6. Production test checklist
 
-Before enabling live delivery, add `SENDGRID_API_KEY` as a protected Cloudflare Worker secret and set `EMAIL_PROVIDER=sendgrid`. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
+Current sandbox mode does not send live email. If a provider is enabled later, configure its protected runtime secret and sender authentication before live testing. The repository default sender is `info@kretzdespain.com`; this setting does not itself verify the mailbox or authenticate delivery. Do not commit credentials or paste them into chat.
 
-1. Confirm the admin email-provider status reports SendGrid, not sandbox.
-2. Send a test message to a mailbox controlled by the project owner.
-3. Verify receipt in the inbox and inspect spam placement, sender, reply-to, links and mobile rendering.
-4. Register a controlled test account and confirm the verification email arrives and its link resolves on the production domain.
+1. Confirm the admin email-provider status reports Sandbox / Preview Mode.
+2. Preview a test message; no inbox delivery is expected in sandbox mode.
+3. Inspect preview rendering, sender, reply-to, links and mobile layout.
+4. Register a controlled test account and confirm the UI clearly indicates email delivery is inactive in sandbox mode.
 5. Exercise password recovery, contact receipt, KYC status, deposit, withdrawal and investment notifications using test accounts and non-production financial data.
 6. Confirm provider delivery webhooks update message status and that failed messages are visible to admins.
 7. Confirm duplicate event retries do not send duplicate transactional emails.
