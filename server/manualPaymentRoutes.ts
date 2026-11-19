@@ -460,9 +460,11 @@ manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedReques
     const customerAssigned = registeredDevHooks.resolveCustomerGates?.(req.user!.id);
     const bankGateId = devAssigned.bankGateId ?? customerAssigned?.bankGateId ?? null;
     const usdtGateId = devAssigned.usdtGateId ?? customerAssigned?.usdtGateId ?? null;
-    const active = listDevPaymentGatesWithCounts()
-      .filter((gate) => gate.active && (gate.id === bankGateId || gate.id === usdtGateId))
-      .map((gate) => decorateGateRow(gate, gate.assigned_investors_count || 0));
+    const allActive = listDevPaymentGatesWithCounts().filter((gate) => gate.active);
+    const filtered = (bankGateId || usdtGateId)
+      ? allActive.filter((gate) => gate.id === bankGateId || gate.id === usdtGateId)
+      : allActive;
+    const active = filtered.map((gate) => decorateGateRow(gate, gate.assigned_investors_count || 0));
     return res.json({ success: true, data: active, requestId: req.id });
   };
   if (!canUseLiveSupabaseData()) {
@@ -479,18 +481,17 @@ manualPaymentRouter.get('/methods', requireAuth, async (req: AuthenticatedReques
       { id: profile?.payment_gate_id, method: 'bank' },
       { id: profile?.usdt_payment_gate_id, method: 'usdt' },
     ].filter((item) => Boolean(item.id));
-    if (!assigned.length) return res.json({ success: true, data: [], requestId: req.id });
 
     const { data, error } = await client.from('manual_payment_methods')
       .select('*')
-      .in('id', assigned.map((item) => item.id))
       .eq('enabled', true)
       .order('sort_order').order('created_at');
     if (error) throw error;
 
-    const expectedById = new Map(assigned.map((item) => [String(item.id), item.method]));
-    const available = (data || []).map((row) => decorateGateRow(row))
-      .filter((row) => row.method === expectedById.get(String(row.id)));
+    const allMethods = (data || []).map((row) => decorateGateRow(row));
+    const available = assigned.length > 0
+      ? allMethods.filter((row) => assigned.some((item) => String(item.id) === String(row.id)))
+      : allMethods;
 
     // If the admin assigned an inbuilt gate ID that is not yet mirrored in manual_payment_methods,
     // resolve that specific assigned gate from the inbuilt registry without exposing unassigned gates.

@@ -367,82 +367,26 @@ export const CompliancePage: React.FC = () => {
     setUploading(true);
     setFileError(null);
     try {
+      if (!selectedFile) {
+        throw new Error('Choose a document or take a photo before submitting.');
+      }
       let path = '';
       if (retryInsert && insertRetry?.path && insertRetry.docType === activeStep) {
         path = insertRetry.path;
-        await insertSubmissionDirect(path, activeStep, selectedFile || undefined);
+        await insertSubmissionDirect(path, activeStep, selectedFile);
       } else {
-        if (!selectedFile) throw new Error('Choose a document before submitting.');
-        const ext = fileExtension(selectedFile);
-        const timestamp = Date.now();
-        path = `${user.id}/${activeStep}-${timestamp}.${ext}`;
-
-        let uploadedToSupabaseBucket = false;
-        if (isSupabaseConfigured()) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const token = sessionData?.session?.access_token;
-          const env = (import.meta as any).env || {};
-          const baseUrl = String(env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
-          const apiKey =
-            env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-            env.VITE_SUPABASE_ANON_KEY ||
-            env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-            env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-          if (token && baseUrl && apiKey) {
-            setUploadProgress(5);
-            try {
-              await new Promise<void>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open(
-                  'POST',
-                  `${baseUrl}/storage/v1/object/kyc/${path.split('/').map(encodeURIComponent).join('/')}`
-                );
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                xhr.setRequestHeader('apikey', apiKey);
-                xhr.setRequestHeader('Content-Type', selectedFile.type || 'application/octet-stream');
-                xhr.setRequestHeader('x-upsert', 'false');
-                xhr.upload.onprogress = (event) => {
-                  if (event.lengthComputable) setUploadProgress(Math.round((event.loaded / event.total) * 100));
-                };
-                xhr.onload = () =>
-                  xhr.status >= 200 && xhr.status < 300
-                    ? resolve()
-                    : reject(new Error(xhr.responseText || `Storage upload failed (${xhr.status}).`));
-                xhr.onerror = () => reject(new Error('Network error while uploading.'));
-                xhr.onabort = () => reject(new Error('Upload cancelled.'));
-                xhr.send(selectedFile);
-              });
-              uploadedToSupabaseBucket = true;
-            } catch {
-              // Fall through to backend upload (uses service role + multiple bucket candidates + dataUrl fallback)
-            }
-          }
-        }
-
-        if (uploadedToSupabaseBucket) {
-          setUploadProgress(100);
-          try {
-            await insertSubmissionDirect(path, activeStep, selectedFile);
-          } catch {
-            setInsertRetry({ path, docType: activeStep });
-            throw new Error(
-              'Your file uploaded securely, but the submission record could not be saved. Select “Retry submission” to finish.'
-            );
-          }
-        } else {
-          setUploadProgress(35);
-          const dataUrl = await fileToDataUrl(selectedFile);
-          setUploadProgress(70);
-          await portalApi.submitKycSubmission({
-            docType: activeStep,
-            fileName: selectedFile.name,
-            mimeType: selectedFile.type || 'application/octet-stream',
-            fileSize: selectedFile.size,
-            fileDataUrl: dataUrl,
-          });
-          setUploadProgress(100);
-        }
+        setUploadProgress(30);
+        const dataUrl = await fileToDataUrl(selectedFile);
+        setUploadProgress(70);
+        await portalApi.submitKycSubmission({
+          docType: activeStep,
+          filePath: path,
+          fileName: selectedFile.name,
+          mimeType: selectedFile.type || 'application/octet-stream',
+          fileSize: selectedFile.size,
+          fileDataUrl: dataUrl,
+        });
+        setUploadProgress(100);
       }
 
       await refreshKyc();
