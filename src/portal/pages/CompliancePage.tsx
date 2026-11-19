@@ -394,6 +394,10 @@ export const CompliancePage: React.FC = () => {
       closeSheet();
       toast.success('Submitted. Your document is securely received and queued for admin review.');
     } catch (error: any) {
+      const uploadedFilePath = error?.details?.uploadedFilePath || error?.uploadedFilePath;
+      if (typeof uploadedFilePath === 'string' && uploadedFilePath.trim()) {
+        setInsertRetry({ path: uploadedFilePath.trim(), docType: activeStep });
+      }
       setFileError(safeErrorMessage(error, 'Unable to submit your document. Please retry.'));
     } finally {
       setUploading(false);
