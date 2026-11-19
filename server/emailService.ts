@@ -1258,6 +1258,22 @@ export function getProviderConfig() {
   const rawSmtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.ZOHO_PASS || process.env.GMAIL_PASS || process.env.EMAIL_PASS;
   const smtpPass = isRealSecret(rawSmtpPass) ? rawSmtpPass!.trim() : '';
 
+  const preferredProvider = (process.env.EMAIL_PROVIDER || 'auto').trim().toLowerCase();
+
+  // Explicit selection overrides auto-detection. If the selected provider's key
+  // is missing, do not silently send through a different provider.
+  if (preferredProvider === 'sendgrid') {
+    return sendgridApiKey
+      ? { type: 'sendgrid', name: 'SendGrid v3 Mail API', configured: true, key: sendgridApiKey }
+      : { type: 'sandbox', name: 'SendGrid selected but API key missing', configured: false };
+  }
+  if (preferredProvider === 'resend') {
+    return resendApiKey
+      ? { type: 'resend', name: 'Resend Transactional API', configured: true, key: resendApiKey }
+      : { type: 'sandbox', name: 'Resend selected but API key missing', configured: false };
+  }
+
+  // Auto mode keeps legacy priority: Resend, then SendGrid.
   if (resendApiKey) {
     return { type: 'resend', name: 'Resend Transactional API', configured: true, key: resendApiKey };
   }
