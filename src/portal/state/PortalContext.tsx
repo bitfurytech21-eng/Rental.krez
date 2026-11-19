@@ -524,6 +524,34 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     void refreshAll();
   }, [refreshAll]);
 
+  // Keep live portal data fresh when realtime events are missed or the user returns to the tab.
+  useEffect(() => {
+    if (!user?.id || sampleDataEnabled) return;
+
+    const refreshOnVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        void refreshAll();
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void refreshAll();
+      }
+    }, 60_000);
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', refreshOnVisible);
+    }
+
+    return () => {
+      window.clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', refreshOnVisible);
+      }
+    };
+  }, [user?.id, sampleDataEnabled, refreshAll]);
+
   // Keep dashboard listings synced with frontend home-page/public ledger updates
   useEffect(() => {
     if (!user?.id || sampleDataEnabled) return;
