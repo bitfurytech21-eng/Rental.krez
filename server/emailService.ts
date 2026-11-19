@@ -13,6 +13,7 @@
  */
 
 import crypto from 'crypto';
+import sgMail from '@sendgrid/mail';
 
 // ============================================================================
 // DATA INTERFACES & SCHEMAS
@@ -1455,32 +1456,21 @@ export async function sendEmail(options: SendEmailOptions): Promise<{
     } else if (provider.type === 'sendgrid') {
       mode = 'sendgrid';
       try {
-        const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${provider.key}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            personalizations: [{ to: [{ email: recipient }] }],
-            from: { email: emailSettings.fromAddress, name: emailSettings.senderName },
-            reply_to: { email: emailSettings.replyToAddress },
-            subject,
-            content: [
-              { type: 'text/plain', value: text },
-              { type: 'text/html', value: html }
-            ]
-          })
+        // SendGrid's EU data-residency mode is enabled only when this provider is selected.
+        sgMail.setApiKey(provider.key);
+        sgMail.setDataResidency('eu');
+        const [sgResponse] = await sgMail.send({
+          to: recipient,
+          from: { email: emailSettings.fromAddress, name: emailSettings.senderName },
+          replyTo: emailSettings.replyToAddress,
+          subject,
+          text,
+          html
         });
-        if (!response.ok) {
-          const sgBody = await response.text().catch(() => '');
-          throw new Error(`SendGrid rejected the email (HTTP ${response.status}): ${sgBody.slice(0, 300)}. Check SENDGRID_API_KEY and that EMAIL_FROM is a verified sender.`);
-        } else {
-          const sgMsgId = response.headers.get('x-message-id');
-          if (sgMsgId) providerMessageId = sgMsgId;
-        }
+        const sgMsgId = sgResponse?.headers?.['x-message-id'];
+        if (sgMsgId) providerMessageId = String(sgMsgId);
       } catch (e: any) {
-        throw new Error(e?.message?.startsWith('SendGrid rejected') ? e.message : `SendGrid request failed: ${e?.message || e}`);
+        throw new Error(`SendGrid EU delivery failed: ${e?.message || e}. Check SENDGRID_API_KEY and verified sender EMAIL_FROM.`);
       }
     } else if (provider.type === 'smtp') {
       throw new Error('SMTP socket transport is not supported in Cloudflare Workers. Configure RESEND_API_KEY and use the Resend HTTPS API.');
