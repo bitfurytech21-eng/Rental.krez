@@ -48,8 +48,9 @@ Automated receipts, KYC updates, and security alerts. **Configure only ONE provi
 
 | Key | Recommended Value | Scope | Notes |
 | :--- | :--- | :--- | :--- |
-| `RESEND_API_KEY` | `re_...` | Server | **Option A (Priority 1):** Resend API key. Leave blank if unused. |
-| `SENDGRID_API_KEY` | `SG....` | Server | **Option B (Priority 2):** SendGrid Mail API v3 key. Leave blank if unused. |
+| `EMAIL_PROVIDER` | `sendgrid` | Server | Explicit provider selector: `sendgrid`, `resend`, or `auto`. Recommended for this setup. |
+| `RESEND_API_KEY` | `re_...` | Server | Resend API key. Leave blank when using SendGrid. |
+| `SENDGRID_API_KEY` | `SG....` | Server | SendGrid Mail API v3 key. Leave blank if unused. |
 | `SMTP_HOST` | `smtppro.zoho.com` | Server | **Option C (Priority 3):** SMTP relay host (Zoho, Gmail, SES). |
 | `SMTP_PORT` | `465` | Server | `465` (SSL) or `587` (STARTTLS). |
 | `SMTP_USER` | `info@kretzdespain.com` | Server | SMTP account username/email. |
