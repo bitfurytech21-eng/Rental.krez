@@ -8743,29 +8743,51 @@ router.get('/admin/email/verify-provider', requireStaffSection('staff-roles', 'r
  * Ingest delivery status webhooks from Resend, SendGrid, or local simulation
  */
 router.post('/webhooks/email', (req, res) => {
-  const webhookSecret = String(process.env.RESEND_WEBHOOK_SECRET || '').trim();
-  if (!webhookSecret) {
-    return res.status(503).json({
-      success: false,
-      error: 'Email webhook verification is not configured.',
-      code: 'EMAIL_WEBHOOK_NOT_CONFIGURED'
-    });
+  const rawBody = (req as any).rawBody;
+  if (typeof rawBody !== 'string') {
+    return res.status(400).json({ success: false, error: 'Webhook raw body is unavailable.', code: 'EMAIL_WEBHOOK_RAW_BODY_MISSING' });
   }
 
-  // Resend uses Svix headers and signs: "{svix-id}.{svix-timestamp}.{raw request body}".
+  // SendGrid Event Webhook signature validation (ECDSA). Public key is configured
+  // in SENDGRID_WEBHOOK_PUBLIC_KEY; signatures cover timestamp + exact raw body.
+  const sendGridPublicKey = String(process.env.SENDGRID_WEBHOOK_PUBLIC_KEY || '').trim();
+  const sendGridSignature = String(req.headers['x-twilio-email-event-webhook-signature'] || '');
+  const sendGridTimestamp = String(req.headers['x-twilio-email-event-webhook-timestamp'] || '');
+  if (sendGridSignature || sendGridTimestamp) {
+    if (!sendGridPublicKey || !sendGridSignature || !sendGridTimestamp || !/^\d+$/.test(sendGridTimestamp)) {
+      return res.status(503).json({ success: false, error: 'SendGrid webhook verification is not configured.', code: 'SENDGRID_WEBHOOK_NOT_CONFIGURED' });
+    }
+    try {
+      const timestampSeconds = Number(sendGridTimestamp);
+      if (!Number.isFinite(timestampSeconds) || Math.abs(Math.floor(Date.now() / 1000) - timestampSeconds) > 300) {
+        return res.status(401).json({ success: false, error: 'Expired SendGrid webhook signature.', code: 'INVALID_SENDGRID_WEBHOOK_SIGNATURE' });
+      }
+      const signatureBytes = Buffer.from(sendGridSignature, 'base64');
+      const valid = crypto.verify('sha256', Buffer.from(sendGridTimestamp + rawBody, 'utf8'), sendGridPublicKey, signatureBytes);
+      if (!valid) {
+        return res.status(401).json({ success: false, error: 'Invalid SendGrid webhook signature.', code: 'INVALID_SENDGRID_WEBHOOK_SIGNATURE' });
+      }
+    } catch {
+      return res.status(401).json({ success: false, error: 'Invalid SendGrid webhook signature.', code: 'INVALID_SENDGRID_WEBHOOK_SIGNATURE' });
+    }
+    const result = handleEmailWebhook(req.body);
+    return res.status(200).json({ success: true, provider: 'sendgrid', processed: result.processed, updatedCount: result.updatedCount, timestamp: new Date().toISOString() });
+  }
+
+  // Resend Svix signature: "{svix-id}.{svix-timestamp}.{raw request body}".
+  const webhookSecret = String(process.env.RESEND_WEBHOOK_SECRET || '').trim();
+  if (!webhookSecret) {
+    return res.status(503).json({ success: false, error: 'Email webhook verification is not configured.', code: 'EMAIL_WEBHOOK_NOT_CONFIGURED' });
+  }
   const svixId = String(req.headers['svix-id'] || '');
   const svixTimestamp = String(req.headers['svix-timestamp'] || '');
   const svixSignature = String(req.headers['svix-signature'] || '');
-  const rawBody = (req as any).rawBody;
   const timestamp = Number(svixTimestamp);
   const nowSeconds = Math.floor(Date.now() / 1000);
-
-  if (!svixId || !/^\d+$/.test(svixTimestamp) || !svixSignature || typeof rawBody !== 'string' ||
-      !Number.isFinite(timestamp) || Math.abs(nowSeconds - timestamp) > 300 ||
-      !webhookSecret.startsWith('whsec_')) {
+  if (!svixId || !/^\d+$/.test(svixTimestamp) || !svixSignature || !Number.isFinite(timestamp) ||
+      Math.abs(nowSeconds - timestamp) > 300 || !webhookSecret.startsWith('whsec_')) {
     return res.status(401).json({ success: false, error: 'Invalid email webhook signature.', code: 'INVALID_EMAIL_WEBHOOK_SIGNATURE' });
   }
-
   let signingKey: Buffer;
   try {
     signingKey = Buffer.from(webhookSecret.slice('whsec_'.length), 'base64');
@@ -8773,10 +8795,7 @@ router.post('/webhooks/email', (req, res) => {
   } catch {
     return res.status(503).json({ success: false, error: 'Email webhook verification is not configured correctly.', code: 'EMAIL_WEBHOOK_NOT_CONFIGURED' });
   }
-
-  const expected = crypto.createHmac('sha256', signingKey)
-    .update(`${svixId}.${svixTimestamp}.${rawBody}`, 'utf8')
-    .digest();
+  const expected = crypto.createHmac('sha256', signingKey).update(`${svixId}.${svixTimestamp}.${rawBody}`, 'utf8').digest();
   const signatures = svixSignature.split(/\s+/).flatMap((part) => {
     const match = /^v1,([A-Za-z0-9+/=]+)$/.exec(part);
     return match ? [match[1]] : [];
@@ -8789,18 +8808,11 @@ router.post('/webhooks/email', (req, res) => {
       return false;
     }
   });
-
   if (!validSignature) {
     return res.status(401).json({ success: false, error: 'Invalid email webhook signature.', code: 'INVALID_EMAIL_WEBHOOK_SIGNATURE' });
   }
-
   const result = handleEmailWebhook(req.body);
-  return res.status(200).json({
-    success: true,
-    processed: result.processed,
-    updatedCount: result.updatedCount,
-    timestamp: new Date().toISOString()
-  });
+  return res.status(200).json({ success: true, provider: 'resend', processed: result.processed, updatedCount: result.updatedCount, timestamp: new Date().toISOString() });
 });
 
 // ============================================================================
